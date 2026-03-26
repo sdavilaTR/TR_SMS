@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment android:id="@+id/homeFragment"       android:name="com.example.hassiwrapper.ui.home.HomeFragment"           android:label="@string/menu_home" />
+    <fragment android:id="@+id/scannerFragment"    android:name="com.example.hassiwrapper.ui.scanner.ScannerFragment"      android:label="@string/menu_scanner" />
+    <fragment android:id="@+id/passportFragment"   android:name="com.example.hassiwrapper.ui.passport.PassportFragment"    android:label="@string/menu_passport" />
+    <fragment android:id="@+id/attendanceFragment" android:name="com.example.hassiwrapper.ui.attendance.AttendanceFragment" android:label="@string/menu_attendance" />
+    <fragment android:id="@+id/syncFragment"       android:name="com.example.hassiwrapper.ui.sync.SyncFragment"            android:label="@string/menu_sync" />
+    <fragment android:id="@+id/workersFragment"    android:name="com.example.hassiwrapper.ui.workers.WorkersFragment"      android:label="@string/menu_workers" />
+    <fragment android:id="@+id/settingsFragment"   android:name="com.example.hassiwrapper.ui.settings.SettingsFragment"   android:label="@string/menu_settings" />
+
+</navigation>

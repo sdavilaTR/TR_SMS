@@ -1,0 +1,175 @@
+package com.example.hassiwrapper.network.dto
+
+import com.google.gson.annotations.SerializedName
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+data class LoginRequest(
+    val userName: String,
+    val password: String
+)
+
+// ── Sync Download Response ───────────────────────────────────────────────────
+
+data class SyncDownloadResponse(
+    val projects: List<ProjectDto>? = null,
+    val zones: List<ZoneDto>? = null,
+    val contractors: List<ContractorDto>? = null,
+    val persons: List<PersonDto>? = null,
+    val cryptoKeys: List<CryptoKeyDto>? = null
+)
+
+data class ProjectDto(
+    val id: Int? = null,
+    @SerializedName("project_id") val projectIdSnake: Int? = null,
+    val projectCode: String? = null,
+    @SerializedName("project_code") val projectCodeSnake: String? = null,
+    val projectName: String? = null,
+    @SerializedName("project_name") val projectNameSnake: String? = null,
+    val numericCode: String? = null,
+    @SerializedName("numeric_code") val numericCodeSnake: String? = null,
+    val countryCode: String? = null,
+    @SerializedName("country_code") val countryCodeSnake: String? = null,
+    val isActive: Boolean? = null,
+    @SerializedName("is_active") val isActiveSnake: Boolean? = null
+)
+
+data class ZoneDto(
+    val id: Int? = null,
+    @SerializedName("zone_id") val zoneIdSnake: Int? = null,
+    val projectId: Int? = null,
+    @SerializedName("project_id") val projectIdSnake: Int? = null,
+    val zoneCode: String? = null,
+    @SerializedName("zone_code") val zoneCodeSnake: String? = null,
+    val zoneName: String? = null,
+    @SerializedName("zone_name") val zoneNameSnake: String? = null,
+    val zoneType: String? = null,
+    @SerializedName("zone_type") val zoneTypeSnake: String? = null,
+    val parentZoneId: Int? = null,
+    @SerializedName("parent_zone_id") val parentZoneIdSnake: Int? = null,
+    val isActive: Boolean? = null,
+    @SerializedName("is_active") val isActiveSnake: Boolean? = null
+)
+
+data class ContractorDto(
+    val id: Int? = null,
+    @SerializedName("contractor_id") val contractorIdSnake: Int? = null,
+    val contractorCode: String? = null,
+    @SerializedName("contractor_code") val contractorCodeSnake: String? = null,
+    val contractorName: String? = null,
+    @SerializedName("contractor_name") val contractorNameSnake: String? = null,
+    val legalName: String? = null,
+    @SerializedName("legal_name") val legalNameSnake: String? = null,
+    val taxId: String? = null,
+    @SerializedName("tax_id") val taxIdSnake: String? = null,
+    val contactName: String? = null,
+    @SerializedName("contact_name") val contactNameSnake: String? = null,
+    val contactEmail: String? = null,
+    @SerializedName("contact_email") val contactEmailSnake: String? = null,
+    val countryCode: String? = null,
+    @SerializedName("country_code") val countryCodeSnake: String? = null,
+    val parentContractorId: Int? = null,
+    @SerializedName("parent_contractor_id") val parentContractorIdSnake: Int? = null,
+    val isActive: Boolean? = null,
+    @SerializedName("is_active") val isActiveSnake: Boolean? = null
+)
+
+data class PersonDto(
+    val uniqueIdValue: String? = null,
+    @SerializedName("unique_id_value") val uniqueIdValueSnake: String? = null,
+    val uuid: String? = null,
+    val projectId: Int? = null,
+    @SerializedName("project_id") val projectIdSnake: Int? = null,
+    val badgeNumber: String? = null,
+    @SerializedName("badge_number") val badgeNumberSnake: String? = null,
+    val givenName: String? = null,
+    @SerializedName("given_name") val givenNameSnake: String? = null,
+    @SerializedName("first_name") val firstName: String? = null,
+    val familyName: String? = null,
+    @SerializedName("family_name") val familyNameSnake: String? = null,
+    @SerializedName("last_name") val lastName: String? = null,
+    val categoryCode: String? = null,
+    @SerializedName("category_code") val categoryCodeSnake: String? = null,
+    val category: String? = null,
+    val position: String? = null,
+    val puesto: String? = null,
+    val positionName: String? = null,
+    @SerializedName("position_name") val positionNameSnake: String? = null,
+    val designationName: String? = null,
+    @SerializedName("designation_name") val designationNameSnake: String? = null,
+    val jobTitle: String? = null,
+    @SerializedName("job_title") val jobTitleSnake: String? = null,
+    val contractorId: Int? = null,
+    @SerializedName("contractor_id") val contractorIdSnake: Int? = null,
+    val disciplineId: Int? = null,
+    @SerializedName("discipline_id") val disciplineIdSnake: Int? = null,
+    val designationId: Int? = null,
+    @SerializedName("designation_id") val designationIdSnake: Int? = null,
+    val isActive: Boolean? = null,
+    @SerializedName("is_active") val isActiveSnake: Boolean? = null,
+    val validFrom: String? = null,
+    @SerializedName("valid_from") val validFromSnake: String? = null,
+    @SerializedName("entryDate") val entryDate: String? = null,
+    @SerializedName("entry_date") val entryDateSnake: String? = null,
+    @SerializedName("entranceDate") val entranceDate: String? = null,
+    @SerializedName("entrance_date") val entranceDateSnake: String? = null,
+    val validTo: String? = null,
+    @SerializedName("valid_to") val validToSnake: String? = null,
+    val photoUrl: String? = null,
+    @SerializedName("photo_url") val photoUrlSnake: String? = null
+)
+
+data class CryptoKeyDto(
+    val cryptoKeyId: Int? = null,
+    @SerializedName("crypto_key_id") val cryptoKeyIdSnake: Int? = null,
+    val keyPurpose: String? = null,
+    @SerializedName("key_purpose") val keyPurposeSnake: String? = null,
+    val publicKeyB64: String? = null,
+    @SerializedName("public_key_b64") val publicKeyB64Snake: String? = null
+)
+
+// ── Upload Requests ──────────────────────────────────────────────────────────
+
+data class UploadLogsRequest(val logs: List<AccessLogDto>)
+data class UploadIncidentsRequest(val incidents: List<IncidentDto>)
+data class UploadSessionsRequest(val sessions: List<SessionDto>)
+data class RegisterDeviceRequest(
+    @SerializedName("device_id") val deviceId: String,
+    @SerializedName("device_name") val deviceName: String,
+    @SerializedName("project_id") val projectId: Int = 1
+)
+
+data class UploadResponse(val success: Boolean = false)
+
+data class AccessLogDto(
+    val uuid: String,
+    @SerializedName("project_id") val projectId: Int?,
+    @SerializedName("unique_id_value") val uniqueIdValue: String?,
+    @SerializedName("access_point_id") val accessPointId: Int?,
+    @SerializedName("terminal_id") val terminalId: String?,
+    @SerializedName("event_time") val eventTime: String,
+    val direction: String,
+    val result: String,
+    @SerializedName("failure_reason") val failureReason: String? = null
+)
+
+data class IncidentDto(
+    val uuid: String,
+    @SerializedName("project_id") val projectId: Int?,
+    @SerializedName("unique_id_value") val uniqueIdValue: String?,
+    @SerializedName("access_log_id") val accessLogId: Long? = null,
+    @SerializedName("incident_type") val incidentType: String,
+    val severity: String?,
+    val description: String? = null,
+    val status: String,
+    @SerializedName("event_time") val eventTime: String
+)
+
+data class SessionDto(
+    val uuid: String?,
+    @SerializedName("project_id") val projectId: Int?,
+    @SerializedName("unique_id_value") val uniqueIdValue: String,
+    @SerializedName("entry_time") val entryTime: String?,
+    @SerializedName("exit_time") val exitTime: String?,
+    val status: String
+)

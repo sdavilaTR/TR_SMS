@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Direction selector bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="12dp"
+            android:gravity="center_vertical"
+            android:background="@color/surface"
+            android:elevation="2dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/scanner_label_direction"
+                android:textColor="@color/on_surface"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <Spinner
+                android:id="@+id/spinnerDirection"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:background="@color/surface_variant"
+                android:padding="8dp" />
+        </LinearLayout>
+
+        <!-- Scanner waiting area — compact -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📡"
+                android:textSize="36sp"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/txtScannerStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/scanner_status_waiting"
+                android:textColor="@color/on_surface"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/scanner_hint_usage"
+                android:textColor="@color/on_surface_variant"
+                android:textSize="12sp"
+                android:gravity="center"
+                android:layout_marginTop="4dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCameraScan"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="@string/scanner_btn_camera"
+                android:textAllCaps="false"
+                android:layout_marginTop="12dp"
+                app:cornerRadius="10dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+        </LinearLayout>
+
+        <!-- Recent scans — takes 2× more space -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="2"
+            android:orientation="vertical"
+            android:background="@color/surface"
+            android:elevation="4dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/scanner_label_recent"
+                android:textColor="@color/on_surface_variant"
+                android:textSize="11sp"
+                android:letterSpacing="0.05"
+                android:textAllCaps="true"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="8dp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvScanLog"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:overScrollMode="never" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Scan result overlay -->
+    <FrameLayout
+        android:id="@+id/scanResultOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#E6FFFFFF"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp">
+
+            <TextView android:id="@+id/resultIcon"          android:layout_width="96dp"      android:layout_height="96dp"      android:gravity="center" android:textSize="44sp" />
+            <TextView android:id="@+id/resultTitle"         android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="26sp" android:textStyle="bold" android:layout_marginTop="16dp" />
+            <TextView android:id="@+id/resultWorkerName"    android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="20sp" android:layout_marginTop="8dp" />
+            <TextView android:id="@+id/resultBadge"         android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface_variant" android:textSize="15sp" />
+            <TextView android:id="@+id/resultDirectionBadge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="10dp" android:paddingHorizontal="14dp" android:paddingVertical="6dp" />
+            <TextView android:id="@+id/resultReason"        android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/error" android:textSize="14sp" android:layout_marginTop="10dp" />
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

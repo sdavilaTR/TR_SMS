@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd /c \"gradlew.bat assembleDebug\")",
+      "Bash(cmd /c \"gradlew.bat assembleDebug > build_claude.log 2>&1 & echo PID=%ERRORLEVEL%\")",
+      "Bash(powershell -Command \"cd 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper'; cmd /c 'gradlew.bat assembleDebug' 2>&1 | Out-File -FilePath build_claude.log -Encoding utf8; Get-Content build_claude.log | Select-Object -Last 30\")",
+      "Bash(powershell -Command \"cd 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper'; .\\\\gradlew.bat assembleDebug 2>&1 | Out-File -FilePath build_claude.log -Encoding utf8; Get-Content build_claude.log | Select-Object -Last 40\")",
+      "Bash(powershell -Command \"cd 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper'; .\\\\gradlew.bat assembleDebug 2>&1 | Out-File -FilePath build_claude.log -Encoding utf8; Get-Content build_claude.log | Select-Object -Last 50\")",
+      "Bash(powershell -Command \"Get-ChildItem 'C:\\\\Program Files\\\\Android\\\\Android Studio' -Recurse -Filter 'java.exe' 2>/dev/null | Select-Object -First 5 FullName; Get-ChildItem 'C:\\\\Program Files\\\\Android\\\\' -Directory | Select-Object Name\")",
+      "Bash(powershell -Command \"Get-ChildItem 'C:\\\\Program Files\\\\Android\\\\Android Studio' -Directory | Select-Object Name\")",
+      "Bash(powershell -Command \"Get-ChildItem 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper\\\\custom_jbr' -Directory | Select-Object Name; & 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper\\\\custom_jbr\\\\bin\\\\java.exe' -version 2>&1\")",
+      "Bash(powershell -Command \"cd 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper'; .\\\\gradlew.bat assembleDebug 2>&1 | Out-File -FilePath build_claude.log -Encoding utf8; Get-Content build_claude.log | Select-Object -Last 30\")",
+      "Bash(powershell -Command \"cd 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper'; .\\\\gradlew.bat --stop 2>&1; Start-Sleep -Seconds 2; .\\\\gradlew.bat assembleDebug 2>&1 | Out-File -FilePath build_claude.log -Encoding utf8; Get-Content build_claude.log | Select-Object -Last 30\")",
+      "Bash(powershell -Command \"& 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper\\\\custom_jbr\\\\bin\\\\keytool.exe' -list -keystore 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper\\\\custom_jbr\\\\lib\\\\security\\\\cacerts' -storepass changeit 2>&1 | Select-String 'netskope|cisco|grupotr' | Select-Object -First 10\")",
+      "Bash(powershell -Command \"cd 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper'; .\\\\gradlew.bat --stop 2>&1 | Out-Null; .\\\\gradlew.bat assembleDebug 2>&1 | Out-File -FilePath build_claude.log -Encoding utf8; Get-Content build_claude.log | Select-Object -Last 20\")",
+      "Bash(powershell -Command \"Select-String -Path 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper\\\\custom_jbr\\\\lib\\\\security\\\\java.security' -Pattern 'SunMSCAPI|Windows-ROOT|trustStoreType' | Select-Object -First 10\")",
+      "Bash(powershell -Command \"Get-ChildItem 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper\\\\custom_jbr\\\\conf\\\\security' -ErrorAction SilentlyContinue; Get-ChildItem 'C:\\\\Users\\\\trsa\\\\Desktop\\\\HassiWrapper\\\\custom_jbr\\\\conf' -ErrorAction SilentlyContinue | Select-Object Name\")",
+      "Bash(find . -type f \\\\\\(-name *.png -o -name *.ico -o -name *.svg \\\\\\))",
+      "Bash(find /c/Users/trsa/Desktop/HassiWrapper/app/src/main/res/mipmap* -type f)",
+      "Bash(xargs ls:*)",
+      "Bash(find /c/Users/trsa/Desktop/HassiWrapper/app/src/main/res/drawable* -type f)",
+      "Bash(find /c/Users/trsa/Desktop/HassiWrapper -type f \\\\\\(-name *.png -o -name *.jpg -o -name *.jpeg -o -name *.webp \\\\\\))",
+      "Bash(for d:*)",
+      "Bash(do cp:*)",
+      "Bash(done)",
+      "Bash(powershell -Command \"\n\\\\$certStore = New-Object System.Security.Cryptography.X509Certificates.X509Store\\('Root','LocalMachine'\\)\n\\\\$certStore.Open\\('ReadOnly'\\)\n\\\\$certStore.Certificates | ForEach-Object {\n    \\\\$alias = \\\\$_.Subject -replace '[^a-zA-Z0-9]','-'\n    \\\\$bytes = \\\\$_.Export\\([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert\\)\n    [System.IO.File]::WriteAllBytes\\(\\\\\"\\\\$env:TEMP\\\\corp_cert_\\\\$alias.cer\\\\\", \\\\$bytes\\)\n    Write-Host \\\\\"Exported: \\\\$alias\\\\\"\n}\n\\\\$certStore.Close\\(\\)\n\")",
+      "Bash(./gradlew --stop)"
+    ]
+  }
+}

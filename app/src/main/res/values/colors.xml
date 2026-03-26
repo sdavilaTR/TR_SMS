@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#FFFFFFFF</color>
+
+    <!-- Brand colours -->
+    <color name="primary">#FF1565C0</color>
+    <color name="primary_dark">#FF0D47A1</color>
+    <color name="primary_variant">#FF1976D2</color>
+    <color name="secondary">#FF0891B2</color>
+
+    <!-- Semantic colours -->
+    <color name="error">#FFDC2626</color>
+    <color name="warning">#FFD97706</color>
+
+    <!-- Surfaces — light palette -->
+    <color name="background">#FFF1F5F9</color>
+    <color name="surface">#FFFFFFFF</color>
+    <color name="surface_variant">#FFE8F0FE</color>
+
+    <!-- Text on surfaces -->
+    <color name="on_primary">#FFFFFFFF</color>
+    <color name="on_secondary">#FFFFFFFF</color>
+    <color name="on_background">#FF1E293B</color>
+    <color name="on_surface">#FF1E293B</color>
+    <color name="on_surface_variant">#FF64748B</color>
+
+    <!-- Access-control status colours -->
+    <color name="granted_bg">#FFD1FAE5</color>
+    <color name="granted">#FF15803D</color>
+    <color name="denied_bg">#FFFEE2E2</color>
+    <color name="denied">#FFDC2626</color>
+    <color name="entry_bg">#FFD1FAE5</color>
+    <color name="entry_text">#FF15803D</color>
+    <color name="exit_bg">#FFDBEAFE</color>
+    <color name="exit_text">#FF1D4ED8</color>
+
+    <!-- Card and divider -->
+    <color name="card_bg">#FFFFFFFF</color>
+    <color name="divider">#FFE2E8F0</color>
+</resources>

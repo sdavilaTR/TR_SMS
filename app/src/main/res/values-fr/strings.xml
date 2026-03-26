@@ -1,0 +1,117 @@
+<resources>
+    <string name="app_name">ATLAS Contrôle d\'accès</string>
+
+    <!-- Navigation -->
+    <string name="nav_header_title">TR Contrôle d\'accès</string>
+    <string name="nav_header_subtitle">ATLAS Native v2.0</string>
+    <string name="menu_home">Accueil</string>
+    <string name="menu_scanner">Contrôle d\'accès</string>
+    <string name="menu_passport">Passeport Numérique</string>
+    <string name="menu_attendance">Registres</string>
+    <string name="menu_sync">Synchronisation</string>
+    <string name="menu_workers">Travailleurs</string>
+    <string name="menu_settings">Paramètres</string>
+
+    <!-- Home -->
+    <string name="home_label_workers">Travailleurs</string>
+    <string name="home_label_scans_today">Scans Aujourd\'hui</string>
+    <string name="home_label_pending">En attente</string>
+    <string name="home_label_incidents">Incidents</string>
+    <string name="home_btn_access">🔒 Contrôle d\'accès</string>
+    <string name="home_btn_sync">🔄 Synchroniser</string>
+    <string name="home_last_sync_none">Dernière sync : —</string>
+    <string name="home_last_sync_format">Dernière sync : %s</string>
+
+    <!-- Scanner -->
+    <string name="scanner_label_direction">Direction :</string>
+    <string name="scanner_status_waiting">En attente de scan…</string>
+    <string name="scanner_status_processing">Traitement…</string>
+    <string name="scanner_hint_usage">Utilisez le scanner laser du terminal ou le bouton caméra</string>
+    <string name="scanner_btn_camera">Scanner avec la caméra</string>
+    <string name="scanner_label_recent">Dernières lectures</string>
+    <string name="scanner_error_camera_permission">Permission caméra requise</string>
+    <string name="scanner_camera_prompt">Pointez vers le QR code / code-barres du travailleur</string>
+    <string name="scanner_unknown">Inconnu</string>
+    <string name="scanner_granted">ACCORDÉ</string>
+    <string name="scanner_denied">REFUSÉ</string>
+    <string name="scanner_result_error">ERREUR</string>
+    <string name="scanner_worker">Travailleur</string>
+    <string name="scanner_entry">↑ ENTRÉE</string>
+    <string name="scanner_exit">↓ SORTIE</string>
+
+    <!-- Passport -->
+    <string name="passport_waiting_title">Scanner un travailleur</string>
+    <string name="passport_waiting_hint">Le passeport numérique apparaîtra ici après le scan</string>
+    <string name="passport_card_title">UTE TR — SE HASSI MESSAOUD PROJECT</string>
+    <string name="passport_scanned_at">Scanné : %s</string>
+    <string name="passport_label_family_name">Nom</string>
+    <string name="passport_label_given_name">Prénom</string>
+    <string name="passport_label_position">Fonction / Désignation</string>
+    <string name="passport_label_company">Entreprise / Prestataire</string>
+    <string name="passport_label_document">N° Document</string>
+    <string name="passport_label_badge">N° Badge</string>
+    <string name="passport_label_category">Catégorie</string>
+    <string name="passport_label_valid_from">Date d\'entrée</string>
+    <string name="passport_label_valid_to">Valide jusqu\'au</string>
+    <string name="passport_status_active">● ACTIF</string>
+    <string name="passport_status_inactive">● INACTIF</string>
+    <string name="passport_worker_not_found">Travailleur introuvable dans la base de données locale</string>
+
+    <!-- Attendance -->
+    <string name="attendance_title">Registres d\'accès</string>
+
+    <!-- Sync -->
+    <string name="sync_title">Synchronisation</string>
+    <string name="sync_label_pending_data">Données en attente</string>
+    <string name="sync_pending_logs">Registres : %d</string>
+    <string name="sync_pending_incidents">Incidents : %d</string>
+    <string name="sync_pending_sessions">Sessions : %d</string>
+    <string name="sync_btn">🔄 Synchronisation complète</string>
+    <string name="sync_last_none">Dernière sync : —</string>
+    <string name="sync_last_format">Dernière sync : %s</string>
+    <string name="sync_syncing">Synchronisation…</string>
+    <string name="sync_success">✓ Sync terminé : %1$d logs, %2$d ajoutés, %3$d mis à jour</string>
+    <string name="sync_error">✕ Erreur : %s</string>
+
+    <!-- Workers -->
+    <string name="workers_hint_search">Rechercher un travailleur…</string>
+    <string name="workers_count">%d travailleurs</string>
+    <string name="workers_badge_format">Badge : %1$s | %2$s</string>
+
+    <!-- Login -->
+    <string name="login_app_name">ATLAS</string>
+    <string name="login_subtitle">Contrôle d\'accès</string>
+    <string name="login_hint_email">Email</string>
+    <string name="login_hint_password">Mot de passe</string>
+    <string name="login_btn">Se connecter</string>
+    <string name="login_label_or">OU</string>
+    <string name="login_btn_microsoft">Se connecter avec Microsoft</string>
+    <string name="login_btn_config">⚙ Configuration API</string>
+    <string name="login_hint_api_url">URL de l\'API</string>
+    <string name="login_btn_save_url">Enregistrer l\'URL</string>
+    <string name="login_url_saved">✓ URL enregistrée</string>
+    <string name="login_version">v2.0 (Native)</string>
+    <string name="login_error_token">Impossible d\'obtenir le token Microsoft.</string>
+    <string name="login_error_empty">Entrez l\'email et le mot de passe.</string>
+    <string name="login_error_auth">Erreur d\'authentification.</string>
+    <string name="login_error_format">Erreur : %s</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Paramètres</string>
+    <string name="settings_api_url_label">URL de l\'API</string>
+    <string name="settings_save">Enregistrer</string>
+    <string name="settings_device_label">Appareil</string>
+    <string name="settings_device_name_hint">Nom de l\'appareil</string>
+    <string name="settings_device_id_format">ID : %s</string>
+    <string name="settings_device_id_none">ID : —</string>
+    <string name="settings_save_device">Enregistrer l\'appareil</string>
+    <string name="settings_logout">Se déconnecter</string>
+    <string name="settings_version">ATLAS Contrôle d\'accès v2.0 (Native)</string>
+    <string name="settings_url_saved">URL enregistrée</string>
+    <string name="settings_name_required">Entrez un nom</string>
+    <string name="settings_device_saved">Appareil enregistré</string>
+    <string name="settings_language_label">Langue</string>
+    <string name="language_es">Español</string>
+    <string name="language_en">English</string>
+    <string name="language_fr">Français</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/homeFragment"       android:icon="@drawable/ic_home"       android:title="@string/menu_home" />
+    <item android:id="@+id/scannerFragment"    android:icon="@drawable/ic_scanner"    android:title="@string/menu_scanner" />
+    <item android:id="@+id/passportFragment"   android:icon="@drawable/ic_passport"   android:title="@string/menu_passport" />
+    <item android:id="@+id/attendanceFragment" android:icon="@drawable/ic_attendance" android:title="@string/menu_attendance" />
+    <item android:id="@+id/syncFragment"       android:icon="@drawable/ic_sync"       android:title="@string/menu_sync" />
+    <item android:id="@+id/workersFragment"    android:icon="@drawable/ic_workers"    android:title="@string/menu_workers" />
+    <item android:id="@+id/settingsFragment"   android:icon="@drawable/ic_settings"   android:title="@string/menu_settings" />
+</menu>

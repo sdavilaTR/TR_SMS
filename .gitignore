@@ -9,3 +9,5 @@ logcat_dump.txt
 custom_cacerts
 custom_jbr/
 gradle-bin/
+*.jks
+*.keystore

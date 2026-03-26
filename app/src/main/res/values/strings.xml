@@ -58,6 +58,9 @@
 
     <!-- Attendance -->
     <string name="attendance_title">Registros de Acceso</string>
+    <string name="attendance_filter_all">Todos</string>
+    <string name="attendance_filter_synced">Sincronizados</string>
+    <string name="attendance_filter_pending">Pendientes</string>
 
     <!-- Sync -->
     <string name="sync_title">Sincronización</string>

@@ -37,8 +37,16 @@ jobs:
         id: date
         run: echo "date=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_OUTPUT
 
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > atlas-release.jks
+
       - name: Build with Gradle
-        run: ./gradlew assembleDebug -PreleaseTag=v${{ steps.date.outputs.date }}
+        run: ./gradlew assembleRelease -PreleaseTag=v${{ steps.date.outputs.date }}
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/atlas-release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Create Release
         id: create_release
@@ -48,6 +56,6 @@ jobs:
           name: "Release ${{ steps.date.outputs.date }}"
           draft: false
           prerelease: false
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: app/build/outputs/apk/release/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

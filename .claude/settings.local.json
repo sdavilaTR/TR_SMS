@@ -24,7 +24,19 @@
       "Bash(do cp:*)",
       "Bash(done)",
       "Bash(powershell -Command \"\n\\\\$certStore = New-Object System.Security.Cryptography.X509Certificates.X509Store\\('Root','LocalMachine'\\)\n\\\\$certStore.Open\\('ReadOnly'\\)\n\\\\$certStore.Certificates | ForEach-Object {\n    \\\\$alias = \\\\$_.Subject -replace '[^a-zA-Z0-9]','-'\n    \\\\$bytes = \\\\$_.Export\\([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert\\)\n    [System.IO.File]::WriteAllBytes\\(\\\\\"\\\\$env:TEMP\\\\corp_cert_\\\\$alias.cer\\\\\", \\\\$bytes\\)\n    Write-Host \\\\\"Exported: \\\\$alias\\\\\"\n}\n\\\\$certStore.Close\\(\\)\n\")",
-      "Bash(./gradlew --stop)"
+      "Bash(./gradlew --stop)",
+      "Bash(keytool -version)",
+      "Bash(gh --version)",
+      "Bash(where gh:*)",
+      "Bash(where keytool:*)",
+      "Bash(where /R \"C:\\\\Program Files\" gh.exe)",
+      "Bash(where /R \"C:\\\\Users\\\\sdavila.AD\" gh.exe)",
+      "Bash(powershell -Command \"Get-Command gh -ErrorAction SilentlyContinue; Get-ChildItem 'C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe' -ErrorAction SilentlyContinue; Get-ChildItem 'C:\\\\Users\\\\sdavila.AD\\\\AppData\\\\Local\\\\Programs\\\\GitHub CLI\\\\gh.exe' -ErrorAction SilentlyContinue\")",
+      "Bash(powershell -Command \"winget --version\" 2>&1)",
+      "Bash(powershell -Command \"winget install --id GitHub.cli --silent --accept-package-agreements --accept-source-agreements\" 2>&1)",
+      "Bash(powershell -Command \"\n\\\\$keystorePath = 'C:\\\\Users\\\\sdavila.AD\\\\Documents\\\\HassiSiteApp\\\\atlas-release.jks'\n\\\\$storePass = [System.Web.Security.Membership]::GeneratePassword\\(20, 4\\)\n\\\\$keyPass = [System.Web.Security.Membership]::GeneratePassword\\(20, 4\\)\nWrite-Host \\\\\"STORE_PASS=\\\\$storePass\\\\\"\nWrite-Host \\\\\"KEY_PASS=\\\\$keyPass\\\\\"\n\" 2>&1)",
+      "Bash(powershell -Command \"\nAdd-Type -AssemblyName System.Web\n\\\\$storePass = [System.Web.Security.Membership]::GeneratePassword\\(20, 4\\)\n\\\\$keyPass = [System.Web.Security.Membership]::GeneratePassword\\(20, 4\\)\nWrite-Host \\\\\"STORE_PASS=\\\\$storePass\\\\\"\nWrite-Host \\\\\"KEY_PASS=\\\\$keyPass\\\\\"\n\" 2>&1)",
+      "Bash(./gradlew assembleDebug)"
     ]
   }
 }

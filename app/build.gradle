@@ -18,8 +18,26 @@ android {
         buildConfigField "String", "BUILD_TAG", "\"${project.findProperty('releaseTag') ?: 'dev'}\""
     }
 
+    signingConfigs {
+        release {
+            // Keystore is provided by CI via environment variables (decoded from GitHub Secrets).
+            // Local release builds without these env vars will be unsigned — that is intentional,
+            // as only CI-produced APKs are distributed to devices.
+            def ksPath = System.getenv("KEYSTORE_PATH")
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (System.getenv("KEYSTORE_PATH")) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

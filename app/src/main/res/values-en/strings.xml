@@ -58,6 +58,9 @@
 
     <!-- Attendance -->
     <string name="attendance_title">Access Records</string>
+    <string name="attendance_filter_all">All</string>
+    <string name="attendance_filter_synced">Synced</string>
+    <string name="attendance_filter_pending">Pending</string>
 
     <!-- Sync -->
     <string name="sync_title">Synchronization</string>

@@ -12,11 +12,15 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.dao.AccessLogWithPerson
+import com.google.android.material.chip.ChipGroup
 import kotlinx.coroutines.launch
 
 class AttendanceFragment : Fragment() {
 
     private val logs = mutableListOf<AccessLogWithPerson>()
+
+    // null = all, true = synced, false = pending
+    private var syncFilter: Boolean? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return inflater.inflate(R.layout.fragment_attendance, container, false)
@@ -27,12 +31,25 @@ class AttendanceFragment : Fragment() {
         val rv = view.findViewById<RecyclerView>(R.id.rvLogs)
         rv.layoutManager = LinearLayoutManager(requireContext())
         rv.adapter = LogAdapter()
+
+        view.findViewById<ChipGroup>(R.id.chipGroupFilter).setOnCheckedStateChangeListener { _, checkedIds ->
+            syncFilter = when {
+                checkedIds.contains(R.id.chipSynced) -> true
+                checkedIds.contains(R.id.chipPending) -> false
+                else -> null
+            }
+            loadLogs()
+        }
+
         loadLogs()
     }
 
     private fun loadLogs() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val recent = ServiceLocator.accessLogDao.getRecentWithPerson(50)
+            val recent = when (val f = syncFilter) {
+                null -> ServiceLocator.accessLogDao.getRecentWithPerson(200)
+                else -> ServiceLocator.accessLogDao.getRecentWithPersonFiltered(synced = f)
+            }
             logs.clear()
             logs.addAll(recent)
             view?.findViewById<RecyclerView>(R.id.rvLogs)?.adapter?.notifyDataSetChanged()
@@ -40,39 +57,60 @@ class AttendanceFragment : Fragment() {
     }
 
     inner class LogAdapter : RecyclerView.Adapter<LogAdapter.VH>() {
+
         inner class VH(view: View) : RecyclerView.ViewHolder(view) {
-            val txt1: TextView = view.findViewById(android.R.id.text1)
-            val txt2: TextView = view.findViewById(android.R.id.text2)
+            val tvResult: TextView = view.findViewById(R.id.tvResult)
+            val tvDirection: TextView = view.findViewById(R.id.tvDirection)
+            val tvWorkerName: TextView = view.findViewById(R.id.tvWorkerName)
+            val tvSyncIcon: TextView = view.findViewById(R.id.tvSyncIcon)
+            val tvBadge: TextView = view.findViewById(R.id.tvBadge)
+            val tvTime: TextView = view.findViewById(R.id.tvTime)
+            val tvFailReason: TextView = view.findViewById(R.id.tvFailReason)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
             val view = LayoutInflater.from(parent.context)
-                .inflate(android.R.layout.simple_list_item_2, parent, false)
-            view.setBackgroundColor(resources.getColor(R.color.card_bg, null))
-            view.setPadding(16, 12, 16, 12)
+                .inflate(R.layout.item_access_log, parent, false)
             return VH(view)
         }
 
         override fun onBindViewHolder(holder: VH, position: Int) {
             val item = logs[position]
             val log = item.log
-            val dir = when (log.direction) { "ENTRY" -> "↑ ENTRADA"; "EXIT" -> "↓ SALIDA"; else -> log.direction }
-            val status = if (log.result == "GRANTED") "✓" else "✕"
-            val workerName = when {
+
+            val granted = log.result == "GRANTED"
+            holder.tvResult.text = if (granted) "✓" else "✕"
+            holder.tvResult.setTextColor(resources.getColor(
+                if (granted) R.color.granted else R.color.denied, null
+            ))
+
+            holder.tvDirection.text = when (log.direction) {
+                "ENTRY" -> getString(R.string.scanner_entry)
+                "EXIT"  -> getString(R.string.scanner_exit)
+                else    -> log.direction
+            }
+            holder.tvDirection.setTextColor(resources.getColor(
+                if (granted) R.color.granted else R.color.denied, null
+            ))
+
+            holder.tvWorkerName.text = when {
                 item.givenName != null || item.familyName != null ->
                     "${item.givenName.orEmpty()} ${item.familyName.orEmpty()}".trim()
-                else -> log.unique_id_value?.take(8)?.let { "$it…" } ?: "Desconocido"
+                else -> log.unique_id_value?.take(12)?.let { "$it…" } ?: "—"
             }
-            val badge = item.badgeNumber?.let { " · $it" } ?: ""
-            holder.txt1.text = "$status $dir — $workerName$badge"
-            holder.txt1.setTextColor(resources.getColor(
-                if (log.result == "GRANTED") R.color.granted else R.color.denied, null
-            ))
-            val time = log.event_time.take(19).replace('T', ' ')
-            val syncIcon = if (log.synced) "☁" else "⏳"
-            val failReason = if (log.result != "GRANTED" && log.failure_reason != null) "  ${log.failure_reason}" else ""
-            holder.txt2.text = "$time  $syncIcon$failReason"
-            holder.txt2.setTextColor(resources.getColor(R.color.on_surface_variant, null))
+
+            holder.tvSyncIcon.text = if (log.synced) "☁" else "⏳"
+
+            holder.tvBadge.text = item.badgeNumber?.let { "Badge: $it" } ?: ""
+
+            holder.tvTime.text = log.event_time.take(19).replace('T', ' ')
+
+            if (!granted && log.failure_reason != null) {
+                holder.tvFailReason.text = log.failure_reason
+                holder.tvFailReason.visibility = View.VISIBLE
+            } else {
+                holder.tvFailReason.visibility = View.GONE
+            }
         }
 
         override fun getItemCount() = logs.size

@@ -164,6 +164,15 @@ interface AccessLogDao {
     """)
     suspend fun getRecentWithPerson(limit: Int = 50): List<AccessLogWithPerson>
 
+    @Query("""
+        SELECT a.*, p.given_name, p.family_name, p.badge_number
+        FROM access_logs a
+        LEFT JOIN persons p ON a.unique_id_value = p.unique_id_value
+        WHERE a.synced = :synced
+        ORDER BY a.event_time DESC LIMIT :limit
+    """)
+    suspend fun getRecentWithPersonFiltered(synced: Boolean, limit: Int = 200): List<AccessLogWithPerson>
+
     @Query("SELECT COUNT(*) FROM access_logs WHERE synced = 0")
     suspend fun getPendingCount(): Int
 

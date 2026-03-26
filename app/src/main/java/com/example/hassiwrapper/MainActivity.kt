@@ -83,6 +83,10 @@ class MainActivity : AppCompatActivity() {
             toolbar.title = dest.label
         }
 
+        navView.getHeaderView(0)
+            .findViewById<android.widget.TextView>(R.id.txtNavVersion)
+            .text = "ATLAS Native ${BuildConfig.BUILD_TAG}"
+
         dataWedgeManager = ServiceLocator.dataWedgeManager()
 
         lifecycleScope.launch {

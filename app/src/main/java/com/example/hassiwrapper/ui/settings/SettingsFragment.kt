@@ -11,6 +11,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.example.hassiwrapper.BuildConfig
 import com.example.hassiwrapper.LocaleHelper
 import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
@@ -38,6 +39,8 @@ class SettingsFragment : Fragment() {
         val btnSaveDevice = view.findViewById<MaterialButton>(R.id.btnSaveDevice)
         val btnLogout = view.findViewById<MaterialButton>(R.id.btnLogout)
         val spinnerLanguage = view.findViewById<Spinner>(R.id.spinnerLanguage)
+
+        populateAppInfo(view)
 
         // Language spinner
         val languageNames = arrayOf(
@@ -110,5 +113,30 @@ class SettingsFragment : Fragment() {
         btnLogout.setOnClickListener {
             (requireActivity() as? MainActivity)?.logout()
         }
+    }
+
+    private fun populateAppInfo(view: View) {
+        val tag = BuildConfig.BUILD_TAG
+
+        view.findViewById<TextView>(R.id.txtInfoVersion).text = tag
+        view.findViewById<TextView>(R.id.txtInfoBuildDate).text = parseBuildDate(tag)
+        view.findViewById<TextView>(R.id.txtInfoRepo).text = "sdavilaTR/HassiSiteApp"
+        view.findViewById<TextView>(R.id.txtInfoDeployment).text =
+            if (tag == "dev") getString(R.string.settings_info_build_local)
+            else getString(R.string.settings_info_deployment_value)
+        view.findViewById<TextView>(R.id.txtInfoPackage).text = requireContext().packageName
+    }
+
+    /**
+     * Converts a CI tag like "v2026-03-26-06-55" into a readable date "26/03/2026  06:55".
+     * Returns the raw tag unchanged if it cannot be parsed.
+     */
+    private fun parseBuildDate(tag: String): String {
+        if (tag == "dev") return getString(R.string.settings_info_build_local)
+        return try {
+            val parts = tag.trimStart('v', 'V').split("-")
+            if (parts.size >= 5) "${parts[2]}/${parts[1]}/${parts[0]}  ${parts[3]}:${parts[4]}"
+            else tag
+        } catch (_: Exception) { tag }
     }
 }

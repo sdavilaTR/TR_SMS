@@ -3,7 +3,6 @@
 
     <!-- Navigation -->
     <string name="nav_header_title">TR Access Control</string>
-    <string name="nav_header_subtitle">ATLAS Native v2.0</string>
     <string name="menu_home">Home</string>
     <string name="menu_scanner">Access Control</string>
     <string name="menu_passport">Digital Passport</string>
@@ -90,7 +89,6 @@
     <string name="login_hint_api_url">API URL</string>
     <string name="login_btn_save_url">Save URL</string>
     <string name="login_url_saved">✓ URL saved</string>
-    <string name="login_version">v2.0 (Native)</string>
     <string name="login_error_token">Could not obtain Microsoft token.</string>
     <string name="login_error_empty">Enter email and password.</string>
     <string name="login_error_auth">Authentication error.</string>
@@ -106,7 +104,14 @@
     <string name="settings_device_id_none">ID: —</string>
     <string name="settings_save_device">Save Device</string>
     <string name="settings_logout">Sign Out</string>
-    <string name="settings_version">ATLAS Access Control v2.0 (Native)</string>
+    <string name="settings_info_title">Application Information</string>
+    <string name="settings_info_version">Version</string>
+    <string name="settings_info_build_date">Build date</string>
+    <string name="settings_info_repo">Repository</string>
+    <string name="settings_info_deployment">Deployment</string>
+    <string name="settings_info_package">Package</string>
+    <string name="settings_info_deployment_value">GitHub Actions (automatic)</string>
+    <string name="settings_info_build_local">Local build</string>
     <string name="settings_url_saved">URL saved</string>
     <string name="settings_name_required">Enter a name</string>
     <string name="settings_device_saved">Device saved</string>

@@ -8,6 +8,7 @@ import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.hassiwrapper.BuildConfig
 import com.example.hassiwrapper.LocaleHelper
 import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
@@ -64,6 +65,8 @@ class LoginActivity : AppCompatActivity() {
         val btnSaveApiUrl = findViewById<Button>(R.id.btnSaveApiUrl)
         val txtApiSaved = findViewById<TextView>(R.id.txtApiSaved)
         val btnMicrosoftLogin = findViewById<Button>(R.id.btnMicrosoftLogin)
+
+        findViewById<TextView>(R.id.txtVersion).text = BuildConfig.BUILD_TAG
 
         btnMicrosoftLogin.setOnClickListener {
             val intent = Intent(this, WebViewLoginActivity::class.java)

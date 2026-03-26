@@ -167,6 +167,24 @@ class MainActivity : AppCompatActivity() {
         } else true
     }
 
+    /**
+     * Called from [SettingsFragment] via the "Buscar actualizaciones" button.
+     * [onComplete] is invoked on the main thread with true if already up-to-date.
+     */
+    fun checkForUpdatesManually(onComplete: (alreadyUpToDate: Boolean) -> Unit) {
+        lifecycleScope.launch {
+            val update = UpdateChecker.checkForUpdate(BuildConfig.BUILD_TAG)
+            withContext(Dispatchers.Main) {
+                if (update != null) {
+                    onComplete(false)
+                    showUpdateDialog(update)
+                } else {
+                    onComplete(true)
+                }
+            }
+        }
+    }
+
     fun logout() {
         lifecycleScope.launch {
             ServiceLocator.authRepo.logout()

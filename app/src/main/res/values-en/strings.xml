@@ -94,6 +94,10 @@
     <string name="login_error_auth">Authentication error.</string>
     <string name="login_error_format">Error: %s</string>
 
+    <string name="settings_check_updates">Check for updates</string>
+    <string name="settings_check_updates_searching">Searching…</string>
+    <string name="update_up_to_date">You already have the latest version installed</string>
+
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_api_url_label">API URL</string>

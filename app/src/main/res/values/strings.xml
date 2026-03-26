@@ -94,6 +94,11 @@
     <string name="login_error_auth">Error de autenticación.</string>
     <string name="login_error_format">Error: %s</string>
 
+    <!-- Update (Settings button) -->
+    <string name="settings_check_updates">Buscar actualizaciones</string>
+    <string name="settings_check_updates_searching">Buscando…</string>
+    <string name="update_up_to_date">Ya tienes la última versión instalada</string>
+
     <!-- Update -->
     <string name="update_title">Nueva actualización disponible</string>
     <string name="update_message">Versión %s disponible.\n¿Desea actualizar la aplicación ahora?</string>

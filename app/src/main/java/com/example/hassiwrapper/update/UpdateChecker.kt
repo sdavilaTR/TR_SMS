@@ -33,17 +33,17 @@ object UpdateChecker {
     private val gson = Gson()
 
     /**
-     * Checks GitHub for a newer release. Returns [UpdateInfo] if an APK asset is available
-     * and the release tag is lexicographically newer than [currentBuildTag].
-     * Returns null on network errors or when already up-to-date.
+     * Checks GitHub for a newer release.
      *
-     * Release tags follow the date format: v{YYYY}-{MM}-{DD}-{HH}-{MM}, e.g. v2026-03-26-06-55.
-     * This format is naturally lexicographically sortable.
+     * - If [currentBuildTag] is a date tag (e.g. "v2026-03-26-06-55"), returns [UpdateInfo] only
+     *   when the latest GitHub release tag is lexicographically newer.
+     * - If [currentBuildTag] is "dev" (APK built locally or before the tag was injected into
+     *   the workflow), the app has no way to know its real version, so it always returns the
+     *   latest release to ensure those devices receive updates.
+     *
+     * Returns null on network/API errors or when already on the latest release.
      */
     suspend fun checkForUpdate(currentBuildTag: String): UpdateInfo? = withContext(Dispatchers.IO) {
-        // Skip check on local/dev builds where no tag was injected at build time
-        if (currentBuildTag == "dev") return@withContext null
-
         try {
             val request = Request.Builder()
                 .url(API_URL)
@@ -55,7 +55,11 @@ object UpdateChecker {
                 val bodyStr = response.body?.string() ?: return@withContext null
                 val release = gson.fromJson(bodyStr, GithubRelease::class.java)
 
-                if (release.tagName > currentBuildTag) {
+                // "dev" builds have no real version — treat them as always outdated so they
+                // self-update to the first properly tagged release.
+                val needsUpdate = currentBuildTag == "dev" || release.tagName > currentBuildTag
+
+                if (needsUpdate) {
                     val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk") }
                     apkAsset?.let {
                         UpdateInfo(
@@ -67,7 +71,7 @@ object UpdateChecker {
                 } else null
             }
         } catch (_: Exception) {
-            null // Silently ignore — network unavailable or API error
+            null // Network unavailable or API error — fail silently
         }
     }
 }

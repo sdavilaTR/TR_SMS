@@ -38,6 +38,7 @@ class SettingsFragment : Fragment() {
         val txtDeviceId = view.findViewById<TextView>(R.id.txtDeviceId)
         val btnSaveDevice = view.findViewById<MaterialButton>(R.id.btnSaveDevice)
         val btnLogout = view.findViewById<MaterialButton>(R.id.btnLogout)
+        val btnCheckUpdates = view.findViewById<MaterialButton>(R.id.btnCheckUpdates)
         val spinnerLanguage = view.findViewById<Spinner>(R.id.spinnerLanguage)
 
         populateAppInfo(view)
@@ -106,6 +107,19 @@ class SettingsFragment : Fragment() {
                 txtDeviceId.text = getString(R.string.settings_device_id_format, deviceId)
                 ServiceLocator.authRepo.refreshDeviceId()
                 Toast.makeText(requireContext(), getString(R.string.settings_device_saved), Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Check for updates
+        btnCheckUpdates.setOnClickListener {
+            btnCheckUpdates.isEnabled = false
+            btnCheckUpdates.text = getString(R.string.settings_check_updates_searching)
+            (requireActivity() as? MainActivity)?.checkForUpdatesManually { alreadyUpToDate ->
+                btnCheckUpdates.isEnabled = true
+                btnCheckUpdates.text = getString(R.string.settings_check_updates)
+                if (alreadyUpToDate) {
+                    Toast.makeText(requireContext(), R.string.update_up_to_date, Toast.LENGTH_SHORT).show()
+                }
             }
         }
 

@@ -127,6 +127,16 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
+        <!-- Check for updates -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCheckUpdates"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/settings_check_updates"
+            android:textAllCaps="false"
+            android:layout_marginTop="4dp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
         <!-- Logout -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnLogout"

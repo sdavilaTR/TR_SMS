@@ -14,6 +14,8 @@ android {
         targetSdk 34
         versionCode 2
         versionName "2.0"
+        // BUILD_TAG is injected by CI via -PreleaseTag=v{date}; defaults to "dev" for local builds
+        buildConfigField "String", "BUILD_TAG", "\"${project.findProperty('releaseTag') ?: 'dev'}\""
     }
 
     buildTypes {
@@ -31,6 +33,7 @@ android {
     }
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
 }
 

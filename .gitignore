@@ -11,3 +11,4 @@ custom_jbr/
 gradle-bin/
 *.jks
 *.keystore
+.env.local

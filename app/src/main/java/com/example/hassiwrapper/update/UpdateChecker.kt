@@ -49,8 +49,8 @@ object UpdateChecker {
             val requestBuilder = Request.Builder()
                 .url(API_URL)
                 .header("Accept", "application/vnd.github.v3+json")
-            if (BuildConfig.GITHUB_RELEASE_TOKEN.isNotEmpty()) {
-                requestBuilder.header("Authorization", "Bearer ${BuildConfig.GITHUB_RELEASE_TOKEN}")
+            if (BuildConfig.GH_RELEASE_TOKEN.isNotEmpty()) {
+                requestBuilder.header("Authorization", "Bearer ${BuildConfig.GH_RELEASE_TOKEN}")
             }
             val request = requestBuilder.build()
 

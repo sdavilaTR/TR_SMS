@@ -16,8 +16,8 @@ android {
         versionName "2.0"
         // BUILD_TAG is injected by CI via -PreleaseTag=v{date}; defaults to "dev" for local builds
         buildConfigField "String", "BUILD_TAG", "\"${project.findProperty('releaseTag') ?: 'dev'}\""
-        // GITHUB_RELEASE_TOKEN is injected by CI for private repo release checks; empty on local builds
-        buildConfigField "String", "GITHUB_RELEASE_TOKEN", "\"${System.getenv("GITHUB_RELEASE_TOKEN") ?: ""}\""
+        // GH_RELEASE_TOKEN is injected by CI for private repo release checks; empty on local builds
+        buildConfigField "String", "GH_RELEASE_TOKEN", "\"${System.getenv("GH_RELEASE_TOKEN") ?: ""}\""
     }
 
     signingConfigs {

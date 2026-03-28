@@ -22,6 +22,7 @@ Configurados en `sdavilaTR/HassiSiteApp` → Settings → Secrets → Actions:
 | `KEYSTORE_PASSWORD` | Contraseña del keystore |
 | `KEY_ALIAS` | `atlas-release-key` |
 | `KEY_PASSWORD` | Contraseña de la clave |
+| `GITHUB_RELEASE_TOKEN` | PAT de GitHub con permisos `Contents: Read` en este repo (necesario porque el repo es privado) |
 
 ## Regenerar el keystore (si se pierde)
 
@@ -51,7 +52,21 @@ gh secret set KEY_PASSWORD --repo sdavilaTR/HassiSiteApp --body 'Atlas.Dev.2026!
 4. Se publica un release con tag `vYYYY-MM-DD-HH-MM`
 5. La app detecta el nuevo release en el próximo arranque y ofrece actualizar
 
+## Crear el GITHUB_RELEASE_TOKEN
+
+Lo debe crear el propietario del repo (**sdavila**):
+
+1. GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens**
+2. Repository access: solo `sdavilaTR/HassiSiteApp`
+3. Permissions → Repository permissions → **Contents: Read-only**
+4. Copiar el token generado y añadirlo como secret:
+
+```bash
+gh secret set GITHUB_RELEASE_TOKEN --repo sdavilaTR/HassiSiteApp --body 'github_pat_XXXX...'
+```
+
 ## Notas
 
 - Usar siempre **PKCS12**, no JKS. JKS generado con Java 9+ es incompatible con las Android build tools (`Tag number over 30 is not supported`).
+- El `GITHUB_RELEASE_TOKEN` se embebe en el APK compilado — usar un token de solo lectura, nunca uno con permisos de escritura.
 - Las contraseñas actuales son de desarrollo. Cambiarlas antes de producción real.

@@ -1,5 +1,6 @@
 package com.example.hassiwrapper.update
 
+import com.example.hassiwrapper.BuildConfig
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
@@ -45,10 +46,13 @@ object UpdateChecker {
      */
     suspend fun checkForUpdate(currentBuildTag: String): UpdateInfo? = withContext(Dispatchers.IO) {
         try {
-            val request = Request.Builder()
+            val requestBuilder = Request.Builder()
                 .url(API_URL)
                 .header("Accept", "application/vnd.github.v3+json")
-                .build()
+            if (BuildConfig.GITHUB_RELEASE_TOKEN.isNotEmpty()) {
+                requestBuilder.header("Authorization", "Bearer ${BuildConfig.GITHUB_RELEASE_TOKEN}")
+            }
+            val request = requestBuilder.build()
 
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext null

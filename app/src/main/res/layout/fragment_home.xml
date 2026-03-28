@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:clipToPadding="false">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -18,7 +19,7 @@
             android:orientation="horizontal"
             android:layout_marginBottom="12dp">
 
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -30,9 +31,9 @@
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_workers" android:textColor="@color/on_surface_variant" android:textSize="12sp" android:letterSpacing="0.04" android:textAllCaps="true" />
                     <TextView android:id="@+id/txtWorkerCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="@color/primary" android:textSize="32sp" android:textStyle="bold" android:layout_marginTop="4dp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -44,7 +45,7 @@
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_scans_today" android:textColor="@color/on_surface_variant" android:textSize="12sp" android:letterSpacing="0.04" android:textAllCaps="true" />
                     <TextView android:id="@+id/txtScansToday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="@color/secondary" android:textSize="32sp" android:textStyle="bold" android:layout_marginTop="4dp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
         <!-- Stats Cards Row 2 -->
@@ -54,7 +55,7 @@
             android:orientation="horizontal"
             android:layout_marginBottom="24dp">
 
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -66,9 +67,9 @@
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_pending" android:textColor="@color/on_surface_variant" android:textSize="12sp" android:letterSpacing="0.04" android:textAllCaps="true" />
                     <TextView android:id="@+id/txtPendingCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="@color/warning" android:textSize="32sp" android:textStyle="bold" android:layout_marginTop="4dp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -80,7 +81,7 @@
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_incidents" android:textColor="@color/on_surface_variant" android:textSize="12sp" android:letterSpacing="0.04" android:textAllCaps="true" />
                     <TextView android:id="@+id/txtIncidentCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="@color/error" android:textSize="32sp" android:textStyle="bold" android:layout_marginTop="4dp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton

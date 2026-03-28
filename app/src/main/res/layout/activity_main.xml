@@ -43,6 +43,7 @@
         android:layout_height="match_parent"
         android:layout_gravity="start"
         android:background="@color/surface"
+        android:fitsSystemWindows="false"
         app:headerLayout="@layout/nav_header"
         app:menu="@menu/nav_menu"
         app:itemTextColor="@color/on_surface"

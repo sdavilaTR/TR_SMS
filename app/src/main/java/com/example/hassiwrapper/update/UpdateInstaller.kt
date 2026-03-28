@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Environment
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import com.example.hassiwrapper.BuildConfig
 import java.io.File
 
 object UpdateInstaller {
@@ -39,6 +40,15 @@ object UpdateInstaller {
             .setAllowedNetworkTypes(
                 DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE
             )
+            .apply {
+                // Private repo: GitHub returns 302 → S3 signed URL.
+                // DownloadManager strips the Authorization header on cross-origin redirect,
+                // so the token never reaches S3.
+                if (BuildConfig.GH_RELEASE_TOKEN.isNotEmpty()) {
+                    addRequestHeader("Authorization", "Bearer ${BuildConfig.GH_RELEASE_TOKEN}")
+                    addRequestHeader("Accept", "application/octet-stream")
+                }
+            }
 
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadId = dm.enqueue(request)

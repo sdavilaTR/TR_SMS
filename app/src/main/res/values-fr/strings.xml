@@ -16,8 +16,8 @@
     <string name="home_label_scans_today">Scans Aujourd\'hui</string>
     <string name="home_label_pending">En attente</string>
     <string name="home_label_incidents">Incidents</string>
-    <string name="home_btn_access">🔒 Contrôle d\'accès</string>
-    <string name="home_btn_sync">🔄 Synchroniser</string>
+    <string name="home_btn_access">Contrôle d\'accès</string>
+    <string name="home_btn_sync">Synchroniser</string>
     <string name="home_last_sync_none">Dernière sync : —</string>
     <string name="home_last_sync_format">Dernière sync : %s</string>
 
@@ -68,7 +68,7 @@
     <string name="sync_pending_logs">Registres : %d</string>
     <string name="sync_pending_incidents">Incidents : %d</string>
     <string name="sync_pending_sessions">Sessions : %d</string>
-    <string name="sync_btn">🔄 Synchronisation complète</string>
+    <string name="sync_btn">Synchronisation complète</string>
     <string name="sync_last_none">Dernière sync : —</string>
     <string name="sync_last_format">Dernière sync : %s</string>
     <string name="sync_syncing">Synchronisation…</string>
@@ -88,7 +88,7 @@
     <string name="login_btn">Se connecter</string>
     <string name="login_label_or">OU</string>
     <string name="login_btn_microsoft">Se connecter avec Microsoft</string>
-    <string name="login_btn_config">⚙ Configuration API</string>
+    <string name="login_btn_config">Configuration API</string>
     <string name="login_hint_api_url">URL de l\'API</string>
     <string name="login_btn_save_url">Enregistrer l\'URL</string>
     <string name="login_url_saved">✓ URL enregistrée</string>

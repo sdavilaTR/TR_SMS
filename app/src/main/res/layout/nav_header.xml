@@ -1,27 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="112dp"
-    android:background="@drawable/nav_header_bg"
-    android:gravity="bottom"
+    android:layout_height="200dp"
+    android:background="@color/surface"
+    android:gravity="center"
     android:orientation="vertical"
     android:padding="20dp"
     android:fitsSystemWindows="false">
+
+    <ImageView
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:src="@drawable/ic_launcher_logo"
+        android:scaleType="fitCenter"
+        android:contentDescription="@null" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/nav_header_title"
-        android:textColor="@color/on_primary"
-        android:textSize="22sp"
+        android:textColor="@color/primary"
+        android:textSize="15sp"
         android:textStyle="bold"
-        android:letterSpacing="0.03" />
+        android:letterSpacing="0.02"
+        android:layout_marginTop="10dp" />
 
     <TextView
         android:id="@+id/txtNavVersion"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#CCFFFFFF"
-        android:textSize="13sp"
+        android:textColor="@color/on_surface_variant"
+        android:textSize="12sp"
         android:layout_marginTop="2dp" />
+
 </LinearLayout>

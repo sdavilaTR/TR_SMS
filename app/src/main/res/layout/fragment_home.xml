@@ -21,7 +21,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="4dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
             android:clipChildren="false"
             android:clipToPadding="false">
 
@@ -68,7 +70,8 @@
                             android:layout_height="wrap_content"
                             android:text="—"
                             android:textColor="@color/primary"
-                            android:textSize="28sp"
+                            android:textSize="22sp"
+                            android:maxLines="1"
                             android:textStyle="bold" />
                         <TextView
                             android:layout_width="wrap_content"
@@ -123,7 +126,8 @@
                             android:layout_height="wrap_content"
                             android:text="—"
                             android:textColor="@color/secondary"
-                            android:textSize="28sp"
+                            android:textSize="22sp"
+                            android:maxLines="1"
                             android:textStyle="bold" />
                         <TextView
                             android:layout_width="wrap_content"
@@ -141,7 +145,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="16dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
             android:clipChildren="false"
             android:clipToPadding="false">
 
@@ -188,7 +194,8 @@
                             android:layout_height="wrap_content"
                             android:text="—"
                             android:textColor="@color/warning"
-                            android:textSize="28sp"
+                            android:textSize="22sp"
+                            android:maxLines="1"
                             android:textStyle="bold" />
                         <TextView
                             android:layout_width="wrap_content"
@@ -243,7 +250,8 @@
                             android:layout_height="wrap_content"
                             android:text="—"
                             android:textColor="@color/error"
-                            android:textSize="28sp"
+                            android:textSize="22sp"
+                            android:maxLines="1"
                             android:textStyle="bold" />
                         <TextView
                             android:layout_width="wrap_content"

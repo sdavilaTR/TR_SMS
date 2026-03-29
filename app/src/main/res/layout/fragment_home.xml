@@ -5,62 +5,16 @@
     android:layout_height="match_parent"
     android:background="@color/background"
     android:padding="16dp"
-    android:clipToPadding="false">
+    android:clipToPadding="false"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <!-- Banner -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="@color/surface_variant"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="0dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="16dp"
-                android:gravity="center_vertical">
-
-                <ImageView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@drawable/ic_shield_check_24"
-                    app:tint="@color/primary"
-                    android:layout_marginEnd="14dp"
-                    android:contentDescription="@null" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Access Control HASSI"
-                        android:textColor="@color/on_surface"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Gestión y diagnóstico de accesos"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp" />
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:clipChildren="false"
+        android:clipToPadding="false">
 
         <!-- Stats Cards Row 1 -->
         <LinearLayout
@@ -305,14 +259,15 @@
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnGoScanner"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="72dp"
             android:text="@string/home_btn_access"
             android:textAllCaps="false"
-            android:textSize="16sp"
+            android:textSize="18sp"
             android:layout_marginBottom="12dp"
             app:icon="@drawable/ic_shield_check_24"
             app:iconGravity="textStart"
-            app:cornerRadius="12dp" />
+            app:iconSize="26dp"
+            app:cornerRadius="14dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnGoSync"

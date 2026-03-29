@@ -34,9 +34,6 @@ class SettingsFragment : Fragment() {
 
         val inputApiUrl = view.findViewById<EditText>(R.id.inputApiUrl)
         val btnSaveApiUrl = view.findViewById<MaterialButton>(R.id.btnSaveApiUrl)
-        val inputDeviceName = view.findViewById<EditText>(R.id.inputDeviceName)
-        val txtDeviceId = view.findViewById<TextView>(R.id.txtDeviceId)
-        val btnSaveDevice = view.findViewById<MaterialButton>(R.id.btnSaveDevice)
         val btnLogout = view.findViewById<MaterialButton>(R.id.btnLogout)
         val btnCheckUpdates = view.findViewById<MaterialButton>(R.id.btnCheckUpdates)
         val spinnerLanguage = view.findViewById<Spinner>(R.id.spinnerLanguage)
@@ -64,19 +61,10 @@ class SettingsFragment : Fragment() {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         })
 
-        // Load current values
+        // Load current API url
         viewLifecycleOwner.lifecycleScope.launch {
             val apiUrl = ServiceLocator.configRepo.get("api_base_url") ?: ""
             inputApiUrl.setText(apiUrl)
-
-            val deviceName = ServiceLocator.configRepo.get("device_name") ?: ""
-            inputDeviceName.setText(deviceName)
-
-            val deviceId = ServiceLocator.configRepo.get("device_id")
-            txtDeviceId.text = if (!deviceId.isNullOrEmpty())
-                getString(R.string.settings_device_id_format, deviceId)
-            else
-                getString(R.string.settings_device_id_none)
         }
 
         // Save API URL
@@ -89,26 +77,6 @@ class SettingsFragment : Fragment() {
             }
         }
 
-        // Save device config
-        btnSaveDevice.setOnClickListener {
-            viewLifecycleOwner.lifecycleScope.launch {
-                val name = inputDeviceName.text.toString().trim()
-                if (name.isEmpty()) {
-                    Toast.makeText(requireContext(), getString(R.string.settings_name_required), Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-                ServiceLocator.configRepo.set("device_name", name)
-
-                var deviceId = ServiceLocator.configRepo.get("device_id")
-                if (deviceId.isNullOrEmpty() || deviceId == "unknown") {
-                    deviceId = UUID.randomUUID().toString()
-                    ServiceLocator.configRepo.set("device_id", deviceId)
-                }
-                txtDeviceId.text = getString(R.string.settings_device_id_format, deviceId)
-                ServiceLocator.authRepo.refreshDeviceId()
-                Toast.makeText(requireContext(), getString(R.string.settings_device_saved), Toast.LENGTH_SHORT).show()
-            }
-        }
 
         // Check for updates
         btnCheckUpdates.setOnClickListener {

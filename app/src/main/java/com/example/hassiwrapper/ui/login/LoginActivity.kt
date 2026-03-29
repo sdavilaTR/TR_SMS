@@ -54,8 +54,7 @@ class LoginActivity : AppCompatActivity() {
     private fun setupLoginUI() {
         setContentView(R.layout.activity_login)
 
-        val inputEmail = findViewById<EditText>(R.id.inputEmail)
-        val inputPassword = findViewById<EditText>(R.id.inputPassword)
+        val inputTerminalCode = findViewById<EditText>(R.id.inputTerminalCode)
         val btnLogin = findViewById<Button>(R.id.btnLogin)
         val txtError = findViewById<TextView>(R.id.txtLoginError)
         val progress = findViewById<ProgressBar>(R.id.progressLogin)
@@ -93,14 +92,16 @@ class LoginActivity : AppCompatActivity() {
         }
 
         btnLogin.setOnClickListener {
-            val email = inputEmail.text.toString().trim()
-            val password = inputPassword.text.toString()
+            val code = inputTerminalCode.text.toString().trim().uppercase()
 
-            if (email.isEmpty() || password.isEmpty()) {
-                txtError.text = getString(R.string.login_error_empty)
+            if (code.isEmpty()) {
+                txtError.text = "Error: Introduce el Código del Terminal."
                 txtError.visibility = View.VISIBLE
                 return@setOnClickListener
             }
+
+            val email = "${code.lowercase()}@atlas.com"
+            val password = "Tr.Atlas_${code}!"
 
             btnLogin.isEnabled = false
             progress.visibility = View.VISIBLE

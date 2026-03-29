@@ -8,8 +8,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.content.res.ColorStateList
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.widget.ImageViewCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -183,7 +185,7 @@ class ScannerFragment : Fragment() {
     private fun showResultOverlay(result: ClockingService.ScanResult) {
         val view = this.view ?: return
         val overlay = view.findViewById<FrameLayout>(R.id.scanResultOverlay)
-        val icon = view.findViewById<TextView>(R.id.resultIcon)
+        val icon = view.findViewById<ImageView>(R.id.resultIcon)
         val title = view.findViewById<TextView>(R.id.resultTitle)
         val name = view.findViewById<TextView>(R.id.resultWorkerName)
         val badge = view.findViewById<TextView>(R.id.resultBadge)
@@ -194,9 +196,9 @@ class ScannerFragment : Fragment() {
 
         if (result.success) {
             playBeep(true)
-            icon.text = "✓"
+            icon.setImageResource(R.drawable.ic_baseline_check_circle_24)
             icon.setBackgroundColor(resources.getColor(R.color.granted_bg, null))
-            icon.setTextColor(resources.getColor(R.color.granted, null))
+            ImageViewCompat.setImageTintList(icon, ColorStateList.valueOf(resources.getColor(R.color.granted, null)))
             title.text = getString(R.string.scanner_granted)
             title.setTextColor(resources.getColor(R.color.granted, null))
             val p = result.person
@@ -214,9 +216,9 @@ class ScannerFragment : Fragment() {
             reason.text = ""
         } else {
             playBeep(false)
-            icon.text = "✕"
+            icon.setImageResource(R.drawable.ic_cancel_circle_24)
             icon.setBackgroundColor(resources.getColor(R.color.denied_bg, null))
-            icon.setTextColor(resources.getColor(R.color.denied, null))
+            ImageViewCompat.setImageTintList(icon, ColorStateList.valueOf(resources.getColor(R.color.denied, null)))
             title.text = if (result.result == "ERROR") getString(R.string.scanner_result_error) else getString(R.string.scanner_denied)
             title.setTextColor(resources.getColor(R.color.denied, null))
             val p = result.person
@@ -254,6 +256,7 @@ class ScannerFragment : Fragment() {
     inner class ScanLogAdapter : RecyclerView.Adapter<ScanLogAdapter.VH>() {
         inner class VH(view: View) : RecyclerView.ViewHolder(view) {
             val stripe: View = view.findViewById(R.id.stripe)
+            val ivStatus: ImageView = view.findViewById(R.id.ivStatus)
             val txtId: TextView = view.findViewById(android.R.id.text1)
             val txtTime: TextView = view.findViewById(android.R.id.text2)
         }
@@ -267,14 +270,17 @@ class ScannerFragment : Fragment() {
 
         override fun onBindViewHolder(holder: VH, position: Int) {
             val entry = scanLog[position]
-            val status = if (entry.granted) "✓" else "✕"
             val badge = if (entry.badge.isNotEmpty()) " · ${entry.badge}" else ""
-            holder.txtId.text = "$status  ${entry.name}$badge   ${entry.direction}"
+            holder.txtId.text = "${entry.name}$badge   ${entry.direction}"
             val resultColor = resources.getColor(
                 if (entry.granted) R.color.granted else R.color.denied, null
             )
             holder.txtId.setTextColor(resultColor)
             holder.stripe.setBackgroundColor(resultColor)
+            holder.ivStatus.setImageResource(
+                if (entry.granted) R.drawable.ic_baseline_check_circle_24 else R.drawable.ic_cancel_circle_24
+            )
+            ImageViewCompat.setImageTintList(holder.ivStatus, ColorStateList.valueOf(resultColor))
             holder.txtTime.text = entry.time
             holder.txtTime.setTextColor(resources.getColor(R.color.on_surface_variant, null))
         }

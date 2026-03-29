@@ -46,12 +46,13 @@
             android:gravity="center"
             android:padding="16dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📡"
-                android:textSize="36sp"
-                android:layout_marginBottom="8dp" />
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_scanner"
+                app:tint="@color/primary"
+                android:layout_marginBottom="8dp"
+                android:contentDescription="@null" />
 
             <TextView
                 android:id="@+id/txtScannerStatus"
@@ -136,7 +137,7 @@
             android:orientation="vertical"
             android:padding="32dp">
 
-            <TextView android:id="@+id/resultIcon"          android:layout_width="96dp"      android:layout_height="96dp"      android:gravity="center" android:textSize="44sp" />
+            <ImageView android:id="@+id/resultIcon"         android:layout_width="96dp"      android:layout_height="96dp"      android:padding="20dp"  android:scaleType="fitCenter" />
             <TextView android:id="@+id/resultTitle"         android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="26sp" android:textStyle="bold" android:layout_marginTop="16dp" />
             <TextView android:id="@+id/resultWorkerName"    android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="20sp" android:layout_marginTop="8dp" />
             <TextView android:id="@+id/resultBadge"         android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface_variant" android:textSize="15sp" />

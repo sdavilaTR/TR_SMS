@@ -17,7 +17,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="12dp"
+            android:clipChildren="false"
+            android:clipToPadding="false">
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
@@ -26,7 +28,8 @@
                 android:layout_marginEnd="6dp"
                 app:cardBackgroundColor="@color/card_bg"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                app:cardElevation="3dp"
+                app:strokeWidth="0dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_workers" android:textColor="@color/on_surface_variant" android:textSize="12sp" android:letterSpacing="0.04" android:textAllCaps="true" />
                     <TextView android:id="@+id/txtWorkerCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="@color/primary" android:textSize="32sp" android:textStyle="bold" android:layout_marginTop="4dp" />
@@ -40,7 +43,8 @@
                 android:layout_marginStart="6dp"
                 app:cardBackgroundColor="@color/card_bg"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                app:cardElevation="3dp"
+                app:strokeWidth="0dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_scans_today" android:textColor="@color/on_surface_variant" android:textSize="12sp" android:letterSpacing="0.04" android:textAllCaps="true" />
                     <TextView android:id="@+id/txtScansToday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="@color/secondary" android:textSize="32sp" android:textStyle="bold" android:layout_marginTop="4dp" />
@@ -53,7 +57,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="24dp">
+            android:layout_marginBottom="24dp"
+            android:clipChildren="false"
+            android:clipToPadding="false">
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
@@ -62,7 +68,8 @@
                 android:layout_marginEnd="6dp"
                 app:cardBackgroundColor="@color/card_bg"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                app:cardElevation="3dp"
+                app:strokeWidth="0dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_pending" android:textColor="@color/on_surface_variant" android:textSize="12sp" android:letterSpacing="0.04" android:textAllCaps="true" />
                     <TextView android:id="@+id/txtPendingCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="@color/warning" android:textSize="32sp" android:textStyle="bold" android:layout_marginTop="4dp" />
@@ -76,7 +83,8 @@
                 android:layout_marginStart="6dp"
                 app:cardBackgroundColor="@color/card_bg"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                app:cardElevation="3dp"
+                app:strokeWidth="0dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/home_label_incidents" android:textColor="@color/on_surface_variant" android:textSize="12sp" android:letterSpacing="0.04" android:textAllCaps="true" />
                     <TextView android:id="@+id/txtIncidentCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="@color/error" android:textSize="32sp" android:textStyle="bold" android:layout_marginTop="4dp" />

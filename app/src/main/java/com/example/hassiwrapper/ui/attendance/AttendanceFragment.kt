@@ -1,10 +1,13 @@
 package com.example.hassiwrapper.ui.attendance
 
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.widget.ImageViewCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -59,10 +62,10 @@ class AttendanceFragment : Fragment() {
     inner class LogAdapter : RecyclerView.Adapter<LogAdapter.VH>() {
 
         inner class VH(view: View) : RecyclerView.ViewHolder(view) {
-            val tvResult: TextView = view.findViewById(R.id.tvResult)
+            val ivResult: ImageView = view.findViewById(R.id.ivResult)
             val tvDirection: TextView = view.findViewById(R.id.tvDirection)
             val tvWorkerName: TextView = view.findViewById(R.id.tvWorkerName)
-            val tvSyncIcon: TextView = view.findViewById(R.id.tvSyncIcon)
+            val ivSyncIcon: ImageView = view.findViewById(R.id.ivSyncIcon)
             val tvBadge: TextView = view.findViewById(R.id.tvBadge)
             val tvTime: TextView = view.findViewById(R.id.tvTime)
             val tvFailReason: TextView = view.findViewById(R.id.tvFailReason)
@@ -79,19 +82,18 @@ class AttendanceFragment : Fragment() {
             val log = item.log
 
             val granted = log.result == "GRANTED"
-            holder.tvResult.text = if (granted) "✓" else "✕"
-            holder.tvResult.setTextColor(resources.getColor(
-                if (granted) R.color.granted else R.color.denied, null
-            ))
+            val statusColor = resources.getColor(if (granted) R.color.granted else R.color.denied, null)
+            holder.ivResult.setImageResource(
+                if (granted) R.drawable.ic_baseline_check_circle_24 else R.drawable.ic_cancel_circle_24
+            )
+            ImageViewCompat.setImageTintList(holder.ivResult, ColorStateList.valueOf(statusColor))
 
             holder.tvDirection.text = when (log.direction) {
                 "ENTRY" -> getString(R.string.scanner_entry)
                 "EXIT"  -> getString(R.string.scanner_exit)
                 else    -> log.direction
             }
-            holder.tvDirection.setTextColor(resources.getColor(
-                if (granted) R.color.granted else R.color.denied, null
-            ))
+            holder.tvDirection.setTextColor(statusColor)
 
             holder.tvWorkerName.text = when {
                 item.givenName != null || item.familyName != null ->
@@ -99,7 +101,11 @@ class AttendanceFragment : Fragment() {
                 else -> log.unique_id_value?.take(12)?.let { "$it…" } ?: "—"
             }
 
-            holder.tvSyncIcon.text = if (log.synced) "☁" else "⏳"
+            val syncColor = resources.getColor(if (log.synced) R.color.secondary else R.color.warning, null)
+            holder.ivSyncIcon.setImageResource(
+                if (log.synced) R.drawable.ic_cloud_done_24 else R.drawable.ic_pending_24
+            )
+            ImageViewCompat.setImageTintList(holder.ivSyncIcon, ColorStateList.valueOf(syncColor))
 
             holder.tvBadge.text = item.badgeNumber?.let { "Badge: $it" } ?: ""
 

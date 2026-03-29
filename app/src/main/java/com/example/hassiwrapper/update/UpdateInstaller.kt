@@ -1,6 +1,7 @@
 package com.example.hassiwrapper.update
 
 import android.app.DownloadManager
+import android.util.Log
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -72,6 +73,10 @@ object UpdateInstaller {
                         val reason = cursor.getInt(
                             cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)
                         )
+                        val uri = cursor.getString(
+                            cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_URI)
+                        )
+                        Log.e("UpdateInstaller", "Download failed — status=$status reason=$reason url=$uri")
                         Toast.makeText(
                             ctx,
                             "Error al descargar la actualización (código $reason)",

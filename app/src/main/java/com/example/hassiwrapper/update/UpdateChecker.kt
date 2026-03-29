@@ -16,7 +16,9 @@ data class GithubRelease(
 
 data class GithubAsset(
     @SerializedName("name") val name: String,
-    @SerializedName("browser_download_url") val downloadUrl: String
+    // "url" is the GitHub API asset endpoint (returns 302 → S3 pre-signed URL).
+    // browser_download_url requires browser OAuth and fails with API tokens on private repos.
+    @SerializedName("url") val url: String
 )
 
 data class UpdateInfo(
@@ -68,7 +70,7 @@ object UpdateChecker {
                     apkAsset?.let {
                         UpdateInfo(
                             version = release.tagName,
-                            downloadUrl = it.downloadUrl,
+                            downloadUrl = it.url,
                             releaseNotes = release.body
                         )
                     }

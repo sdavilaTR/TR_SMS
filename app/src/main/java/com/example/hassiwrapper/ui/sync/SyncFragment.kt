@@ -112,6 +112,8 @@ class SyncFragment : Fragment() {
         val btn = v.findViewById<MaterialButton>(R.id.btnFullSync)
         val progress = v.findViewById<ProgressBar>(R.id.progressSync)
         val status = v.findViewById<TextView>(R.id.txtSyncStatus)
+        val dotApi = v.findViewById<View>(R.id.dotApi)
+        val txtApi = v.findViewById<TextView>(R.id.txtApiStatus)
 
         btn.isEnabled = false
         progress.visibility = View.VISIBLE
@@ -122,6 +124,9 @@ class SyncFragment : Fragment() {
             val result = ServiceLocator.syncService.fullSync { retry ->
                 status.text = getString(R.string.sync_retrying, retry.attempt, retry.waitSeconds)
                 status.setTextColor(resources.getColor(R.color.warning, null))
+                // Show "checking" on the API dot during retries instead of leaving it stale
+                dotApi.setBackgroundResource(R.drawable.dot_grey)
+                txtApi.text = getString(R.string.sync_status_checking)
             }
 
             btn.isEnabled = true
@@ -130,15 +135,18 @@ class SyncFragment : Fragment() {
             if (result.success) {
                 status.text = getString(R.string.sync_success, result.logsUploaded, result.workersAdded, result.workersUpdated)
                 status.setTextColor(resources.getColor(R.color.granted, null))
+                // Sync succeeded → API is clearly reachable, update dot immediately without extra ping
+                dotApi.setBackgroundResource(R.drawable.dot_green)
+                txtApi.text = getString(R.string.sync_api_ok)
             } else {
                 status.text = getString(R.string.sync_error, result.error ?: "Error desconocido")
                 status.setTextColor(resources.getColor(R.color.error, null))
+                // Sync failed → re-probe to get accurate connectivity status
+                checkConnectivity()
             }
 
             loadPendingCounts()
             loadLastSync()
-            // Refresh connectivity indicators after sync attempt
-            checkConnectivity()
         }
     }
 }

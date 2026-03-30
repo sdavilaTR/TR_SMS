@@ -21,8 +21,8 @@ class ApiClient(
     private val authRepo: AuthRepository
 ) {
     companion object {
-        const val DEFAULT_PRIMARY = "https://web-atlas-api-dev.azurewebsites.net"
-        const val DEFAULT_FALLBACK = "http://localhost:5000"
+        const val DEFAULT_PRIMARY = "https://web-atlas-api-pre.azurewebsites.net"
+        const val DEFAULT_FALLBACK = "https://web-atlas-api-pre.azurewebsites.net"
         private const val TIMEOUT_MS = 10_000L
         private const val PING_TIMEOUT_MS = 3_000L
     }

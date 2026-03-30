@@ -42,7 +42,6 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         lifecycleScope.launch {
-            ServiceLocator.apiClient.seedDefaults()
             if (ServiceLocator.authRepo.isAuthenticated()) {
                 goToMain()
                 return@launch
@@ -58,11 +57,6 @@ class LoginActivity : AppCompatActivity() {
         val btnLogin = findViewById<Button>(R.id.btnLogin)
         val txtError = findViewById<TextView>(R.id.txtLoginError)
         val progress = findViewById<ProgressBar>(R.id.progressLogin)
-        val btnConfigToggle = findViewById<TextView>(R.id.btnConfigToggle)
-        val panelApiConfig = findViewById<View>(R.id.panelApiConfig)
-        val inputApiUrl = findViewById<EditText>(R.id.inputApiUrl)
-        val btnSaveApiUrl = findViewById<Button>(R.id.btnSaveApiUrl)
-        val txtApiSaved = findViewById<TextView>(R.id.txtApiSaved)
         val btnMicrosoftLogin = findViewById<Button>(R.id.btnMicrosoftLogin)
 
         findViewById<TextView>(R.id.txtVersion).text = BuildConfig.BUILD_TAG
@@ -72,24 +66,7 @@ class LoginActivity : AppCompatActivity() {
             webViewLoginLauncher.launch(intent)
         }
 
-        lifecycleScope.launch {
-            val savedUrl = ServiceLocator.configRepo.get("api_base_url")
-            if (!savedUrl.isNullOrEmpty()) inputApiUrl.setText(savedUrl)
-        }
-
-        btnConfigToggle.setOnClickListener {
-            panelApiConfig.visibility = if (panelApiConfig.visibility == View.GONE) View.VISIBLE else View.GONE
-        }
-
-        btnSaveApiUrl.setOnClickListener {
-            lifecycleScope.launch {
-                val url = inputApiUrl.text.toString().trim()
-                ServiceLocator.configRepo.set("api_base_url", url)
-                ServiceLocator.apiClient.resetResolvedBase()
-                txtApiSaved.visibility = View.VISIBLE
-                txtApiSaved.postDelayed({ txtApiSaved.visibility = View.GONE }, 2000)
-            }
-        }
+        // Configurator logic removed
 
         btnLogin.setOnClickListener {
             val code = inputTerminalCode.text.toString().trim().uppercase()

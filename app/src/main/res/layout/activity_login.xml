@@ -114,66 +114,7 @@
             android:visibility="gone"
             android:layout_marginTop="8dp" />
 
-        <TextView
-            android:id="@+id/btnConfigToggle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="@string/login_btn_config"
-            android:textColor="@color/on_surface_variant"
-            android:textSize="14sp"
-            android:padding="8dp" />
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/panelApiConfig"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone"
-            android:layout_marginTop="4dp"
-            app:cardBackgroundColor="@color/surface"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="2dp"
-            app:strokeWidth="0dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="@string/login_hint_api_url"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/inputApiUrl"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textUri"
-                        android:textColor="@color/on_surface" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSaveApiUrl"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/login_btn_save_url"
-                    android:textAllCaps="false"
-                    android:layout_marginTop="8dp"
-                    app:cornerRadius="10dp"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-
-                <TextView
-                    android:id="@+id/txtApiSaved"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/login_url_saved"
-                    android:textColor="@color/granted"
-                    android:visibility="gone"
-                    android:layout_marginTop="4dp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
         <TextView
             android:id="@+id/txtVersion"

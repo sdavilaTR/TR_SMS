@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
+import com.example.hassiwrapper.network.ApiClient
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.launch
 
@@ -76,11 +77,7 @@ class WebViewLoginActivity : AppCompatActivity() {
         setupWebView()
 
         lifecycleScope.launch {
-            val apiBase = ServiceLocator.configRepo.get("api_base_url") ?: ""
-            if (apiBase.isEmpty()) {
-                finish()
-                return@launch
-            }
+            val apiBase = ApiClient.DEFAULT_PRIMARY
 
             // Derive Web App URL: https://web-atlas-api-dev.azurewebsites.net
             //                  → https://web-atlas-dev.azurewebsites.net

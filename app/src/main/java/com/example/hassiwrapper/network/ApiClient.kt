@@ -39,12 +39,8 @@ class ApiClient(
 
     /** Seed default URLs into config if not already set. */
     suspend fun seedDefaults() {
-        if (configRepo.get("api_base_url") == null) {
-            configRepo.set("api_base_url", DEFAULT_PRIMARY)
-        }
-        if (configRepo.get("api_base_url_fallback") == null) {
-            configRepo.set("api_base_url_fallback", DEFAULT_FALLBACK)
-        }
+        // We no longer seed API URLs as they are hardcoded.
+        // But we keep the method if other defaults are needed in the future.
     }
 
     /** Get or create the Retrofit service, resolving the base URL first. */
@@ -59,24 +55,15 @@ class ApiClient(
 
     /** Resolve which base URL to use: ping primary, fall back if it fails. */
     private suspend fun getApiBase(): String {
-        resolvedBase?.let { return it }
-
-        val primary = configRepo.get("api_base_url") ?: DEFAULT_PRIMARY
-        val fallback = configRepo.get("api_base_url_fallback") ?: DEFAULT_FALLBACK
-
-        val reachable = ping(primary)
-        val chosen = if (reachable) primary else fallback
-        resolvedBase = chosen
-        return chosen
+        return DEFAULT_PRIMARY
     }
 
     data class ConnectivityStatus(val apiReachable: Boolean, val resolvedUrl: String)
 
     /** Check API connectivity without affecting cached resolvedBase. */
     suspend fun checkConnectivity(): ConnectivityStatus {
-        val primary = configRepo.get("api_base_url") ?: DEFAULT_PRIMARY
-        val reachable = ping(primary)
-        return ConnectivityStatus(apiReachable = reachable, resolvedUrl = primary)
+        val reachable = ping(DEFAULT_PRIMARY)
+        return ConnectivityStatus(apiReachable = reachable, resolvedUrl = DEFAULT_PRIMARY)
     }
 
     /** Quick ping — returns true if the host responds within PING_TIMEOUT_MS. */

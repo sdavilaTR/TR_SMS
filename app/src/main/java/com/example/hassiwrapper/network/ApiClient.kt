@@ -70,6 +70,15 @@ class ApiClient(
         return chosen
     }
 
+    data class ConnectivityStatus(val apiReachable: Boolean, val resolvedUrl: String)
+
+    /** Check API connectivity without affecting cached resolvedBase. */
+    suspend fun checkConnectivity(): ConnectivityStatus {
+        val primary = configRepo.get("api_base_url") ?: DEFAULT_PRIMARY
+        val reachable = ping(primary)
+        return ConnectivityStatus(apiReachable = reachable, resolvedUrl = primary)
+    }
+
     /** Quick ping — returns true if the host responds within PING_TIMEOUT_MS. */
     private suspend fun ping(baseUrl: String): Boolean = withContext(Dispatchers.IO) {
         try {

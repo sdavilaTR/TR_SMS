@@ -1,5 +1,8 @@
 package com.example.hassiwrapper.ui.sync
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -28,6 +31,60 @@ class SyncFragment : Fragment() {
 
         loadPendingCounts()
         loadLastSync()
+        checkConnectivity()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Refresh connectivity status every time the screen becomes visible
+        checkConnectivity()
+        loadPendingCounts()
+    }
+
+    private fun checkConnectivity() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val v = view ?: return@launch
+
+            val dotNetwork = v.findViewById<View>(R.id.dotNetwork)
+            val txtNetwork = v.findViewById<TextView>(R.id.txtNetworkStatus)
+            val dotApi = v.findViewById<View>(R.id.dotApi)
+            val txtApi = v.findViewById<TextView>(R.id.txtApiStatus)
+
+            // Show "checking" state while we probe
+            dotNetwork.setBackgroundResource(R.drawable.dot_grey)
+            txtNetwork.text = getString(R.string.sync_status_checking)
+            dotApi.setBackgroundResource(R.drawable.dot_grey)
+            txtApi.text = getString(R.string.sync_status_checking)
+
+            val networkOnline = isNetworkAvailable()
+            if (networkOnline) {
+                dotNetwork.setBackgroundResource(R.drawable.dot_green)
+                txtNetwork.text = getString(R.string.sync_network_online)
+            } else {
+                dotNetwork.setBackgroundResource(R.drawable.dot_red)
+                txtNetwork.text = getString(R.string.sync_network_offline)
+                // No point pinging the API if there's no network
+                dotApi.setBackgroundResource(R.drawable.dot_red)
+                txtApi.text = getString(R.string.sync_api_fail)
+                return@launch
+            }
+
+            val status = ServiceLocator.apiClient.checkConnectivity()
+            if (status.apiReachable) {
+                dotApi.setBackgroundResource(R.drawable.dot_green)
+                txtApi.text = getString(R.string.sync_api_ok)
+            } else {
+                dotApi.setBackgroundResource(R.drawable.dot_red)
+                txtApi.text = getString(R.string.sync_api_fail)
+            }
+        }
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val cm = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private fun loadPendingCounts() {
@@ -59,6 +116,7 @@ class SyncFragment : Fragment() {
         btn.isEnabled = false
         progress.visibility = View.VISIBLE
         status.text = getString(R.string.sync_syncing)
+        status.setTextColor(resources.getColor(R.color.on_surface_variant, null))
 
         viewLifecycleOwner.lifecycleScope.launch {
             val result = ServiceLocator.syncService.fullSync()
@@ -70,12 +128,14 @@ class SyncFragment : Fragment() {
                 status.text = getString(R.string.sync_success, result.logsUploaded, result.workersAdded, result.workersUpdated)
                 status.setTextColor(resources.getColor(R.color.granted, null))
             } else {
-                status.text = getString(R.string.sync_error, result.error)
+                status.text = getString(R.string.sync_error, result.error ?: "Error desconocido")
                 status.setTextColor(resources.getColor(R.color.error, null))
             }
 
             loadPendingCounts()
             loadLastSync()
+            // Refresh connectivity indicators after sync attempt
+            checkConnectivity()
         }
     }
 }

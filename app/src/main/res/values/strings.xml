@@ -64,6 +64,7 @@
 
     <!-- Sync -->
     <string name="sync_title">Sincronización</string>
+    <string name="sync_label_connection">Estado de Conexión</string>
     <string name="sync_label_pending_data">Datos Pendientes</string>
     <string name="sync_pending_logs">Registros: %d</string>
     <string name="sync_pending_incidents">Incidencias: %d</string>
@@ -74,6 +75,11 @@
     <string name="sync_syncing">Sincronizando…</string>
     <string name="sync_success">✓ Sync completado: %1$d logs, %2$d nuevos, %3$d actualizados</string>
     <string name="sync_error">✕ Error: %s</string>
+    <string name="sync_status_checking">Comprobando…</string>
+    <string name="sync_network_online">Red: Conectado</string>
+    <string name="sync_network_offline">Red: Sin conexión</string>
+    <string name="sync_api_ok">API ATLAS: Disponible</string>
+    <string name="sync_api_fail">API ATLAS: No disponible</string>
 
     <!-- Workers -->
     <string name="workers_hint_search">Buscar trabajador…</string>

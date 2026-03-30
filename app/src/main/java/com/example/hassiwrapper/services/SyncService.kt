@@ -57,55 +57,60 @@ class SyncService(
     suspend fun fullSync(): SyncResult {
         val result = SyncResult()
         try {
+            // Force fresh URL resolution each sync — avoids stale fallback URL
+            // if the device was offline when the app launched
+            apiClient.resetResolvedBase()
             val api = apiClient.getService()
 
-            // 1. Check connectivity
-            val healthResp = api.health()
-            if (!healthResp.isSuccessful && healthResp.code() >= 500) {
+            // 1. Check connectivity — any non-2xx is an error
+            val healthResp = try {
+                api.health()
+            } catch (e: Exception) {
                 return result.copy(error = "Sin conexión con el servidor")
+            }
+            if (!healthResp.isSuccessful) {
+                return result.copy(error = "Servidor no disponible (HTTP ${healthResp.code()})")
             }
 
             // 2. Register device
             registerDevice(api)
 
             // 3. Download master data + workers
+            var workerResult = WorkerResult()
             val downloadResp = api.downloadSync()
             if (downloadResp.isSuccessful) {
                 val data = downloadResp.body()
                 if (data != null) {
                     applyMasterData(data)
-                    val workerResult = applyWorkers(data)
-
-                    // 4. Upload pending data
-                    val logsUploaded = uploadAccessLogs(api)
-                    val incidentsUploaded = uploadIncidents(api)
-                    val sessionsUploaded = uploadSessions(api)
-
-                    val now = Instant.now().toString()
-                    configRepo.set("last_sync", now)
-
-                    return SyncResult(
-                        success = true,
-                        logsUploaded = logsUploaded,
-                        incidentsUploaded = incidentsUploaded,
-                        sessionsUploaded = sessionsUploaded,
-                        workersAdded = workerResult.added,
-                        workersUpdated = workerResult.updated,
-                        workersSkipped = workerResult.skipped
-                    )
+                    workerResult = applyWorkers(data)
+                } else {
+                    Log.w(TAG, "downloadSync returned null body")
                 }
+            } else {
+                Log.w(TAG, "downloadSync failed: HTTP ${downloadResp.code()}")
             }
 
-            // If download failed, still try to upload
-            val logsUploaded = uploadAccessLogs(api)
-            val incidentsUploaded = uploadIncidents(api)
-            val sessionsUploaded = uploadSessions(api)
+            // 4. Upload pending data — track actual counts and errors
+            val (logsUploaded, logsError) = uploadAccessLogs(api)
+            val (incidentsUploaded, incidentsError) = uploadIncidents(api)
+            val (sessionsUploaded, sessionsError) = uploadSessions(api)
 
-            return result.copy(
-                success = true,
+            val uploadErrors = listOfNotNull(logsError, incidentsError, sessionsError)
+            val uploadSuccess = uploadErrors.isEmpty()
+
+            if (uploadSuccess) {
+                configRepo.set("last_sync", Instant.now().toString())
+            }
+
+            return SyncResult(
+                success = uploadSuccess,
                 logsUploaded = logsUploaded,
                 incidentsUploaded = incidentsUploaded,
-                sessionsUploaded = sessionsUploaded
+                sessionsUploaded = sessionsUploaded,
+                workersAdded = workerResult.added,
+                workersUpdated = workerResult.updated,
+                workersSkipped = workerResult.skipped,
+                error = if (uploadErrors.isNotEmpty()) uploadErrors.joinToString("; ") else null
             )
         } catch (e: Exception) {
             Log.e(TAG, "fullSync failed", e)
@@ -247,9 +252,10 @@ class SyncService(
         )
     }
 
-    private suspend fun uploadAccessLogs(api: com.example.hassiwrapper.network.AtlasApiService): Int {
+    // Returns Pair(countActuallySynced, errorMessage). errorMessage is null on success.
+    private suspend fun uploadAccessLogs(api: com.example.hassiwrapper.network.AtlasApiService): Pair<Int, String?> {
         val pending = accessLogDao.getPending()
-        if (pending.isEmpty()) return 0
+        if (pending.isEmpty()) return Pair(0, null)
 
         val payload = pending.map { log ->
             AccessLogDto(
@@ -265,16 +271,24 @@ class SyncService(
             )
         }
 
-        val response = api.uploadAccessLogs(UploadLogsRequest(payload))
-        if (response.isSuccessful && response.body()?.success == true) {
-            accessLogDao.markSynced(pending.map { it.id })
+        return try {
+            val response = api.uploadAccessLogs(UploadLogsRequest(payload))
+            if (response.isSuccessful && response.body()?.success == true) {
+                accessLogDao.markSynced(pending.map { it.id })
+                Pair(pending.size, null)
+            } else {
+                Log.e(TAG, "uploadAccessLogs failed: HTTP ${response.code()} body=${response.body()}")
+                Pair(0, "Registros no subidos (HTTP ${response.code()})")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "uploadAccessLogs exception", e)
+            Pair(0, "Registros: ${e.message ?: "error de red"}")
         }
-        return pending.size
     }
 
-    private suspend fun uploadIncidents(api: com.example.hassiwrapper.network.AtlasApiService): Int {
+    private suspend fun uploadIncidents(api: com.example.hassiwrapper.network.AtlasApiService): Pair<Int, String?> {
         val pending = incidentDao.getPending()
-        if (pending.isEmpty()) return 0
+        if (pending.isEmpty()) return Pair(0, null)
 
         val payload = pending.map { inc ->
             IncidentDto(
@@ -290,16 +304,24 @@ class SyncService(
             )
         }
 
-        val response = api.uploadIncidents(UploadIncidentsRequest(payload))
-        if (response.isSuccessful && response.body()?.success == true) {
-            incidentDao.markSynced(pending.map { it.id })
+        return try {
+            val response = api.uploadIncidents(UploadIncidentsRequest(payload))
+            if (response.isSuccessful && response.body()?.success == true) {
+                incidentDao.markSynced(pending.map { it.id })
+                Pair(pending.size, null)
+            } else {
+                Log.e(TAG, "uploadIncidents failed: HTTP ${response.code()}")
+                Pair(0, "Incidencias no subidas (HTTP ${response.code()})")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "uploadIncidents exception", e)
+            Pair(0, "Incidencias: ${e.message ?: "error de red"}")
         }
-        return pending.size
     }
 
-    private suspend fun uploadSessions(api: com.example.hassiwrapper.network.AtlasApiService): Int {
+    private suspend fun uploadSessions(api: com.example.hassiwrapper.network.AtlasApiService): Pair<Int, String?> {
         val pending = workSessionDao.getPendingClosed()
-        if (pending.isEmpty()) return 0
+        if (pending.isEmpty()) return Pair(0, null)
 
         val payload = pending.map { s ->
             SessionDto(
@@ -312,10 +334,18 @@ class SyncService(
             )
         }
 
-        val response = api.uploadSessions(UploadSessionsRequest(payload))
-        if (response.isSuccessful && response.body()?.success == true) {
-            workSessionDao.markSynced(pending.map { it.id })
+        return try {
+            val response = api.uploadSessions(UploadSessionsRequest(payload))
+            if (response.isSuccessful && response.body()?.success == true) {
+                workSessionDao.markSynced(pending.map { it.id })
+                Pair(pending.size, null)
+            } else {
+                Log.e(TAG, "uploadSessions failed: HTTP ${response.code()}")
+                Pair(0, "Sesiones no subidas (HTTP ${response.code()})")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "uploadSessions exception", e)
+            Pair(0, "Sesiones: ${e.message ?: "error de red"}")
         }
-        return pending.size
     }
 }

@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
-import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -18,7 +17,6 @@ import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 class SettingsFragment : Fragment() {
 
@@ -32,8 +30,6 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val inputApiUrl = view.findViewById<EditText>(R.id.inputApiUrl)
-        val btnSaveApiUrl = view.findViewById<MaterialButton>(R.id.btnSaveApiUrl)
         val btnLogout = view.findViewById<MaterialButton>(R.id.btnLogout)
         val btnCheckUpdates = view.findViewById<MaterialButton>(R.id.btnCheckUpdates)
         val spinnerLanguage = view.findViewById<Spinner>(R.id.spinnerLanguage)
@@ -61,22 +57,13 @@ class SettingsFragment : Fragment() {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         })
 
-        // Load current API url
+        // Load device info (read-only)
         viewLifecycleOwner.lifecycleScope.launch {
-            val apiUrl = ServiceLocator.configRepo.get("api_base_url") ?: ""
-            inputApiUrl.setText(apiUrl)
+            val name = ServiceLocator.configRepo.get("device_name") ?: "—"
+            val id   = ServiceLocator.configRepo.get("device_id")   ?: "—"
+            view.findViewById<TextView>(R.id.txtDeviceName).text = name
+            view.findViewById<TextView>(R.id.txtDeviceId).text   = id
         }
-
-        // Save API URL
-        btnSaveApiUrl.setOnClickListener {
-            viewLifecycleOwner.lifecycleScope.launch {
-                val url = inputApiUrl.text.toString().trim()
-                ServiceLocator.configRepo.set("api_base_url", url)
-                ServiceLocator.apiClient.resetResolvedBase()
-                Toast.makeText(requireContext(), getString(R.string.settings_url_saved), Toast.LENGTH_SHORT).show()
-            }
-        }
-
 
         // Check for updates
         btnCheckUpdates.setOnClickListener {

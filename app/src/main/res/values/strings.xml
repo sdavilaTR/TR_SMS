@@ -12,6 +12,7 @@
     <string name="menu_settings">Configuración</string>
 
     <!-- Home -->
+    <string name="home_label_terminal">Terminal</string>
     <string name="home_label_workers">Trabajadores</string>
     <string name="home_label_scans_today">Escaneos Hoy</string>
     <string name="home_label_pending">Pendientes</string>
@@ -122,6 +123,8 @@
     <string name="settings_api_url_label">URL del API</string>
     <string name="settings_save">Guardar</string>
     <string name="settings_device_label">Dispositivo</string>
+    <string name="settings_device_name_label">Nombre</string>
+    <string name="settings_device_id_label">ID</string>
     <string name="settings_device_name_hint">Nombre del dispositivo</string>
     <string name="settings_device_id_format">ID: %s</string>
     <string name="settings_device_id_none">ID: —</string>

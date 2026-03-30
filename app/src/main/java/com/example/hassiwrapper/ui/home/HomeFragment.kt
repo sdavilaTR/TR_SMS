@@ -47,7 +47,10 @@ class HomeFragment : Fragment() {
                 val incidents = ServiceLocator.incidentDao.getUnresolvedCount()
                 val lastSync = ServiceLocator.configRepo.get("last_sync")
 
+                val terminalName = ServiceLocator.configRepo.get("device_name") ?: "—"
+
                 view?.let { v ->
+                    v.findViewById<TextView>(R.id.txtTerminalName).text = terminalName
                     v.findViewById<TextView>(R.id.txtWorkerCount).text = workerCount.toString()
                     v.findViewById<TextView>(R.id.txtScansToday).text = scansToday.toString()
                     v.findViewById<TextView>(R.id.txtPendingCount).text = (pending.logs + pending.incidents + pending.sessions).toString()

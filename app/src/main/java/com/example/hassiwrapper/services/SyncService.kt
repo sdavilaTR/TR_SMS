@@ -264,27 +264,22 @@ class SyncService(
 
     private suspend fun applyWorkers(data: SyncDownloadResponse): WorkerResult {
         val persons = data.persons ?: return WorkerResult()
-        var added = 0; var updated = 0; var skipped = 0
+        if (persons.isEmpty()) return WorkerResult()
 
-        for (p in persons) {
-            val entity = transformWorker(p)
-            val existing = personDao.getByUuid(entity.unique_id_value)
-            if (existing != null) {
-                personDao.insert(entity.copy(syncStatus = "SYNCED"))
-                updated++
-            } else {
-                try {
-                    personDao.insert(entity.copy(syncStatus = "SYNCED"))
-                    added++
-                } catch (_: Exception) {
-                    skipped++
-                }
-            }
-        }
+        // Pre-fetch existing UUIDs in one query to classify add vs update in memory,
+        // then do a single insertAll() so the DB count is never partial for concurrent readers.
+        val existingUuids = personDao.getAllUuids().toHashSet()
+        val entities = persons.map { transformWorker(it).copy(syncStatus = "SYNCED") }
 
-        configRepo.set("online_workers_count", (added + updated + skipped).toString())
-        Log.d(TAG, "Workers: $added added, $updated updated, $skipped skipped")
-        return WorkerResult(added, updated, skipped)
+        val added   = entities.count { it.unique_id_value !in existingUuids }
+        val updated = entities.count { it.unique_id_value  in existingUuids }
+
+        // Atomic batch — Room wraps @Insert in a single transaction
+        personDao.insertAll(entities)
+
+        configRepo.set("online_workers_count", entities.size.toString())
+        Log.d(TAG, "Workers: $added added, $updated updated")
+        return WorkerResult(added, updated, 0)
     }
 
     private fun transformWorker(p: PersonDto): PersonEntity {

@@ -92,6 +92,9 @@ interface PersonDao {
     @Query("SELECT * FROM persons WHERE given_name LIKE '%' || :query || '%' OR family_name LIKE '%' || :query || '%' OR badge_number LIKE '%' || :query || '%'")
     suspend fun search(query: String): List<PersonEntity>
 
+    @Query("SELECT unique_id_value FROM persons")
+    suspend fun getAllUuids(): List<String>
+
     @Query("SELECT COUNT(*) FROM persons")
     suspend fun count(): Int
 

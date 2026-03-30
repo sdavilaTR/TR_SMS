@@ -79,9 +79,10 @@ class WebViewLoginActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val apiBase = ApiClient.DEFAULT_PRIMARY
 
-            // Derive Web App URL: https://web-atlas-api-dev.azurewebsites.net
-            //                  → https://web-atlas-dev.azurewebsites.net
-            val webBase = apiBase.replace("-api", "")
+            // Derive Web App URL:
+            //   Old: https://web-atlas-api-pre.azurewebsites.net -> https://web-atlas-pre.azurewebsites.net
+            //   New: https://atlas.tecnicasreunidas.es/api       -> https://atlas.tecnicasreunidas.es/
+            val webBase = apiBase.replace("-api", "").removeSuffix("/api")
 
             // Clear cookies to ensure a fresh Microsoft login
             CookieManager.getInstance().removeAllCookies(null)

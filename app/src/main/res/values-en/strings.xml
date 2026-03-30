@@ -80,6 +80,7 @@
     <string name="sync_network_offline">Network: No connection</string>
     <string name="sync_api_ok">ATLAS API: Available</string>
     <string name="sync_api_fail">ATLAS API: Unavailable</string>
+    <string name="sync_retrying">Retrying (%1$d)… wait %2$ds</string>
 
     <!-- Workers -->
     <string name="workers_hint_search">Search worker…</string>

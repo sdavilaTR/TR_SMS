@@ -80,6 +80,7 @@
     <string name="sync_network_offline">Réseau : Sans connexion</string>
     <string name="sync_api_ok">API ATLAS : Disponible</string>
     <string name="sync_api_fail">API ATLAS : Indisponible</string>
+    <string name="sync_retrying">Nouvel essai (%1$d)… attente %2$ds</string>
 
     <!-- Workers -->
     <string name="workers_hint_search">Rechercher un travailleur…</string>

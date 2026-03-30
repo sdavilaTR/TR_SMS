@@ -119,7 +119,10 @@ class SyncFragment : Fragment() {
         status.setTextColor(resources.getColor(R.color.on_surface_variant, null))
 
         viewLifecycleOwner.lifecycleScope.launch {
-            val result = ServiceLocator.syncService.fullSync()
+            val result = ServiceLocator.syncService.fullSync { retry ->
+                status.text = getString(R.string.sync_retrying, retry.attempt, retry.waitSeconds)
+                status.setTextColor(resources.getColor(R.color.warning, null))
+            }
 
             btn.isEnabled = true
             progress.visibility = View.GONE

@@ -59,10 +59,12 @@ class SettingsFragment : Fragment() {
 
         // Load device info (read-only)
         viewLifecycleOwner.lifecycleScope.launch {
-            val name = ServiceLocator.configRepo.get("device_name") ?: "—"
-            val id   = ServiceLocator.configRepo.get("device_id")   ?: "—"
-            view.findViewById<TextView>(R.id.txtDeviceName).text = name
-            view.findViewById<TextView>(R.id.txtDeviceId).text   = id
+            val name     = ServiceLocator.configRepo.get("device_name")     ?: "—"
+            val id       = ServiceLocator.configRepo.get("device_id")       ?: "—"
+            val location = ServiceLocator.configRepo.get("device_location") ?: "—"
+            view.findViewById<TextView>(R.id.txtDeviceName).text     = name
+            view.findViewById<TextView>(R.id.txtDeviceId).text       = id
+            view.findViewById<TextView>(R.id.txtDeviceLocation).text = location
         }
 
         // Check for updates

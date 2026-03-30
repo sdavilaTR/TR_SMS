@@ -76,7 +76,7 @@
                         android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" />
                 </LinearLayout>
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal" android:layout_marginBottom="6dp">
                     <TextView android:layout_width="0dp" android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/settings_device_id_label"
@@ -87,6 +87,18 @@
                         android:text="—"
                         android:textColor="@color/on_surface" android:textSize="12sp"
                         android:fontFamily="monospace" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_device_location_label"
+                        android:textColor="@color/on_surface_variant" android:textSize="13sp" />
+                    <TextView android:id="@+id/txtDeviceLocation"
+                        android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="2"
+                        android:text="—"
+                        android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" />
                 </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>

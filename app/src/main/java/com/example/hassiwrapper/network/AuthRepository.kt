@@ -50,6 +50,15 @@ class AuthRepository(private val configRepo: ConfigRepository) {
 
             configRepo.set("user_token", token)
             cachedToken = token
+
+            // Extract company claim from JWT and persist as device_location.
+            // ASP.NET Identity exposes it as "company" or the full schema URI.
+            val company = extractJwtClaim(token, "company")
+                ?: extractJwtClaim(token, "http://schemas.xmlsoap.org/claims/Company")
+            if (!company.isNullOrBlank()) {
+                configRepo.set("device_location", company)
+            }
+
             Result.success(token)
         } catch (e: Exception) {
             Result.failure(Exception("No se pudo conectar con el servidor: ${e.message}"))
@@ -100,6 +109,22 @@ class AuthRepository(private val configRepo: ConfigRepository) {
     suspend fun logout() {
         configRepo.remove("user_token")
         cachedToken = null
+    }
+
+    /**
+     * Decodes the JWT payload (Base64url) and returns the value of [claimName], or null.
+     * Does NOT verify the signature — only used to read identity claims after a successful login.
+     */
+    private fun extractJwtClaim(token: String, claimName: String): String? {
+        return try {
+            val parts = token.split(".")
+            if (parts.size != 3) return null
+            val payload = String(Base64.decode(parts[1], Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP))
+            val json = JSONObject(payload)
+            if (json.has(claimName)) json.getString(claimName) else null
+        } catch (_: Exception) {
+            null
+        }
     }
 
     /** Refresh cached device ID from config. */

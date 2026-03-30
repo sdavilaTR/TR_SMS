@@ -16,20 +16,13 @@
         android:clipChildren="false"
         android:clipToPadding="false">
 
-        <!-- Terminal name -->
+        <!-- Terminal name + location -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:gravity="center"
             android:paddingBottom="16dp">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/home_label_terminal"
-                android:textColor="@color/on_surface_variant"
-                android:textSize="12sp"
-                android:letterSpacing="0.1" />
             <TextView
                 android:id="@+id/txtTerminalName"
                 android:layout_width="wrap_content"
@@ -40,6 +33,14 @@
                 android:textStyle="bold"
                 android:maxLines="1"
                 android:ellipsize="end" />
+            <TextView
+                android:id="@+id/txtTerminalLocation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="@color/on_surface_variant"
+                android:textSize="12sp"
+                android:visibility="gone" />
         </LinearLayout>
 
         <!-- Stats Cards Row 1 -->

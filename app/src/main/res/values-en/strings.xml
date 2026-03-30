@@ -116,6 +116,7 @@
     <string name="settings_device_label">Device</string>
     <string name="settings_device_name_label">Name</string>
     <string name="settings_device_id_label">ID</string>
+    <string name="settings_device_location_label">Location</string>
     <string name="settings_device_name_hint">Device name</string>
     <string name="settings_device_id_format">ID: %s</string>
     <string name="settings_device_id_none">ID: —</string>

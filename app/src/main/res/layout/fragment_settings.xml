@@ -114,7 +114,17 @@
             android:layout_marginTop="4dp"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
-        <!-- Logout -->
+        <!-- Login (shown when not authenticated) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLogin"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/settings_login"
+            android:textAllCaps="false"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+
+        <!-- Logout (shown when authenticated) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnLogout"
             android:layout_width="match_parent"

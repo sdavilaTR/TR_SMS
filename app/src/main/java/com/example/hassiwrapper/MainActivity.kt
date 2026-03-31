@@ -92,7 +92,9 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 ServiceLocator.apiClient.seedDefaults()
-                ServiceLocator.syncService.fullSync()
+                if (ServiceLocator.authRepo.isAuthenticated()) {
+                    ServiceLocator.syncService.fullSync()
+                }
             } catch (_: Exception) { }
         }
 
@@ -188,8 +190,12 @@ class MainActivity : AppCompatActivity() {
     fun logout() {
         lifecycleScope.launch {
             ServiceLocator.authRepo.logout()
-            startActivity(Intent(this@MainActivity, LoginActivity::class.java))
-            finish()
+            Toast.makeText(this@MainActivity, getString(R.string.sync_auth_none), Toast.LENGTH_SHORT).show()
         }
+    }
+
+    fun launchLogin() {
+        startActivity(Intent(this@MainActivity, LoginActivity::class.java))
+        finish()
     }
 }

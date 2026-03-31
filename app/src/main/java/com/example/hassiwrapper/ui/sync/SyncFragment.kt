@@ -32,12 +32,14 @@ class SyncFragment : Fragment() {
         loadPendingCounts()
         loadLastSync()
         checkConnectivity()
+        checkAuthStatus()
     }
 
     override fun onResume() {
         super.onResume()
         // Refresh connectivity status every time the screen becomes visible
         checkConnectivity()
+        checkAuthStatus()
         loadPendingCounts()
     }
 
@@ -80,6 +82,26 @@ class SyncFragment : Fragment() {
         }
     }
 
+    private fun checkAuthStatus() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val v = view ?: return@launch
+            val dotAuth = v.findViewById<View>(R.id.dotAuth)
+            val txtAuth = v.findViewById<TextView>(R.id.txtAuthStatus)
+            val btnSync = v.findViewById<MaterialButton>(R.id.btnFullSync)
+
+            val authenticated = ServiceLocator.authRepo.isAuthenticated()
+            if (authenticated) {
+                dotAuth.setBackgroundResource(R.drawable.dot_green)
+                txtAuth.text = getString(R.string.sync_auth_ok)
+                btnSync.isEnabled = true
+            } else {
+                dotAuth.setBackgroundResource(R.drawable.dot_orange)
+                txtAuth.text = getString(R.string.sync_auth_none)
+                btnSync.isEnabled = false
+            }
+        }
+    }
+
     private fun isNetworkAvailable(): Boolean {
         val cm = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val network = cm.activeNetwork ?: return false
@@ -115,12 +137,18 @@ class SyncFragment : Fragment() {
         val dotApi = v.findViewById<View>(R.id.dotApi)
         val txtApi = v.findViewById<TextView>(R.id.txtApiStatus)
 
-        btn.isEnabled = false
-        progress.visibility = View.VISIBLE
-        status.text = getString(R.string.sync_syncing)
-        status.setTextColor(resources.getColor(R.color.on_surface_variant, null))
-
         viewLifecycleOwner.lifecycleScope.launch {
+            // Block sync if not authenticated
+            if (!ServiceLocator.authRepo.isAuthenticated()) {
+                status.text = getString(R.string.sync_auth_required)
+                status.setTextColor(resources.getColor(R.color.warning, null))
+                return@launch
+            }
+
+            btn.isEnabled = false
+            progress.visibility = View.VISIBLE
+            status.text = getString(R.string.sync_syncing)
+            status.setTextColor(resources.getColor(R.color.on_surface_variant, null))
             val result = ServiceLocator.syncService.fullSync { retry ->
                 status.text = getString(R.string.sync_retrying, retry.attempt, retry.waitSeconds)
                 status.setTextColor(resources.getColor(R.color.warning, null))

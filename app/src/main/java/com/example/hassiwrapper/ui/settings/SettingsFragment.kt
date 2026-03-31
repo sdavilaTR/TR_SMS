@@ -31,10 +31,22 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val btnLogout = view.findViewById<MaterialButton>(R.id.btnLogout)
+        val btnLogin = view.findViewById<MaterialButton>(R.id.btnLogin)
         val btnCheckUpdates = view.findViewById<MaterialButton>(R.id.btnCheckUpdates)
         val spinnerLanguage = view.findViewById<Spinner>(R.id.spinnerLanguage)
 
         populateAppInfo(view)
+
+        // Show login or logout button based on auth state
+        viewLifecycleOwner.lifecycleScope.launch {
+            val authenticated = ServiceLocator.authRepo.isAuthenticated()
+            btnLogin.visibility = if (authenticated) android.view.View.GONE else android.view.View.VISIBLE
+            btnLogout.visibility = if (authenticated) android.view.View.VISIBLE else android.view.View.GONE
+        }
+
+        btnLogin.setOnClickListener {
+            (requireActivity() as? MainActivity)?.launchLogin()
+        }
 
         // Language spinner
         val languageNames = arrayOf(

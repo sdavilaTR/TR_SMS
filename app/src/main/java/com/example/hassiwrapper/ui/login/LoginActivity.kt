@@ -58,8 +58,13 @@ class LoginActivity : AppCompatActivity() {
         val txtError = findViewById<TextView>(R.id.txtLoginError)
         val progress = findViewById<ProgressBar>(R.id.progressLogin)
         val btnMicrosoftLogin = findViewById<Button>(R.id.btnMicrosoftLogin)
+        val btnSkipLogin = findViewById<Button>(R.id.btnSkipLogin)
 
         findViewById<TextView>(R.id.txtVersion).text = BuildConfig.BUILD_TAG
+
+        btnSkipLogin.setOnClickListener {
+            goToMain()
+        }
 
         btnMicrosoftLogin.setOnClickListener {
             val intent = Intent(this, WebViewLoginActivity::class.java)

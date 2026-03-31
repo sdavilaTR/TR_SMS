@@ -81,6 +81,9 @@
     <string name="sync_network_offline">Network: No connection</string>
     <string name="sync_api_ok">ATLAS API: Available</string>
     <string name="sync_api_fail">ATLAS API: Unavailable</string>
+    <string name="sync_auth_ok">Session: Active</string>
+    <string name="sync_auth_none">Session: Not signed in</string>
+    <string name="sync_auth_required">Sign in to synchronize</string>
     <string name="sync_retrying">Retrying (%1$d)… wait %2$ds</string>
 
     <!-- Workers -->
@@ -122,6 +125,8 @@
     <string name="settings_device_id_none">ID: —</string>
     <string name="settings_save_device">Save Device</string>
     <string name="settings_logout">Sign Out</string>
+    <string name="settings_login">Sign In</string>
+    <string name="login_skip">Continue without signing in</string>
     <string name="settings_info_title">Application Information</string>
     <string name="settings_info_version">Version</string>
     <string name="settings_info_build_date">Build date</string>

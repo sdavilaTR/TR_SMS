@@ -107,6 +107,17 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSkipLogin"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/login_skip"
+            android:textAllCaps="false"
+            android:textSize="14sp"
+            android:textColor="@color/on_surface_variant"
+            app:cornerRadius="12dp"
+            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
         <ProgressBar
             android:id="@+id/progressLogin"
             android:layout_width="wrap_content"

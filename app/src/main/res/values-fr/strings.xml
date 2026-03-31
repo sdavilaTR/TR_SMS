@@ -81,6 +81,9 @@
     <string name="sync_network_offline">Réseau : Sans connexion</string>
     <string name="sync_api_ok">API ATLAS : Disponible</string>
     <string name="sync_api_fail">API ATLAS : Indisponible</string>
+    <string name="sync_auth_ok">Session : Active</string>
+    <string name="sync_auth_none">Session : Non connecté</string>
+    <string name="sync_auth_required">Connectez-vous pour synchroniser</string>
     <string name="sync_retrying">Nouvel essai (%1$d)… attente %2$ds</string>
 
     <!-- Workers -->
@@ -122,6 +125,8 @@
     <string name="settings_device_id_none">ID : —</string>
     <string name="settings_save_device">Enregistrer l\'appareil</string>
     <string name="settings_logout">Se déconnecter</string>
+    <string name="settings_login">Se connecter</string>
+    <string name="login_skip">Continuer sans se connecter</string>
     <string name="settings_info_title">Informations sur l\'application</string>
     <string name="settings_info_version">Version</string>
     <string name="settings_info_build_date">Date de compilation</string>

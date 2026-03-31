@@ -23,7 +23,10 @@ import com.example.hassiwrapper.update.UpdateInfo
 import com.example.hassiwrapper.update.UpdateInstaller
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.navigation.NavigationView
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -36,6 +39,12 @@ class MainActivity : AppCompatActivity() {
 
     // Holds a pending update if the user needs to grant install-unknown-apps permission first
     private var pendingUpdate: UpdateInfo? = null
+    private var autoSyncJob: Job? = null
+
+    companion object {
+        private const val TAG = "MainActivity"
+        private const val AUTO_SYNC_INTERVAL_MS = 60_000L // 1 minute
+    }
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleHelper.applyLocale(newBase))
@@ -104,10 +113,37 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) { showUpdateDialog(update) }
             }
         }
+
+        startAutoSync()
+    }
+
+    private fun startAutoSync() {
+        if (autoSyncJob?.isActive == true) return
+        autoSyncJob = lifecycleScope.launch {
+            while (true) {
+                delay(AUTO_SYNC_INTERVAL_MS)
+                try {
+                    if (!ServiceLocator.authRepo.isAuthenticated()) continue
+                    val connectivity = ServiceLocator.apiClient.checkConnectivity()
+                    if (!connectivity.apiReachable) continue
+                    Log.d(TAG, "Auto-sync: starting")
+                    ServiceLocator.syncService.fullSync()
+                    Log.d(TAG, "Auto-sync: completed")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Auto-sync: failed silently", e)
+                }
+            }
+        }
+    }
+
+    private fun stopAutoSync() {
+        autoSyncJob?.cancel()
+        autoSyncJob = null
     }
 
     override fun onResume() {
         super.onResume()
+        startAutoSync()
         dataWedgeManager.register()
 
         // If the user just came back from granting the install-unknown-apps permission, proceed
@@ -120,6 +156,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        stopAutoSync()
         dataWedgeManager.unregister()
     }
 

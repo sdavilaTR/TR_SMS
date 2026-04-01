@@ -56,6 +56,10 @@
     <string name="passport_status_active">● ACTIVO</string>
     <string name="passport_status_inactive">● INACTIVO</string>
     <string name="passport_worker_not_found">Trabajador no encontrado en la base de datos local</string>
+    <string name="passport_photo_uploading">Subiendo foto…</string>
+    <string name="passport_photo_uploaded">Foto actualizada correctamente</string>
+    <string name="passport_photo_error">Error al subir la foto: %s</string>
+    <string name="passport_photo_no_connection">Se necesita conexión para subir la foto</string>
 
     <!-- Attendance -->
     <string name="attendance_title">Registros de Acceso</string>

@@ -100,6 +100,9 @@ interface PersonDao {
 
     @Query("DELETE FROM persons")
     suspend fun deleteAll()
+
+    @Query("UPDATE persons SET photo_url = :photoUrl WHERE unique_id_value = :uuid")
+    suspend fun updatePhotoUrl(uuid: String, photoUrl: String?)
 }
 
 @Dao

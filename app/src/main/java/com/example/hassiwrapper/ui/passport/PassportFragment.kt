@@ -2,12 +2,17 @@ package com.example.hassiwrapper.ui.passport
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.SoundPool
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -25,7 +30,15 @@ import com.example.hassiwrapper.data.db.entities.PersonEntity
 import com.google.android.material.button.MaterialButton
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -36,6 +49,8 @@ class PassportFragment : Fragment() {
     private var soundAllowed: Int = 0
     private val loadedSounds = mutableSetOf<Int>()
 
+    private var currentPerson: PersonEntity? = null
+
     private val cameraScanner = registerForActivityResult(ScanContract()) { result ->
         result.contents?.let { lookupWorker(it) }
     }
@@ -45,6 +60,19 @@ class PassportFragment : Fragment() {
     ) { granted ->
         if (granted) launchCameraScanner()
         else Toast.makeText(requireContext(), getString(R.string.scanner_error_camera_permission), Toast.LENGTH_SHORT).show()
+    }
+
+    private val requestPhotoCameraPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) launchPhotoCameraCapture()
+        else Toast.makeText(requireContext(), getString(R.string.scanner_error_camera_permission), Toast.LENGTH_SHORT).show()
+    }
+
+    private val takePhotoLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        if (bitmap != null) onPhotoCaptured(bitmap)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -75,6 +103,9 @@ class PassportFragment : Fragment() {
         }
         view.findViewById<MaterialButton>(R.id.btnClosePassport).setOnClickListener {
             showWaiting()
+        }
+        view.findViewById<FrameLayout>(R.id.photoContainer).setOnClickListener {
+            if (currentPerson != null) requestPhotoCameraIfNeededAndCapture()
         }
 
         // Listen to DataWedge laser scanner (same as ScannerFragment)
@@ -133,6 +164,7 @@ class PassportFragment : Fragment() {
 
     private fun showPassport(person: PersonEntity, contractor: ContractorEntity?) {
         val view = this.view ?: return
+        currentPerson = person
 
         view.findViewById<TextView>(R.id.txtFamilyName).text =
             person.family_name.ifBlank { "—" }
@@ -176,14 +208,132 @@ class PassportFragment : Fragment() {
             statusView.setTextColor(resources.getColor(R.color.denied, null))
         }
 
+        // Load existing photo or show placeholder
+        loadWorkerPhoto(person.photo_url)
+
         view.findViewById<View>(R.id.layoutWaiting).visibility = View.GONE
         val loaded = view.findViewById<ScrollView>(R.id.layoutLoaded)
         loaded.visibility = View.VISIBLE
         loaded.scrollTo(0, 0)
     }
 
+    private fun loadWorkerPhoto(photoUrl: String?) {
+        val view = this.view ?: return
+        val imgView = view.findViewById<ImageView>(R.id.imgWorkerPhoto)
+        val placeholder = view.findViewById<TextView>(R.id.txtPhotoPlaceholder)
+
+        if (photoUrl.isNullOrBlank()) {
+            imgView.visibility = View.GONE
+            placeholder.visibility = View.VISIBLE
+            return
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                try {
+                    val client = OkHttpClient()
+                    val request = Request.Builder().url(photoUrl).build()
+                    val response = client.newCall(request).execute()
+                    response.body?.byteStream()?.let { BitmapFactory.decodeStream(it) }
+                } catch (e: Exception) {
+                    Log.w("PassportFragment", "Failed to load photo: ${e.message}")
+                    null
+                }
+            }
+            if (bitmap != null && isAdded) {
+                imgView.setImageBitmap(bitmap)
+                imgView.visibility = View.VISIBLE
+                placeholder.visibility = View.GONE
+            } else {
+                imgView.visibility = View.GONE
+                placeholder.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun requestPhotoCameraIfNeededAndCapture() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            launchPhotoCameraCapture()
+        } else {
+            requestPhotoCameraPermission.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    private fun launchPhotoCameraCapture() {
+        takePhotoLauncher.launch(null)
+    }
+
+    private fun onPhotoCaptured(bitmap: Bitmap) {
+        val view = this.view ?: return
+        val person = currentPerson ?: return
+
+        // Show preview immediately
+        val imgView = view.findViewById<ImageView>(R.id.imgWorkerPhoto)
+        val placeholder = view.findViewById<TextView>(R.id.txtPhotoPlaceholder)
+        imgView.setImageBitmap(bitmap)
+        imgView.visibility = View.VISIBLE
+        placeholder.visibility = View.GONE
+
+        // Upload to API
+        val projectId = person.project_id
+        if (projectId == null) {
+            Toast.makeText(requireContext(), getString(R.string.passport_photo_error, "No project ID"), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Toast.makeText(requireContext(), getString(R.string.passport_photo_uploading), Toast.LENGTH_SHORT).show()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val photoUrl = uploadPhoto(projectId, person.unique_id_value, bitmap)
+
+                // Update local DB
+                ServiceLocator.personDao.updatePhotoUrl(person.unique_id_value, photoUrl)
+                currentPerson = person.copy(photo_url = photoUrl)
+
+                if (isAdded) {
+                    Toast.makeText(requireContext(), getString(R.string.passport_photo_uploaded), Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("PassportFragment", "Photo upload failed", e)
+                if (isAdded) {
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.passport_photo_error, e.message ?: "Unknown error"),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private suspend fun uploadPhoto(projectId: Int, personUuid: String, bitmap: Bitmap): String {
+        return withContext(Dispatchers.IO) {
+            // Compress bitmap to JPEG
+            val baos = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos)
+            val bytes = baos.toByteArray()
+
+            val requestBody = bytes.toRequestBody("image/jpeg".toMediaType())
+            val filePart = MultipartBody.Part.createFormData("file", "photo.jpg", requestBody)
+
+            val api = ServiceLocator.apiClient.getService()
+            val response = api.uploadWorkerPhoto(projectId, personUuid, filePart)
+
+            if (!response.isSuccessful) {
+                throw Exception("HTTP ${response.code()}")
+            }
+
+            response.body()?.photoUrl
+                ?: throw Exception("No photo URL in response")
+        }
+    }
+
     private fun showWaiting() {
         val view = this.view ?: return
+        currentPerson = null
         view.findViewById<View>(R.id.layoutLoaded).visibility = View.GONE
         view.findViewById<View>(R.id.layoutWaiting).visibility = View.VISIBLE
     }

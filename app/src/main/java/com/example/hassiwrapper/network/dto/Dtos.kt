@@ -141,6 +141,12 @@ data class RegisterDeviceRequest(
 
 data class UploadResponse(val success: Boolean = false)
 
+data class PhotoUploadResponse(
+    val photoUrl: String? = null,
+    val sizeBytes: Long = 0,
+    val fileName: String? = null
+)
+
 data class AccessLogDto(
     val uuid: String,
     @SerializedName("project_id") val projectId: Int?,

@@ -8,6 +8,10 @@ import com.example.hassiwrapper.network.ApiClient
 import com.example.hassiwrapper.network.AtlasApiService
 import com.example.hassiwrapper.network.dto.*
 import kotlinx.coroutines.delay
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 import java.time.Instant
 
 /**
@@ -28,7 +32,8 @@ class SyncService(
     private val cryptoKeyDao: CryptoKeyDao,
     private val accessLogDao: AccessLogDao,
     private val incidentDao: IncidentDao,
-    private val workSessionDao: WorkSessionDao
+    private val workSessionDao: WorkSessionDao,
+    private val pendingPhotoDao: PendingPhotoDao? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -56,7 +61,8 @@ class SyncService(
     data class PendingCounts(
         val logs: Int = 0,
         val incidents: Int = 0,
-        val sessions: Int = 0
+        val sessions: Int = 0,
+        val photos: Int = 0
     )
 
     /** Structured info passed to the caller on each retry so the UI can show it. */
@@ -66,7 +72,8 @@ class SyncService(
         return PendingCounts(
             logs = accessLogDao.getPendingCount(),
             incidents = incidentDao.getPendingCount(),
-            sessions = workSessionDao.getPendingCount()
+            sessions = workSessionDao.getPendingCount(),
+            photos = pendingPhotoDao?.count() ?: 0
         )
     }
 
@@ -156,6 +163,9 @@ class SyncService(
         val (logsUploaded, logsError)         = uploadAccessLogs(api)
         val (incidentsUploaded, incidentsError) = uploadIncidents(api)
         val (sessionsUploaded, sessionsError)  = uploadSessions(api)
+
+        // 5. Upload pending photos (non-fatal)
+        uploadPendingPhotos(api)
 
         val uploadErrors = listOfNotNull(logsError, incidentsError, sessionsError)
         val success = uploadErrors.isEmpty()
@@ -418,6 +428,44 @@ class SyncService(
             else -> {
                 Log.e(TAG, "uploadSessions rejected: HTTP ${response.code()}")
                 Pair(0, "Sesiones no subidas (HTTP ${response.code()})")
+            }
+        }
+    }
+
+    // ── Pending photo uploads ─────────────────────────────────────────────────
+
+    private suspend fun uploadPendingPhotos(api: AtlasApiService) {
+        val dao = pendingPhotoDao ?: return
+        val pending = dao.getAll()
+        if (pending.isEmpty()) return
+
+        Log.i(TAG, "Uploading ${pending.size} pending photo(s)")
+        for (photo in pending) {
+            try {
+                val file = File(photo.local_path)
+                if (!file.exists()) {
+                    Log.w(TAG, "Pending photo file missing: ${photo.local_path}, removing from queue")
+                    dao.delete(photo.unique_id_value)
+                    continue
+                }
+
+                val bytes = file.readBytes()
+                val requestBody = bytes.toRequestBody("image/jpeg".toMediaType())
+                val filePart = MultipartBody.Part.createFormData("file", "photo.jpg", requestBody)
+
+                val response = api.uploadWorkerPhoto(photo.project_id, photo.unique_id_value, filePart)
+                if (response.isSuccessful) {
+                    val photoUrl = response.body()?.photoUrl
+                    if (photoUrl != null) {
+                        personDao.updatePhotoUrl(photo.unique_id_value, photoUrl)
+                    }
+                    dao.delete(photo.unique_id_value)
+                    Log.i(TAG, "Uploaded pending photo for ${photo.unique_id_value}")
+                } else {
+                    Log.w(TAG, "Photo upload failed for ${photo.unique_id_value}: HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Photo upload error for ${photo.unique_id_value}: ${e.message}")
             }
         }
     }

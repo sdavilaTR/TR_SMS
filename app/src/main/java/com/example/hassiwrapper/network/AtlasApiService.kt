@@ -1,6 +1,7 @@
 package com.example.hassiwrapper.network
 
 import com.example.hassiwrapper.network.dto.*
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -36,4 +37,13 @@ interface AtlasApiService {
     // ── Sync: Register Device ────────────────────────────
     @POST("/api/trac/sync/register-device")
     suspend fun registerDevice(@Body body: RegisterDeviceRequest): Response<Void>
+
+    // ── Photo Upload ────────────────────────────────────
+    @Multipart
+    @POST("/api/trac/projects/{projectId}/persons/{personId}/photo")
+    suspend fun uploadWorkerPhoto(
+        @Path("projectId") projectId: Int,
+        @Path("personId") personId: String,
+        @Part file: MultipartBody.Part
+    ): Response<PhotoUploadResponse>
 }

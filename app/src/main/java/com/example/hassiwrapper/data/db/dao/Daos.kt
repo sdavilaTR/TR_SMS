@@ -100,6 +100,27 @@ interface PersonDao {
 
     @Query("DELETE FROM persons")
     suspend fun deleteAll()
+
+    @Query("UPDATE persons SET photo_url = :photoUrl WHERE unique_id_value = :uuid")
+    suspend fun updatePhotoUrl(uuid: String, photoUrl: String?)
+}
+
+@Dao
+interface PendingPhotoDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(photo: PendingPhotoEntity)
+
+    @Query("SELECT * FROM pending_photos")
+    suspend fun getAll(): List<PendingPhotoEntity>
+
+    @Query("SELECT COUNT(*) FROM pending_photos")
+    suspend fun count(): Int
+
+    @Query("DELETE FROM pending_photos WHERE unique_id_value = :uuid")
+    suspend fun delete(uuid: String)
+
+    @Query("DELETE FROM pending_photos")
+    suspend fun deleteAll()
 }
 
 @Dao

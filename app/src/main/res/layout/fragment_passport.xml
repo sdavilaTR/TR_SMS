@@ -133,21 +133,43 @@
                         android:orientation="horizontal"
                         android:padding="16dp">
 
-                        <!-- Photo placeholder -->
-                        <LinearLayout
+                        <!-- Photo (clickable to take photo) -->
+                        <FrameLayout
+                            android:id="@+id/photoContainer"
                             android:layout_width="100dp"
                             android:layout_height="130dp"
-                            android:orientation="vertical"
-                            android:gravity="center"
+                            android:layout_marginEnd="16dp"
                             android:background="@color/surface_variant"
-                            android:layout_marginEnd="16dp">
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <ImageView
+                                android:id="@+id/imgWorkerPhoto"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:scaleType="centerCrop"
+                                android:visibility="gone" />
 
                             <TextView
+                                android:id="@+id/txtPhotoPlaceholder"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:layout_gravity="center"
                                 android:text="👤"
                                 android:textSize="40sp" />
-                        </LinearLayout>
+
+                            <!-- Camera overlay icon -->
+                            <TextView
+                                android:id="@+id/txtCameraHint"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="bottom"
+                                android:background="#88000000"
+                                android:gravity="center"
+                                android:paddingVertical="4dp"
+                                android:text="📷"
+                                android:textSize="16sp" />
+                        </FrameLayout>
 
                         <!-- Name + status -->
                         <LinearLayout

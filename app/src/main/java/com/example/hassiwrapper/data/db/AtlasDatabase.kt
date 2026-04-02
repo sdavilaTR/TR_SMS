@@ -19,9 +19,10 @@ import com.example.hassiwrapper.data.db.entities.*
         RevokedTokenEntity::class,
         AccessLogEntity::class,
         IncidentEntity::class,
-        WorkSessionEntity::class
+        WorkSessionEntity::class,
+        PendingPhotoEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -37,6 +38,7 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun accessLogDao(): AccessLogDao
     abstract fun incidentDao(): IncidentDao
     abstract fun workSessionDao(): WorkSessionDao
+    abstract fun pendingPhotoDao(): PendingPhotoDao
 
     companion object {
         @Volatile

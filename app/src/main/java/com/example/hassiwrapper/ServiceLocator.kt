@@ -21,6 +21,7 @@ object ServiceLocator {
 
     val rulesService: RulesService by lazy { RulesService() }
     val incidentService: IncidentService by lazy { IncidentService(db.incidentDao(), configRepo) }
+    val observationService: ObservationService by lazy { ObservationService(db.hseObservationDao(), configRepo) }
 
     val clockingService: ClockingService by lazy {
         ClockingService(
@@ -35,7 +36,7 @@ object ServiceLocator {
             db.projectDao(), db.zoneDao(), db.contractorDao(),
             db.personDao(), db.accessPointDao(), db.cryptoKeyDao(),
             db.accessLogDao(), db.incidentDao(), db.workSessionDao(),
-            db.pendingPhotoDao()
+            db.pendingPhotoDao(), db.hseObservationDao()
         )
     }
 
@@ -48,4 +49,5 @@ object ServiceLocator {
     val projectDao get() = db.projectDao()
     val incidentDao get() = db.incidentDao()
     val pendingPhotoDao get() = db.pendingPhotoDao()
+    val hseObservationDao get() = db.hseObservationDao()
 }

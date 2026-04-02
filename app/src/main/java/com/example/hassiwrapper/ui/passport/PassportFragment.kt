@@ -243,7 +243,7 @@ class PassportFragment : Fragment() {
         val view = this.view ?: return
         val person = currentPerson ?: return
         val imgView = view.findViewById<ImageView>(R.id.imgWorkerPhoto)
-        val placeholder = view.findViewById<TextView>(R.id.txtPhotoPlaceholder)
+        val placeholder = view.findViewById<View>(R.id.layoutPhotoPlaceholder)
 
         val cachedFile = getCachedPhotoFile(person.unique_id_value)
 
@@ -323,7 +323,7 @@ class PassportFragment : Fragment() {
 
         // Show preview immediately
         val imgView = view.findViewById<ImageView>(R.id.imgWorkerPhoto)
-        val placeholder = view.findViewById<TextView>(R.id.txtPhotoPlaceholder)
+        val placeholder = view.findViewById<View>(R.id.layoutPhotoPlaceholder)
         imgView.setImageBitmap(bitmap)
         imgView.visibility = View.VISIBLE
         placeholder.visibility = View.GONE

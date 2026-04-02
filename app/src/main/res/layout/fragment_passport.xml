@@ -139,10 +139,12 @@
                             android:layout_width="100dp"
                             android:layout_height="130dp"
                             android:layout_marginEnd="16dp"
-                            android:background="@color/surface_variant"
+                            android:background="@drawable/bg_photo_placeholder"
                             android:clickable="true"
-                            android:focusable="true">
+                            android:focusable="true"
+                            android:foreground="?android:attr/selectableItemBackground">
 
+                            <!-- Actual photo (shown when loaded) -->
                             <ImageView
                                 android:id="@+id/imgWorkerPhoto"
                                 android:layout_width="match_parent"
@@ -150,25 +152,43 @@
                                 android:scaleType="centerCrop"
                                 android:visibility="gone" />
 
-                            <TextView
-                                android:id="@+id/txtPhotoPlaceholder"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_gravity="center"
-                                android:text="👤"
-                                android:textSize="40sp" />
-
-                            <!-- Camera overlay icon -->
-                            <TextView
-                                android:id="@+id/txtCameraHint"
+                            <!-- Placeholder (shown when no photo) -->
+                            <LinearLayout
+                                android:id="@+id/layoutPhotoPlaceholder"
                                 android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_gravity="bottom"
-                                android:background="#88000000"
-                                android:gravity="center"
-                                android:paddingVertical="4dp"
-                                android:text="📷"
-                                android:textSize="16sp" />
+                                android:layout_height="match_parent"
+                                android:orientation="vertical"
+                                android:gravity="center">
+
+                                <ImageView
+                                    android:layout_width="48dp"
+                                    android:layout_height="48dp"
+                                    android:src="@drawable/ic_person_placeholder"
+                                    android:layout_marginBottom="6dp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/passport_photo_tap"
+                                    android:textColor="#78909C"
+                                    android:textSize="10sp"
+                                    android:gravity="center" />
+                            </LinearLayout>
+
+                            <!-- Camera badge (bottom-right corner, always visible) -->
+                            <FrameLayout
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:layout_gravity="bottom|end"
+                                android:layout_margin="4dp"
+                                android:background="@color/primary"
+                                android:padding="5dp">
+
+                                <ImageView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:src="@drawable/ic_camera" />
+                            </FrameLayout>
                         </FrameLayout>
 
                         <!-- Name + status -->

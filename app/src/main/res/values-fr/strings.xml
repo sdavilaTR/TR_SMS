@@ -56,6 +56,7 @@
     <string name="passport_status_active">● ACTIF</string>
     <string name="passport_status_inactive">● INACTIF</string>
     <string name="passport_worker_not_found">Travailleur introuvable dans la base de données locale</string>
+    <string name="passport_photo_tap">Prendre\nphoto</string>
     <string name="passport_photo_uploading">Téléchargement de la photo…</string>
     <string name="passport_photo_uploaded">Photo mise à jour avec succès</string>
     <string name="passport_photo_error">Erreur lors du téléchargement : %s</string>

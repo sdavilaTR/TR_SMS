@@ -139,6 +139,33 @@ data class RegisterDeviceRequest(
     @SerializedName("project_id") val projectId: Int = 1
 )
 
+data class UploadObservationsRequest(val observations: List<ObservationUploadDto>)
+
+data class ObservationUploadDto(
+    val uuid: String,
+    @SerializedName("project_id") val projectId: Int?,
+    @SerializedName("observer_device_id") val observerDeviceId: String?,
+    @SerializedName("observer_badge") val observerBadge: String?,
+    @SerializedName("unique_id_value") val uniqueIdValue: String?,
+    @SerializedName("observed_name") val observedName: String?,
+    @SerializedName("observed_badge") val observedBadge: String?,
+    @SerializedName("observed_department") val observedDepartment: String?,
+    @SerializedName("observed_position") val observedPosition: String?,
+    @SerializedName("observed_contractor") val observedContractor: String?,
+    @SerializedName("observation_date") val observationDate: String,
+    val location: String?,
+    @SerializedName("area_authority") val areaAuthority: String?,
+    val description: String,
+    @SerializedName("observation_type") val observationType: String,
+    @SerializedName("safety_type") val safetyType: String,
+    @SerializedName("intervention_action") val interventionAction: String?,
+    val outcome: String?,
+    @SerializedName("action_taken") val actionTaken: String?,
+    @SerializedName("coaching_status") val coachingStatus: String,
+    @SerializedName("additional_comments") val additionalComments: String?,
+    val categories: List<String>?
+)
+
 data class UploadResponse(val success: Boolean = false)
 
 data class PhotoUploadResponse(

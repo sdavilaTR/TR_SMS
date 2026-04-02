@@ -374,6 +374,19 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <!-- Observation button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOpenObservation"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="@string/obs_open_observation"
+                android:textAllCaps="false"
+                android:layout_marginTop="12dp"
+                app:icon="@drawable/ic_observation"
+                app:iconGravity="textStart"
+                app:cornerRadius="12dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
             <!-- Camera scan button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCameraScanLoaded"

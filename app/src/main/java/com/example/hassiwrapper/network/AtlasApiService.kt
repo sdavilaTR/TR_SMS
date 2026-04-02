@@ -34,6 +34,10 @@ interface AtlasApiService {
     @POST("/api/trac/sync/upload-sessions")
     suspend fun uploadSessions(@Body body: UploadSessionsRequest): Response<UploadResponse>
 
+    // ── Sync: Upload HSE Observations ─────────────────────
+    @POST("/api/trac/sync/upload-observations")
+    suspend fun uploadObservations(@Body body: UploadObservationsRequest): Response<UploadResponse>
+
     // ── Sync: Register Device ────────────────────────────
     @POST("/api/trac/sync/register-device")
     suspend fun registerDevice(@Body body: RegisterDeviceRequest): Response<Void>

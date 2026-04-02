@@ -11,5 +11,6 @@
     <fragment android:id="@+id/syncFragment"       android:name="com.example.hassiwrapper.ui.sync.SyncFragment"            android:label="@string/menu_sync" />
     <fragment android:id="@+id/workersFragment"    android:name="com.example.hassiwrapper.ui.workers.WorkersFragment"      android:label="@string/menu_workers" />
     <fragment android:id="@+id/settingsFragment"   android:name="com.example.hassiwrapper.ui.settings.SettingsFragment"   android:label="@string/menu_settings" />
+    <fragment android:id="@+id/observationFragment" android:name="com.example.hassiwrapper.ui.observation.ObservationFragment" android:label="@string/obs_title" />
 
 </navigation>

@@ -33,7 +33,8 @@ class SyncService(
     private val accessLogDao: AccessLogDao,
     private val incidentDao: IncidentDao,
     private val workSessionDao: WorkSessionDao,
-    private val pendingPhotoDao: PendingPhotoDao? = null
+    private val pendingPhotoDao: PendingPhotoDao? = null,
+    private val hseObservationDao: HseObservationDao? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -52,6 +53,7 @@ class SyncService(
         val logsUploaded: Int = 0,
         val incidentsUploaded: Int = 0,
         val sessionsUploaded: Int = 0,
+        val observationsUploaded: Int = 0,
         val workersAdded: Int = 0,
         val workersUpdated: Int = 0,
         val workersSkipped: Int = 0,
@@ -62,7 +64,8 @@ class SyncService(
         val logs: Int = 0,
         val incidents: Int = 0,
         val sessions: Int = 0,
-        val photos: Int = 0
+        val photos: Int = 0,
+        val observations: Int = 0
     )
 
     /** Structured info passed to the caller on each retry so the UI can show it. */
@@ -73,7 +76,8 @@ class SyncService(
             logs = accessLogDao.getPendingCount(),
             incidents = incidentDao.getPendingCount(),
             sessions = workSessionDao.getPendingCount(),
-            photos = pendingPhotoDao?.count() ?: 0
+            photos = pendingPhotoDao?.count() ?: 0,
+            observations = hseObservationDao?.getPendingCount() ?: 0
         )
     }
 
@@ -163,11 +167,12 @@ class SyncService(
         val (logsUploaded, logsError)         = uploadAccessLogs(api)
         val (incidentsUploaded, incidentsError) = uploadIncidents(api)
         val (sessionsUploaded, sessionsError)  = uploadSessions(api)
+        val (observationsUploaded, observationsError) = uploadObservations(api)
 
         // 5. Upload pending photos (non-fatal)
         uploadPendingPhotos(api)
 
-        val uploadErrors = listOfNotNull(logsError, incidentsError, sessionsError)
+        val uploadErrors = listOfNotNull(logsError, incidentsError, sessionsError, observationsError)
         val success = uploadErrors.isEmpty()
 
         if (success) {
@@ -179,6 +184,7 @@ class SyncService(
             logsUploaded = logsUploaded,
             incidentsUploaded = incidentsUploaded,
             sessionsUploaded = sessionsUploaded,
+            observationsUploaded = observationsUploaded,
             workersAdded = workerResult.added,
             workersUpdated = workerResult.updated,
             workersSkipped = workerResult.skipped,
@@ -428,6 +434,65 @@ class SyncService(
             else -> {
                 Log.e(TAG, "uploadSessions rejected: HTTP ${response.code()}")
                 Pair(0, "Sesiones no subidas (HTTP ${response.code()})")
+            }
+        }
+    }
+
+    private suspend fun uploadObservations(api: AtlasApiService): Pair<Int, String?> {
+        val dao = hseObservationDao ?: return Pair(0, null)
+        val pending = dao.getPending()
+        if (pending.isEmpty()) return Pair(0, null)
+
+        val gson = com.google.gson.Gson()
+        val listType = object : com.google.gson.reflect.TypeToken<List<String>>() {}.type
+
+        val payload = pending.map { obs ->
+            val cats: List<String>? = if (obs.categories != null) {
+                try { gson.fromJson(obs.categories, listType) } catch (_: Exception) { null }
+            } else null
+
+            ObservationUploadDto(
+                uuid = obs.uuid,
+                projectId = obs.project_id,
+                observerDeviceId = obs.observer_device_id,
+                observerBadge = obs.observer_badge,
+                uniqueIdValue = obs.unique_id_value,
+                observedName = obs.observed_name,
+                observedBadge = obs.observed_badge,
+                observedDepartment = obs.observed_department,
+                observedPosition = obs.observed_position,
+                observedContractor = obs.observed_contractor,
+                observationDate = obs.observation_date,
+                location = obs.location,
+                areaAuthority = obs.area_authority,
+                description = obs.description,
+                observationType = obs.observation_type,
+                safetyType = obs.safety_type,
+                interventionAction = obs.intervention_action,
+                outcome = obs.outcome,
+                actionTaken = obs.action_taken,
+                coachingStatus = obs.coaching_status,
+                additionalComments = obs.additional_comments,
+                categories = cats
+            )
+        }
+
+        val response = try {
+            api.uploadObservations(UploadObservationsRequest(payload))
+        } catch (e: Exception) {
+            throw TransientException("Observaciones: error de red (${e.message})", e)
+        }
+
+        return when {
+            response.isSuccessful && response.body()?.success == true -> {
+                dao.markSynced(pending.map { it.id })
+                Pair(pending.size, null)
+            }
+            response.code() >= 500 ->
+                throw TransientException("Observaciones: error servidor (HTTP ${response.code()})")
+            else -> {
+                Log.e(TAG, "uploadObservations rejected: HTTP ${response.code()}")
+                Pair(0, "Observaciones no subidas (HTTP ${response.code()})")
             }
         }
     }

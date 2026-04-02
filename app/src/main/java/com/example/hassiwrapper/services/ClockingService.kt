@@ -4,13 +4,12 @@ import com.example.hassiwrapper.data.ConfigRepository
 import com.example.hassiwrapper.data.db.dao.*
 import com.example.hassiwrapper.data.db.entities.*
 import java.time.Instant
-import java.time.LocalDate
 import java.util.UUID
 
 /**
  * Core business logic for access control scanner.
- * Direct port of clocking.service.js — same ENTRY/EXIT/AUTO decisions,
- * anti-bounce cooldown, work session management.
+ * Validates person identity and anti-bounce. Direction (ENTRY/EXIT)
+ * is managed by the API/front-end, not by this device.
  */
 class ClockingService(
     private val personDao: PersonDao,
@@ -28,7 +27,6 @@ class ClockingService(
         val success: Boolean,
         val person: PersonEntity? = null,
         val log: AccessLogEntity? = null,
-        val direction: String = "",
         val reason: String? = null,
         val result: String = if (success) "GRANTED" else "DENIED",
         val failure_reason: String? = reason
@@ -36,7 +34,6 @@ class ClockingService(
 
     suspend fun processScan(
         badgeOrUuid: String,
-        requestedDirection: String,
         accessPointId: Int,
         projectId: Int,
         scanMethod: String
@@ -49,12 +46,17 @@ class ClockingService(
         }
 
         if (person == null) {
-            return logAndReturnDenied("UNKNOWN_PERSON", badgeOrUuid, requestedDirection, accessPointId, projectId, scanMethod)
+            return logAndReturnDenied("UNKNOWN_PERSON", badgeOrUuid, accessPointId, projectId, scanMethod)
+        }
+
+        // Validate active status
+        if (!person.is_active) {
+            return logAndReturnDenied("INACTIVE_WORKER", badgeOrUuid, accessPointId, projectId, scanMethod, person)
         }
 
         // Validate project
         if (person.project_id != null && person.project_id != projectId) {
-            return logAndReturnDenied("WRONG_PROJECT", badgeOrUuid, requestedDirection, accessPointId, projectId, scanMethod, person)
+            return logAndReturnDenied("WRONG_PROJECT", badgeOrUuid, accessPointId, projectId, scanMethod, person)
         }
 
         // 2. Anti-bounce
@@ -63,43 +65,11 @@ class ClockingService(
             val lastTime = Instant.parse(lastLog.event_time)
             val secondsSince = (Instant.now().epochSecond - lastTime.epochSecond)
             if (secondsSince < COOLDOWN_SECONDS && lastLog.result == "GRANTED") {
-                return logAndReturnDenied("DUPLICATE_SCAN", badgeOrUuid, requestedDirection, accessPointId, projectId, scanMethod, person)
+                return logAndReturnDenied("DUPLICATE_SCAN", badgeOrUuid, accessPointId, projectId, scanMethod, person)
             }
         }
 
-        // 3. Resolve direction
-        val todayStr = LocalDate.now().toString()
-        val openSession = workSessionDao.getOpenSession(person.unique_id_value, todayStr)
-        val actualDirection = when (requestedDirection) {
-            "AUTO" -> if (openSession != null) "EXIT" else "ENTRY"
-            else -> requestedDirection
-        }
-
-        // 4. Validate direction logic
-        val isEntry = actualDirection == "ENTRY"
-        if (isEntry && openSession != null) {
-            return logAndReturnDenied("ALREADY_IN", badgeOrUuid, actualDirection, accessPointId, projectId, scanMethod, person)
-        }
-        if (!isEntry && openSession == null) {
-            return logAndReturnDenied("NOT_IN", badgeOrUuid, actualDirection, accessPointId, projectId, scanMethod, person)
-        }
-
-        // 4b. Schedule validation (soft — log incident but still grant)
-        if (isEntry) {
-            try {
-                val rules = rulesService.resolvePersonRules(person, configRepo)
-                if (!rulesService.isWithinSchedule(rules)) {
-                    incidentService.createIncident(
-                        "OUTSIDE_SCHEDULE",
-                        person.unique_id_value,
-                        person.badge_number,
-                        null, null
-                    )
-                }
-            } catch (_: Exception) { }
-        }
-
-        // 5. Build granted log
+        // 3. Build granted log
         val terminalId = configRepo.get("terminal_id")
         val logEntity = AccessLogEntity(
             uuid = UUID.randomUUID().toString(),
@@ -108,7 +78,7 @@ class ClockingService(
             access_point_id = accessPointId,
             terminal_id = terminalId,
             event_time = Instant.now().toString(),
-            direction = actualDirection,
+            direction = "ACCESS",
             result = "GRANTED",
             failure_reason = null,
             scan_method = scanMethod,
@@ -117,35 +87,16 @@ class ClockingService(
         val logId = accessLogDao.insert(logEntity)
         val savedLog = logEntity.copy(id = logId)
 
-        // 6. Manage work session
-        if (isEntry) {
-            workSessionDao.insert(
-                WorkSessionEntity(
-                    project_id = projectId,
-                    unique_id_value = person.unique_id_value,
-                    session_date = todayStr,
-                    first_entry_log_id = logId,
-                    clock_in = savedLog.event_time,
-                    entry_time = savedLog.event_time,
-                    status = "OPEN"
-                )
-            )
-        } else if (openSession != null) {
-            workSessionDao.closeSession(openSession.id, savedLog.event_time, logId)
-        }
-
         return ScanResult(
             success = true,
             person = person,
-            log = savedLog,
-            direction = actualDirection
+            log = savedLog
         )
     }
 
     private suspend fun logAndReturnDenied(
         reasonCode: String,
         badgeNumber: String,
-        direction: String,
         accessPointId: Int,
         projectId: Int,
         scanMethod: String,
@@ -159,7 +110,7 @@ class ClockingService(
             access_point_id = accessPointId,
             terminal_id = terminalId,
             event_time = Instant.now().toString(),
-            direction = if (direction == "AUTO") "UNKNOWN" else direction,
+            direction = "ACCESS",
             result = "DENIED",
             failure_reason = reasonCode,
             scan_method = scanMethod,
@@ -171,7 +122,6 @@ class ClockingService(
             success = false,
             person = person,
             log = logEntity.copy(id = logId),
-            direction = direction,
             reason = reasonCode
         )
     }

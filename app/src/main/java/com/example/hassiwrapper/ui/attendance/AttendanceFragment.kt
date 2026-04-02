@@ -88,12 +88,7 @@ class AttendanceFragment : Fragment() {
             )
             ImageViewCompat.setImageTintList(holder.ivResult, ColorStateList.valueOf(statusColor))
 
-            holder.tvDirection.text = when (log.direction) {
-                "ENTRY" -> getString(R.string.scanner_entry)
-                "EXIT"  -> getString(R.string.scanner_exit)
-                else    -> log.direction
-            }
-            holder.tvDirection.setTextColor(statusColor)
+            holder.tvDirection.visibility = View.GONE
 
             holder.tvWorkerName.text = when {
                 item.givenName != null || item.familyName != null ->

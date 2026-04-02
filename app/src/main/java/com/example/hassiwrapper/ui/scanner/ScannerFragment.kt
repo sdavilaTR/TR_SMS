@@ -29,7 +29,6 @@ import kotlinx.coroutines.launch
 
 class ScannerFragment : Fragment() {
 
-    private var direction = "AUTO"
     private var isProcessing = false
     private var projectId: Int = 1
     private var accessPointId: Int = 1
@@ -44,7 +43,7 @@ class ScannerFragment : Fragment() {
 
     private val scanLog = mutableListOf<ScanLogEntry>()
 
-    data class ScanLogEntry(val name: String, val badge: String, val direction: String, val granted: Boolean, val time: String)
+    data class ScanLogEntry(val name: String, val badge: String, val granted: Boolean, val time: String)
 
     // ZXing camera scanner launcher (fallback when DataWedge laser is not available)
     private val cameraScanner = registerForActivityResult(ScanContract()) { result ->
@@ -79,17 +78,6 @@ class ScannerFragment : Fragment() {
         }
         soundAllowed = soundPool!!.load(requireContext(), R.raw.beep_allowed, 1)
         soundDenied = soundPool!!.load(requireContext(), R.raw.beep_denied, 1)
-
-        // Direction spinner
-        val spinner = view.findViewById<Spinner>(R.id.spinnerDirection)
-        val directions = arrayOf("AUTO", "ENTRY", "EXIT")
-        spinner.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, directions)
-        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, v: View?, pos: Int, id: Long) {
-                direction = directions[pos]
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
 
         // Scan log RecyclerView
         val rv = view.findViewById<RecyclerView>(R.id.rvScanLog)
@@ -155,7 +143,7 @@ class ScannerFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val result = ServiceLocator.clockingService.processScan(
-                    identifier, direction, accessPointId, projectId, "LASER"
+                    identifier, accessPointId, projectId, "LASER"
                 )
                 addToScanLog(result)
                 showResultOverlay(result)
@@ -175,9 +163,8 @@ class ScannerFragment : Fragment() {
         val p = result.person
         val name = if (p != null) "${p.given_name} ${p.family_name}".trim() else getString(R.string.scanner_unknown)
         val badge = p?.badge_number ?: ""
-        val dir = when (result.direction) { "ENTRY" -> getString(R.string.scanner_entry); "EXIT" -> getString(R.string.scanner_exit); else -> result.direction }
         val timeStr = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
-        scanLog.add(0, ScanLogEntry(name, badge, dir, result.success, timeStr))
+        scanLog.add(0, ScanLogEntry(name, badge, result.success, timeStr))
         if (scanLog.size > 8) scanLog.removeAt(scanLog.size - 1)
         view?.findViewById<RecyclerView>(R.id.rvScanLog)?.adapter?.notifyDataSetChanged()
     }
@@ -189,7 +176,6 @@ class ScannerFragment : Fragment() {
         val title = view.findViewById<TextView>(R.id.resultTitle)
         val name = view.findViewById<TextView>(R.id.resultWorkerName)
         val badge = view.findViewById<TextView>(R.id.resultBadge)
-        val dirBadge = view.findViewById<TextView>(R.id.resultDirectionBadge)
         val reason = view.findViewById<TextView>(R.id.resultReason)
 
         overlay.visibility = View.VISIBLE
@@ -204,15 +190,6 @@ class ScannerFragment : Fragment() {
             val p = result.person
             name.text = if (p != null) "${p.given_name} ${p.family_name}" else getString(R.string.scanner_worker)
             badge.text = p?.badge_number ?: ""
-            dirBadge.visibility = View.VISIBLE
-            dirBadge.text = if (result.direction == "ENTRY") getString(R.string.scanner_entry) else getString(R.string.scanner_exit)
-            if (result.direction == "ENTRY") {
-                dirBadge.setBackgroundColor(resources.getColor(R.color.entry_bg, null))
-                dirBadge.setTextColor(resources.getColor(R.color.entry_text, null))
-            } else {
-                dirBadge.setBackgroundColor(resources.getColor(R.color.exit_bg, null))
-                dirBadge.setTextColor(resources.getColor(R.color.exit_text, null))
-            }
             reason.text = ""
         } else {
             playBeep(false)
@@ -224,7 +201,6 @@ class ScannerFragment : Fragment() {
             val p = result.person
             name.text = if (p != null) "${p.given_name} ${p.family_name}" else getString(R.string.scanner_unknown)
             badge.text = p?.badge_number ?: ""
-            dirBadge.visibility = View.GONE
             reason.text = result.reason ?: result.failure_reason ?: ""
             reason.setTextColor(resources.getColor(R.color.denied, null))
         }
@@ -271,7 +247,7 @@ class ScannerFragment : Fragment() {
         override fun onBindViewHolder(holder: VH, position: Int) {
             val entry = scanLog[position]
             val badge = if (entry.badge.isNotEmpty()) " · ${entry.badge}" else ""
-            holder.txtId.text = "${entry.name}$badge   ${entry.direction}"
+            holder.txtId.text = "${entry.name}$badge"
             val resultColor = resources.getColor(
                 if (entry.granted) R.color.granted else R.color.denied, null
             )

@@ -10,34 +10,7 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- Direction selector bar -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="12dp"
-            android:gravity="center_vertical"
-            android:background="@color/surface"
-            android:elevation="2dp">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/scanner_label_direction"
-                android:textColor="@color/on_surface"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-            <Spinner
-                android:id="@+id/spinnerDirection"
-                android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:background="@color/surface_variant"
-                android:padding="8dp" />
-        </LinearLayout>
-
-        <!-- Scanner waiting area — compact -->
+        <!-- Scanner waiting area -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -141,7 +114,6 @@
             <TextView android:id="@+id/resultTitle"         android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="26sp" android:textStyle="bold" android:layout_marginTop="16dp" />
             <TextView android:id="@+id/resultWorkerName"    android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="20sp" android:layout_marginTop="8dp" />
             <TextView android:id="@+id/resultBadge"         android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface_variant" android:textSize="15sp" />
-            <TextView android:id="@+id/resultDirectionBadge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="10dp" android:paddingHorizontal="14dp" android:paddingVertical="6dp" />
             <TextView android:id="@+id/resultReason"        android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/error" android:textSize="14sp" android:layout_marginTop="10dp" />
         </LinearLayout>
     </FrameLayout>

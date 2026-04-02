@@ -34,7 +34,8 @@ object ServiceLocator {
             apiClient, configRepo,
             db.projectDao(), db.zoneDao(), db.contractorDao(),
             db.personDao(), db.accessPointDao(), db.cryptoKeyDao(),
-            db.accessLogDao(), db.incidentDao(), db.workSessionDao()
+            db.accessLogDao(), db.incidentDao(), db.workSessionDao(),
+            db.pendingPhotoDao()
         )
     }
 
@@ -46,4 +47,5 @@ object ServiceLocator {
     val contractorDao get() = db.contractorDao()
     val projectDao get() = db.projectDao()
     val incidentDao get() = db.incidentDao()
+    val pendingPhotoDao get() = db.pendingPhotoDao()
 }

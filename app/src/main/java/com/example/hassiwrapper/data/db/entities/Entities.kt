@@ -64,6 +64,14 @@ data class PersonEntity(
     val syncStatus: String = "SYNCED"
 )
 
+@Entity(tableName = "pending_photos")
+data class PendingPhotoEntity(
+    @PrimaryKey val unique_id_value: String,
+    val project_id: Int,
+    val local_path: String,
+    val created_at: String
+)
+
 @Entity(tableName = "access_points")
 data class AccessPointEntity(
     @PrimaryKey val access_point_id: Int,

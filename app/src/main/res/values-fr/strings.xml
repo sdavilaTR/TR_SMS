@@ -59,7 +59,8 @@
     <string name="passport_photo_uploading">Téléchargement de la photo…</string>
     <string name="passport_photo_uploaded">Photo mise à jour avec succès</string>
     <string name="passport_photo_error">Erreur lors du téléchargement : %s</string>
-    <string name="passport_photo_no_connection">Connexion requise pour télécharger la photo</string>
+    <string name="passport_photo_no_connection">Photo enregistrée localement. Sera envoyée à la prochaine synchronisation</string>
+    <string name="sync_pending_photos">Photos : %d</string>
 
     <!-- Attendance -->
     <string name="attendance_title">Registres d\'accès</string>

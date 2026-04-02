@@ -59,7 +59,7 @@
     <string name="passport_photo_uploading">Subiendo foto…</string>
     <string name="passport_photo_uploaded">Foto actualizada correctamente</string>
     <string name="passport_photo_error">Error al subir la foto: %s</string>
-    <string name="passport_photo_no_connection">Se necesita conexión para subir la foto</string>
+    <string name="passport_photo_no_connection">Foto guardada localmente. Se subirá en la próxima sincronización</string>
 
     <!-- Attendance -->
     <string name="attendance_title">Registros de Acceso</string>
@@ -74,6 +74,7 @@
     <string name="sync_pending_logs">Registros: %d</string>
     <string name="sync_pending_incidents">Incidencias: %d</string>
     <string name="sync_pending_sessions">Sesiones: %d</string>
+    <string name="sync_pending_photos">Fotos: %d</string>
     <string name="sync_btn">Sincronización Completa</string>
     <string name="sync_last_none">Última sincronización: —</string>
     <string name="sync_last_format">Última sincronización: %s</string>

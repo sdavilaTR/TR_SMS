@@ -59,7 +59,8 @@
     <string name="passport_photo_uploading">Uploading photo…</string>
     <string name="passport_photo_uploaded">Photo updated successfully</string>
     <string name="passport_photo_error">Error uploading photo: %s</string>
-    <string name="passport_photo_no_connection">Connection required to upload photo</string>
+    <string name="passport_photo_no_connection">Photo saved locally. Will upload on next sync</string>
+    <string name="sync_pending_photos">Photos: %d</string>
 
     <!-- Attendance -->
     <string name="attendance_title">Access Records</string>

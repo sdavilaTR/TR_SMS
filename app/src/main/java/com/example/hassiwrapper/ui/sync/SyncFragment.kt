@@ -116,6 +116,7 @@ class SyncFragment : Fragment() {
                 v.findViewById<TextView>(R.id.txtPendingLogs).text = getString(R.string.sync_pending_logs, counts.logs)
                 v.findViewById<TextView>(R.id.txtPendingIncidents).text = getString(R.string.sync_pending_incidents, counts.incidents)
                 v.findViewById<TextView>(R.id.txtPendingSessions).text = getString(R.string.sync_pending_sessions, counts.sessions)
+                v.findViewById<TextView>(R.id.txtPendingPhotos).text = getString(R.string.sync_pending_photos, counts.photos)
             }
         }
     }

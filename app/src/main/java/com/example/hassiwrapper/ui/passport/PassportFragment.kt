@@ -33,17 +33,25 @@ import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class PassportFragment : Fragment() {
+
+    companion object {
+        private const val TAG = "PassportFragment"
+    }
 
     private var soundPool: SoundPool? = null
     private var soundAllowed: Int = 0
@@ -217,39 +225,83 @@ class PassportFragment : Fragment() {
         loaded.scrollTo(0, 0)
     }
 
+    // ── Photo: local cache helpers ──────────────────────────────────────────
+
+    private fun getPhotoCacheDir(): File {
+        val dir = File(requireContext().filesDir, "worker-photos")
+        if (!dir.exists()) dir.mkdirs()
+        return dir
+    }
+
+    private fun getCachedPhotoFile(personUuid: String): File {
+        return File(getPhotoCacheDir(), "$personUuid.jpg")
+    }
+
+    // ── Photo: load (offline-first) ─────────────────────────────────────────
+
     private fun loadWorkerPhoto(photoUrl: String?) {
         val view = this.view ?: return
+        val person = currentPerson ?: return
         val imgView = view.findViewById<ImageView>(R.id.imgWorkerPhoto)
         val placeholder = view.findViewById<TextView>(R.id.txtPhotoPlaceholder)
 
-        if (photoUrl.isNullOrBlank()) {
-            imgView.visibility = View.GONE
-            placeholder.visibility = View.VISIBLE
-            return
-        }
+        val cachedFile = getCachedPhotoFile(person.unique_id_value)
 
         viewLifecycleOwner.lifecycleScope.launch {
-            val bitmap = withContext(Dispatchers.IO) {
-                try {
-                    val client = OkHttpClient()
-                    val request = Request.Builder().url(photoUrl).build()
-                    val response = client.newCall(request).execute()
-                    response.body?.byteStream()?.let { BitmapFactory.decodeStream(it) }
-                } catch (e: Exception) {
-                    Log.w("PassportFragment", "Failed to load photo: ${e.message}")
-                    null
-                }
+            // 1. Try local cache first (instant)
+            val cachedBitmap = withContext(Dispatchers.IO) {
+                if (cachedFile.exists()) BitmapFactory.decodeFile(cachedFile.absolutePath) else null
             }
-            if (bitmap != null && isAdded) {
-                imgView.setImageBitmap(bitmap)
+            if (cachedBitmap != null && isAdded) {
+                imgView.setImageBitmap(cachedBitmap)
                 imgView.visibility = View.VISIBLE
                 placeholder.visibility = View.GONE
-            } else {
+            }
+
+            // 2. If there's a remote URL, try to download with 5s timeout (background refresh)
+            if (!photoUrl.isNullOrBlank()) {
+                val remoteBitmap = withTimeoutOrNull(5_000L) {
+                    withContext(Dispatchers.IO) {
+                        try {
+                            val client = OkHttpClient.Builder()
+                                .connectTimeout(3, TimeUnit.SECONDS)
+                                .readTimeout(5, TimeUnit.SECONDS)
+                                .build()
+                            val request = Request.Builder().url(photoUrl).build()
+                            val response = client.newCall(request).execute()
+                            response.body?.byteStream()?.let { stream ->
+                                val bmp = BitmapFactory.decodeStream(stream)
+                                // Save to cache
+                                if (bmp != null) {
+                                    cachedFile.outputStream().use { out ->
+                                        bmp.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                                    }
+                                }
+                                bmp
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Remote photo download failed: ${e.message}")
+                            null
+                        }
+                    }
+                }
+                if (remoteBitmap != null && isAdded) {
+                    imgView.setImageBitmap(remoteBitmap)
+                    imgView.visibility = View.VISIBLE
+                    placeholder.visibility = View.GONE
+                    return@launch
+                }
+            }
+
+            // 3. If no cached and no remote, show placeholder
+            if (cachedBitmap == null && isAdded) {
                 imgView.visibility = View.GONE
                 placeholder.visibility = View.VISIBLE
             }
         }
     }
+
+    // ── Photo: capture ──────────────────────────────────────────────────────
 
     private fun requestPhotoCameraIfNeededAndCapture() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
@@ -276,59 +328,91 @@ class PassportFragment : Fragment() {
         imgView.visibility = View.VISIBLE
         placeholder.visibility = View.GONE
 
-        // Upload to API
         val projectId = person.project_id
         if (projectId == null) {
             Toast.makeText(requireContext(), getString(R.string.passport_photo_error, "No project ID"), Toast.LENGTH_SHORT).show()
             return
         }
 
-        Toast.makeText(requireContext(), getString(R.string.passport_photo_uploading), Toast.LENGTH_SHORT).show()
-
         viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val photoUrl = uploadPhoto(projectId, person.unique_id_value, bitmap)
+            // Always save to local cache first
+            val cachedFile = savePhotoToCache(person.unique_id_value, bitmap)
 
-                // Update local DB
-                ServiceLocator.personDao.updatePhotoUrl(person.unique_id_value, photoUrl)
-                currentPerson = person.copy(photo_url = photoUrl)
+            // Try upload with 5s timeout
+            val uploaded = tryUploadPhoto(projectId, person.unique_id_value, bitmap)
 
+            if (uploaded) {
                 if (isAdded) {
                     Toast.makeText(requireContext(), getString(R.string.passport_photo_uploaded), Toast.LENGTH_SHORT).show()
                 }
-            } catch (e: Exception) {
-                Log.e("PassportFragment", "Photo upload failed", e)
+            } else {
+                // Queue for later upload during sync
+                enqueuePendingPhoto(person.unique_id_value, projectId, cachedFile.absolutePath)
                 if (isAdded) {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.passport_photo_error, e.message ?: "Unknown error"),
-                        Toast.LENGTH_LONG
-                    ).show()
+                    Toast.makeText(requireContext(), getString(R.string.passport_photo_no_connection), Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
-    private suspend fun uploadPhoto(projectId: Int, personUuid: String, bitmap: Bitmap): String {
+    private suspend fun savePhotoToCache(personUuid: String, bitmap: Bitmap): File {
         return withContext(Dispatchers.IO) {
-            // Compress bitmap to JPEG
-            val baos = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos)
-            val bytes = baos.toByteArray()
-
-            val requestBody = bytes.toRequestBody("image/jpeg".toMediaType())
-            val filePart = MultipartBody.Part.createFormData("file", "photo.jpg", requestBody)
-
-            val api = ServiceLocator.apiClient.getService()
-            val response = api.uploadWorkerPhoto(projectId, personUuid, filePart)
-
-            if (!response.isSuccessful) {
-                throw Exception("HTTP ${response.code()}")
+            val file = getCachedPhotoFile(personUuid)
+            file.outputStream().use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
             }
-
-            response.body()?.photoUrl
-                ?: throw Exception("No photo URL in response")
+            file
         }
+    }
+
+    /**
+     * Attempts to upload the photo to the API. Returns true if successful,
+     * false if network is unavailable or the request fails/times out.
+     */
+    private suspend fun tryUploadPhoto(projectId: Int, personUuid: String, bitmap: Bitmap): Boolean {
+        return try {
+            val result = withTimeoutOrNull(5_000L) {
+                withContext(Dispatchers.IO) {
+                    val baos = ByteArrayOutputStream()
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos)
+                    val bytes = baos.toByteArray()
+
+                    val requestBody = bytes.toRequestBody("image/jpeg".toMediaType())
+                    val filePart = MultipartBody.Part.createFormData("file", "photo.jpg", requestBody)
+
+                    val api = ServiceLocator.apiClient.getService()
+                    val response = api.uploadWorkerPhoto(projectId, personUuid, filePart)
+
+                    if (response.isSuccessful) {
+                        val photoUrl = response.body()?.photoUrl
+                        if (photoUrl != null) {
+                            ServiceLocator.personDao.updatePhotoUrl(personUuid, photoUrl)
+                            currentPerson = currentPerson?.copy(photo_url = photoUrl)
+                        }
+                        true
+                    } else {
+                        Log.w(TAG, "Photo upload failed: HTTP ${response.code()}")
+                        false
+                    }
+                }
+            }
+            result == true
+        } catch (e: Exception) {
+            Log.w(TAG, "Photo upload exception: ${e.message}")
+            false
+        }
+    }
+
+    private suspend fun enqueuePendingPhoto(personUuid: String, projectId: Int, localPath: String) {
+        ServiceLocator.pendingPhotoDao.insert(
+            com.example.hassiwrapper.data.db.entities.PendingPhotoEntity(
+                unique_id_value = personUuid,
+                project_id = projectId,
+                local_path = localPath,
+                created_at = Instant.now().toString()
+            )
+        )
+        Log.i(TAG, "Photo queued for offline sync: $personUuid")
     }
 
     private fun showWaiting() {

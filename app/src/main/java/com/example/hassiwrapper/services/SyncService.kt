@@ -33,7 +33,9 @@ class SyncService(
     private val accessLogDao: AccessLogDao,
     private val incidentDao: IncidentDao,
     private val workSessionDao: WorkSessionDao,
-    private val pendingPhotoDao: PendingPhotoDao? = null
+    private val pendingPhotoDao: PendingPhotoDao? = null,
+    private val hseObservationDao: HseObservationDao? = null,
+    private val heartbeatManager: HeartbeatManager? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -163,22 +165,27 @@ class SyncService(
         val (logsUploaded, logsError)         = uploadAccessLogs(api)
         val (incidentsUploaded, incidentsError) = uploadIncidents(api)
         val (sessionsUploaded, sessionsError)  = uploadSessions(api)
+        val (observationsUploaded, observationsError) = uploadObservations(api)
 
         // 5. Upload pending photos (non-fatal)
         uploadPendingPhotos(api)
 
-        val uploadErrors = listOfNotNull(logsError, incidentsError, sessionsError)
+        val uploadErrors = listOfNotNull(logsError, incidentsError, sessionsError, observationsError)
         val success = uploadErrors.isEmpty()
 
         if (success) {
             configRepo.set("last_sync", Instant.now().toString())
         }
 
+        // 6. Heartbeat telemetry (best-effort, always at the end)
+        heartbeatManager?.sendHeartbeat()
+
         return SyncResult(
             success = success,
             logsUploaded = logsUploaded,
             incidentsUploaded = incidentsUploaded,
             sessionsUploaded = sessionsUploaded,
+            observationsUploaded = observationsUploaded,
             workersAdded = workerResult.added,
             workersUpdated = workerResult.updated,
             workersSkipped = workerResult.skipped,

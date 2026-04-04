@@ -46,11 +46,11 @@ class ObservationFragment : Fragment() {
         view.findViewById<TextView>(R.id.txtObsContractor).text = contractor.ifBlank { "\u2014" }
         view.findViewById<TextView>(R.id.txtObsPosition).text = position.ifBlank { "\u2014" }
 
-        // Build category chips
+        // Build category chips (labels from string resources for i18n)
         val chipGroup = view.findViewById<ChipGroup>(R.id.chipGroupCategories)
         ObservationService.CATEGORY_CODES.forEach { code ->
             val chip = Chip(requireContext()).apply {
-                text = ObservationService.CATEGORY_LABELS[code] ?: code
+                text = getCategoryLabel(code)
                 isCheckable = true
                 tag = code
             }
@@ -64,6 +64,38 @@ class ObservationFragment : Fragment() {
         view.findViewById<MaterialButton>(R.id.btnBackObservation).setOnClickListener {
             findNavController().popBackStack()
         }
+    }
+
+    private val categoryStringIds = mapOf(
+        "PPE" to R.string.obs_cat_ppe,
+        "SITUATIONAL_AWARENESS" to R.string.obs_cat_situational_awareness,
+        "SAFETY_DEVICES" to R.string.obs_cat_safety_devices,
+        "ISOLATION_LOCKOUT" to R.string.obs_cat_isolation_lockout,
+        "SAFETY_SIGNAGE" to R.string.obs_cat_safety_signage,
+        "TOOLS_EQUIPMENT" to R.string.obs_cat_tools_equipment,
+        "LINE_OF_FIRE" to R.string.obs_cat_line_of_fire,
+        "HEALTH_HYGIENE" to R.string.obs_cat_health_hygiene,
+        "WORKPLACE_ENVIRONMENT" to R.string.obs_cat_workplace_environment,
+        "LIFTING" to R.string.obs_cat_lifting,
+        "MANUAL_HANDLING" to R.string.obs_cat_manual_handling,
+        "HOUSEKEEPING" to R.string.obs_cat_housekeeping,
+        "TOXIC_FLAMMABLE" to R.string.obs_cat_toxic_flammable,
+        "WORK_PLANNING" to R.string.obs_cat_work_planning,
+        "WORKING_AT_HEIGHT" to R.string.obs_cat_working_at_height,
+        "CONFINED_SPACE" to R.string.obs_cat_confined_space,
+        "HOT_WORK" to R.string.obs_cat_hot_work,
+        "EXCAVATION" to R.string.obs_cat_excavation,
+        "DRIVING_VEHICLES" to R.string.obs_cat_driving_vehicles,
+        "SUPERVISION" to R.string.obs_cat_supervision,
+        "PROCEDURES" to R.string.obs_cat_procedures,
+        "SECURITY" to R.string.obs_cat_security,
+        "IMPROVEMENT_OPPORTUNITY" to R.string.obs_cat_improvement_opportunity,
+        "EMERGENCY_RESPONSE" to R.string.obs_cat_emergency_response
+    )
+
+    private fun getCategoryLabel(code: String): String {
+        val resId = categoryStringIds[code] ?: return code
+        return getString(resId)
     }
 
     private fun saveObservation(view: View, uniqueId: String?, badge: String, department: String, position: String, contractor: String) {

@@ -27,7 +27,8 @@
     <string name="scanner_status_waiting">En attente de scan…</string>
     <string name="scanner_status_processing">Traitement…</string>
     <string name="scanner_hint_usage">Utilisez le scanner laser du terminal ou le bouton caméra</string>
-    <string name="scanner_btn_camera">Scanner avec la caméra</string>
+    <string name="scanner_btn_camera">Caméra</string>
+    <string name="scanner_btn_laser">Laser</string>
     <string name="scanner_label_recent">Dernières lectures</string>
     <string name="scanner_error_camera_permission">Permission caméra requise</string>
     <string name="scanner_camera_prompt">Pointez vers le QR code / code-barres du travailleur</string>
@@ -92,6 +93,15 @@
     <string name="sync_auth_required">Connectez-vous pour synchroniser</string>
     <string name="sync_retrying">Nouvel essai (%1$d)… attente %2$ds</string>
 
+    <!-- Sync KPIs -->
+    <string name="sync_kpi_records">Registres</string>
+    <string name="sync_kpi_photos">Photos</string>
+    <string name="sync_kpi_observations">Observations</string>
+    <string name="sync_kpi_workers">Travailleurs</string>
+    <string name="sync_kpi_synced">Synchronisé</string>
+    <string name="sync_kpi_pending">En attente</string>
+    <string name="sync_kpi_workers_synced">À jour</string>
+
     <!-- Workers -->
     <string name="workers_hint_search">Rechercher un travailleur…</string>
     <string name="workers_count">%d travailleurs</string>
@@ -148,6 +158,45 @@
     <string name="language_es">Español</string>
     <string name="language_en">English</string>
     <string name="language_fr">Français</string>
+
+    <!-- Observations -->
+    <string name="obs_title">Observation HSE</string>
+    <string name="obs_open_observation">Ouvrir une Observation</string>
+    <string name="obs_worker_header">Travailleur Observé</string>
+    <string name="obs_location">Emplacement</string>
+    <string name="obs_area_authority">Autorité de Zone</string>
+    <string name="obs_description">Description de l\'Observation *</string>
+    <string name="obs_type_header">Type d\'Observation</string>
+    <string name="obs_condition">Condition</string>
+    <string name="obs_behaviour">Comportement</string>
+    <string name="obs_safety_header">Type de Sécurité</string>
+    <string name="obs_safe">Sûr</string>
+    <string name="obs_unsafe">Dangereux</string>
+    <string name="obs_intervention_header">Intervention</string>
+    <string name="obs_no_intervene">N\'est pas intervenu</string>
+    <string name="obs_intervened">Est intervenu / A agi</string>
+    <string name="obs_spot_coaching">Coaching sur place</string>
+    <string name="obs_positive_reinforcement">Renforcement positif</string>
+    <string name="obs_positive_observation">Observation positive</string>
+    <string name="obs_non_peer">Intervention non-pair</string>
+    <string name="obs_outcome_header">Résultat</string>
+    <string name="obs_corrected">Corrigé</string>
+    <string name="obs_partly_corrected">Partiellement corrigé</string>
+    <string name="obs_not_corrected">Non corrigé</string>
+    <string name="obs_outcome_positive">Renforcement positif</string>
+    <string name="obs_action_taken">Action Prise</string>
+    <string name="obs_coaching_header">Coaching</string>
+    <string name="obs_coaching_not_required">Non requis</string>
+    <string name="obs_coaching_pending">En attente</string>
+    <string name="obs_coaching_done">Réalisé</string>
+    <string name="obs_categories_header">Catégories</string>
+    <string name="obs_additional_comments">Commentaires Supplémentaires</string>
+    <string name="obs_save">Enregistrer l\'Observation</string>
+    <string name="obs_back">Retour</string>
+    <string name="obs_saved">Observation enregistrée avec succès</string>
+    <string name="obs_description_required">La description est obligatoire</string>
+    <string name="obs_type_required">Sélectionnez le type d\'observation</string>
+    <string name="obs_safety_required">Sélectionnez le type de sécurité</string>
 
     <!-- Profiles -->
     <string name="profile_label">Profil</string>

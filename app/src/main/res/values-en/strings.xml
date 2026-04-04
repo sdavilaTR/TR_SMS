@@ -27,7 +27,8 @@
     <string name="scanner_status_waiting">Waiting for scan…</string>
     <string name="scanner_status_processing">Processing…</string>
     <string name="scanner_hint_usage">Use the terminal laser scanner or the camera button</string>
-    <string name="scanner_btn_camera">Scan with Camera</string>
+    <string name="scanner_btn_camera">Camera</string>
+    <string name="scanner_btn_laser">Laser</string>
     <string name="scanner_label_recent">Latest readings</string>
     <string name="scanner_error_camera_permission">Camera permission required</string>
     <string name="scanner_camera_prompt">Point at the worker\'s QR code / barcode</string>
@@ -92,6 +93,15 @@
     <string name="sync_auth_required">Sign in to synchronize</string>
     <string name="sync_retrying">Retrying (%1$d)… wait %2$ds</string>
 
+    <!-- Sync KPIs -->
+    <string name="sync_kpi_records">Records</string>
+    <string name="sync_kpi_photos">Photos</string>
+    <string name="sync_kpi_observations">Observations</string>
+    <string name="sync_kpi_workers">Workers</string>
+    <string name="sync_kpi_synced">Synced</string>
+    <string name="sync_kpi_pending">Pending</string>
+    <string name="sync_kpi_workers_synced">Up to date</string>
+
     <!-- Workers -->
     <string name="workers_hint_search">Search worker…</string>
     <string name="workers_count">%d workers</string>
@@ -148,6 +158,45 @@
     <string name="language_es">Español</string>
     <string name="language_en">English</string>
     <string name="language_fr">Français</string>
+
+    <!-- Observations -->
+    <string name="obs_title">HSE Observation</string>
+    <string name="obs_open_observation">Open Observation</string>
+    <string name="obs_worker_header">Observed Worker</string>
+    <string name="obs_location">Location</string>
+    <string name="obs_area_authority">Area Authority</string>
+    <string name="obs_description">Observation Description *</string>
+    <string name="obs_type_header">Observation Type</string>
+    <string name="obs_condition">Condition</string>
+    <string name="obs_behaviour">Behaviour</string>
+    <string name="obs_safety_header">Safety Type</string>
+    <string name="obs_safe">Safe</string>
+    <string name="obs_unsafe">Unsafe</string>
+    <string name="obs_intervention_header">Intervention</string>
+    <string name="obs_no_intervene">Did not intervene</string>
+    <string name="obs_intervened">Intervened / Took action</string>
+    <string name="obs_spot_coaching">Spot coaching</string>
+    <string name="obs_positive_reinforcement">Positive reinforcement</string>
+    <string name="obs_positive_observation">Positive observation</string>
+    <string name="obs_non_peer">Non-peer intervention</string>
+    <string name="obs_outcome_header">Outcome</string>
+    <string name="obs_corrected">Corrected</string>
+    <string name="obs_partly_corrected">Partly corrected</string>
+    <string name="obs_not_corrected">Not corrected</string>
+    <string name="obs_outcome_positive">Positive reinforcement</string>
+    <string name="obs_action_taken">Action Taken</string>
+    <string name="obs_coaching_header">Coaching</string>
+    <string name="obs_coaching_not_required">Not required</string>
+    <string name="obs_coaching_pending">Pending</string>
+    <string name="obs_coaching_done">Done</string>
+    <string name="obs_categories_header">Categories</string>
+    <string name="obs_additional_comments">Additional Comments</string>
+    <string name="obs_save">Save Observation</string>
+    <string name="obs_back">Back</string>
+    <string name="obs_saved">Observation saved successfully</string>
+    <string name="obs_description_required">Description is required</string>
+    <string name="obs_type_required">Select observation type</string>
+    <string name="obs_safety_required">Select safety type</string>
 
     <!-- Profiles -->
     <string name="profile_label">Profile</string>

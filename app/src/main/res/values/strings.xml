@@ -27,7 +27,8 @@
     <string name="scanner_status_waiting">Esperando escaneo…</string>
     <string name="scanner_status_processing">Procesando…</string>
     <string name="scanner_hint_usage">Use el escáner láser del terminal o el botón de cámara</string>
-    <string name="scanner_btn_camera">Escanear con Cámara</string>
+    <string name="scanner_btn_camera">Cámara</string>
+    <string name="scanner_btn_laser">Láser</string>
     <string name="scanner_label_recent">Últimas lecturas</string>
     <string name="scanner_error_camera_permission">Permiso de cámara requerido</string>
     <string name="scanner_camera_prompt">Apunte al código QR / código de barras del trabajador</string>
@@ -91,6 +92,15 @@
     <string name="sync_auth_none">Sesión: No iniciada</string>
     <string name="sync_auth_required">Inicia sesión para sincronizar</string>
     <string name="sync_retrying">Reintentando (%1$d)… espera %2$ds</string>
+
+    <!-- Sync KPIs -->
+    <string name="sync_kpi_records">Registros</string>
+    <string name="sync_kpi_photos">Fotos</string>
+    <string name="sync_kpi_observations">Observaciones</string>
+    <string name="sync_kpi_workers">Trabajadores</string>
+    <string name="sync_kpi_synced">Sincronizado</string>
+    <string name="sync_kpi_pending">Pendiente</string>
+    <string name="sync_kpi_workers_synced">Actualizados</string>
 
     <!-- Workers -->
     <string name="workers_hint_search">Buscar trabajador…</string>

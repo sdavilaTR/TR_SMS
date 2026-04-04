@@ -10,60 +10,108 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- Scanner waiting area -->
-        <LinearLayout
+        <!-- Top area: laser waiting OR camera preview -->
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:padding="16dp">
+            android:layout_weight="1">
 
-            <ImageView
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:src="@drawable/ic_scanner"
-                app:tint="@color/primary"
-                android:layout_marginBottom="8dp"
-                android:contentDescription="@null" />
-
-            <TextView
-                android:id="@+id/txtScannerStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/scanner_status_waiting"
-                android:textColor="@color/on_surface"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/scanner_hint_usage"
-                android:textColor="@color/on_surface_variant"
-                android:textSize="12sp"
+            <!-- Laser mode (default) -->
+            <LinearLayout
+                android:id="@+id/laserModeArea"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
                 android:gravity="center"
-                android:layout_marginTop="4dp" />
+                android:padding="16dp">
 
+                <ImageView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_scanner"
+                    app:tint="@color/primary"
+                    android:layout_marginBottom="8dp"
+                    android:contentDescription="@null" />
+
+                <TextView
+                    android:id="@+id/txtScannerStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/scanner_status_waiting"
+                    android:textColor="@color/on_surface"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/scanner_hint_usage"
+                    android:textColor="@color/on_surface_variant"
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+
+            <!-- Camera mode (hidden by default) -->
+            <FrameLayout
+                android:id="@+id/cameraModeArea"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <com.journeyapps.barcodescanner.DecoratedBarcodeView
+                    android:id="@+id/barcodeView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </FrameLayout>
+        </FrameLayout>
+
+        <!-- Action buttons bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:background="@color/surface"
+            android:elevation="4dp">
+
+            <!-- Camera / Laser toggle -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCameraScan"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
                 android:text="@string/scanner_btn_camera"
                 android:textAllCaps="false"
-                android:layout_marginTop="12dp"
+                android:textSize="12sp"
+                app:icon="@drawable/ic_camera"
+                app:iconSize="18dp"
+                app:cornerRadius="10dp"
+                android:layout_marginEnd="8dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+            <!-- Flashlight toggle (only visible in camera mode) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashlight"
+                android:layout_width="48dp"
+                android:layout_height="40dp"
+                android:visibility="gone"
+                app:icon="@drawable/ic_flashlight_on"
+                app:iconSize="20dp"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
                 app:cornerRadius="10dp"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
         </LinearLayout>
 
-        <!-- Recent scans — takes 2× more space -->
+        <!-- Recent scans -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="2"
             android:orientation="vertical"
-            android:background="@color/surface"
-            android:elevation="4dp">
+            android:background="@color/surface">
 
             <TextView
                 android:layout_width="wrap_content"

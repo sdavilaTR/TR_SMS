@@ -23,8 +23,10 @@ import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.services.ClockingService
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
+import com.google.android.material.button.MaterialButton
+import com.journeyapps.barcodescanner.BarcodeCallback
+import com.journeyapps.barcodescanner.BarcodeResult
+import com.journeyapps.barcodescanner.DecoratedBarcodeView
 import kotlinx.coroutines.launch
 
 class ScannerFragment : Fragment() {
@@ -43,19 +45,24 @@ class ScannerFragment : Fragment() {
 
     private val scanLog = mutableListOf<ScanLogEntry>()
 
-    data class ScanLogEntry(val name: String, val badge: String, val granted: Boolean, val time: String)
+    private var isCameraMode = false
+    private var isFlashOn = false
+    private var barcodeView: DecoratedBarcodeView? = null
 
-    // ZXing camera scanner launcher (fallback when DataWedge laser is not available)
-    private val cameraScanner = registerForActivityResult(ScanContract()) { result ->
-        result.contents?.let { onBarcodeScanned(it) }
-    }
+    data class ScanLogEntry(val name: String, val badge: String, val granted: Boolean, val time: String)
 
     // Runtime camera permission request
     private val requestCameraPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) launchCameraScanner()
+        if (granted) activateCameraMode()
         else Toast.makeText(requireContext(), getString(R.string.scanner_error_camera_permission), Toast.LENGTH_SHORT).show()
+    }
+
+    private val barcodeCallback = object : BarcodeCallback {
+        override fun barcodeResult(result: BarcodeResult?) {
+            result?.text?.let { onBarcodeScanned(it) }
+        }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -84,17 +91,36 @@ class ScannerFragment : Fragment() {
         rv.layoutManager = LinearLayoutManager(requireContext())
         rv.adapter = ScanLogAdapter()
 
-        // Camera scan button (fallback for devices without laser scanner)
-        view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnCameraScan)
-            .setOnClickListener {
+        barcodeView = view.findViewById(R.id.barcodeView)
+
+        // Camera toggle button
+        val btnCamera = view.findViewById<MaterialButton>(R.id.btnCameraScan)
+        btnCamera.setOnClickListener {
+            if (isCameraMode) {
+                deactivateCameraMode()
+            } else {
                 if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
                     == PackageManager.PERMISSION_GRANTED
                 ) {
-                    launchCameraScanner()
+                    activateCameraMode()
                 } else {
                     requestCameraPermission.launch(Manifest.permission.CAMERA)
                 }
             }
+        }
+
+        // Flashlight button
+        val btnFlash = view.findViewById<MaterialButton>(R.id.btnFlashlight)
+        btnFlash.setOnClickListener {
+            isFlashOn = !isFlashOn
+            if (isFlashOn) {
+                barcodeView?.setTorchOn()
+                btnFlash.setIconResource(R.drawable.ic_flashlight_off)
+            } else {
+                barcodeView?.setTorchOff()
+                btnFlash.setIconResource(R.drawable.ic_flashlight_on)
+            }
+        }
 
         // Load project context
         viewLifecycleOwner.lifecycleScope.launch {
@@ -115,15 +141,50 @@ class ScannerFragment : Fragment() {
         }
     }
 
-    private fun launchCameraScanner() {
-        val options = ScanOptions().apply {
-            setDesiredBarcodeFormats(ScanOptions.ALL_CODE_TYPES)
-            setPrompt(getString(R.string.scanner_camera_prompt))
-            setBeepEnabled(false)
-            setOrientationLocked(false)
-            setCameraId(0)
-        }
-        cameraScanner.launch(options)
+    private fun activateCameraMode() {
+        isCameraMode = true
+        val v = view ?: return
+
+        v.findViewById<View>(R.id.laserModeArea).visibility = View.GONE
+        v.findViewById<View>(R.id.cameraModeArea).visibility = View.VISIBLE
+        v.findViewById<MaterialButton>(R.id.btnFlashlight).visibility = View.VISIBLE
+
+        val btnCamera = v.findViewById<MaterialButton>(R.id.btnCameraScan)
+        btnCamera.text = getString(R.string.scanner_btn_laser)
+        btnCamera.setIconResource(R.drawable.ic_laser)
+
+        barcodeView?.decodeContinuous(barcodeCallback)
+        barcodeView?.resume()
+    }
+
+    private fun deactivateCameraMode() {
+        isCameraMode = false
+        isFlashOn = false
+        val v = view ?: return
+
+        barcodeView?.setTorchOff()
+        barcodeView?.pause()
+
+        v.findViewById<View>(R.id.laserModeArea).visibility = View.VISIBLE
+        v.findViewById<View>(R.id.cameraModeArea).visibility = View.GONE
+        v.findViewById<MaterialButton>(R.id.btnFlashlight).visibility = View.GONE
+
+        val btnCamera = v.findViewById<MaterialButton>(R.id.btnCameraScan)
+        btnCamera.text = getString(R.string.scanner_btn_camera)
+        btnCamera.setIconResource(R.drawable.ic_camera)
+
+        val btnFlash = v.findViewById<MaterialButton>(R.id.btnFlashlight)
+        btnFlash.setIconResource(R.drawable.ic_flashlight_on)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (isCameraMode) barcodeView?.resume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (isCameraMode) barcodeView?.pause()
     }
 
     private fun onBarcodeScanned(raw: String) {
@@ -142,8 +203,9 @@ class ScannerFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                val source = if (isCameraMode) "CAMERA" else "LASER"
                 val result = ServiceLocator.clockingService.processScan(
-                    identifier, accessPointId, projectId, "LASER"
+                    identifier, accessPointId, projectId, source
                 )
                 addToScanLog(result)
                 showResultOverlay(result)
@@ -224,6 +286,8 @@ class ScannerFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        barcodeView?.pause()
+        barcodeView = null
         soundPool?.release()
         soundPool = null
         loadedSounds.clear()

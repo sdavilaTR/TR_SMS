@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.hassiwrapper.R
@@ -17,6 +18,8 @@ import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
 
 class SyncFragment : Fragment() {
+
+    private var apiReachable = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return inflater.inflate(R.layout.fragment_sync, container, false)
@@ -29,7 +32,7 @@ class SyncFragment : Fragment() {
             performSync()
         }
 
-        loadPendingCounts()
+        loadKpis()
         loadLastSync()
         checkConnectivity()
         checkAuthStatus()
@@ -37,10 +40,9 @@ class SyncFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        // Refresh connectivity status every time the screen becomes visible
         checkConnectivity()
         checkAuthStatus()
-        loadPendingCounts()
+        loadKpis()
     }
 
     private fun checkConnectivity() {
@@ -52,7 +54,6 @@ class SyncFragment : Fragment() {
             val dotApi = v.findViewById<View>(R.id.dotApi)
             val txtApi = v.findViewById<TextView>(R.id.txtApiStatus)
 
-            // Show "checking" state while we probe
             dotNetwork.setBackgroundResource(R.drawable.dot_grey)
             txtNetwork.text = getString(R.string.sync_status_checking)
             dotApi.setBackgroundResource(R.drawable.dot_grey)
@@ -65,13 +66,15 @@ class SyncFragment : Fragment() {
             } else {
                 dotNetwork.setBackgroundResource(R.drawable.dot_red)
                 txtNetwork.text = getString(R.string.sync_network_offline)
-                // No point pinging the API if there's no network
                 dotApi.setBackgroundResource(R.drawable.dot_red)
                 txtApi.text = getString(R.string.sync_api_fail)
+                apiReachable = false
+                loadKpis()
                 return@launch
             }
 
             val status = ServiceLocator.apiClient.checkConnectivity()
+            apiReachable = status.apiReachable
             if (status.apiReachable) {
                 dotApi.setBackgroundResource(R.drawable.dot_green)
                 txtApi.text = getString(R.string.sync_api_ok)
@@ -79,6 +82,7 @@ class SyncFragment : Fragment() {
                 dotApi.setBackgroundResource(R.drawable.dot_red)
                 txtApi.text = getString(R.string.sync_api_fail)
             }
+            loadKpis()
         }
     }
 
@@ -109,15 +113,54 @@ class SyncFragment : Fragment() {
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    private fun loadPendingCounts() {
+    private fun loadKpis() {
         viewLifecycleOwner.lifecycleScope.launch {
+            val v = view ?: return@launch
             val counts = ServiceLocator.syncService.getPendingCounts()
-            view?.let { v ->
-                v.findViewById<TextView>(R.id.txtPendingLogs).text = getString(R.string.sync_pending_logs, counts.logs)
-                v.findViewById<TextView>(R.id.txtPendingIncidents).text = getString(R.string.sync_pending_incidents, counts.incidents)
-                v.findViewById<TextView>(R.id.txtPendingSessions).text = getString(R.string.sync_pending_sessions, counts.sessions)
-                v.findViewById<TextView>(R.id.txtPendingPhotos).text = getString(R.string.sync_pending_photos, counts.photos)
+            val workerCount = ServiceLocator.personDao.count()
+
+            // Records KPI
+            setupPendingKpi(
+                v.findViewById(R.id.txtKpiRecords),
+                v.findViewById(R.id.txtKpiRecordsLabel),
+                counts.logs
+            )
+
+            // Photos KPI
+            setupPendingKpi(
+                v.findViewById(R.id.txtKpiPhotos),
+                v.findViewById(R.id.txtKpiPhotosLabel),
+                counts.photos
+            )
+
+            // Observations KPI
+            setupPendingKpi(
+                v.findViewById(R.id.txtKpiObservations),
+                v.findViewById(R.id.txtKpiObservationsLabel),
+                counts.observations
+            )
+
+            // Workers KPI
+            val txtWorkers = v.findViewById<TextView>(R.id.txtKpiWorkers)
+            val txtWorkersLabel = v.findViewById<TextView>(R.id.txtKpiWorkersLabel)
+            txtWorkers.text = workerCount.toString()
+            txtWorkersLabel.text = if (apiReachable) {
+                getString(R.string.sync_kpi_workers_synced)
+            } else {
+                ""
             }
+        }
+    }
+
+    private fun setupPendingKpi(txtValue: TextView, txtLabel: TextView, pending: Int) {
+        if (pending == 0) {
+            txtValue.text = "✓"
+            txtValue.setTextColor(ContextCompat.getColor(requireContext(), R.color.granted))
+            txtLabel.text = getString(R.string.sync_kpi_synced)
+        } else {
+            txtValue.text = pending.toString()
+            txtValue.setTextColor(ContextCompat.getColor(requireContext(), R.color.warning))
+            txtLabel.text = getString(R.string.sync_kpi_pending)
         }
     }
 
@@ -139,7 +182,6 @@ class SyncFragment : Fragment() {
         val txtApi = v.findViewById<TextView>(R.id.txtApiStatus)
 
         viewLifecycleOwner.lifecycleScope.launch {
-            // Block sync if not authenticated
             if (!ServiceLocator.authRepo.isAuthenticated()) {
                 status.text = getString(R.string.sync_auth_required)
                 status.setTextColor(resources.getColor(R.color.warning, null))
@@ -153,7 +195,6 @@ class SyncFragment : Fragment() {
             val result = ServiceLocator.syncService.fullSync { retry ->
                 status.text = getString(R.string.sync_retrying, retry.attempt, retry.waitSeconds)
                 status.setTextColor(resources.getColor(R.color.warning, null))
-                // Show "checking" on the API dot during retries instead of leaving it stale
                 dotApi.setBackgroundResource(R.drawable.dot_grey)
                 txtApi.text = getString(R.string.sync_status_checking)
             }
@@ -164,17 +205,16 @@ class SyncFragment : Fragment() {
             if (result.success) {
                 status.text = getString(R.string.sync_success, result.logsUploaded, result.workersAdded, result.workersUpdated)
                 status.setTextColor(resources.getColor(R.color.granted, null))
-                // Sync succeeded → API is clearly reachable, update dot immediately without extra ping
                 dotApi.setBackgroundResource(R.drawable.dot_green)
                 txtApi.text = getString(R.string.sync_api_ok)
+                apiReachable = true
             } else {
                 status.text = getString(R.string.sync_error, result.error ?: "Error desconocido")
                 status.setTextColor(resources.getColor(R.color.error, null))
-                // Sync failed → re-probe to get accurate connectivity status
                 checkConnectivity()
             }
 
-            loadPendingCounts()
+            loadKpis()
             loadLastSync()
         }
     }

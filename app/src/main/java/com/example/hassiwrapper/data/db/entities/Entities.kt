@@ -131,6 +131,34 @@ data class IncidentEntity(
     val resolution_notes: String? = null
 )
 
+@Entity(tableName = "hse_observations")
+data class HseObservationEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val uuid: String,
+    val project_id: Int? = null,
+    val observer_device_id: String? = null,
+    val observer_badge: String? = null,
+    val unique_id_value: String? = null,
+    val observed_name: String? = null,
+    val observed_badge: String? = null,
+    val observed_department: String? = null,
+    val observed_position: String? = null,
+    val observed_contractor: String? = null,
+    val observation_date: String,
+    val location: String? = null,
+    val area_authority: String? = null,
+    val description: String,
+    val observation_type: String,
+    val safety_type: String,
+    val intervention_action: String? = null,
+    val outcome: String? = null,
+    val action_taken: String? = null,
+    val coaching_status: String = "NOT_REQUIRED",
+    val additional_comments: String? = null,
+    val categories: String? = null,
+    val synced: Boolean = false
+)
+
 @Entity(tableName = "work_sessions")
 data class WorkSessionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

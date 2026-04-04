@@ -22,6 +22,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
@@ -111,6 +112,9 @@ class PassportFragment : Fragment() {
         }
         view.findViewById<MaterialButton>(R.id.btnClosePassport).setOnClickListener {
             showWaiting()
+        }
+        view.findViewById<MaterialButton>(R.id.btnOpenObservation).setOnClickListener {
+            openObservation()
         }
         view.findViewById<FrameLayout>(R.id.photoContainer).setOnClickListener {
             if (currentPerson != null) requestPhotoCameraIfNeededAndCapture()
@@ -413,6 +417,21 @@ class PassportFragment : Fragment() {
             )
         )
         Log.i(TAG, "Photo queued for offline sync: $personUuid")
+    }
+
+    private fun openObservation() {
+        val person = currentPerson ?: return
+        val contractor = view?.findViewById<TextView>(R.id.txtCompany)?.text?.toString() ?: ""
+
+        val bundle = Bundle().apply {
+            putString("unique_id_value", person.unique_id_value)
+            putString("observed_name", "${person.family_name}, ${person.given_name}")
+            putString("observed_badge", person.badge_number)
+            putString("observed_department", person.category_code)
+            putString("observed_position", person.position)
+            putString("observed_contractor", contractor)
+        }
+        findNavController().navigate(R.id.observationFragment, bundle)
     }
 
     private fun showWaiting() {

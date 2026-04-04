@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Header: Worker info -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/primary"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/obs_worker_header"
+                        android:textColor="@color/on_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="4dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Nombre:"
+                            android:textColor="@color/on_surface_variant"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/txtObsWorkerName"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="2"
+                            android:textColor="@color/on_surface"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="4dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Badge:"
+                            android:textColor="@color/on_surface_variant"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/txtObsBadge"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="2"
+                            android:textColor="@color/on_surface"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="4dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Empresa:"
+                            android:textColor="@color/on_surface_variant"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/txtObsContractor"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="2"
+                            android:textColor="@color/on_surface"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Puesto:"
+                            android:textColor="@color/on_surface_variant"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/txtObsPosition"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="2"
+                            android:textColor="@color/on_surface"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Location -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/obs_location" android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+        <EditText android:id="@+id/editLocation" android:layout_width="match_parent" android:layout_height="44dp" android:hint="@string/obs_location" android:inputType="text" android:background="@color/surface" android:padding="10dp" android:textSize="14sp" android:layout_marginBottom="12dp" />
+
+        <!-- Area Authority -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/obs_area_authority" android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+        <EditText android:id="@+id/editAreaAuthority" android:layout_width="match_parent" android:layout_height="44dp" android:hint="@string/obs_area_authority" android:inputType="text" android:background="@color/surface" android:padding="10dp" android:textSize="14sp" android:layout_marginBottom="12dp" />
+
+        <!-- Description (required) -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/obs_description" android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+        <EditText android:id="@+id/editDescription" android:layout_width="match_parent" android:layout_height="80dp" android:hint="@string/obs_description" android:inputType="textMultiLine" android:gravity="top" android:background="@color/surface" android:padding="10dp" android:textSize="14sp" android:layout_marginBottom="16dp" />
+
+        <!-- Observation Type -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/obs_type_header" android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+        <RadioGroup android:id="@+id/rgObservationType" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="12dp">
+            <RadioButton android:id="@+id/rbCondition" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/obs_condition" android:textSize="13sp" />
+            <RadioButton android:id="@+id/rbBehaviour" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/obs_behaviour" android:textSize="13sp" />
+        </RadioGroup>
+
+        <!-- Safety Type -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/obs_safety_header" android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+        <RadioGroup android:id="@+id/rgSafetyType" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="12dp">
+            <RadioButton android:id="@+id/rbSafe" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/obs_safe" android:textSize="13sp" />
+            <RadioButton android:id="@+id/rbUnsafe" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/obs_unsafe" android:textSize="13sp" />
+        </RadioGroup>
+
+        <!-- Intervention -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/obs_intervention_header" android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+        <RadioGroup android:id="@+id/rgIntervention" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="12dp">
+            <RadioButton android:id="@+id/rbNoIntervene" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_no_intervene" android:textSize="13sp" />
+            <RadioButton android:id="@+id/rbIntervened" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_intervened" android:textSize="13sp" />
+            <RadioButton android:id="@+id/rbSpotCoaching" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_spot_coaching" android:textSize="13sp" />
+            <RadioButton android:id="@+id/rbPositiveReinforcement" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_positive_reinforcement" android:textSize="13sp" />
+            <RadioButton android:id="@+id/rbPositiveObservation" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_positive_observation" android:textSize="13sp" />
+            <RadioButton android:id="@+id/rbNonPeer" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_non_peer" android:textSize="13sp" />
+        </RadioGroup>
+
+        <!-- Outcome -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/obs_outcome_header" android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+        <RadioGroup android:id="@+id/rgOutcome" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="12dp">
+            <RadioButton android:id="@+id/rbCorrected" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_corrected" android:textSize="13sp" />
+            <RadioButton android:id="@+id/rbPartlyCorrected" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_partly_corrected" android:textSize="13sp" />
+            <RadioButton android:id="@+id/rbNotCorrected" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_not_corrected" android:textSize="13sp" />
+            <RadioButton android:id="@+id/rbOutcomePositive" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_outcome_positive" android:textSize="13sp" />
+        </RadioGroup>
+
+        <!-- Action Taken -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/obs_action_taken" android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+        <EditText android:id="@+id/editActionTaken" android:layout_width="match_parent" android:layout_height="60dp" android:hint="@string/obs_action_taken" android:inputType="textMultiLine" android:gravity="top" android:background="@color/surface" android:padding="10dp" android:textSize="14sp" android:layout_marginBottom="12dp" />
+
+        <!-- Coaching -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/obs_coaching_header" android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+        <RadioGroup android:id="@+id/rgCoaching" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="12dp">
+            <RadioButton android:id="@+id/rbCoachingNotRequired" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_coaching_not_required" android:textSize="13sp" android:checked="true" />
+            <RadioButton android:id="@+id/rbCoachingPending" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_coaching_pending" android:textSize="13sp" />
+            <RadioButton android:id="@+id/rbCoachingDone" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_coaching_done" android:textSize="13sp" />
+        </RadioGroup>
+
+        <!-- Categories -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/obs_categories_header" android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroupCategories"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:chipSpacingVertical="4dp" />
+
+        <!-- Additional Comments -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/obs_additional_comments" android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+        <EditText android:id="@+id/editAdditionalComments" android:layout_width="match_parent" android:layout_height="60dp" android:hint="@string/obs_additional_comments" android:inputType="textMultiLine" android:gravity="top" android:background="@color/surface" android:padding="10dp" android:textSize="14sp" android:layout_marginBottom="20dp" />
+
+        <!-- Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="24dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnBackObservation"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="@string/obs_back"
+                android:textAllCaps="false"
+                android:layout_marginEnd="8dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSaveObservation"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="2"
+                android:text="@string/obs_save"
+                android:textAllCaps="false"
+                app:backgroundTint="@color/primary" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

@@ -238,6 +238,24 @@ interface IncidentDao {
 }
 
 @Dao
+interface HseObservationDao {
+    @Insert
+    suspend fun insert(observation: HseObservationEntity): Long
+
+    @Query("SELECT * FROM hse_observations WHERE synced = 0")
+    suspend fun getPending(): List<HseObservationEntity>
+
+    @Query("UPDATE hse_observations SET synced = 1 WHERE id IN (:ids)")
+    suspend fun markSynced(ids: List<Long>)
+
+    @Query("SELECT * FROM hse_observations ORDER BY observation_date DESC LIMIT :limit")
+    suspend fun getRecent(limit: Int = 20): List<HseObservationEntity>
+
+    @Query("SELECT COUNT(*) FROM hse_observations WHERE synced = 0")
+    suspend fun getPendingCount(): Int
+}
+
+@Dao
 interface WorkSessionDao {
     @Insert
     suspend fun insert(session: WorkSessionEntity): Long

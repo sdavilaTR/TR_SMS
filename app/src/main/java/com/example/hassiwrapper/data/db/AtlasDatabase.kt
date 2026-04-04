@@ -20,9 +20,10 @@ import com.example.hassiwrapper.data.db.entities.*
         AccessLogEntity::class,
         IncidentEntity::class,
         WorkSessionEntity::class,
-        PendingPhotoEntity::class
+        PendingPhotoEntity::class,
+        HseObservationEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -39,6 +40,7 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun incidentDao(): IncidentDao
     abstract fun workSessionDao(): WorkSessionDao
     abstract fun pendingPhotoDao(): PendingPhotoDao
+    abstract fun hseObservationDao(): HseObservationDao
 
     /** Clears all data from every table (used when switching to DEV profile). */
     suspend fun clearAllData() {

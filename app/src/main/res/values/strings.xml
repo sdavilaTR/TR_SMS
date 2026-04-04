@@ -158,6 +158,45 @@
     <string name="language_en">English</string>
     <string name="language_fr">Français</string>
 
+    <!-- Observations -->
+    <string name="obs_title">Observaci\u00f3n HSE</string>
+    <string name="obs_open_observation">Abrir Observaci\u00f3n</string>
+    <string name="obs_worker_header">Trabajador Observado</string>
+    <string name="obs_location">Ubicaci\u00f3n</string>
+    <string name="obs_area_authority">Autoridad de \u00c1rea</string>
+    <string name="obs_description">Descripci\u00f3n de la Observaci\u00f3n *</string>
+    <string name="obs_type_header">Tipo de Observaci\u00f3n</string>
+    <string name="obs_condition">Condici\u00f3n</string>
+    <string name="obs_behaviour">Comportamiento</string>
+    <string name="obs_safety_header">Tipo de Seguridad</string>
+    <string name="obs_safe">Seguro</string>
+    <string name="obs_unsafe">Inseguro</string>
+    <string name="obs_intervention_header">Intervenci\u00f3n</string>
+    <string name="obs_no_intervene">No intervino</string>
+    <string name="obs_intervened">Intervino / Tom\u00f3 acci\u00f3n</string>
+    <string name="obs_spot_coaching">Coaching en el momento</string>
+    <string name="obs_positive_reinforcement">Refuerzo positivo</string>
+    <string name="obs_positive_observation">Observaci\u00f3n positiva</string>
+    <string name="obs_non_peer">Intervenci\u00f3n no-par</string>
+    <string name="obs_outcome_header">Resultado</string>
+    <string name="obs_corrected">Corregido</string>
+    <string name="obs_partly_corrected">Parcialmente corregido</string>
+    <string name="obs_not_corrected">No corregido</string>
+    <string name="obs_outcome_positive">Refuerzo positivo</string>
+    <string name="obs_action_taken">Acci\u00f3n Tomada</string>
+    <string name="obs_coaching_header">Coaching</string>
+    <string name="obs_coaching_not_required">No requerido</string>
+    <string name="obs_coaching_pending">Pendiente de realizar</string>
+    <string name="obs_coaching_done">Realizado</string>
+    <string name="obs_categories_header">Categor\u00edas</string>
+    <string name="obs_additional_comments">Comentarios Adicionales</string>
+    <string name="obs_save">Guardar Observaci\u00f3n</string>
+    <string name="obs_back">Volver</string>
+    <string name="obs_saved">Observaci\u00f3n guardada correctamente</string>
+    <string name="obs_description_required">La descripci\u00f3n es obligatoria</string>
+    <string name="obs_type_required">Seleccione el tipo de observaci\u00f3n</string>
+    <string name="obs_safety_required">Seleccione el tipo de seguridad</string>
+
     <!-- Profiles -->
     <string name="profile_label">Perfil</string>
     <string name="profile_user">USER</string>

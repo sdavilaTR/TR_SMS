@@ -12,6 +12,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.google.android.material.button.MaterialButton
@@ -203,13 +204,44 @@ class SyncFragment : Fragment() {
             progress.visibility = View.GONE
 
             if (result.success) {
-                status.text = getString(R.string.sync_success, result.logsUploaded, result.workersAdded, result.workersUpdated)
-                status.setTextColor(resources.getColor(R.color.granted, null))
+                val msg = StringBuilder(getString(R.string.sync_success, result.logsUploaded, result.workersAdded, result.workersUpdated))
+
+                if (result.photosUploaded > 0) {
+                    msg.append("\n").append(getString(R.string.sync_photos_ok, result.photosUploaded))
+                }
+
+                if (result.photosFailed > 0) {
+                    val profile = ProfileManager.currentProfile()
+                    if (profile == ProfileManager.Profile.DEV || profile == ProfileManager.Profile.ADMIN) {
+                        val detail = result.photoErrors.joinToString("\n")
+                        msg.append("\n").append(getString(R.string.sync_photos_fail_detail, result.photosFailed, detail))
+                    } else {
+                        msg.append("\n").append(getString(R.string.sync_photos_fail, result.photosFailed))
+                    }
+                    status.text = msg.toString()
+                    status.setTextColor(resources.getColor(R.color.warning, null))
+                } else {
+                    status.text = msg.toString()
+                    status.setTextColor(resources.getColor(R.color.granted, null))
+                }
+
                 dotApi.setBackgroundResource(R.drawable.dot_green)
                 txtApi.text = getString(R.string.sync_api_ok)
                 apiReachable = true
             } else {
-                status.text = getString(R.string.sync_error, result.error ?: "Error desconocido")
+                val msg = StringBuilder(getString(R.string.sync_error, result.error ?: "Error desconocido"))
+
+                if (result.photosFailed > 0) {
+                    val profile = ProfileManager.currentProfile()
+                    if (profile == ProfileManager.Profile.DEV || profile == ProfileManager.Profile.ADMIN) {
+                        val detail = result.photoErrors.joinToString("\n")
+                        msg.append("\n").append(getString(R.string.sync_photos_fail_detail, result.photosFailed, detail))
+                    } else {
+                        msg.append("\n").append(getString(R.string.sync_photos_fail, result.photosFailed))
+                    }
+                }
+
+                status.text = msg.toString()
                 status.setTextColor(resources.getColor(R.color.error, null))
                 checkConnectivity()
             }

@@ -84,6 +84,9 @@
     <string name="sync_syncing">Sincronizando…</string>
     <string name="sync_success">✓ Sync completado: %1$d logs, %2$d nuevos, %3$d actualizados</string>
     <string name="sync_error">✕ Error: %s</string>
+    <string name="sync_photos_ok">📷 %d foto(s) subida(s)</string>
+    <string name="sync_photos_fail">📷 %d foto(s) fallaron al subir</string>
+    <string name="sync_photos_fail_detail">📷 %1$d foto(s) fallaron:\n%2$s</string>
     <string name="sync_status_checking">Comprobando…</string>
     <string name="sync_network_online">Red: Conectado</string>
     <string name="sync_network_offline">Red: Sin conexión</string>

@@ -58,6 +58,9 @@ class SyncService(
         val workersAdded: Int = 0,
         val workersUpdated: Int = 0,
         val workersSkipped: Int = 0,
+        val photosUploaded: Int = 0,
+        val photosFailed: Int = 0,
+        val photoErrors: List<String> = emptyList(),
         val error: String? = null
     )
 
@@ -171,7 +174,7 @@ class SyncService(
         val (observationsUploaded, observationsError) = uploadObservations(api)
 
         // 5. Upload pending photos (non-fatal)
-        uploadPendingPhotos(api)
+        val photoResult = uploadPendingPhotos(api)
 
         val uploadErrors = listOfNotNull(logsError, incidentsError, sessionsError, observationsError)
         val success = uploadErrors.isEmpty()
@@ -192,6 +195,9 @@ class SyncService(
             workersAdded = workerResult.added,
             workersUpdated = workerResult.updated,
             workersSkipped = workerResult.skipped,
+            photosUploaded = photoResult.uploaded,
+            photosFailed = photoResult.failed,
+            photoErrors = photoResult.errors,
             error = if (uploadErrors.isNotEmpty()) uploadErrors.joinToString("; ") else null
         )
     }
@@ -503,18 +509,30 @@ class SyncService(
 
     // ── Pending photo uploads ─────────────────────────────────────────────────
 
-    private suspend fun uploadPendingPhotos(api: AtlasApiService) {
-        val dao = pendingPhotoDao ?: return
+    data class PhotoUploadResult(
+        val uploaded: Int = 0,
+        val failed: Int = 0,
+        val errors: List<String> = emptyList()
+    )
+
+    private suspend fun uploadPendingPhotos(api: AtlasApiService): PhotoUploadResult {
+        val dao = pendingPhotoDao ?: return PhotoUploadResult()
         val pending = dao.getAll()
-        if (pending.isEmpty()) return
+        if (pending.isEmpty()) return PhotoUploadResult()
 
         Log.i(TAG, "Uploading ${pending.size} pending photo(s)")
+        var uploaded = 0
+        var failed = 0
+        val errors = mutableListOf<String>()
+
         for (photo in pending) {
             try {
                 val file = File(photo.local_path)
                 if (!file.exists()) {
                     Log.w(TAG, "Pending photo file missing: ${photo.local_path}, removing from queue")
                     dao.delete(photo.unique_id_value)
+                    failed++
+                    errors.add("[${photo.unique_id_value}] Archivo no encontrado: ${photo.local_path}")
                     continue
                 }
 
@@ -529,13 +547,20 @@ class SyncService(
                         personDao.updatePhotoUrl(photo.unique_id_value, photoUrl)
                     }
                     dao.delete(photo.unique_id_value)
+                    uploaded++
                     Log.i(TAG, "Uploaded pending photo for ${photo.unique_id_value}")
                 } else {
-                    Log.w(TAG, "Photo upload failed for ${photo.unique_id_value}: HTTP ${response.code()}")
+                    failed++
+                    val detail = "HTTP ${response.code()}"
+                    errors.add("[${photo.unique_id_value}] $detail")
+                    Log.w(TAG, "Photo upload failed for ${photo.unique_id_value}: $detail")
                 }
             } catch (e: Exception) {
+                failed++
+                errors.add("[${photo.unique_id_value}] ${e.javaClass.simpleName}: ${e.message}")
                 Log.w(TAG, "Photo upload error for ${photo.unique_id_value}: ${e.message}")
             }
         }
+        return PhotoUploadResult(uploaded, failed, errors)
     }
 }

@@ -1,5 +1,6 @@
 package com.example.hassiwrapper.ui.settings
 
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -8,6 +9,7 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.hassiwrapper.AtlasApp
@@ -79,9 +81,29 @@ class SettingsFragment : Fragment() {
         }
     }
 
+    // ── Button highlight helper ─────────────────────────────────────────
+
+    private fun highlightSelected(selected: MaterialButton, vararg others: MaterialButton) {
+        val primaryColor = ContextCompat.getColor(requireContext(), R.color.primary)
+        val onPrimaryColor = ContextCompat.getColor(requireContext(), R.color.on_primary)
+        val transparentColor = android.graphics.Color.TRANSPARENT
+
+        selected.backgroundTintList = ColorStateList.valueOf(primaryColor)
+        selected.setTextColor(onPrimaryColor)
+        selected.strokeColor = ColorStateList.valueOf(primaryColor)
+
+        for (btn in others) {
+            btn.backgroundTintList = ColorStateList.valueOf(transparentColor)
+            btn.setTextColor(primaryColor)
+            btn.strokeColor = ColorStateList.valueOf(primaryColor)
+        }
+    }
+
     // ── Language selector ──────────────────────────────────────────────
 
     private val languageFlags = mapOf("es" to "🇪🇸 Español", "en" to "🇬🇧 English", "fr" to "🇫🇷 Français")
+
+    private lateinit var langButtons: Map<String, MaterialButton>
 
     private fun setupLanguageSelector(view: View) {
         val txtCurrent = view.findViewById<TextView>(R.id.txtCurrentLanguage)
@@ -89,12 +111,21 @@ class SettingsFragment : Fragment() {
         val btnEn = view.findViewById<MaterialButton>(R.id.btnLangEn)
         val btnFr = view.findViewById<MaterialButton>(R.id.btnLangFr)
 
+        langButtons = mapOf("es" to btnEs, "en" to btnEn, "fr" to btnFr)
+
         val currentLang = LocaleHelper.getLanguage(requireContext())
         txtCurrent.text = languageFlags[currentLang] ?: languageFlags["es"]
+        highlightLanguageButton(currentLang)
 
         btnEs.setOnClickListener { changeLanguage("es") }
         btnEn.setOnClickListener { changeLanguage("en") }
         btnFr.setOnClickListener { changeLanguage("fr") }
+    }
+
+    private fun highlightLanguageButton(code: String) {
+        val selected = langButtons[code] ?: return
+        val others = langButtons.values.filter { it != selected }.toTypedArray()
+        highlightSelected(selected, *others)
     }
 
     private fun changeLanguage(code: String) {
@@ -106,17 +137,32 @@ class SettingsFragment : Fragment() {
 
     // ── Profile selector ───────────────────────────────────────────────
 
+    private lateinit var profileButtons: Map<ProfileManager.Profile, MaterialButton>
+
     private fun setupProfileSelector(view: View) {
         val txtCurrent = view.findViewById<TextView>(R.id.txtCurrentProfile)
         val btnUser  = view.findViewById<MaterialButton>(R.id.btnProfileUser)
         val btnAdmin = view.findViewById<MaterialButton>(R.id.btnProfileAdmin)
         val btnDev   = view.findViewById<MaterialButton>(R.id.btnProfileDev)
 
+        profileButtons = mapOf(
+            ProfileManager.Profile.USER  to btnUser,
+            ProfileManager.Profile.ADMIN to btnAdmin,
+            ProfileManager.Profile.DEV   to btnDev
+        )
+
         updateProfileLabel(txtCurrent)
+        highlightProfileButton(ProfileManager.currentProfile())
 
         btnUser.setOnClickListener { switchProfile(ProfileManager.Profile.USER, txtCurrent) }
         btnAdmin.setOnClickListener { requestCodeAndSwitch(ProfileManager.Profile.ADMIN, txtCurrent) }
         btnDev.setOnClickListener   { requestCodeAndSwitch(ProfileManager.Profile.DEV, txtCurrent) }
+    }
+
+    private fun highlightProfileButton(profile: ProfileManager.Profile) {
+        val selected = profileButtons[profile] ?: return
+        val others = profileButtons.values.filter { it != selected }.toTypedArray()
+        highlightSelected(selected, *others)
     }
 
     private fun updateProfileLabel(txt: TextView) {
@@ -161,6 +207,13 @@ class SettingsFragment : Fragment() {
 
         ProfileManager.setProfile(target)
         updateProfileLabel(label)
+        highlightProfileButton(target)
+
+        // When switching to/from DEV, reset API cache and clear auth
+        if (target == ProfileManager.Profile.DEV || previous == ProfileManager.Profile.DEV) {
+            ServiceLocator.apiClient.resetResolvedBase()
+            ServiceLocator.authRepo.clearCaches()
+        }
 
         // When switching to DEV, reset the local database
         if (target == ProfileManager.Profile.DEV) {
@@ -168,14 +221,8 @@ class SettingsFragment : Fragment() {
                 withContext(Dispatchers.IO) {
                     AtlasApp.instance.database.clearAllData()
                 }
-                ServiceLocator.apiClient.resetResolvedBase()
                 Toast.makeText(requireContext(), R.string.profile_dev_db_cleared, Toast.LENGTH_SHORT).show()
             }
-        }
-
-        // When switching away from DEV, also reset API cache
-        if (previous == ProfileManager.Profile.DEV && target != ProfileManager.Profile.DEV) {
-            ServiceLocator.apiClient.resetResolvedBase()
         }
 
         Toast.makeText(

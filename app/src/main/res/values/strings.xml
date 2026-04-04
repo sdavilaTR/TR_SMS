@@ -29,6 +29,7 @@
     <string name="scanner_hint_usage">Use el escáner láser del terminal o el botón de cámara</string>
     <string name="scanner_btn_camera">Cámara</string>
     <string name="scanner_btn_laser">Láser</string>
+    <string name="scanner_laser_hint">Pulse el botón lateral del terminal para escanear con láser</string>
     <string name="scanner_label_recent">Últimas lecturas</string>
     <string name="scanner_error_camera_permission">Permiso de cámara requerido</string>
     <string name="scanner_camera_prompt">Apunte al código QR / código de barras del trabajador</string>

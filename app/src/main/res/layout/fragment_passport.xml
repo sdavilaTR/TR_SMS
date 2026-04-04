@@ -39,365 +39,390 @@
             android:gravity="center"
             android:layout_marginTop="8dp" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnCameraScanWaiting"
+        <!-- Two scan buttons side by side -->
+        <LinearLayout
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:text="@string/scanner_btn_camera"
-            android:textAllCaps="false"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
             android:layout_marginTop="24dp"
-            app:cornerRadius="10dp"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+            android:gravity="center">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLaserScanWaiting"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:text="@string/scanner_btn_laser"
+                android:textAllCaps="false"
+                android:layout_marginEnd="12dp"
+                app:icon="@drawable/ic_laser"
+                app:iconGravity="textStart"
+                app:cornerRadius="10dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCameraScanWaiting"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:text="@string/scanner_btn_camera"
+                android:textAllCaps="false"
+                app:icon="@drawable/ic_camera"
+                app:iconGravity="textStart"
+                app:cornerRadius="10dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- ── LOADED STATE ──────────────────────────────────────────── -->
-    <ScrollView
+    <LinearLayout
         android:id="@+id/layoutLoaded"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:orientation="vertical"
         android:visibility="gone">
 
+        <!-- Scan buttons bar at the top -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp">
 
-            <!-- Passport card -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLaserScanLoaded"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:text="@string/scanner_btn_laser"
+                android:textAllCaps="false"
+                android:layout_marginEnd="6dp"
+                app:icon="@drawable/ic_laser"
+                app:iconGravity="textStart"
+                app:cornerRadius="10dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCameraScanLoaded"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:text="@string/scanner_btn_camera"
+                android:textAllCaps="false"
+                android:layout_marginStart="6dp"
+                app:icon="@drawable/ic_camera"
+                app:iconGravity="textStart"
+                app:cornerRadius="10dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+        </LinearLayout>
+
+        <!-- Passport card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="4dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="6dp">
+
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="6dp">
+                android:layout_height="match_parent"
+                android:orientation="vertical">
 
+                <!-- Blue header band -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:background="@color/primary"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp">
 
-                    <!-- Blue header band -->
                     <LinearLayout
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:background="@color/primary"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="8dp"
-                        android:paddingTop="12dp"
-                        android:paddingBottom="12dp">
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-                        <LinearLayout
-                            android:layout_width="0dp"
+                        <TextView
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/passport_card_title"
-                                android:textColor="@color/on_primary"
-                                android:textSize="13sp"
-                                android:textStyle="bold"
-                                android:letterSpacing="0.03" />
-
-                            <TextView
-                                android:id="@+id/txtScanTime"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textColor="#CCFFFFFF"
-                                android:textSize="11sp"
-                                android:layout_marginTop="2dp" />
-                        </LinearLayout>
-
-                        <!-- Close button -->
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnClosePassport"
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:text="✕"
-                            android:textSize="16sp"
+                            android:text="@string/passport_card_title"
                             android:textColor="@color/on_primary"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            app:cornerRadius="20dp"
-                            style="@style/Widget.MaterialComponents.Button.TextButton" />
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.03" />
+
+                        <TextView
+                            android:id="@+id/txtScanTime"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="#CCFFFFFF"
+                            android:textSize="10sp"
+                            android:layout_marginTop="2dp" />
                     </LinearLayout>
 
-                    <!-- Photo + name section -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:padding="16dp">
+                    <!-- Close button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnClosePassport"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:text="✕"
+                        android:textSize="14sp"
+                        android:textColor="@color/on_primary"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        app:cornerRadius="18dp"
+                        style="@style/Widget.MaterialComponents.Button.TextButton" />
+                </LinearLayout>
 
-                        <!-- Photo (clickable to take photo) -->
-                        <FrameLayout
-                            android:id="@+id/photoContainer"
-                            android:layout_width="100dp"
-                            android:layout_height="130dp"
-                            android:layout_marginEnd="16dp"
-                            android:background="@drawable/bg_photo_placeholder"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:foreground="?android:attr/selectableItemBackground">
+                <!-- Photo + name section -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="8dp">
 
-                            <!-- Actual photo (shown when loaded) -->
-                            <ImageView
-                                android:id="@+id/imgWorkerPhoto"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:scaleType="centerCrop"
-                                android:visibility="gone" />
+                    <!-- Photo (clickable to take photo) -->
+                    <FrameLayout
+                        android:id="@+id/photoContainer"
+                        android:layout_width="90dp"
+                        android:layout_height="115dp"
+                        android:layout_marginEnd="14dp"
+                        android:background="@drawable/bg_photo_placeholder"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?android:attr/selectableItemBackground">
 
-                            <!-- Placeholder (shown when no photo) -->
-                            <LinearLayout
-                                android:id="@+id/layoutPhotoPlaceholder"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:orientation="vertical"
-                                android:gravity="center">
+                        <!-- Actual photo (shown when loaded) -->
+                        <ImageView
+                            android:id="@+id/imgWorkerPhoto"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:visibility="gone" />
 
-                                <ImageView
-                                    android:layout_width="48dp"
-                                    android:layout_height="48dp"
-                                    android:src="@drawable/ic_person_placeholder"
-                                    android:layout_marginBottom="6dp" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/passport_photo_tap"
-                                    android:textColor="#78909C"
-                                    android:textSize="10sp"
-                                    android:gravity="center" />
-                            </LinearLayout>
-
-                            <!-- Camera badge (bottom-right corner, always visible) -->
-                            <FrameLayout
-                                android:layout_width="28dp"
-                                android:layout_height="28dp"
-                                android:layout_gravity="bottom|end"
-                                android:layout_margin="4dp"
-                                android:background="@color/primary"
-                                android:padding="5dp">
-
-                                <ImageView
-                                    android:layout_width="match_parent"
-                                    android:layout_height="match_parent"
-                                    android:src="@drawable/ic_camera" />
-                            </FrameLayout>
-                        </FrameLayout>
-
-                        <!-- Name + status -->
+                        <!-- Placeholder (shown when no photo) -->
                         <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
+                            android:id="@+id/layoutPhotoPlaceholder"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
                             android:orientation="vertical"
-                            android:gravity="center_vertical">
+                            android:gravity="center">
 
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/passport_label_family_name"
-                                android:textColor="@color/on_surface_variant"
-                                android:textSize="10sp"
-                                android:textAllCaps="true"
-                                android:letterSpacing="0.05" />
-
-                            <TextView
-                                android:id="@+id/txtFamilyName"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textColor="@color/on_surface"
-                                android:textSize="26sp"
-                                android:textStyle="bold"
+                            <ImageView
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:src="@drawable/ic_person_placeholder"
                                 android:layout_marginBottom="4dp" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="@string/passport_label_given_name"
-                                android:textColor="@color/on_surface_variant"
-                                android:textSize="10sp"
-                                android:textAllCaps="true"
-                                android:letterSpacing="0.05" />
-
-                            <TextView
-                                android:id="@+id/txtGivenName"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textColor="@color/on_surface"
-                                android:textSize="18sp"
-                                android:layout_marginBottom="10dp" />
-
-                            <!-- Active status chip -->
-                            <TextView
-                                android:id="@+id/txtActiveStatus"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:paddingHorizontal="10dp"
-                                android:paddingVertical="4dp"
-                                android:textSize="12sp"
-                                android:textStyle="bold" />
+                                android:text="@string/passport_photo_tap"
+                                android:textColor="#78909C"
+                                android:textSize="9sp"
+                                android:gravity="center" />
                         </LinearLayout>
-                    </LinearLayout>
 
-                    <!-- Divider -->
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="@color/divider"
-                        android:layout_marginStart="16dp"
-                        android:layout_marginEnd="16dp" />
+                        <!-- Camera badge (bottom-right corner) -->
+                        <FrameLayout
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_gravity="bottom|end"
+                            android:layout_margin="3dp"
+                            android:background="@color/primary"
+                            android:padding="4dp">
 
-                    <!-- Details grid -->
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:src="@drawable/ic_camera" />
+                        </FrameLayout>
+                    </FrameLayout>
+
+                    <!-- Name + status -->
                     <LinearLayout
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:orientation="vertical"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
-                        android:paddingTop="12dp"
-                        android:paddingBottom="4dp">
+                        android:gravity="center_vertical">
 
-                        <!-- Row: Función / Compañía -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
+                        <TextView
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginBottom="12dp">
+                            android:text="@string/passport_label_family_name"
+                            android:textColor="@color/on_surface_variant"
+                            android:textSize="9sp"
+                            android:textAllCaps="true"
+                            android:letterSpacing="0.05" />
 
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingEnd="8dp">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/passport_label_position" android:textColor="@color/on_surface_variant" android:textSize="10sp" android:textAllCaps="true" android:letterSpacing="0.05" />
-                                <TextView android:id="@+id/txtPosition" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="15sp" android:textStyle="bold" />
-                            </LinearLayout>
-
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingStart="8dp">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/passport_label_company" android:textColor="@color/on_surface_variant" android:textSize="10sp" android:textAllCaps="true" android:letterSpacing="0.05" />
-                                <TextView android:id="@+id/txtCompany" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="15sp" android:textStyle="bold" />
-                            </LinearLayout>
-                        </LinearLayout>
-
-                        <!-- Row: Documento / Fecha de entrada -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
+                        <TextView
+                            android:id="@+id/txtFamilyName"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginBottom="12dp">
+                            android:textColor="@color/on_surface"
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="2dp" />
 
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingEnd="8dp">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/passport_label_document" android:textColor="@color/on_surface_variant" android:textSize="10sp" android:textAllCaps="true" android:letterSpacing="0.05" />
-                                <TextView android:id="@+id/txtDocument" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="15sp" />
-                            </LinearLayout>
-
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingStart="8dp">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/passport_label_valid_from" android:textColor="@color/on_surface_variant" android:textSize="10sp" android:textAllCaps="true" android:letterSpacing="0.05" />
-                                <TextView android:id="@+id/txtValidFrom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="15sp" />
-                            </LinearLayout>
-                        </LinearLayout>
-
-                        <!-- Row: Categoría / Válido hasta -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
+                        <TextView
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginBottom="12dp">
+                            android:text="@string/passport_label_given_name"
+                            android:textColor="@color/on_surface_variant"
+                            android:textSize="9sp"
+                            android:textAllCaps="true"
+                            android:letterSpacing="0.05" />
 
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingEnd="8dp">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/passport_label_category" android:textColor="@color/on_surface_variant" android:textSize="10sp" android:textAllCaps="true" android:letterSpacing="0.05" />
-                                <TextView android:id="@+id/txtCategory" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="15sp" />
-                            </LinearLayout>
+                        <TextView
+                            android:id="@+id/txtGivenName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/on_surface"
+                            android:textSize="16sp"
+                            android:layout_marginBottom="8dp" />
 
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingStart="8dp">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/passport_label_valid_to" android:textColor="@color/on_surface_variant" android:textSize="10sp" android:textAllCaps="true" android:letterSpacing="0.05" />
-                                <TextView android:id="@+id/txtValidTo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="15sp" />
-                            </LinearLayout>
-                        </LinearLayout>
+                        <!-- Active status chip -->
+                        <TextView
+                            android:id="@+id/txtActiveStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="3dp"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
+                </LinearLayout>
 
-                    <!-- Badge number strip -->
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/divider"
+                    android:layout_marginHorizontal="16dp" />
+
+                <!-- Details grid -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="4dp">
+
+                    <!-- Row: Función / Compañía -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="@color/surface_variant"
                         android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="14dp">
+                        android:layout_marginBottom="8dp">
 
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/passport_label_badge"
-                                android:textColor="@color/on_surface_variant"
-                                android:textSize="10sp"
-                                android:textAllCaps="true"
-                                android:letterSpacing="0.05" />
-
-                            <TextView
-                                android:id="@+id/txtBadgeNumber"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textColor="@color/primary"
-                                android:textSize="28sp"
-                                android:textStyle="bold" />
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingEnd="8dp">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/passport_label_position" android:textColor="@color/on_surface_variant" android:textSize="9sp" android:textAllCaps="true" android:letterSpacing="0.05" />
+                            <TextView android:id="@+id/txtPosition" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="14sp" android:textStyle="bold" />
                         </LinearLayout>
 
-                        <!-- QR placeholder -->
-                        <LinearLayout
-                            android:layout_width="72dp"
-                            android:layout_height="72dp"
-                            android:background="@color/divider"
-                            android:gravity="center"
-                            android:orientation="vertical">
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingStart="8dp">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/passport_label_company" android:textColor="@color/on_surface_variant" android:textSize="9sp" android:textAllCaps="true" android:letterSpacing="0.05" />
+                            <TextView android:id="@+id/txtCompany" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="14sp" android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
 
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="▦"
-                                android:textSize="32sp"
-                                android:textColor="@color/on_surface" />
+                    <!-- Row: Documento / Categoría -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingEnd="8dp">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/passport_label_document" android:textColor="@color/on_surface_variant" android:textSize="9sp" android:textAllCaps="true" android:letterSpacing="0.05" />
+                            <TextView android:id="@+id/txtDocument" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="14sp" />
+                        </LinearLayout>
+
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingStart="8dp">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/passport_label_category" android:textColor="@color/on_surface_variant" android:textSize="9sp" android:textAllCaps="true" android:letterSpacing="0.05" />
+                            <TextView android:id="@+id/txtCategory" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="14sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Row: Fecha de entrada / Válido hasta -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingEnd="8dp">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/passport_label_valid_from" android:textColor="@color/on_surface_variant" android:textSize="9sp" android:textAllCaps="true" android:letterSpacing="0.05" />
+                            <TextView android:id="@+id/txtValidFrom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="14sp" />
+                        </LinearLayout>
+
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingStart="8dp">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/passport_label_valid_to" android:textColor="@color/on_surface_variant" android:textSize="9sp" android:textAllCaps="true" android:letterSpacing="0.05" />
+                            <TextView android:id="@+id/txtValidTo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="14sp" />
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
 
-            <!-- Observation button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnOpenObservation"
-                android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:text="@string/obs_open_observation"
-                android:textAllCaps="false"
-                android:layout_marginTop="12dp"
-                app:icon="@drawable/ic_observation"
-                app:iconGravity="textStart"
-                app:cornerRadius="12dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                <!-- Badge number strip -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/surface_variant"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="10dp">
 
-            <!-- Camera scan button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnCameraScanLoaded"
-                android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:text="@string/scanner_btn_camera"
-                android:textAllCaps="false"
-                android:layout_marginTop="12dp"
-                app:cornerRadius="12dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/passport_label_badge"
+                        android:textColor="@color/on_surface_variant"
+                        android:textSize="9sp"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.05" />
 
-        </LinearLayout>
-    </ScrollView>
+                    <TextView
+                        android:id="@+id/txtBadgeNumber"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/primary"
+                        android:textSize="26sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Observation button - filled blue -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOpenObservation"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="@string/obs_open_observation"
+            android:textAllCaps="false"
+            android:textSize="16sp"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:backgroundTint="@color/primary"
+            android:textColor="@color/on_primary"
+            app:icon="@drawable/ic_observation"
+            app:iconGravity="textStart"
+            app:iconTint="@color/on_primary"
+            app:cornerRadius="12dp" />
+
+    </LinearLayout>
 </FrameLayout>

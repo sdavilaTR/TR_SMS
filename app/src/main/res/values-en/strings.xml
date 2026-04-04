@@ -29,6 +29,7 @@
     <string name="scanner_hint_usage">Use the terminal laser scanner or the camera button</string>
     <string name="scanner_btn_camera">Camera</string>
     <string name="scanner_btn_laser">Laser</string>
+    <string name="scanner_laser_hint">Press the side button on the terminal to scan with laser</string>
     <string name="scanner_label_recent">Latest readings</string>
     <string name="scanner_error_camera_permission">Camera permission required</string>
     <string name="scanner_camera_prompt">Point at the worker\'s QR code / barcode</string>

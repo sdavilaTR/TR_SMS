@@ -13,7 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.ScrollView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -104,8 +104,15 @@ class PassportFragment : Fragment() {
         }
         soundAllowed = soundPool!!.load(requireContext(), R.raw.beep_allowed, 1)
 
+        view.findViewById<MaterialButton>(R.id.btnLaserScanWaiting).setOnClickListener {
+            // Laser scan is handled by DataWedge hardware — this button is a visual hint
+            Toast.makeText(requireContext(), getString(R.string.scanner_laser_hint), Toast.LENGTH_SHORT).show()
+        }
         view.findViewById<MaterialButton>(R.id.btnCameraScanWaiting).setOnClickListener {
             requestCameraIfNeededAndScan()
+        }
+        view.findViewById<MaterialButton>(R.id.btnLaserScanLoaded).setOnClickListener {
+            Toast.makeText(requireContext(), getString(R.string.scanner_laser_hint), Toast.LENGTH_SHORT).show()
         }
         view.findViewById<MaterialButton>(R.id.btnCameraScanLoaded).setOnClickListener {
             requestCameraIfNeededAndScan()
@@ -191,7 +198,7 @@ class PassportFragment : Fragment() {
             contractor?.contractor_name?.ifBlank { "—" } ?: "—"
 
         view.findViewById<TextView>(R.id.txtDocument).text =
-            person.unique_id_value.ifBlank { "—" }
+            person.badge_number.ifBlank { "—" }
 
         view.findViewById<TextView>(R.id.txtBadgeNumber).text =
             person.badge_number.ifBlank { "—" }
@@ -224,9 +231,8 @@ class PassportFragment : Fragment() {
         loadWorkerPhoto(person.photo_url)
 
         view.findViewById<View>(R.id.layoutWaiting).visibility = View.GONE
-        val loaded = view.findViewById<ScrollView>(R.id.layoutLoaded)
+        val loaded = view.findViewById<LinearLayout>(R.id.layoutLoaded)
         loaded.visibility = View.VISIBLE
-        loaded.scrollTo(0, 0)
     }
 
     // ── Photo: local cache helpers ──────────────────────────────────────────

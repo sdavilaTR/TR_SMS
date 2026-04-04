@@ -196,4 +196,20 @@
     <string name="obs_description_required">La descripci\u00f3n es obligatoria</string>
     <string name="obs_type_required">Seleccione el tipo de observaci\u00f3n</string>
     <string name="obs_safety_required">Seleccione el tipo de seguridad</string>
+
+    <!-- Profiles -->
+    <string name="profile_label">Perfil</string>
+    <string name="profile_user">USER</string>
+    <string name="profile_admin">ADMIN</string>
+    <string name="profile_dev">DEV</string>
+    <string name="profile_user_desc">Modo básico — solo escáner</string>
+    <string name="profile_admin_desc">Acceso completo a todos los menús</string>
+    <string name="profile_dev_desc">Desarrollo — API: web-atlas-dev</string>
+    <string name="profile_current">Perfil actual: %s</string>
+    <string name="profile_access_code_title">Código de acceso</string>
+    <string name="profile_access_code_hint">Introduce el código</string>
+    <string name="profile_access_code_error">Código incorrecto</string>
+    <string name="profile_changed">Perfil cambiado a %s</string>
+    <string name="profile_dev_reset_warning">Se reiniciará la base de datos local al cambiar a DEV</string>
+    <string name="profile_dev_db_cleared">Base de datos reiniciada</string>
 </resources>

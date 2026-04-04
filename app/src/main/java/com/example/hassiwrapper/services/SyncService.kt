@@ -34,7 +34,8 @@ class SyncService(
     private val incidentDao: IncidentDao,
     private val workSessionDao: WorkSessionDao,
     private val pendingPhotoDao: PendingPhotoDao? = null,
-    private val hseObservationDao: HseObservationDao? = null
+    private val hseObservationDao: HseObservationDao? = null,
+    private val heartbeatManager: HeartbeatManager? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -178,6 +179,9 @@ class SyncService(
         if (success) {
             configRepo.set("last_sync", Instant.now().toString())
         }
+
+        // 6. Heartbeat telemetry (best-effort, always at the end)
+        heartbeatManager?.sendHeartbeat()
 
         return SyncResult(
             success = success,

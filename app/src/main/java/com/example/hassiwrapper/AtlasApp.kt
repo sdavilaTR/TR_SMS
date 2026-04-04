@@ -13,6 +13,7 @@ class AtlasApp : Application() {
         super.onCreate()
         instance = this
         database = AtlasDatabase.getInstance(this)
+        ProfileManager.init(this)
     }
 
     override fun attachBaseContext(base: Context) {

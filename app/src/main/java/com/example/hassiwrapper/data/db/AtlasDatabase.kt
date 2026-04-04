@@ -42,6 +42,11 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun pendingPhotoDao(): PendingPhotoDao
     abstract fun hseObservationDao(): HseObservationDao
 
+    /** Clears all data from every table (used when switching to DEV profile). */
+    suspend fun clearAllData() {
+        clearAllTables()
+    }
+
     companion object {
         @Volatile
         private var INSTANCE: AtlasDatabase? = null

@@ -50,4 +50,8 @@ interface AtlasApiService {
         @Path("personId") personId: String,
         @Part file: MultipartBody.Part
     ): Response<PhotoUploadResponse>
+
+    // ── Heartbeat ───────────────────────────────────────
+    @POST("/api/trac/sync/heartbeat")
+    suspend fun sendHeartbeat(@Body payload: HeartbeatPayload): Response<Void>
 }

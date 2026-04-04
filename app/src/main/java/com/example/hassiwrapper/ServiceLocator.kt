@@ -30,13 +30,18 @@ object ServiceLocator {
         )
     }
 
+    val heartbeatManager: HeartbeatManager by lazy {
+        HeartbeatManager(AtlasApp.instance, apiClient, configRepo)
+    }
+
     val syncService: SyncService by lazy {
         SyncService(
             apiClient, configRepo,
             db.projectDao(), db.zoneDao(), db.contractorDao(),
             db.personDao(), db.accessPointDao(), db.cryptoKeyDao(),
             db.accessLogDao(), db.incidentDao(), db.workSessionDao(),
-            db.pendingPhotoDao(), db.hseObservationDao()
+            db.pendingPhotoDao(), db.hseObservationDao(),
+            heartbeatManager
         )
     }
 

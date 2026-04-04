@@ -206,3 +206,14 @@ data class SessionDto(
     @SerializedName("exit_time") val exitTime: String?,
     val status: String
 )
+
+data class HeartbeatPayload(
+    @SerializedName("batteryLevel") val batteryLevel: Int,
+    val latitude: Double?,
+    val longitude: Double?,
+    @SerializedName("gpsAccuracyM") val gpsAccuracyM: Float?,
+    @SerializedName("appVersion") val appVersion: String,
+    @SerializedName("lastSyncUtc") val lastSyncUtc: String,
+    @SerializedName("osVersion") val osVersion: String,
+    @SerializedName("deviceModel") val deviceModel: String
+)

@@ -1,5 +1,6 @@
 package com.example.hassiwrapper.network
 
+import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.data.ConfigRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -53,17 +54,18 @@ class ApiClient(
         return service
     }
 
-    /** Resolve which base URL to use: ping primary, fall back if it fails. */
+    /** Resolve which base URL to use based on current profile. */
     private suspend fun getApiBase(): String {
-        return DEFAULT_PRIMARY
+        return ProfileManager.getApiUrl()
     }
 
     data class ConnectivityStatus(val apiReachable: Boolean, val resolvedUrl: String)
 
     /** Check API connectivity without affecting cached resolvedBase. */
     suspend fun checkConnectivity(): ConnectivityStatus {
-        val reachable = ping(DEFAULT_PRIMARY)
-        return ConnectivityStatus(apiReachable = reachable, resolvedUrl = DEFAULT_PRIMARY)
+        val url = ProfileManager.getApiUrl()
+        val reachable = ping(url)
+        return ConnectivityStatus(apiReachable = reachable, resolvedUrl = url)
     }
 
     /** Quick ping — returns true if the host responds within PING_TIMEOUT_MS. */

@@ -111,6 +111,12 @@ class AuthRepository(private val configRepo: ConfigRepository) {
         cachedToken = null
     }
 
+    /** Clears in-memory caches. Call after DB reset (e.g. profile switch). */
+    fun clearCaches() {
+        cachedToken = null
+        cachedDeviceId = null
+    }
+
     /**
      * Decodes the JWT payload (Base64url) and returns the value of [claimName], or null.
      * Does NOT verify the signature — only used to read identity claims after a successful login.

@@ -148,4 +148,20 @@
     <string name="language_es">Español</string>
     <string name="language_en">English</string>
     <string name="language_fr">Français</string>
+
+    <!-- Profiles -->
+    <string name="profile_label">Profile</string>
+    <string name="profile_user">USER</string>
+    <string name="profile_admin">ADMIN</string>
+    <string name="profile_dev">DEV</string>
+    <string name="profile_user_desc">Basic mode — scanner only</string>
+    <string name="profile_admin_desc">Full access to all menus</string>
+    <string name="profile_dev_desc">Development — API: web-atlas-dev</string>
+    <string name="profile_current">Current profile: %s</string>
+    <string name="profile_access_code_title">Access code</string>
+    <string name="profile_access_code_hint">Enter code</string>
+    <string name="profile_access_code_error">Incorrect code</string>
+    <string name="profile_changed">Profile changed to %s</string>
+    <string name="profile_dev_reset_warning">Local database will be reset when switching to DEV</string>
+    <string name="profile_dev_db_cleared">Database reset</string>
 </resources>

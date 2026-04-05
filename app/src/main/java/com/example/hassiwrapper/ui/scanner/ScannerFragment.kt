@@ -120,10 +120,10 @@ class ScannerFragment : Fragment() {
         btnFlash.setOnClickListener {
             isFlashOn = !isFlashOn
             if (isFlashOn) {
-                barcodeView?.setTorchOn()
+                barcodeView?.setTorch(true)
                 btnFlash.setIconResource(R.drawable.ic_flashlight_off)
             } else {
-                barcodeView?.setTorchOff()
+                barcodeView?.setTorch(false)
                 btnFlash.setIconResource(R.drawable.ic_flashlight_on)
             }
         }
@@ -168,7 +168,7 @@ class ScannerFragment : Fragment() {
         isFlashOn = false
         val v = view ?: return
 
-        barcodeView?.setTorchOff()
+        barcodeView?.setTorch(false)
         barcodeView?.pause()
 
         v.findViewById<View>(R.id.laserModeArea).visibility = View.VISIBLE

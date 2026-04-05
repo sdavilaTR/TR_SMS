@@ -6,7 +6,7 @@ import android.content.SharedPreferences
 /**
  * Manages app profiles: USER, ADMIN, DEV.
  *
- * - USER:  minimal UI — scanner + settings only.
+ * - USER:  minimal UI — home, scanner, sync + settings.
  * - ADMIN: full menu access. Requires access code.
  * - DEV:   full menu + switches API to web-atlas-dev. Requires access code.
  *          Switching to DEV resets the local database.

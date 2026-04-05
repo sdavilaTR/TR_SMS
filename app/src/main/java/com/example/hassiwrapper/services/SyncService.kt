@@ -35,7 +35,8 @@ class SyncService(
     private val workSessionDao: WorkSessionDao,
     private val pendingPhotoDao: PendingPhotoDao? = null,
     private val hseObservationDao: HseObservationDao? = null,
-    private val heartbeatManager: HeartbeatManager? = null
+    private val heartbeatManager: HeartbeatManager? = null,
+    private val vehicleDao: VehicleDao? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -280,6 +281,30 @@ class SyncService(
                 )
             }
             if (entities.isNotEmpty()) cryptoKeyDao.insertAll(entities)
+        }
+
+        data.vehicles?.let { list ->
+            val entities = list.map { v ->
+                VehicleEntity(
+                    asset_id = v.assetId ?: v.assetIdSnake ?: 0,
+                    asset_uuid = v.assetUuid ?: v.assetUuidSnake ?: "",
+                    project_id = v.projectId ?: v.projectIdSnake,
+                    identifier = v.identifier ?: "",
+                    asset_name = v.assetName ?: v.assetNameSnake ?: "",
+                    vehicle_type_name = v.vehicleTypeName ?: v.vehicleTypeNameSnake ?: "",
+                    contractor_id = v.contractorId ?: v.contractorIdSnake,
+                    contractor_name = v.contractorName ?: v.contractorNameSnake ?: "",
+                    license_plate = v.licensePlate ?: v.licensePlateSnake ?: "",
+                    owner_register_sn = v.ownerRegisterSn ?: v.ownerRegisterSnSnake ?: "",
+                    brand = v.brand ?: "",
+                    model = v.model ?: "",
+                    insurance_expiry = v.insuranceExpiry ?: v.insuranceExpirySnake,
+                    inspection_expiry = v.inspectionExpiry ?: v.inspectionExpirySnake,
+                    is_active = v.isActive ?: v.isActiveSnake ?: true,
+                    badge_printed = v.badgePrinted ?: v.badgePrintedSnake ?: false
+                )
+            }
+            if (entities.isNotEmpty()) vehicleDao?.insertAll(entities)
         }
 
         configRepo.set("masterDataLastSync", Instant.now().toString())

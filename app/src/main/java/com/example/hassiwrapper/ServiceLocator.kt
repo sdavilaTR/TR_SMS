@@ -26,7 +26,8 @@ object ServiceLocator {
     val clockingService: ClockingService by lazy {
         ClockingService(
             db.personDao(), db.accessLogDao(), db.workSessionDao(),
-            incidentService, rulesService, configRepo
+            incidentService, rulesService, configRepo,
+            db.vehicleDao()
         )
     }
 
@@ -41,7 +42,8 @@ object ServiceLocator {
             db.personDao(), db.accessPointDao(), db.cryptoKeyDao(),
             db.accessLogDao(), db.incidentDao(), db.workSessionDao(),
             db.pendingPhotoDao(), db.hseObservationDao(),
-            heartbeatManager
+            heartbeatManager,
+            db.vehicleDao()
         )
     }
 
@@ -55,4 +57,5 @@ object ServiceLocator {
     val incidentDao get() = db.incidentDao()
     val pendingPhotoDao get() = db.pendingPhotoDao()
     val hseObservationDao get() = db.hseObservationDao()
+    val vehicleDao get() = db.vehicleDao()
 }

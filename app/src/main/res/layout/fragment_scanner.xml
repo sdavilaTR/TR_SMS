@@ -57,10 +57,15 @@
                 android:id="@+id/cameraModeArea"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:background="#000000"
                 android:visibility="gone">
 
-                <com.journeyapps.barcodescanner.DecoratedBarcodeView
+                <com.journeyapps.barcodescanner.BarcodeView
                     android:id="@+id/barcodeView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <com.example.hassiwrapper.ui.scanner.ScanOverlayView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />
             </FrameLayout>
@@ -159,6 +164,7 @@
             android:padding="32dp">
 
             <ImageView android:id="@+id/resultIcon"         android:layout_width="96dp"      android:layout_height="96dp"      android:padding="20dp"  android:scaleType="fitCenter" />
+            <ImageView android:id="@+id/resultVehicleIcon"  android:layout_width="48dp"      android:layout_height="48dp"      android:src="@drawable/ic_truck_24" android:scaleType="fitCenter" android:visibility="gone" android:layout_marginTop="4dp" android:contentDescription="@null" />
             <TextView android:id="@+id/resultTitle"         android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="26sp" android:textStyle="bold" android:layout_marginTop="16dp" />
             <TextView android:id="@+id/resultWorkerName"    android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface" android:textSize="20sp" android:layout_marginTop="8dp" />
             <TextView android:id="@+id/resultBadge"         android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/on_surface_variant" android:textSize="15sp" />

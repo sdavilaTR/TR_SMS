@@ -173,3 +173,23 @@ data class WorkSessionEntity(
     val status: String = "OPEN",
     val synced: Boolean = false
 )
+
+@Entity(tableName = "vehicles")
+data class VehicleEntity(
+    @PrimaryKey val asset_id: Long,
+    val asset_uuid: String = "",
+    val project_id: Int? = null,
+    val identifier: String = "",
+    val asset_name: String = "",
+    val vehicle_type_name: String = "",
+    val contractor_id: Int? = null,
+    val contractor_name: String = "",
+    val license_plate: String = "",
+    val owner_register_sn: String = "",
+    val brand: String = "",
+    val model: String = "",
+    val insurance_expiry: String? = null,
+    val inspection_expiry: String? = null,
+    val is_active: Boolean = true,
+    val badge_printed: Boolean = false
+)

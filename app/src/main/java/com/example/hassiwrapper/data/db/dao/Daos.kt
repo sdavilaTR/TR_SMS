@@ -275,3 +275,24 @@ interface WorkSessionDao {
     @Query("SELECT COUNT(*) FROM work_sessions WHERE synced = 0 AND status = 'CLOSED'")
     suspend fun getPendingCount(): Int
 }
+
+@Dao
+interface VehicleDao {
+    @Query("SELECT * FROM vehicles WHERE project_id = :projectId")
+    suspend fun getByProject(projectId: Int): List<VehicleEntity>
+
+    @Query("SELECT * FROM vehicles WHERE asset_id = :id")
+    suspend fun getById(id: Long): VehicleEntity?
+
+    @Query("SELECT * FROM vehicles WHERE asset_uuid = :uuid LIMIT 1")
+    suspend fun getByUuid(uuid: String): VehicleEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(vehicles: List<VehicleEntity>)
+
+    @Query("DELETE FROM vehicles")
+    suspend fun deleteAll()
+
+    @Query("SELECT COUNT(*) FROM vehicles")
+    suspend fun count(): Int
+}

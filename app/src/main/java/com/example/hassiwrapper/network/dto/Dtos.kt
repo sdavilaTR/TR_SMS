@@ -16,6 +16,7 @@ data class SyncDownloadResponse(
     val zones: List<ZoneDto>? = null,
     val contractors: List<ContractorDto>? = null,
     val persons: List<PersonDto>? = null,
+    val vehicles: List<VehicleDto>? = null,
     val cryptoKeys: List<CryptoKeyDto>? = null
 )
 
@@ -126,6 +127,38 @@ data class CryptoKeyDto(
     @SerializedName("key_purpose") val keyPurposeSnake: String? = null,
     val publicKeyB64: String? = null,
     @SerializedName("public_key_b64") val publicKeyB64Snake: String? = null
+)
+
+data class VehicleDto(
+    val assetId: Long? = null,
+    @SerializedName("asset_id") val assetIdSnake: Long? = null,
+    val assetUuid: String? = null,
+    @SerializedName("asset_uuid") val assetUuidSnake: String? = null,
+    val projectId: Int? = null,
+    @SerializedName("project_id") val projectIdSnake: Int? = null,
+    val identifier: String? = null,
+    val assetName: String? = null,
+    @SerializedName("asset_name") val assetNameSnake: String? = null,
+    val vehicleTypeName: String? = null,
+    @SerializedName("vehicle_type_name") val vehicleTypeNameSnake: String? = null,
+    val contractorId: Int? = null,
+    @SerializedName("contractor_id") val contractorIdSnake: Int? = null,
+    val contractorName: String? = null,
+    @SerializedName("contractor_name") val contractorNameSnake: String? = null,
+    val licensePlate: String? = null,
+    @SerializedName("license_plate") val licensePlateSnake: String? = null,
+    val ownerRegisterSn: String? = null,
+    @SerializedName("owner_register_sn") val ownerRegisterSnSnake: String? = null,
+    val brand: String? = null,
+    val model: String? = null,
+    val insuranceExpiry: String? = null,
+    @SerializedName("insurance_expiry") val insuranceExpirySnake: String? = null,
+    val inspectionExpiry: String? = null,
+    @SerializedName("inspection_expiry") val inspectionExpirySnake: String? = null,
+    val isActive: Boolean? = null,
+    @SerializedName("is_active") val isActiveSnake: Boolean? = null,
+    val badgePrinted: Boolean? = null,
+    @SerializedName("badge_printed") val badgePrintedSnake: Boolean? = null
 )
 
 // ── Upload Requests ──────────────────────────────────────────────────────────

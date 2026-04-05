@@ -26,7 +26,7 @@ import com.example.hassiwrapper.services.ClockingService
 import com.google.android.material.button.MaterialButton
 import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
-import com.journeyapps.barcodescanner.DecoratedBarcodeView
+import com.journeyapps.barcodescanner.BarcodeView
 import kotlinx.coroutines.launch
 
 class ScannerFragment : Fragment() {
@@ -47,9 +47,15 @@ class ScannerFragment : Fragment() {
 
     private var isCameraMode = false
     private var isFlashOn = false
-    private var barcodeView: DecoratedBarcodeView? = null
+    private var barcodeView: BarcodeView? = null
 
-    data class ScanLogEntry(val name: String, val badge: String, val granted: Boolean, val time: String)
+    data class ScanLogEntry(
+        val name: String,
+        val badge: String,
+        val granted: Boolean,
+        val time: String,
+        val isVehicle: Boolean = false
+    )
 
     // Runtime camera permission request
     private val requestCameraPermission = registerForActivityResult(
@@ -222,11 +228,22 @@ class ScannerFragment : Fragment() {
     }
 
     private fun addToScanLog(result: ClockingService.ScanResult) {
-        val p = result.person
-        val name = if (p != null) "${p.given_name} ${p.family_name}".trim() else getString(R.string.scanner_unknown)
-        val badge = p?.badge_number ?: ""
+        val isVehicle = result.scanType == ClockingService.SCAN_TYPE_VEHICLE
+        val name: String
+        val badge: String
+
+        if (isVehicle) {
+            val v = result.vehicle
+            name = if (v != null) "\uD83D\uDE9A ${v.asset_name}".trim() else getString(R.string.scanner_unknown)
+            badge = v?.license_plate ?: ""
+        } else {
+            val p = result.person
+            name = if (p != null) "${p.given_name} ${p.family_name}".trim() else getString(R.string.scanner_unknown)
+            badge = p?.badge_number ?: ""
+        }
+
         val timeStr = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
-        scanLog.add(0, ScanLogEntry(name, badge, result.success, timeStr))
+        scanLog.add(0, ScanLogEntry(name, badge, result.success, timeStr, isVehicle))
         if (scanLog.size > 8) scanLog.removeAt(scanLog.size - 1)
         view?.findViewById<RecyclerView>(R.id.rvScanLog)?.adapter?.notifyDataSetChanged()
     }
@@ -236,11 +253,16 @@ class ScannerFragment : Fragment() {
         val overlay = view.findViewById<FrameLayout>(R.id.scanResultOverlay)
         val icon = view.findViewById<ImageView>(R.id.resultIcon)
         val title = view.findViewById<TextView>(R.id.resultTitle)
-        val name = view.findViewById<TextView>(R.id.resultWorkerName)
+        val nameView = view.findViewById<TextView>(R.id.resultWorkerName)
         val badge = view.findViewById<TextView>(R.id.resultBadge)
         val reason = view.findViewById<TextView>(R.id.resultReason)
 
+        // Vehicle type indicator (shows truck icon below the main result)
+        val vehicleIndicator = view.findViewById<ImageView>(R.id.resultVehicleIcon)
+
         overlay.visibility = View.VISIBLE
+
+        val isVehicle = result.scanType == ClockingService.SCAN_TYPE_VEHICLE
 
         if (result.success) {
             playBeep(true)
@@ -249,9 +271,16 @@ class ScannerFragment : Fragment() {
             ImageViewCompat.setImageTintList(icon, ColorStateList.valueOf(resources.getColor(R.color.granted, null)))
             title.text = getString(R.string.scanner_granted)
             title.setTextColor(resources.getColor(R.color.granted, null))
-            val p = result.person
-            name.text = if (p != null) "${p.given_name} ${p.family_name}" else getString(R.string.scanner_worker)
-            badge.text = p?.badge_number ?: ""
+
+            if (isVehicle) {
+                val v = result.vehicle
+                nameView.text = v?.asset_name ?: "Vehicle"
+                badge.text = v?.license_plate ?: ""
+            } else {
+                val p = result.person
+                nameView.text = if (p != null) "${p.given_name} ${p.family_name}" else getString(R.string.scanner_worker)
+                badge.text = p?.badge_number ?: ""
+            }
             reason.text = ""
         } else {
             playBeep(false)
@@ -260,11 +289,32 @@ class ScannerFragment : Fragment() {
             ImageViewCompat.setImageTintList(icon, ColorStateList.valueOf(resources.getColor(R.color.denied, null)))
             title.text = if (result.result == "ERROR") getString(R.string.scanner_result_error) else getString(R.string.scanner_denied)
             title.setTextColor(resources.getColor(R.color.denied, null))
-            val p = result.person
-            name.text = if (p != null) "${p.given_name} ${p.family_name}" else getString(R.string.scanner_unknown)
-            badge.text = p?.badge_number ?: ""
+
+            if (isVehicle) {
+                val v = result.vehicle
+                nameView.text = v?.asset_name ?: getString(R.string.scanner_unknown)
+                badge.text = v?.license_plate ?: ""
+            } else {
+                val p = result.person
+                nameView.text = if (p != null) "${p.given_name} ${p.family_name}" else getString(R.string.scanner_unknown)
+                badge.text = p?.badge_number ?: ""
+            }
             reason.text = result.reason ?: result.failure_reason ?: ""
             reason.setTextColor(resources.getColor(R.color.denied, null))
+        }
+
+        // Show/hide vehicle icon indicator
+        if (vehicleIndicator != null) {
+            if (isVehicle) {
+                vehicleIndicator.visibility = View.VISIBLE
+                val tintColor = if (result.success)
+                    resources.getColor(R.color.granted, null)
+                else
+                    resources.getColor(R.color.denied, null)
+                ImageViewCompat.setImageTintList(vehicleIndicator, ColorStateList.valueOf(tintColor))
+            } else {
+                vehicleIndicator.visibility = View.GONE
+            }
         }
 
         // Allow next scan immediately
@@ -317,9 +367,15 @@ class ScannerFragment : Fragment() {
             )
             holder.txtId.setTextColor(resultColor)
             holder.stripe.setBackgroundColor(resultColor)
-            holder.ivStatus.setImageResource(
-                if (entry.granted) R.drawable.ic_baseline_check_circle_24 else R.drawable.ic_cancel_circle_24
-            )
+
+            // Show truck icon for vehicles, check/cancel for persons
+            if (entry.isVehicle) {
+                holder.ivStatus.setImageResource(R.drawable.ic_truck_24)
+            } else {
+                holder.ivStatus.setImageResource(
+                    if (entry.granted) R.drawable.ic_baseline_check_circle_24 else R.drawable.ic_cancel_circle_24
+                )
+            }
             ImageViewCompat.setImageTintList(holder.ivStatus, ColorStateList.valueOf(resultColor))
             holder.txtTime.text = entry.time
             holder.txtTime.setTextColor(resources.getColor(R.color.on_surface_variant, null))

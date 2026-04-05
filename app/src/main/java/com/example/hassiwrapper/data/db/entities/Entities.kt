@@ -171,7 +171,5 @@ data class WorkSessionEntity(
     val clock_out: String? = null,
     val last_exit_log_id: Long? = null,
     val status: String = "OPEN",
-    val synced: Boolean = false,
-    val entry_time: String? = null,
-    val exit_time: String? = null
+    val synced: Boolean = false
 )

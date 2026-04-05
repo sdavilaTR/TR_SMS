@@ -349,7 +349,6 @@ class SyncService(
                 accessPointId = log.access_point_id,
                 terminalId = log.terminal_id,
                 eventTime = log.event_time,
-                direction = log.direction,
                 result = log.result,
                 failureReason = log.failure_reason
             )
@@ -422,8 +421,6 @@ class SyncService(
                 uuid = s.uuid,
                 projectId = s.project_id,
                 uniqueIdValue = s.unique_id_value,
-                entryTime = s.entry_time,
-                exitTime = s.exit_time,
                 status = s.status
             )
         }

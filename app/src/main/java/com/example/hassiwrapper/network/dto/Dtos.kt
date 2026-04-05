@@ -181,7 +181,6 @@ data class AccessLogDto(
     @SerializedName("access_point_id") val accessPointId: Int?,
     @SerializedName("terminal_id") val terminalId: String?,
     @SerializedName("event_time") val eventTime: String,
-    val direction: String,
     val result: String,
     @SerializedName("failure_reason") val failureReason: String? = null
 )
@@ -202,8 +201,6 @@ data class SessionDto(
     val uuid: String?,
     @SerializedName("project_id") val projectId: Int?,
     @SerializedName("unique_id_value") val uniqueIdValue: String,
-    @SerializedName("entry_time") val entryTime: String?,
-    @SerializedName("exit_time") val exitTime: String?,
     val status: String
 )
 

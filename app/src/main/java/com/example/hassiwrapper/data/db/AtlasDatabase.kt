@@ -23,7 +23,7 @@ import com.example.hassiwrapper.data.db.entities.*
         PendingPhotoEntity::class,
         HseObservationEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {

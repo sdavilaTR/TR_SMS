@@ -29,8 +29,9 @@ import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.ContractorEntity
 import com.example.hassiwrapper.data.db.entities.PersonEntity
 import com.google.android.material.button.MaterialButton
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
+import android.app.Activity
+import android.content.Intent
+import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,8 +61,12 @@ class PassportFragment : Fragment() {
 
     private var currentPerson: PersonEntity? = null
 
-    private val cameraScanner = registerForActivityResult(ScanContract()) { result ->
-        result.contents?.let { lookupWorker(it) }
+    private val cameraScanner = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.getStringExtra(CustomScannerActivity.EXTRA_RESULT)?.let { lookupWorker(it) }
+        }
     }
 
     private val requestCameraPermission = registerForActivityResult(
@@ -155,14 +160,8 @@ class PassportFragment : Fragment() {
     }
 
     private fun launchCameraScanner() {
-        val options = ScanOptions().apply {
-            setDesiredBarcodeFormats(ScanOptions.ALL_CODE_TYPES)
-            setPrompt(getString(R.string.scanner_camera_prompt))
-            setBeepEnabled(false)
-            setOrientationLocked(false)
-            setCameraId(0)
-        }
-        cameraScanner.launch(options)
+        val intent = Intent(requireContext(), CustomScannerActivity::class.java)
+        cameraScanner.launch(intent)
     }
 
     private fun lookupWorker(identifier: String) {

@@ -41,6 +41,12 @@
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:theme="@style/Theme.Atlas" />
 
+        <activity
+            android:name=".ui.scanner.CustomScannerActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Atlas.FullScreen" />
+
         <receiver
             android:name=".receiver.BootReceiver"
             android:exported="true">

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!-- Full-screen camera preview -->
+    <com.journeyapps.barcodescanner.BarcodeView
+        android:id="@+id/barcodeView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Overlay with rounded-square cutout + corner brackets -->
+    <com.example.hassiwrapper.ui.scanner.ScanOverlayView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Close button (top-right) -->
+    <ImageView
+        android:id="@+id/btnClose"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="40dp"
+        android:layout_marginEnd="16dp"
+        android:padding="12dp"
+        android:src="@drawable/ic_close_white"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Close" />
+
+</FrameLayout>

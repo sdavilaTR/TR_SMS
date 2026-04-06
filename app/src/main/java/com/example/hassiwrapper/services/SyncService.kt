@@ -155,7 +155,9 @@ class SyncService(
         var workerResult = WorkerResult()
         var vehicleResult = VehicleResult()
         try {
-            val downloadResp = api.downloadSync()
+            // TODO: read from configRepo.getInt("current_project_id") when multi-project support is needed
+            val projectId = 1
+            val downloadResp = api.downloadSync(projectId)
             if (downloadResp.isSuccessful) {
                 val data = downloadResp.body()
                 if (data != null) {

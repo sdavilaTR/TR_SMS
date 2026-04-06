@@ -20,7 +20,7 @@ interface AtlasApiService {
 
     // ── Sync: Download ───────────────────────────────────
     @GET("/api/trac/sync/download")
-    suspend fun downloadSync(): Response<SyncDownloadResponse>
+    suspend fun downloadSync(@Query("projectId") projectId: Int? = null): Response<SyncDownloadResponse>
 
     // ── Sync: Upload Access Logs ─────────────────────────
     @POST("/api/trac/sync/upload")

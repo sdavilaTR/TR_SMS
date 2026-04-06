@@ -41,12 +41,7 @@ class SettingsFragment : Fragment() {
         setupProfileSelector(view)
         setupLanguageSelector(view)
 
-        // Show login or logout button based on auth state
-        viewLifecycleOwner.lifecycleScope.launch {
-            val authenticated = ServiceLocator.authRepo.isAuthenticated()
-            btnLogin.visibility = if (authenticated) android.view.View.GONE else android.view.View.VISIBLE
-            btnLogout.visibility = if (authenticated) android.view.View.VISIBLE else android.view.View.GONE
-        }
+        refreshAuthButtons()
 
         btnLogin.setOnClickListener {
             (requireActivity() as? MainActivity)?.launchLogin()
@@ -75,9 +70,29 @@ class SettingsFragment : Fragment() {
             }
         }
 
-        // Logout
+        // Logout — clear session and refresh buttons immediately
         btnLogout.setOnClickListener {
-            (requireActivity() as? MainActivity)?.logout()
+            viewLifecycleOwner.lifecycleScope.launch {
+                ServiceLocator.authRepo.logout()
+                refreshAuthButtons()
+                Toast.makeText(requireContext(), R.string.sync_auth_none, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshAuthButtons()
+    }
+
+    private fun refreshAuthButtons() {
+        val v = view ?: return
+        val btnLogin = v.findViewById<MaterialButton>(R.id.btnLogin)
+        val btnLogout = v.findViewById<MaterialButton>(R.id.btnLogout)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val authenticated = ServiceLocator.authRepo.isAuthenticated()
+            btnLogin.visibility = if (authenticated) View.GONE else View.VISIBLE
+            btnLogout.visibility = if (authenticated) View.VISIBLE else View.GONE
         }
     }
 
@@ -205,22 +220,25 @@ class SettingsFragment : Fragment() {
         val previous = ProfileManager.currentProfile()
         if (target == previous) return
 
+        val changingEnvironment = target == ProfileManager.Profile.DEV || previous == ProfileManager.Profile.DEV
+
         ProfileManager.setProfile(target)
         updateProfileLabel(label)
         highlightProfileButton(target)
 
-        // When switching to/from DEV, reset API cache and clear auth
-        if (target == ProfileManager.Profile.DEV || previous == ProfileManager.Profile.DEV) {
+        if (changingEnvironment) {
+            // Different API environment — reset API cache, auth, and local DB
             ServiceLocator.apiClient.resetResolvedBase()
             ServiceLocator.authRepo.clearCaches()
-        }
 
-        // When switching to DEV, reset the local database
-        if (target == ProfileManager.Profile.DEV) {
             viewLifecycleOwner.lifecycleScope.launch {
                 withContext(Dispatchers.IO) {
                     AtlasApp.instance.database.clearAllData()
                 }
+                // Also clear the auth token from config (clearAllData wiped it from DB,
+                // but we need to ensure the in-memory cache is also gone)
+                ServiceLocator.authRepo.logout()
+                refreshAuthButtons()
                 Toast.makeText(requireContext(), R.string.profile_dev_db_cleared, Toast.LENGTH_SHORT).show()
             }
         }

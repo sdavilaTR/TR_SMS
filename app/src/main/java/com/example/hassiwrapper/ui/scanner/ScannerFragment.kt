@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
+import com.example.hassiwrapper.data.db.entities.VehicleEntity
 import com.example.hassiwrapper.services.ClockingService
 import com.google.android.material.button.MaterialButton
 import com.journeyapps.barcodescanner.BarcodeCallback
@@ -234,7 +235,7 @@ class ScannerFragment : Fragment() {
 
         if (isVehicle) {
             val v = result.vehicle
-            name = if (v != null) "\uD83D\uDE9A ${v.asset_name}".trim() else getString(R.string.scanner_unknown)
+            name = if (v != null) formatVehicleName(v) else getString(R.string.scanner_unknown)
             badge = v?.license_plate ?: ""
         } else {
             val p = result.person
@@ -274,7 +275,7 @@ class ScannerFragment : Fragment() {
 
             if (isVehicle) {
                 val v = result.vehicle
-                nameView.text = v?.asset_name ?: "Vehicle"
+                nameView.text = if (v != null) formatVehicleName(v) else "Vehicle"
                 badge.text = v?.license_plate ?: ""
             } else {
                 val p = result.person
@@ -292,7 +293,7 @@ class ScannerFragment : Fragment() {
 
             if (isVehicle) {
                 val v = result.vehicle
-                nameView.text = v?.asset_name ?: getString(R.string.scanner_unknown)
+                nameView.text = if (v != null) formatVehicleName(v) else getString(R.string.scanner_unknown)
                 badge.text = v?.license_plate ?: ""
             } else {
                 val p = result.person
@@ -382,5 +383,14 @@ class ScannerFragment : Fragment() {
         }
 
         override fun getItemCount() = scanLog.size
+    }
+
+    private fun formatVehicleName(v: VehicleEntity): String {
+        return listOfNotNull(
+            v.identifier.ifBlank { null },
+            v.vehicle_type_name.ifBlank { null },
+            v.contractor_name.ifBlank { null }
+        ).joinToString(" - ")
+            .ifBlank { v.asset_name }
     }
 }

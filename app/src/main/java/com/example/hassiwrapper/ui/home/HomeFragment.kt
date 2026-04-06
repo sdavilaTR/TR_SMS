@@ -41,6 +41,7 @@ class HomeFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val workerCount = ServiceLocator.personDao.count()
+                val vehicleCount = ServiceLocator.vehicleDao.count()
                 val todayStr = LocalDate.now().toString() + "T00:00:00Z"
                 val scansToday = ServiceLocator.accessLogDao.getTodayCount(todayStr)
                 val pending = ServiceLocator.syncService.getPendingCounts()
@@ -60,6 +61,7 @@ class HomeFragment : Fragment() {
                         txtLoc.visibility = android.view.View.GONE
                     }
                     v.findViewById<TextView>(R.id.txtWorkerCount).text = workerCount.toString()
+                    v.findViewById<TextView>(R.id.txtVehicleCount).text = vehicleCount.toString()
                     v.findViewById<TextView>(R.id.txtScansToday).text = scansToday.toString()
                     v.findViewById<TextView>(R.id.txtPendingCount).text = (pending.logs + pending.incidents + pending.sessions).toString()
                     v.findViewById<TextView>(R.id.txtIncidentCount).text = incidents.toString()

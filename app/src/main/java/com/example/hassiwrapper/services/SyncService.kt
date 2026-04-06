@@ -59,6 +59,8 @@ class SyncService(
         val workersAdded: Int = 0,
         val workersUpdated: Int = 0,
         val workersSkipped: Int = 0,
+        val vehiclesAdded: Int = 0,
+        val vehiclesUpdated: Int = 0,
         val photosUploaded: Int = 0,
         val photosFailed: Int = 0,
         val photoErrors: List<String> = emptyList(),
@@ -149,14 +151,15 @@ class SyncService(
         // 2. Register device (non-fatal, no retry)
         registerDevice(api)
 
-        // 3. Download master data + workers (best-effort; if it fails we still upload)
+        // 3. Download master data + workers + vehicles (best-effort; if it fails we still upload)
         var workerResult = WorkerResult()
+        var vehicleResult = VehicleResult()
         try {
             val downloadResp = api.downloadSync()
             if (downloadResp.isSuccessful) {
                 val data = downloadResp.body()
                 if (data != null) {
-                    applyMasterData(data)
+                    vehicleResult = applyMasterData(data)
                     workerResult = applyWorkers(data)
                 } else {
                     Log.w(TAG, "downloadSync returned null body")
@@ -196,6 +199,8 @@ class SyncService(
             workersAdded = workerResult.added,
             workersUpdated = workerResult.updated,
             workersSkipped = workerResult.skipped,
+            vehiclesAdded = vehicleResult.added,
+            vehiclesUpdated = vehicleResult.updated,
             photosUploaded = photoResult.uploaded,
             photosFailed = photoResult.failed,
             photoErrors = photoResult.errors,
@@ -218,7 +223,7 @@ class SyncService(
 
     // ── Master data ───────────────────────────────────────────────────────────
 
-    private suspend fun applyMasterData(data: SyncDownloadResponse) {
+    private suspend fun applyMasterData(data: SyncDownloadResponse): VehicleResult {
         data.projects?.let { list ->
             val entities = list.map { p ->
                 ProjectEntity(
@@ -283,6 +288,7 @@ class SyncService(
             if (entities.isNotEmpty()) cryptoKeyDao.insertAll(entities)
         }
 
+        var vResult = VehicleResult()
         data.vehicles?.let { list ->
             val entities = list.map { v ->
                 VehicleEntity(
@@ -304,14 +310,23 @@ class SyncService(
                     badge_printed = v.badgePrinted ?: v.badgePrintedSnake ?: false
                 )
             }
-            if (entities.isNotEmpty()) vehicleDao?.insertAll(entities)
+            if (entities.isNotEmpty() && vehicleDao != null) {
+                val existingUuids = vehicleDao.getAllUuids().toHashSet()
+                val added = entities.count { it.asset_uuid !in existingUuids }
+                val updated = entities.count { it.asset_uuid in existingUuids }
+                vehicleDao.insertAll(entities)
+                vResult = VehicleResult(added, updated)
+                Log.d(TAG, "Vehicles: $added added, $updated updated")
+            }
         }
 
         configRepo.set("masterDataLastSync", Instant.now().toString())
         Log.d(TAG, "Master data applied")
+        return vResult
     }
 
     data class WorkerResult(val added: Int = 0, val updated: Int = 0, val skipped: Int = 0)
+    data class VehicleResult(val added: Int = 0, val updated: Int = 0)
 
     private suspend fun applyWorkers(data: SyncDownloadResponse): WorkerResult {
         val persons = data.persons ?: return WorkerResult()

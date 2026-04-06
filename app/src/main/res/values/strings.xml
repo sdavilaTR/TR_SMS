@@ -106,10 +106,34 @@
     <string name="sync_kpi_pending">Pendiente</string>
     <string name="sync_kpi_workers_synced">Actualizados</string>
 
+    <!-- Sync KPI vehicles -->
+    <string name="sync_kpi_vehicles">Vehículos</string>
+    <string name="sync_kpi_vehicles_synced">Actualizados</string>
+
+    <!-- Sync result structured -->
+    <string name="sync_result_title_ok">Sincronización completada</string>
+    <string name="sync_result_title_error">Error de sincronización</string>
+    <string name="sync_result_logs">Registros subidos: %d</string>
+    <string name="sync_result_workers">Personal: %1$d nuevos, %2$d actualizados</string>
+    <string name="sync_result_vehicles">Vehículos: %1$d nuevos, %2$d actualizados</string>
+    <string name="sync_result_observations">Observaciones: %d</string>
+    <string name="sync_result_photos_ok">Fotos subidas: %d</string>
+    <string name="sync_result_photos_fail">Fotos fallidas: %d</string>
+
+    <!-- Home vehicles -->
+    <string name="home_label_vehicles">Vehículos</string>
+
     <!-- Workers -->
     <string name="workers_hint_search">Buscar trabajador…</string>
     <string name="workers_count">%d trabajadores</string>
     <string name="workers_badge_format">Badge: %1$s | %2$s</string>
+
+    <!-- Vehicles -->
+    <string name="menu_vehicles">Vehículos</string>
+    <string name="vehicles_hint_search">Buscar vehículo…</string>
+    <string name="vehicles_count">%d vehículos</string>
+    <string name="vehicles_item_format">%1$s | %2$s</string>
+    <string name="vehicles_plate_format">Matrícula: %s</string>
 
     <!-- Login -->
     <string name="login_app_name">ATLAS</string>

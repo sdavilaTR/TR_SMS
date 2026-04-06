@@ -6,5 +6,6 @@
     <item android:id="@+id/attendanceFragment" android:icon="@drawable/ic_attendance" android:title="@string/menu_attendance" />
     <item android:id="@+id/syncFragment"       android:icon="@drawable/ic_sync"       android:title="@string/menu_sync" />
     <item android:id="@+id/workersFragment"    android:icon="@drawable/ic_workers"    android:title="@string/menu_workers" />
+    <item android:id="@+id/vehiclesFragment"   android:icon="@drawable/ic_truck_24"   android:title="@string/menu_vehicles" />
     <item android:id="@+id/settingsFragment"   android:icon="@drawable/ic_settings"   android:title="@string/menu_settings" />
 </menu>

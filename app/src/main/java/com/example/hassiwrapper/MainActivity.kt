@@ -80,6 +80,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.attendanceFragment,
                 R.id.syncFragment,
                 R.id.workersFragment,
+                R.id.vehiclesFragment,
                 R.id.settingsFragment -> {
                     navController.navigate(item.itemId)
                 }
@@ -251,6 +252,7 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.passportFragment)?.isVisible    = !isUser
         menu.findItem(R.id.attendanceFragment)?.isVisible  = !isUser
         menu.findItem(R.id.workersFragment)?.isVisible     = !isUser
+        menu.findItem(R.id.vehiclesFragment)?.isVisible    = !isUser
 
         // Home + Scanner + Sync + Settings always visible
     }

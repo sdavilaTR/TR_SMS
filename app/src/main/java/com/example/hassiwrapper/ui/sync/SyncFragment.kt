@@ -119,6 +119,7 @@ class SyncFragment : Fragment() {
             val v = view ?: return@launch
             val counts = ServiceLocator.syncService.getPendingCounts()
             val workerCount = ServiceLocator.personDao.count()
+            val vehicleCount = ServiceLocator.vehicleDao.count()
 
             // Records KPI
             setupPendingKpi(
@@ -147,6 +148,16 @@ class SyncFragment : Fragment() {
             txtWorkers.text = workerCount.toString()
             txtWorkersLabel.text = if (apiReachable) {
                 getString(R.string.sync_kpi_workers_synced)
+            } else {
+                ""
+            }
+
+            // Vehicles KPI
+            val txtVehicles = v.findViewById<TextView>(R.id.txtKpiVehicles)
+            val txtVehiclesLabel = v.findViewById<TextView>(R.id.txtKpiVehiclesLabel)
+            txtVehicles.text = vehicleCount.toString()
+            txtVehiclesLabel.text = if (apiReachable) {
+                getString(R.string.sync_kpi_vehicles_synced)
             } else {
                 ""
             }
@@ -181,6 +192,7 @@ class SyncFragment : Fragment() {
         val status = v.findViewById<TextView>(R.id.txtSyncStatus)
         val dotApi = v.findViewById<View>(R.id.dotApi)
         val txtApi = v.findViewById<TextView>(R.id.txtApiStatus)
+        val cardResult = v.findViewById<View>(R.id.cardSyncResult)
 
         viewLifecycleOwner.lifecycleScope.launch {
             if (!ServiceLocator.authRepo.isAuthenticated()) {
@@ -191,6 +203,7 @@ class SyncFragment : Fragment() {
 
             btn.isEnabled = false
             progress.visibility = View.VISIBLE
+            cardResult.visibility = View.GONE
             status.text = getString(R.string.sync_syncing)
             status.setTextColor(resources.getColor(R.color.on_surface_variant, null))
             val result = ServiceLocator.syncService.fullSync { retry ->
@@ -202,52 +215,108 @@ class SyncFragment : Fragment() {
 
             btn.isEnabled = true
             progress.visibility = View.GONE
+            status.text = ""
+
+            showSyncResultCard(v, result)
 
             if (result.success) {
-                val msg = StringBuilder(getString(R.string.sync_success, result.logsUploaded, result.workersAdded, result.workersUpdated))
-
-                if (result.photosUploaded > 0) {
-                    msg.append("\n").append(getString(R.string.sync_photos_ok, result.photosUploaded))
-                }
-
-                if (result.photosFailed > 0) {
-                    val profile = ProfileManager.currentProfile()
-                    if (profile == ProfileManager.Profile.DEV || profile == ProfileManager.Profile.ADMIN) {
-                        val detail = result.photoErrors.joinToString("\n")
-                        msg.append("\n").append(getString(R.string.sync_photos_fail_detail, result.photosFailed, detail))
-                    } else {
-                        msg.append("\n").append(getString(R.string.sync_photos_fail, result.photosFailed))
-                    }
-                    status.text = msg.toString()
-                    status.setTextColor(resources.getColor(R.color.warning, null))
-                } else {
-                    status.text = msg.toString()
-                    status.setTextColor(resources.getColor(R.color.granted, null))
-                }
-
                 dotApi.setBackgroundResource(R.drawable.dot_green)
                 txtApi.text = getString(R.string.sync_api_ok)
                 apiReachable = true
             } else {
-                val msg = StringBuilder(getString(R.string.sync_error, result.error ?: "Error desconocido"))
-
-                if (result.photosFailed > 0) {
-                    val profile = ProfileManager.currentProfile()
-                    if (profile == ProfileManager.Profile.DEV || profile == ProfileManager.Profile.ADMIN) {
-                        val detail = result.photoErrors.joinToString("\n")
-                        msg.append("\n").append(getString(R.string.sync_photos_fail_detail, result.photosFailed, detail))
-                    } else {
-                        msg.append("\n").append(getString(R.string.sync_photos_fail, result.photosFailed))
-                    }
-                }
-
-                status.text = msg.toString()
-                status.setTextColor(resources.getColor(R.color.error, null))
                 checkConnectivity()
             }
 
             loadKpis()
             loadLastSync()
+        }
+    }
+
+    private fun showSyncResultCard(v: View, result: com.example.hassiwrapper.services.SyncService.SyncResult) {
+        val card = v.findViewById<View>(R.id.cardSyncResult)
+        val txtIcon = v.findViewById<TextView>(R.id.txtResultIcon)
+        val txtTitle = v.findViewById<TextView>(R.id.txtResultTitle)
+        val txtLogs = v.findViewById<TextView>(R.id.txtResultLogs)
+        val txtWorkers = v.findViewById<TextView>(R.id.txtResultWorkers)
+        val txtVehicles = v.findViewById<TextView>(R.id.txtResultVehicles)
+        val txtObservations = v.findViewById<TextView>(R.id.txtResultObservations)
+        val txtPhotos = v.findViewById<TextView>(R.id.txtResultPhotos)
+        val txtError = v.findViewById<TextView>(R.id.txtResultError)
+
+        card.visibility = View.VISIBLE
+
+        if (result.success) {
+            txtIcon.text = "✓"
+            txtIcon.setTextColor(ContextCompat.getColor(requireContext(), R.color.granted))
+            txtTitle.text = getString(R.string.sync_result_title_ok)
+            txtTitle.setTextColor(ContextCompat.getColor(requireContext(), R.color.granted))
+        } else {
+            txtIcon.text = "✕"
+            txtIcon.setTextColor(ContextCompat.getColor(requireContext(), R.color.error))
+            txtTitle.text = getString(R.string.sync_result_title_error)
+            txtTitle.setTextColor(ContextCompat.getColor(requireContext(), R.color.error))
+        }
+
+        // Logs
+        if (result.logsUploaded > 0) {
+            txtLogs.text = getString(R.string.sync_result_logs, result.logsUploaded)
+            txtLogs.visibility = View.VISIBLE
+        } else {
+            txtLogs.visibility = View.GONE
+        }
+
+        // Workers
+        if (result.workersAdded > 0 || result.workersUpdated > 0) {
+            txtWorkers.text = getString(R.string.sync_result_workers, result.workersAdded, result.workersUpdated)
+            txtWorkers.visibility = View.VISIBLE
+        } else {
+            txtWorkers.visibility = View.GONE
+        }
+
+        // Vehicles
+        if (result.vehiclesAdded > 0 || result.vehiclesUpdated > 0) {
+            txtVehicles.text = getString(R.string.sync_result_vehicles, result.vehiclesAdded, result.vehiclesUpdated)
+            txtVehicles.visibility = View.VISIBLE
+        } else {
+            txtVehicles.visibility = View.GONE
+        }
+
+        // Observations
+        if (result.observationsUploaded > 0) {
+            txtObservations.text = getString(R.string.sync_result_observations, result.observationsUploaded)
+            txtObservations.visibility = View.VISIBLE
+        } else {
+            txtObservations.visibility = View.GONE
+        }
+
+        // Photos
+        if (result.photosUploaded > 0 || result.photosFailed > 0) {
+            val sb = StringBuilder()
+            if (result.photosUploaded > 0) {
+                sb.append(getString(R.string.sync_result_photos_ok, result.photosUploaded))
+            }
+            if (result.photosFailed > 0) {
+                if (sb.isNotEmpty()) sb.append("  |  ")
+                sb.append(getString(R.string.sync_result_photos_fail, result.photosFailed))
+                val profile = ProfileManager.currentProfile()
+                if (profile == ProfileManager.Profile.DEV || profile == ProfileManager.Profile.ADMIN) {
+                    sb.append("\n").append(result.photoErrors.joinToString("\n"))
+                }
+            }
+            txtPhotos.text = sb.toString()
+            txtPhotos.setTextColor(ContextCompat.getColor(requireContext(),
+                if (result.photosFailed > 0) R.color.warning else R.color.on_surface_variant))
+            txtPhotos.visibility = View.VISIBLE
+        } else {
+            txtPhotos.visibility = View.GONE
+        }
+
+        // Error
+        if (!result.success && result.error != null) {
+            txtError.text = result.error
+            txtError.visibility = View.VISIBLE
+        } else {
+            txtError.visibility = View.GONE
         }
     }
 }

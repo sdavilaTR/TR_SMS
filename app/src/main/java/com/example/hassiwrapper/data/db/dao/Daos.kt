@@ -287,6 +287,15 @@ interface VehicleDao {
     @Query("SELECT * FROM vehicles WHERE asset_uuid = :uuid LIMIT 1")
     suspend fun getByUuid(uuid: String): VehicleEntity?
 
+    @Query("SELECT * FROM vehicles ORDER BY identifier ASC")
+    suspend fun getAll(): List<VehicleEntity>
+
+    @Query("SELECT * FROM vehicles WHERE identifier LIKE '%' || :q || '%' OR asset_name LIKE '%' || :q || '%' OR license_plate LIKE '%' || :q || '%' OR contractor_name LIKE '%' || :q || '%' OR brand LIKE '%' || :q || '%' ORDER BY identifier ASC")
+    suspend fun search(q: String): List<VehicleEntity>
+
+    @Query("SELECT asset_uuid FROM vehicles")
+    suspend fun getAllUuids(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(vehicles: List<VehicleEntity>)
 

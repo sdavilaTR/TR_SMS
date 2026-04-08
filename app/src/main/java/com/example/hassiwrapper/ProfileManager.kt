@@ -4,22 +4,23 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Manages app profiles: USER, ADMIN, DEV, PRO.
+ * Manages app profiles: USER, ADMIN, PRE, DEV.
  *
- * - USER:  minimal UI — home, scanner, sync + settings.
- * - ADMIN: full menu access. Requires access code.
- * - DEV:   full menu + switches API to web-atlas-dev. Requires access code.
- *          Switching to DEV resets the local database.
- * - PRO:   temporary profile for testing the production API (web-atlas-pro).
- *          Requires access code. Switching to/from PRO resets the local database.
+ * - USER:  minimal UI — home, scanner, sync + settings. Uses production API
+ *          (atlas.tecnicasreunidas.es) through the public reverse proxy.
+ * - ADMIN: full menu access, also against production. Requires access code.
+ * - PRE:   full menu against the PRE Azure environment. Requires access code.
+ *          Switching environment resets the local database.
+ * - DEV:   full menu against the DEV Azure environment. Requires access code.
+ *          Switching environment resets the local database.
  *
  * Access code (hardcoded): ATLAS2026
  */
 object ProfileManager {
 
-    enum class Profile { USER, ADMIN, DEV, PRO }
+    enum class Profile { USER, ADMIN, PRE, DEV }
 
-    // Hardcoded access code for ADMIN, DEV and PRO profiles
+    // Hardcoded access code for ADMIN, PRE and DEV profiles
     const val ACCESS_CODE = "ATLAS2026"
 
     private const val PREFS_NAME = "atlas_profile_prefs"
@@ -48,11 +49,14 @@ object ProfileManager {
 
     fun validateAccessCode(code: String): Boolean = code == ACCESS_CODE
 
-    fun getApiUrl(): String {
-        return when (currentProfile()) {
-            Profile.DEV -> API_URL_DEV
-            Profile.PRO -> API_URL_PRO
-            else -> API_URL_PRE
-        }
+    fun getApiUrl(): String = apiUrlFor(currentProfile())
+
+    fun apiUrlFor(profile: Profile): String = when (profile) {
+        Profile.DEV -> API_URL_DEV
+        Profile.PRE -> API_URL_PRE
+        Profile.USER, Profile.ADMIN -> API_URL_PRO
     }
+
+    /** True when the active profile talks to the public reverse proxy that prepends /api. */
+    fun usesPublicProxy(): Boolean = getApiUrl() == API_URL_PRO
 }

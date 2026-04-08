@@ -75,7 +75,7 @@ class ApiClient(
                 .connectTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .readTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .build()
-            val healthPath = if (ProfileManager.currentProfile() == ProfileManager.Profile.PRO)
+            val healthPath = if (ProfileManager.usesPublicProxy())
                 "${ProfileManager.PRO_PATH_PREFIX}/health" else "/health"
             val request = Request.Builder().url("$baseUrl$healthPath").get().build()
             val response = client.newCall(request).execute()
@@ -95,7 +95,7 @@ class ApiClient(
         // Retrofit service definitions can stay environment-agnostic.
         val proxyPrefixInterceptor = Interceptor { chain ->
             val original = chain.request()
-            if (ProfileManager.currentProfile() != ProfileManager.Profile.PRO) {
+            if (!ProfileManager.usesPublicProxy()) {
                 return@Interceptor chain.proceed(original)
             }
             // The public reverse proxy unconditionally prepends /api to every

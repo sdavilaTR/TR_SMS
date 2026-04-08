@@ -254,12 +254,12 @@
     <string name="profile_label">Profile</string>
     <string name="profile_user">USER</string>
     <string name="profile_admin">ADMIN</string>
+    <string name="profile_pre">PRE</string>
     <string name="profile_dev">DEV</string>
-    <string name="profile_pro">PRO</string>
-    <string name="profile_user_desc">Basic mode — scanner only</string>
-    <string name="profile_admin_desc">Full access to all menus</string>
+    <string name="profile_user_desc">Basic mode — Production (atlas.tecnicasreunidas.es)</string>
+    <string name="profile_admin_desc">Full access — Production (atlas.tecnicasreunidas.es)</string>
+    <string name="profile_pre_desc">Pre-production — API: web-atlas-pre</string>
     <string name="profile_dev_desc">Development — API: web-atlas-dev</string>
-    <string name="profile_pro_desc">Production (test) — API: web-atlas-pro</string>
     <string name="profile_current">Current profile: %s</string>
     <string name="profile_access_code_title">Access code</string>
     <string name="profile_access_code_hint">Enter code</string>

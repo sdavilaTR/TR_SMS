@@ -27,7 +27,9 @@ object ProfileManager {
 
     const val API_URL_PRE = "https://web-atlas-api-pre.azurewebsites.net"
     const val API_URL_DEV = "https://web-atlas-api-dev.azurewebsites.net"
-    const val API_URL_PRO = "https://atlas.tecnicasreunidas.es/api"
+    const val API_URL_PRO = "https://atlas.tecnicasreunidas.es"
+    /** Path prefix injected by the public reverse proxy in front of PRO. */
+    const val PRO_PATH_PREFIX = "/api"
 
     private lateinit var prefs: SharedPreferences
 

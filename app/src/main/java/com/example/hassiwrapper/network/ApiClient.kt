@@ -75,7 +75,9 @@ class ApiClient(
                 .connectTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .readTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .build()
-            val request = Request.Builder().url("$baseUrl/health").get().build()
+            val healthPath = if (ProfileManager.currentProfile() == ProfileManager.Profile.PRO)
+                "${ProfileManager.PRO_PATH_PREFIX}/health" else "/health"
+            val request = Request.Builder().url("$baseUrl$healthPath").get().build()
             val response = client.newCall(request).execute()
             response.isSuccessful || response.code < 500
         } catch (e: Exception) {
@@ -86,6 +88,24 @@ class ApiClient(
     private fun buildService(baseUrl: String): AtlasApiService {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
+        }
+
+        // When the PRO profile is active, the public reverse proxy expects every
+        // request path to be prefixed with /api. We rewrite the URL here so the
+        // Retrofit service definitions can stay environment-agnostic.
+        val proxyPrefixInterceptor = Interceptor { chain ->
+            val original = chain.request()
+            if (ProfileManager.currentProfile() != ProfileManager.Profile.PRO) {
+                return@Interceptor chain.proceed(original)
+            }
+            // The public reverse proxy unconditionally prepends /api to every
+            // path, even if the original already starts with /api (so e.g.
+            // /api/trac/sync/download becomes /api/api/trac/sync/download).
+            val prefix = ProfileManager.PRO_PATH_PREFIX // "/api"
+            val rebuilt = original.url.newBuilder()
+                .encodedPath("$prefix${original.url.encodedPath}")
+                .build()
+            chain.proceed(original.newBuilder().url(rebuilt).build())
         }
 
         val authInterceptor = Interceptor { chain ->
@@ -109,6 +129,7 @@ class ApiClient(
             .connectTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
             .readTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
             .writeTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .addInterceptor(proxyPrefixInterceptor)
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
             .build()

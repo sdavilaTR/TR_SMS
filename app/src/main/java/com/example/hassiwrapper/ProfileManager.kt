@@ -27,7 +27,7 @@ object ProfileManager {
 
     const val API_URL_PRE = "https://web-atlas-api-pre.azurewebsites.net"
     const val API_URL_DEV = "https://web-atlas-api-dev.azurewebsites.net"
-    const val API_URL_PRO = "https://web-atlas-api-pro.azurewebsites.net"
+    const val API_URL_PRO = "https://atlas.tecnicasreunidas.es/api"
 
     private lateinit var prefs: SharedPreferences
 

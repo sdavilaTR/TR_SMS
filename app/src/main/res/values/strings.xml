@@ -264,9 +264,11 @@
     <string name="profile_user">USER</string>
     <string name="profile_admin">ADMIN</string>
     <string name="profile_dev">DEV</string>
+    <string name="profile_pro">PRO</string>
     <string name="profile_user_desc">Modo básico — inicio, escáner y sincronización</string>
     <string name="profile_admin_desc">Acceso completo a todos los menús</string>
     <string name="profile_dev_desc">Desarrollo — API: web-atlas-dev</string>
+    <string name="profile_pro_desc">Producción (test) — API: web-atlas-pro</string>
     <string name="profile_current">Perfil actual: %s</string>
     <string name="profile_access_code_title">Código de acceso</string>
     <string name="profile_access_code_hint">Introduce el código</string>

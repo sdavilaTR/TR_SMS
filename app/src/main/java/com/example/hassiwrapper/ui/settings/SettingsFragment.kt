@@ -159,11 +159,13 @@ class SettingsFragment : Fragment() {
         val btnUser  = view.findViewById<MaterialButton>(R.id.btnProfileUser)
         val btnAdmin = view.findViewById<MaterialButton>(R.id.btnProfileAdmin)
         val btnDev   = view.findViewById<MaterialButton>(R.id.btnProfileDev)
+        val btnPro   = view.findViewById<MaterialButton>(R.id.btnProfilePro)
 
         profileButtons = mapOf(
             ProfileManager.Profile.USER  to btnUser,
             ProfileManager.Profile.ADMIN to btnAdmin,
-            ProfileManager.Profile.DEV   to btnDev
+            ProfileManager.Profile.DEV   to btnDev,
+            ProfileManager.Profile.PRO   to btnPro
         )
 
         updateProfileLabel(txtCurrent)
@@ -172,6 +174,7 @@ class SettingsFragment : Fragment() {
         btnUser.setOnClickListener { switchProfile(ProfileManager.Profile.USER, txtCurrent) }
         btnAdmin.setOnClickListener { requestCodeAndSwitch(ProfileManager.Profile.ADMIN, txtCurrent) }
         btnDev.setOnClickListener   { requestCodeAndSwitch(ProfileManager.Profile.DEV, txtCurrent) }
+        btnPro.setOnClickListener   { requestCodeAndSwitch(ProfileManager.Profile.PRO, txtCurrent) }
     }
 
     private fun highlightProfileButton(profile: ProfileManager.Profile) {
@@ -186,11 +189,13 @@ class SettingsFragment : Fragment() {
             ProfileManager.Profile.USER  -> getString(R.string.profile_user)
             ProfileManager.Profile.ADMIN -> getString(R.string.profile_admin)
             ProfileManager.Profile.DEV   -> getString(R.string.profile_dev)
+            ProfileManager.Profile.PRO   -> getString(R.string.profile_pro)
         }
         val desc = when (profile) {
             ProfileManager.Profile.USER  -> getString(R.string.profile_user_desc)
             ProfileManager.Profile.ADMIN -> getString(R.string.profile_admin_desc)
             ProfileManager.Profile.DEV   -> getString(R.string.profile_dev_desc)
+            ProfileManager.Profile.PRO   -> getString(R.string.profile_pro_desc)
         }
         txt.text = "$name — $desc"
     }
@@ -220,7 +225,14 @@ class SettingsFragment : Fragment() {
         val previous = ProfileManager.currentProfile()
         if (target == previous) return
 
-        val changingEnvironment = target == ProfileManager.Profile.DEV || previous == ProfileManager.Profile.DEV
+        val envOf: (ProfileManager.Profile) -> String = {
+            when (it) {
+                ProfileManager.Profile.DEV -> "DEV"
+                ProfileManager.Profile.PRO -> "PRO"
+                else -> "PRE"
+            }
+        }
+        val changingEnvironment = envOf(target) != envOf(previous)
 
         ProfileManager.setProfile(target)
         updateProfileLabel(label)

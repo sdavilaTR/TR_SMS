@@ -299,7 +299,7 @@ class SyncFragment : Fragment() {
                 if (sb.isNotEmpty()) sb.append("  |  ")
                 sb.append(getString(R.string.sync_result_photos_fail, result.photosFailed))
                 val profile = ProfileManager.currentProfile()
-                if (profile == ProfileManager.Profile.DEV || profile == ProfileManager.Profile.ADMIN) {
+                if (profile == ProfileManager.Profile.DEV || profile == ProfileManager.Profile.ADMIN || profile == ProfileManager.Profile.PRO) {
                     sb.append("\n").append(result.photoErrors.joinToString("\n"))
                 }
             }

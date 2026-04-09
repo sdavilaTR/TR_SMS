@@ -112,8 +112,11 @@ class ApiClient(
             val token = authRepo.getTokenSync()
             val deviceId = authRepo.getDeviceIdSync()
 
-            val builder = chain.request().newBuilder()
-                .addHeader("Content-Type", "application/json")
+            val original = chain.request()
+            val builder = original.newBuilder()
+            if (original.body?.contentType()?.type != "multipart") {
+                builder.addHeader("Content-Type", "application/json")
+            }
 
             if (!token.isNullOrEmpty()) {
                 builder.addHeader("Authorization", "Bearer $token")

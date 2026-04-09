@@ -94,6 +94,8 @@ class LoginActivity : AppCompatActivity() {
                     val api = ServiceLocator.apiClient.getService()
                     val result = ServiceLocator.authRepo.loginWithCredentials(email, password, api)
                     if (result.isSuccess) {
+                        // Store device code for auto-re-login during sync
+                        ServiceLocator.configRepo.set("device_code", code)
                         goToMain()
                     } else {
                         txtError.text = result.exceptionOrNull()?.message ?: getString(R.string.login_error_auth)

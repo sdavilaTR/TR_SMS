@@ -43,7 +43,8 @@ object ServiceLocator {
             db.accessLogDao(), db.incidentDao(), db.workSessionDao(),
             db.pendingPhotoDao(), db.hseObservationDao(),
             heartbeatManager,
-            db.vehicleDao()
+            db.vehicleDao(),
+            authRepo
         )
     }
 

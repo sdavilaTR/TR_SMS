@@ -5,6 +5,7 @@ import com.example.hassiwrapper.data.ConfigRepository
 import com.example.hassiwrapper.data.db.dao.*
 import com.example.hassiwrapper.data.db.entities.*
 import com.example.hassiwrapper.network.ApiClient
+import com.example.hassiwrapper.network.AuthRepository
 import com.example.hassiwrapper.network.AtlasApiService
 import com.example.hassiwrapper.network.dto.*
 import kotlinx.coroutines.delay
@@ -36,7 +37,8 @@ class SyncService(
     private val pendingPhotoDao: PendingPhotoDao? = null,
     private val hseObservationDao: HseObservationDao? = null,
     private val heartbeatManager: HeartbeatManager? = null,
-    private val vehicleDao: VehicleDao? = null
+    private val vehicleDao: VehicleDao? = null,
+    private val authRepo: AuthRepository? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -131,8 +133,18 @@ class SyncService(
      * One full sync attempt. Throws [TransientException] for retryable failures.
      * Returns a final [SyncResult] for non-retryable outcomes (including partial success).
      */
-    private suspend fun doSync(): SyncResult {
+    private suspend fun doSync(didReLogin: Boolean = false): SyncResult {
         val api = apiClient.getService()
+
+        // 0. Ensure token is still valid; auto-re-login if expired before hitting the API
+        if (!didReLogin && authRepo != null && !authRepo.isAuthenticated()) {
+            Log.i(TAG, "Token expired, attempting auto-re-login before sync")
+            if (authRepo.reLoginWithStoredCode(api)) {
+                Log.i(TAG, "Auto-re-login succeeded after token expiry")
+            } else {
+                return SyncResult(error = "Sesión expirada y no se pudo renovar automáticamente")
+            }
+        }
 
         // 1. Health check — network errors and 5xx are transient
         val healthResp = try {
@@ -144,7 +156,15 @@ class SyncService(
             if (healthResp.code() >= 500) {
                 throw TransientException("Servidor no disponible (HTTP ${healthResp.code()})")
             }
-            // 4xx — not retryable (auth / bad config)
+            // 4xx — auth failure; try auto-re-login with stored device code (once)
+            if (!didReLogin && healthResp.code() in 401..403 && authRepo != null) {
+                Log.i(TAG, "Auth failed (HTTP ${healthResp.code()}), attempting auto-re-login")
+                if (authRepo.reLoginWithStoredCode(api)) {
+                    Log.i(TAG, "Auto-re-login succeeded, retrying sync")
+                    return doSync(didReLogin = true)
+                }
+                Log.w(TAG, "Auto-re-login failed — no stored device code or credentials invalid")
+            }
             return SyncResult(error = "Servidor rechazó la conexión (HTTP ${healthResp.code()})")
         }
 

@@ -267,4 +267,15 @@
     <string name="profile_changed">Profile changed to %s</string>
     <string name="profile_dev_reset_warning">Local database will be reset when switching to DEV</string>
     <string name="profile_dev_db_cleared">Database reset</string>
+
+    <!-- Device code (admin settings) -->
+    <string name="settings_device_code_label">Terminal Code</string>
+    <string name="settings_device_code_hint">E.g.: HASSI01</string>
+    <string name="settings_device_code_desc">Used for automatic login during synchronisation</string>
+    <string name="settings_device_code_save">Save Code</string>
+    <string name="settings_device_code_saved">Terminal code saved</string>
+    <string name="settings_device_code_empty">Enter a terminal code</string>
+    <string name="sync_auto_relogin">Re-authenticating automatically…</string>
+    <string name="sync_auto_relogin_ok">Session renewed, retrying sync</string>
+    <string name="sync_auto_relogin_fail">Could not renew session automatically</string>
 </resources>

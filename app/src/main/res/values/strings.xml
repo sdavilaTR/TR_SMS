@@ -276,4 +276,15 @@
     <string name="profile_changed">Perfil cambiado a %s</string>
     <string name="profile_dev_reset_warning">Se reiniciará la base de datos local al cambiar a DEV</string>
     <string name="profile_dev_db_cleared">Base de datos reiniciada</string>
+
+    <!-- Device code (admin settings) -->
+    <string name="settings_device_code_label">Código del Terminal</string>
+    <string name="settings_device_code_hint">Ej: HASSI01</string>
+    <string name="settings_device_code_desc">Se usa para iniciar sesión automáticamente durante la sincronización</string>
+    <string name="settings_device_code_save">Guardar Código</string>
+    <string name="settings_device_code_saved">Código del terminal guardado</string>
+    <string name="settings_device_code_empty">Introduce un código de terminal</string>
+    <string name="sync_auto_relogin">Reautenticando automáticamente…</string>
+    <string name="sync_auto_relogin_ok">Sesión renovada, reintentando sincronización</string>
+    <string name="sync_auto_relogin_fail">No se pudo renovar la sesión automáticamente</string>
 </resources>

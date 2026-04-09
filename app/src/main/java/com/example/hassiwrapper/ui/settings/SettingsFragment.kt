@@ -20,6 +20,7 @@ import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,6 +41,7 @@ class SettingsFragment : Fragment() {
         populateAppInfo(view)
         setupProfileSelector(view)
         setupLanguageSelector(view)
+        setupDeviceCode(view)
 
         refreshAuthButtons()
 
@@ -93,6 +95,40 @@ class SettingsFragment : Fragment() {
             val authenticated = ServiceLocator.authRepo.isAuthenticated()
             btnLogin.visibility = if (authenticated) View.GONE else View.VISIBLE
             btnLogout.visibility = if (authenticated) View.VISIBLE else View.GONE
+        }
+    }
+
+    // ── Device code (admin only) ────────────────────────────────────────
+
+    private fun setupDeviceCode(view: View) {
+        val card = view.findViewById<View>(R.id.cardDeviceCode)
+        val input = view.findViewById<TextInputEditText>(R.id.inputDeviceCode)
+        val btnSave = view.findViewById<MaterialButton>(R.id.btnSaveDeviceCode)
+
+        // Only visible for non-USER profiles
+        val isAdmin = ProfileManager.currentProfile() != ProfileManager.Profile.USER
+        card.visibility = if (isAdmin) View.VISIBLE else View.GONE
+
+        if (!isAdmin) return
+
+        // Load stored device code
+        viewLifecycleOwner.lifecycleScope.launch {
+            val storedCode = ServiceLocator.configRepo.get("device_code")
+            if (!storedCode.isNullOrBlank()) {
+                input.setText(storedCode)
+            }
+        }
+
+        btnSave.setOnClickListener {
+            val code = input.text.toString().trim().uppercase()
+            if (code.isEmpty()) {
+                Toast.makeText(requireContext(), R.string.settings_device_code_empty, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            viewLifecycleOwner.lifecycleScope.launch {
+                ServiceLocator.configRepo.set("device_code", code)
+                Toast.makeText(requireContext(), R.string.settings_device_code_saved, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -255,8 +291,9 @@ class SettingsFragment : Fragment() {
             Toast.LENGTH_SHORT
         ).show()
 
-        // Refresh navigation menu visibility
+        // Refresh navigation menu visibility and device code card
         (requireActivity() as? MainActivity)?.refreshProfileMenu()
+        view?.let { setupDeviceCode(it) }
     }
 
     private fun populateAppInfo(view: View) {

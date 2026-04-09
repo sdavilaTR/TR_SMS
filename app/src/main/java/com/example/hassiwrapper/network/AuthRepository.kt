@@ -137,4 +137,18 @@ class AuthRepository(private val configRepo: ConfigRepository) {
     suspend fun refreshDeviceId() {
         cachedDeviceId = configRepo.get("device_id")
     }
+
+    /**
+     * Attempts to re-login using the stored device code from settings.
+     * Returns true if re-login succeeded, false otherwise.
+     */
+    suspend fun reLoginWithStoredCode(apiService: AtlasApiService): Boolean {
+        val code = configRepo.get("device_code") ?: return false
+        if (code.isBlank()) return false
+
+        val email = "${code.lowercase()}@atlas.com"
+        val password = "Tr.Atlas_${code}!"
+
+        return loginWithCredentials(email, password, apiService).isSuccess
+    }
 }

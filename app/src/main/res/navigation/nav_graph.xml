@@ -12,6 +12,8 @@
     <fragment android:id="@+id/workersFragment"    android:name="com.example.hassiwrapper.ui.workers.WorkersFragment"      android:label="@string/menu_workers" />
     <fragment android:id="@+id/vehiclesFragment"   android:name="com.example.hassiwrapper.ui.vehicles.VehiclesFragment"   android:label="@string/menu_vehicles" />
     <fragment android:id="@+id/settingsFragment"   android:name="com.example.hassiwrapper.ui.settings.SettingsFragment"   android:label="@string/menu_settings" />
-    <fragment android:id="@+id/observationFragment" android:name="com.example.hassiwrapper.ui.observation.ObservationFragment" android:label="@string/obs_title" />
+    <fragment android:id="@+id/observationFragment"          android:name="com.example.hassiwrapper.ui.observation.ObservationFragment"              android:label="@string/obs_title" />
+    <fragment android:id="@+id/observationsGeneralFragment" android:name="com.example.hassiwrapper.ui.comingsoon.ObservationsGeneralFragment"       android:label="@string/menu_observations_general" />
+    <fragment android:id="@+id/inspectionsFragment"         android:name="com.example.hassiwrapper.ui.comingsoon.InspectionsFragment"               android:label="@string/menu_inspections" />
 
 </navigation>

@@ -204,12 +204,14 @@ class SettingsFragment : Fragment() {
     private fun setupProfileSelector(view: View) {
         val txtCurrent = view.findViewById<TextView>(R.id.txtCurrentProfile)
         val btnUser  = view.findViewById<MaterialButton>(R.id.btnProfileUser)
+        val btnHse   = view.findViewById<MaterialButton>(R.id.btnProfileHse)
         val btnAdmin = view.findViewById<MaterialButton>(R.id.btnProfileAdmin)
         val btnPre   = view.findViewById<MaterialButton>(R.id.btnProfilePre)
         val btnDev   = view.findViewById<MaterialButton>(R.id.btnProfileDev)
 
         profileButtons = mapOf(
             ProfileManager.Profile.USER  to btnUser,
+            ProfileManager.Profile.HSE   to btnHse,
             ProfileManager.Profile.ADMIN to btnAdmin,
             ProfileManager.Profile.PRE   to btnPre,
             ProfileManager.Profile.DEV   to btnDev
@@ -219,6 +221,7 @@ class SettingsFragment : Fragment() {
         highlightProfileButton(ProfileManager.currentProfile())
 
         btnUser.setOnClickListener  { switchProfile(ProfileManager.Profile.USER, txtCurrent) }
+        btnHse.setOnClickListener   { requestCodeAndSwitch(ProfileManager.Profile.HSE, txtCurrent) }
         btnAdmin.setOnClickListener { requestCodeAndSwitch(ProfileManager.Profile.ADMIN, txtCurrent) }
         btnPre.setOnClickListener   { requestCodeAndSwitch(ProfileManager.Profile.PRE, txtCurrent) }
         btnDev.setOnClickListener   { requestCodeAndSwitch(ProfileManager.Profile.DEV, txtCurrent) }
@@ -234,12 +237,14 @@ class SettingsFragment : Fragment() {
         val profile = ProfileManager.currentProfile()
         val name = when (profile) {
             ProfileManager.Profile.USER  -> getString(R.string.profile_user)
+            ProfileManager.Profile.HSE   -> getString(R.string.profile_hse)
             ProfileManager.Profile.ADMIN -> getString(R.string.profile_admin)
             ProfileManager.Profile.PRE   -> getString(R.string.profile_pre)
             ProfileManager.Profile.DEV   -> getString(R.string.profile_dev)
         }
         val desc = when (profile) {
             ProfileManager.Profile.USER  -> getString(R.string.profile_user_desc)
+            ProfileManager.Profile.HSE   -> getString(R.string.profile_hse_desc)
             ProfileManager.Profile.ADMIN -> getString(R.string.profile_admin_desc)
             ProfileManager.Profile.PRE   -> getString(R.string.profile_pre_desc)
             ProfileManager.Profile.DEV   -> getString(R.string.profile_dev_desc)

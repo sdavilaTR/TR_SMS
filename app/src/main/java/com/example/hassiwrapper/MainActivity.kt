@@ -81,6 +81,8 @@ class MainActivity : AppCompatActivity() {
                 R.id.syncFragment,
                 R.id.workersFragment,
                 R.id.vehiclesFragment,
+                R.id.observationsGeneralFragment,
+                R.id.inspectionsFragment,
                 R.id.settingsFragment -> {
                     navController.navigate(item.itemId)
                 }
@@ -255,18 +257,28 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Show/hide navigation menu items based on the current profile.
-     * USER: Home + Scanner + Sync + Settings.
-     * ADMIN / DEV: all items visible.
+     * USER:  Home + Scanner + Sync + Settings.
+     * HSE:   USER items + Passport + Observations General + Inspections.
+     * ADMIN / PRE / DEV: all items visible.
      */
     private fun applyProfileMenuVisibility(navView: NavigationView) {
         val menu = navView.menu
-        val isUser = ProfileManager.currentProfile() == ProfileManager.Profile.USER
+        val profile = ProfileManager.currentProfile()
+        val isUser = profile == ProfileManager.Profile.USER
+        val isHse  = profile == ProfileManager.Profile.HSE
+        val isFull = !isUser && !isHse  // ADMIN, PRE, DEV
 
-        // Items hidden for USER profile
+        // Passport: visible for HSE, ADMIN, PRE, DEV
         menu.findItem(R.id.passportFragment)?.isVisible    = !isUser
-        menu.findItem(R.id.attendanceFragment)?.isVisible  = !isUser
-        menu.findItem(R.id.workersFragment)?.isVisible     = !isUser
-        menu.findItem(R.id.vehiclesFragment)?.isVisible    = !isUser
+
+        // Attendance, Workers, Vehicles: only full profiles (ADMIN, PRE, DEV)
+        menu.findItem(R.id.attendanceFragment)?.isVisible  = isFull
+        menu.findItem(R.id.workersFragment)?.isVisible     = isFull
+        menu.findItem(R.id.vehiclesFragment)?.isVisible    = isFull
+
+        // Observations General + Inspections: HSE, ADMIN, PRE, DEV
+        menu.findItem(R.id.observationsGeneralFragment)?.isVisible = !isUser
+        menu.findItem(R.id.inspectionsFragment)?.isVisible         = !isUser
 
         // Home + Scanner + Sync + Settings always visible
     }
@@ -276,11 +288,24 @@ class MainActivity : AppCompatActivity() {
         val navView = findViewById<NavigationView>(R.id.navView)
         applyProfileMenuVisibility(navView)
 
+        val profile = ProfileManager.currentProfile()
+        val currentDest = navController.currentDestination?.id
+
         // If USER and currently on a hidden fragment, navigate to scanner
-        if (ProfileManager.currentProfile() == ProfileManager.Profile.USER) {
-            val currentDest = navController.currentDestination?.id
+        if (profile == ProfileManager.Profile.USER) {
             val allowedInUser = setOf(R.id.homeFragment, R.id.scannerFragment, R.id.syncFragment, R.id.settingsFragment)
             if (currentDest != null && currentDest !in allowedInUser) {
+                navController.navigate(R.id.scannerFragment)
+            }
+        }
+        // If HSE and currently on an ADMIN-only fragment, navigate to scanner
+        if (profile == ProfileManager.Profile.HSE) {
+            val allowedInHse = setOf(
+                R.id.homeFragment, R.id.scannerFragment, R.id.syncFragment, R.id.settingsFragment,
+                R.id.passportFragment, R.id.observationsGeneralFragment, R.id.inspectionsFragment,
+                R.id.observationFragment
+            )
+            if (currentDest != null && currentDest !in allowedInHse) {
                 navController.navigate(R.id.scannerFragment)
             }
         }

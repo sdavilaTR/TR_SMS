@@ -31,6 +31,9 @@ import com.example.hassiwrapper.data.db.entities.PersonEntity
 import com.google.android.material.button.MaterialButton
 import android.app.Activity
 import android.content.Intent
+import android.widget.ProgressBar
+import com.example.hassiwrapper.network.dto.DocumentComplianceDto
+import com.example.hassiwrapper.network.dto.TrainingComplianceDto
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -232,6 +235,194 @@ class PassportFragment : Fragment() {
         view.findViewById<View>(R.id.layoutWaiting).visibility = View.GONE
         val loaded = view.findViewById<LinearLayout>(R.id.layoutLoaded)
         loaded.visibility = View.VISIBLE
+
+        // Load compliance data from API (background, non-blocking)
+        loadComplianceData(person)
+    }
+
+    private fun loadComplianceData(person: PersonEntity) {
+        val view = this.view ?: return
+        val projectId = person.project_id ?: return
+
+        // Reset sections
+        view.findViewById<LinearLayout>(R.id.layoutTrainingItems).removeAllViews()
+        view.findViewById<LinearLayout>(R.id.layoutDocItems).removeAllViews()
+        view.findViewById<TextView>(R.id.txtNoTrainings).visibility = View.GONE
+        view.findViewById<TextView>(R.id.txtNoDocs).visibility = View.GONE
+        view.findViewById<ProgressBar>(R.id.progressTrainings).progress = 0
+        view.findViewById<ProgressBar>(R.id.progressDocs).progress = 0
+        view.findViewById<TextView>(R.id.txtTrainingsCount).text = ""
+        view.findViewById<TextView>(R.id.txtDocsCount).text = ""
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            // Training compliance
+            try {
+                val trainings = withTimeoutOrNull(5_000L) {
+                    withContext(Dispatchers.IO) {
+                        val api = ServiceLocator.apiClient.getService()
+                        val resp = api.getTrainingCompliance(projectId, person.badge_number)
+                        if (resp.isSuccessful) resp.body() else null
+                    }
+                }
+                if (isAdded) renderTrainings(trainings ?: emptyList())
+            } catch (e: Exception) {
+                Log.w(TAG, "Training compliance load failed: ${e.message}")
+                if (isAdded) renderTrainings(emptyList())
+            }
+
+            // Document compliance
+            try {
+                val docs = withTimeoutOrNull(5_000L) {
+                    withContext(Dispatchers.IO) {
+                        val api = ServiceLocator.apiClient.getService()
+                        val resp = api.getDocumentCompliance(projectId, person.unique_id_value)
+                        if (resp.isSuccessful) resp.body() else null
+                    }
+                }
+                if (isAdded) renderDocuments(docs ?: emptyList())
+            } catch (e: Exception) {
+                Log.w(TAG, "Document compliance load failed: ${e.message}")
+                if (isAdded) renderDocuments(emptyList())
+            }
+        }
+    }
+
+    private fun renderTrainings(trainings: List<TrainingComplianceDto>) {
+        val view = this.view ?: return
+        val container = view.findViewById<LinearLayout>(R.id.layoutTrainingItems)
+        val countView = view.findViewById<TextView>(R.id.txtTrainingsCount)
+        val progressView = view.findViewById<ProgressBar>(R.id.progressTrainings)
+        val emptyView = view.findViewById<TextView>(R.id.txtNoTrainings)
+
+        container.removeAllViews()
+
+        if (trainings.isEmpty()) {
+            emptyView.visibility = View.VISIBLE
+            return
+        }
+
+        val mandatory = trainings.filter { it.isMandatory }
+        val completed = mandatory.count { it.status.equals("COMPLETED", true) }
+        val total = mandatory.size
+        val pct = if (total > 0) (completed * 100) / total else 0
+
+        countView.text = "$completed ${getString(R.string.passport_of)} $total"
+        progressView.progress = pct
+
+        // Show mandatory first, then others
+        val sorted = trainings.sortedWith(compareByDescending<TrainingComplianceDto> { it.isMandatory }
+            .thenBy { statusOrder(it.status) })
+
+        for (t in sorted) {
+            val row = layoutInflater.inflate(android.R.layout.simple_list_item_2, container, false)
+            val text1 = row.findViewById<TextView>(android.R.id.text1)
+            val text2 = row.findViewById<TextView>(android.R.id.text2)
+
+            val mandatoryTag = if (t.isMandatory) " ★" else ""
+            text1.text = "${t.trainingName}$mandatoryTag"
+            text1.textSize = 12f
+            text1.setTextColor(resources.getColor(R.color.on_surface, null))
+
+            val statusText = trainingStatusText(t.status)
+            val dateInfo = if (!t.expiryDate.isNullOrBlank()) " → ${t.expiryDate.take(10)}" else ""
+            text2.text = "$statusText$dateInfo"
+            text2.textSize = 10f
+            text2.setTextColor(statusColor(t.status))
+
+            container.addView(row)
+        }
+    }
+
+    private fun renderDocuments(docs: List<DocumentComplianceDto>) {
+        val view = this.view ?: return
+        val container = view.findViewById<LinearLayout>(R.id.layoutDocItems)
+        val countView = view.findViewById<TextView>(R.id.txtDocsCount)
+        val progressView = view.findViewById<ProgressBar>(R.id.progressDocs)
+        val emptyView = view.findViewById<TextView>(R.id.txtNoDocs)
+
+        container.removeAllViews()
+
+        if (docs.isEmpty()) {
+            emptyView.visibility = View.VISIBLE
+            return
+        }
+
+        val mandatory = docs.filter { it.isMandatory }
+        val valid = mandatory.count {
+            it.status.equals("VALIDATED", true) || it.status.equals("VALID", true) || it.status.equals("OK", true)
+        }
+        val total = mandatory.size
+        val pct = if (total > 0) (valid * 100) / total else 0
+
+        countView.text = "$valid ${getString(R.string.passport_of)} $total"
+        progressView.progress = pct
+
+        val sorted = docs.sortedWith(compareByDescending<DocumentComplianceDto> { it.isMandatory }
+            .thenBy { docStatusOrder(it.status) })
+
+        for (d in sorted) {
+            val row = layoutInflater.inflate(android.R.layout.simple_list_item_2, container, false)
+            val text1 = row.findViewById<TextView>(android.R.id.text1)
+            val text2 = row.findViewById<TextView>(android.R.id.text2)
+
+            val mandatoryTag = if (d.isMandatory) " ★" else ""
+            text1.text = "${d.typeName}$mandatoryTag"
+            text1.textSize = 12f
+            text1.setTextColor(resources.getColor(R.color.on_surface, null))
+
+            text2.text = docStatusText(d.status)
+            text2.textSize = 10f
+            text2.setTextColor(docStatusColor(d.status))
+
+            container.addView(row)
+        }
+    }
+
+    private fun statusOrder(status: String): Int = when (status.uppercase()) {
+        "MISSING" -> 0; "EXPIRED" -> 1; "PENDING" -> 2; "COMPLETED" -> 3; else -> 4
+    }
+
+    private fun docStatusOrder(status: String): Int = when (status.uppercase()) {
+        "MISSING" -> 0; "REJECTED" -> 1; "PENDING_REVIEW", "DRAFT" -> 2
+        "VALIDATED", "VALID", "OK" -> 3; else -> 4
+    }
+
+    private fun trainingStatusText(status: String): String = when (status.uppercase()) {
+        "COMPLETED" -> getString(R.string.passport_training_completed)
+        "PENDING"   -> getString(R.string.passport_training_pending)
+        "EXPIRED"   -> getString(R.string.passport_training_expired)
+        "MISSING"   -> getString(R.string.passport_training_missing)
+        else        -> status
+    }
+
+    private fun docStatusText(status: String): String = when (status.uppercase()) {
+        "VALIDATED", "VALID", "OK" -> getString(R.string.passport_doc_valid)
+        "PENDING_REVIEW", "DRAFT" -> getString(R.string.passport_doc_expiring)
+        "MISSING"                 -> getString(R.string.passport_doc_missing)
+        "EXPIRED"                 -> getString(R.string.passport_doc_expired)
+        else                      -> status
+    }
+
+    private fun statusColor(status: String): Int {
+        val colorRes = when (status.uppercase()) {
+            "COMPLETED" -> R.color.granted
+            "PENDING"   -> R.color.warning
+            "EXPIRED"   -> R.color.denied
+            "MISSING"   -> R.color.on_surface_variant
+            else        -> R.color.on_surface_variant
+        }
+        return resources.getColor(colorRes, null)
+    }
+
+    private fun docStatusColor(status: String): Int {
+        val colorRes = when (status.uppercase()) {
+            "VALIDATED", "VALID", "OK" -> R.color.granted
+            "PENDING_REVIEW", "DRAFT" -> R.color.warning
+            "MISSING"                 -> R.color.on_surface_variant
+            "EXPIRED", "REJECTED"     -> R.color.denied
+            else                      -> R.color.on_surface_variant
+        }
+        return resources.getColor(colorRes, null)
     }
 
     // ── Photo: local cache helpers ──────────────────────────────────────────
@@ -444,6 +635,8 @@ class PassportFragment : Fragment() {
         currentPerson = null
         view.findViewById<View>(R.id.layoutLoaded).visibility = View.GONE
         view.findViewById<View>(R.id.layoutWaiting).visibility = View.VISIBLE
+        view.findViewById<LinearLayout>(R.id.layoutTrainingItems).removeAllViews()
+        view.findViewById<LinearLayout>(R.id.layoutDocItems).removeAllViews()
     }
 
     override fun onDestroyView() {

@@ -259,13 +259,41 @@
     <string name="obs_type_required">Seleccione el tipo de observaci\u00f3n</string>
     <string name="obs_safety_required">Seleccione el tipo de seguridad</string>
 
+    <!-- Menu: new sections -->
+    <string name="menu_observations_general">Observaciones</string>
+    <string name="menu_inspections">Inspecciones</string>
+
+    <!-- Passport: trainings & documentation sections -->
+    <string name="passport_section_trainings">Formaciones</string>
+    <string name="passport_section_docs">Documentaci\u00f3n</string>
+    <string name="passport_training_completed">Completado</string>
+    <string name="passport_training_pending">Pendiente</string>
+    <string name="passport_training_expired">Caducado</string>
+    <string name="passport_training_missing">Falta</string>
+    <string name="passport_mandatory">Obligatoria</string>
+    <string name="passport_no_trainings">Sin formaciones registradas</string>
+    <string name="passport_no_docs">Sin documentaci\u00f3n registrada</string>
+    <string name="passport_doc_valid">Vigente</string>
+    <string name="passport_doc_expiring">Por caducar</string>
+    <string name="passport_doc_expired">Caducado</string>
+    <string name="passport_doc_missing">Falta</string>
+    <string name="passport_compliance">Cumplimiento</string>
+    <string name="passport_of">de</string>
+
+    <!-- Coming soon -->
+    <string name="coming_soon_title">Pr\u00f3ximamente</string>
+    <string name="coming_soon_observations">El m\u00f3dulo de observaciones generales permitir\u00e1 registrar observaciones de seguridad no vinculadas a un trabajador espec\u00edfico.</string>
+    <string name="coming_soon_inspections">El m\u00f3dulo de inspecciones permitir\u00e1 planificar, ejecutar y documentar inspecciones de seguridad en obra.</string>
+
     <!-- Profiles -->
     <string name="profile_label">Perfil</string>
     <string name="profile_user">USER</string>
+    <string name="profile_hse">HSE</string>
     <string name="profile_admin">ADMIN</string>
     <string name="profile_pre">PRE</string>
     <string name="profile_dev">DEV</string>
     <string name="profile_user_desc">Modo básico — Producción (atlas.tecnicasreunidas.es)</string>
+    <string name="profile_hse_desc">HSE — Pasaporte + Observaciones + Inspecciones (Producción)</string>
     <string name="profile_admin_desc">Acceso completo — Producción (atlas.tecnicasreunidas.es)</string>
     <string name="profile_pre_desc">Preproducción — API: web-atlas-pre</string>
     <string name="profile_dev_desc">Desarrollo — API: web-atlas-dev</string>

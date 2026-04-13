@@ -51,6 +51,20 @@ interface AtlasApiService {
         @Part file: MultipartBody.Part
     ): Response<PhotoUploadResponse>
 
+    // ── Training Compliance ────────────────────────────
+    @GET("/api/atlas/projects/{projectId}/training/person/{badgeNumber}/compliance")
+    suspend fun getTrainingCompliance(
+        @Path("projectId") projectId: Int,
+        @Path("badgeNumber") badgeNumber: String
+    ): Response<List<TrainingComplianceDto>>
+
+    // ── Document Compliance ────────────────────────────
+    @GET("/api/atlas/projects/{projectId}/persons/{personUuid}/documents/compliance")
+    suspend fun getDocumentCompliance(
+        @Path("projectId") projectId: Int,
+        @Path("personUuid") personUuid: String
+    ): Response<List<DocumentComplianceDto>>
+
     // ── Heartbeat ───────────────────────────────────────
     @POST("/api/trac/sync/heartbeat")
     suspend fun sendHeartbeat(@Body payload: HeartbeatPayload): Response<Void>

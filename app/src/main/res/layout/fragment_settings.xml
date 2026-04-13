@@ -59,8 +59,18 @@
                         android:layout_weight="1"
                         android:text="@string/profile_user"
                         android:textAllCaps="true"
-                        android:textSize="12sp"
-                        android:layout_marginEnd="4dp"
+                        android:textSize="11sp"
+                        android:layout_marginEnd="3dp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnProfileHse"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:text="@string/profile_hse"
+                        android:textAllCaps="true"
+                        android:textSize="11sp"
+                        android:layout_marginEnd="3dp"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnProfileAdmin"
@@ -69,8 +79,8 @@
                         android:layout_weight="1"
                         android:text="@string/profile_admin"
                         android:textAllCaps="true"
-                        android:textSize="12sp"
-                        android:layout_marginEnd="4dp"
+                        android:textSize="11sp"
+                        android:layout_marginEnd="3dp"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnProfilePre"
@@ -79,8 +89,8 @@
                         android:layout_weight="1"
                         android:text="@string/profile_pre"
                         android:textAllCaps="true"
-                        android:textSize="12sp"
-                        android:layout_marginEnd="4dp"
+                        android:textSize="11sp"
+                        android:layout_marginEnd="3dp"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnProfileDev"
@@ -89,7 +99,7 @@
                         android:layout_weight="1"
                         android:text="@string/profile_dev"
                         android:textAllCaps="true"
-                        android:textSize="12sp"
+                        android:textSize="11sp"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
                 </LinearLayout>
             </LinearLayout>

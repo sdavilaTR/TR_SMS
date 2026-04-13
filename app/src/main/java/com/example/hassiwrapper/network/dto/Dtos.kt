@@ -247,3 +247,27 @@ data class HeartbeatPayload(
     @SerializedName("osVersion") val osVersion: String,
     @SerializedName("deviceModel") val deviceModel: String
 )
+
+// ── Training Compliance ─────────────────────────────────────────────────────
+
+data class TrainingComplianceDto(
+    val trainingDefinitionId: Long = 0,
+    val trainingCode: String = "",
+    val trainingName: String = "",
+    val isMandatory: Boolean = false,
+    val status: String = "MISSING",
+    val completedDate: String? = null,
+    val expiryDate: String? = null,
+    val score: Double? = null
+)
+
+// ── Document Compliance ─────────────────────────────────────────────────────
+
+data class DocumentComplianceDto(
+    val documentTypeId: Int = 0,
+    val typeCode: String = "",
+    val typeName: String = "",
+    val isRequired: Boolean = false,
+    val isMandatory: Boolean = false,
+    val status: String = "MISSING"
+)

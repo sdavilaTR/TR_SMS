@@ -4,10 +4,12 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Manages app profiles: USER, ADMIN, PRE, DEV.
+ * Manages app profiles: USER, HSE, ADMIN, PRE, DEV.
  *
  * - USER:  minimal UI — home, scanner, sync + settings. Uses production API
  *          (atlas.tecnicasreunidas.es) through the public reverse proxy.
+ * - HSE:   USER menu + passport, observations (general), inspections. Production API.
+ *          Requires access code.
  * - ADMIN: full menu access, also against production. Requires access code.
  * - PRE:   full menu against the PRE Azure environment. Requires access code.
  *          Switching environment resets the local database.
@@ -18,7 +20,7 @@ import android.content.SharedPreferences
  */
 object ProfileManager {
 
-    enum class Profile { USER, ADMIN, PRE, DEV }
+    enum class Profile { USER, HSE, ADMIN, PRE, DEV }
 
     // Hardcoded access code for ADMIN, PRE and DEV profiles
     const val ACCESS_CODE = "ATLAS2026"
@@ -54,7 +56,7 @@ object ProfileManager {
     fun apiUrlFor(profile: Profile): String = when (profile) {
         Profile.DEV -> API_URL_DEV
         Profile.PRE -> API_URL_PRE
-        Profile.USER, Profile.ADMIN -> API_URL_PRO
+        Profile.USER, Profile.HSE, Profile.ADMIN -> API_URL_PRO
     }
 
     /** True when the active profile talks to the public reverse proxy that prepends /api. */

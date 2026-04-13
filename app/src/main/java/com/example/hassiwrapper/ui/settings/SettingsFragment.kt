@@ -125,9 +125,20 @@ class SettingsFragment : Fragment() {
                 Toast.makeText(requireContext(), R.string.settings_device_code_empty, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+            btnSave.isEnabled = false
             viewLifecycleOwner.lifecycleScope.launch {
                 ServiceLocator.configRepo.set("device_code", code)
-                Toast.makeText(requireContext(), R.string.settings_device_code_saved, Toast.LENGTH_SHORT).show()
+
+                // Auto-login immediately with the new device code
+                val api = ServiceLocator.apiClient.getService()
+                val success = ServiceLocator.authRepo.reLoginWithStoredCode(api)
+                btnSave.isEnabled = true
+                if (success) {
+                    Toast.makeText(requireContext(), R.string.sync_auto_relogin_ok, Toast.LENGTH_SHORT).show()
+                    refreshAuthButtons()
+                } else {
+                    Toast.makeText(requireContext(), R.string.settings_device_code_saved, Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

@@ -225,33 +225,55 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
             android:visibility="gone"
-            app:cardBackgroundColor="@color/card_bg"
+            app:cardBackgroundColor="@color/surface_variant"
             app:cardCornerRadius="16dp"
             app:cardElevation="3dp">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
-                <TextView
-                    android:layout_width="wrap_content"
+                android:padding="20dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/settings_device_code_label"
-                    android:textColor="@color/on_surface"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="4dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="4dp">
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_scanner"
+                        android:layout_marginEnd="8dp"
+                        app:tint="@color/primary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_device_code_label"
+                        android:textColor="@color/on_surface"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/settings_device_code_desc"
                     android:textColor="@color/on_surface_variant"
                     android:textSize="12sp"
-                    android:layout_marginBottom="8dp" />
+                    android:layout_marginBottom="12dp" />
+
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
+                    android:layout_marginBottom="12dp"
+                    app:boxBackgroundColor="@color/surface"
+                    app:boxCornerRadiusTopStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusBottomEnd="12dp"
+                    app:boxStrokeColor="@color/primary"
+                    app:hintTextColor="@color/primary"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/inputDeviceCode"
@@ -259,17 +281,28 @@
                         android:layout_height="wrap_content"
                         android:hint="@string/settings_device_code_hint"
                         android:inputType="textCapCharacters"
-                        android:textSize="14sp"
-                        android:fontFamily="monospace" />
+                        android:textSize="18sp"
+                        android:fontFamily="monospace"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.15"
+                        android:textColor="@color/primary_dark"
+                        android:paddingTop="14dp"
+                        android:paddingBottom="14dp"
+                        android:gravity="center" />
                 </com.google.android.material.textfield.TextInputLayout>
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSaveDeviceCode"
                     android:layout_width="match_parent"
-                    android:layout_height="40dp"
+                    android:layout_height="48dp"
                     android:text="@string/settings_device_code_save"
                     android:textAllCaps="false"
-                    android:textSize="13sp"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                    android:textSize="14sp"
+                    android:backgroundTint="@color/primary"
+                    app:cornerRadius="12dp"
+                    app:icon="@drawable/ic_baseline_check_circle_24"
+                    app:iconGravity="textStart"
+                    app:iconTint="@color/on_primary" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 

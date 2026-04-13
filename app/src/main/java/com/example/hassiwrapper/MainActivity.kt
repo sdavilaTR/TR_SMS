@@ -104,6 +104,10 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 ServiceLocator.apiClient.seedDefaults()
+                if (!ServiceLocator.authRepo.isAuthenticated()) {
+                    Log.d(TAG, "Initial sync: not authenticated, attempting auto-re-login")
+                    ServiceLocator.authRepo.reLoginWithStoredCode(ServiceLocator.apiClient.getService())
+                }
                 if (ServiceLocator.authRepo.isAuthenticated()) {
                     ServiceLocator.syncService.fullSync()
                 }
@@ -126,7 +130,17 @@ class MainActivity : AppCompatActivity() {
             while (true) {
                 delay(AUTO_SYNC_INTERVAL_MS)
                 try {
-                    if (!ServiceLocator.authRepo.isAuthenticated()) continue
+                    if (!ServiceLocator.authRepo.isAuthenticated()) {
+                        Log.d(TAG, "Auto-sync: session expired, attempting auto-re-login")
+                        val relogged = ServiceLocator.authRepo.reLoginWithStoredCode(
+                            ServiceLocator.apiClient.getService()
+                        )
+                        if (!relogged) {
+                            Log.d(TAG, "Auto-sync: re-login failed, skipping cycle")
+                            continue
+                        }
+                        Log.d(TAG, "Auto-sync: re-login succeeded")
+                    }
                     val connectivity = ServiceLocator.apiClient.checkConnectivity()
                     if (!connectivity.apiReachable) continue
                     Log.d(TAG, "Auto-sync: starting")

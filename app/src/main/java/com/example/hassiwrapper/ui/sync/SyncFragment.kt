@@ -94,7 +94,18 @@ class SyncFragment : Fragment() {
             val txtAuth = v.findViewById<TextView>(R.id.txtAuthStatus)
             val btnSync = v.findViewById<MaterialButton>(R.id.btnFullSync)
 
-            val authenticated = ServiceLocator.authRepo.isAuthenticated()
+            var authenticated = ServiceLocator.authRepo.isAuthenticated()
+
+            // If not authenticated, attempt auto-re-login with stored device code
+            if (!authenticated) {
+                dotAuth.setBackgroundResource(R.drawable.dot_grey)
+                txtAuth.text = getString(R.string.sync_auto_relogin)
+                val relogged = ServiceLocator.authRepo.reLoginWithStoredCode(
+                    ServiceLocator.apiClient.getService()
+                )
+                authenticated = relogged
+            }
+
             if (authenticated) {
                 dotAuth.setBackgroundResource(R.drawable.dot_green)
                 txtAuth.text = getString(R.string.sync_auth_ok)

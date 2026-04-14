@@ -65,6 +65,18 @@ interface AtlasApiService {
         @Path("personUuid") personUuid: String
     ): Response<List<DocumentComplianceDto>>
 
+    // ── Bulk Compliance (sync) ──────────────────────────
+    @GET("/api/trac/sync/compliance-bulk")
+    suspend fun getBulkCompliance(@Query("projectId") projectId: Int): Response<BulkComplianceResponse>
+
+    // ── Document Download ────────────────────────────
+    @GET("/api/atlas/projects/{projectId}/persons/{personUuid}/documents/{documentId}/download")
+    suspend fun downloadDocument(
+        @Path("projectId") projectId: Int,
+        @Path("personUuid") personUuid: String,
+        @Path("documentId") documentId: Long
+    ): Response<okhttp3.ResponseBody>
+
     // ── Heartbeat ───────────────────────────────────────
     @POST("/api/trac/sync/heartbeat")
     suspend fun sendHeartbeat(@Body payload: HeartbeatPayload): Response<Void>

@@ -38,7 +38,9 @@ class SyncService(
     private val hseObservationDao: HseObservationDao? = null,
     private val heartbeatManager: HeartbeatManager? = null,
     private val vehicleDao: VehicleDao? = null,
-    private val authRepo: AuthRepository? = null
+    private val authRepo: AuthRepository? = null,
+    private val trainingComplianceDao: com.example.hassiwrapper.data.db.dao.TrainingComplianceDao? = null,
+    private val documentComplianceDao: com.example.hassiwrapper.data.db.dao.DocumentComplianceDao? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -191,6 +193,20 @@ class SyncService(
             }
         } catch (e: Exception) {
             Log.w(TAG, "downloadSync exception (non-fatal): ${e.message}")
+        }
+
+        // 3b. Download bulk compliance (best-effort)
+        try {
+            val projectId = 1
+            val complianceResp = api.getBulkCompliance(projectId)
+            if (complianceResp.isSuccessful) {
+                val data = complianceResp.body()
+                if (data != null) applyBulkCompliance(data)
+            } else {
+                Log.w(TAG, "compliance-bulk failed: HTTP ${complianceResp.code()}")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "compliance-bulk exception (non-fatal): ${e.message}")
         }
 
         // 4. Upload pending data — each throws TransientException on network/5xx
@@ -390,6 +406,47 @@ class SyncService(
             photo_url = p.photoUrl ?: p.photoUrlSnake,
             syncStatus = "SYNCED"
         )
+    }
+
+    // ── Bulk compliance ─────────────────────────────────────────────────────
+
+    private suspend fun applyBulkCompliance(data: com.example.hassiwrapper.network.dto.BulkComplianceResponse) {
+        val tcDao = trainingComplianceDao ?: return
+        val dcDao = documentComplianceDao ?: return
+
+        val trainingEntities = data.trainings.map { t ->
+            com.example.hassiwrapper.data.db.entities.TrainingComplianceEntity(
+                unique_id_value = t.uniqueIdValue,
+                training_definition_id = t.trainingDefinitionId,
+                badge_number = t.badgeNumber,
+                training_code = t.trainingCode,
+                training_name = t.trainingName,
+                is_mandatory = t.isMandatory,
+                status = t.status,
+                completed_date = t.completedDate,
+                expiry_date = t.expiryDate
+            )
+        }
+
+        val docEntities = data.documents.map { d ->
+            com.example.hassiwrapper.data.db.entities.DocumentComplianceEntity(
+                unique_id_value = d.uniqueIdValue,
+                document_type_id = d.documentTypeId,
+                type_code = d.typeCode,
+                type_name = d.typeName,
+                is_mandatory = d.isMandatory,
+                status = d.status,
+                person_document_id = d.personDocumentId
+            )
+        }
+
+        tcDao.deleteAll()
+        if (trainingEntities.isNotEmpty()) tcDao.insertAll(trainingEntities)
+
+        dcDao.deleteAll()
+        if (docEntities.isNotEmpty()) dcDao.insertAll(docEntities)
+
+        Log.d(TAG, "Bulk compliance: ${trainingEntities.size} training rows, ${docEntities.size} document rows")
     }
 
     // ── Upload helpers ────────────────────────────────────────────────────────

@@ -174,6 +174,30 @@ data class WorkSessionEntity(
     val synced: Boolean = false
 )
 
+@Entity(tableName = "training_compliance", primaryKeys = ["unique_id_value", "training_definition_id"])
+data class TrainingComplianceEntity(
+    val unique_id_value: String,
+    val training_definition_id: Long,
+    val badge_number: String = "",
+    val training_code: String = "",
+    val training_name: String = "",
+    val is_mandatory: Boolean = false,
+    val status: String = "MISSING",
+    val completed_date: String? = null,
+    val expiry_date: String? = null
+)
+
+@Entity(tableName = "document_compliance", primaryKeys = ["unique_id_value", "document_type_id"])
+data class DocumentComplianceEntity(
+    val unique_id_value: String,
+    val document_type_id: Int,
+    val type_code: String = "",
+    val type_name: String = "",
+    val is_mandatory: Boolean = false,
+    val status: String = "missing",
+    val person_document_id: Long? = null
+)
+
 @Entity(tableName = "vehicles")
 data class VehicleEntity(
     @PrimaryKey val asset_id: Long,

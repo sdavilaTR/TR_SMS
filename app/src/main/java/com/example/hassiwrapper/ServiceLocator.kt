@@ -44,7 +44,9 @@ object ServiceLocator {
             db.pendingPhotoDao(), db.hseObservationDao(),
             heartbeatManager,
             db.vehicleDao(),
-            authRepo
+            authRepo,
+            db.trainingComplianceDao(),
+            db.documentComplianceDao()
         )
     }
 
@@ -59,4 +61,6 @@ object ServiceLocator {
     val pendingPhotoDao get() = db.pendingPhotoDao()
     val hseObservationDao get() = db.hseObservationDao()
     val vehicleDao get() = db.vehicleDao()
+    val trainingComplianceDao get() = db.trainingComplianceDao()
+    val documentComplianceDao get() = db.documentComplianceDao()
 }

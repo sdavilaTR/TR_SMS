@@ -277,6 +277,30 @@ interface WorkSessionDao {
 }
 
 @Dao
+interface TrainingComplianceDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<TrainingComplianceEntity>)
+
+    @Query("SELECT * FROM training_compliance WHERE unique_id_value = :uuid")
+    suspend fun getByPerson(uuid: String): List<TrainingComplianceEntity>
+
+    @Query("DELETE FROM training_compliance")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface DocumentComplianceDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<DocumentComplianceEntity>)
+
+    @Query("SELECT * FROM document_compliance WHERE unique_id_value = :uuid")
+    suspend fun getByPerson(uuid: String): List<DocumentComplianceEntity>
+
+    @Query("DELETE FROM document_compliance")
+    suspend fun deleteAll()
+}
+
+@Dao
 interface VehicleDao {
     @Query("SELECT * FROM vehicles WHERE project_id = :projectId")
     suspend fun getByProject(projectId: Int): List<VehicleEntity>

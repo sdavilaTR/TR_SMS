@@ -25,9 +25,11 @@ import com.example.hassiwrapper.data.db.entities.*
         WorkSessionEntity::class,
         PendingPhotoEntity::class,
         HseObservationEntity::class,
-        VehicleEntity::class
+        VehicleEntity::class,
+        TrainingComplianceEntity::class,
+        DocumentComplianceEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -46,6 +48,8 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun pendingPhotoDao(): PendingPhotoDao
     abstract fun hseObservationDao(): HseObservationDao
     abstract fun vehicleDao(): VehicleDao
+    abstract fun trainingComplianceDao(): TrainingComplianceDao
+    abstract fun documentComplianceDao(): DocumentComplianceDao
 
     /** Clears all data from every table (used when switching to DEV profile). */
     suspend fun clearAllData() {
@@ -171,6 +175,39 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v5 → v6: added training_compliance and document_compliance tables
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 5 → 6: create training_compliance, document_compliance")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `training_compliance` (
+                        `unique_id_value` TEXT NOT NULL,
+                        `training_definition_id` INTEGER NOT NULL,
+                        `badge_number` TEXT NOT NULL DEFAULT '',
+                        `training_code` TEXT NOT NULL DEFAULT '',
+                        `training_name` TEXT NOT NULL DEFAULT '',
+                        `is_mandatory` INTEGER NOT NULL DEFAULT 0,
+                        `status` TEXT NOT NULL DEFAULT 'MISSING',
+                        `completed_date` TEXT,
+                        `expiry_date` TEXT,
+                        PRIMARY KEY(`unique_id_value`, `training_definition_id`)
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `document_compliance` (
+                        `unique_id_value` TEXT NOT NULL,
+                        `document_type_id` INTEGER NOT NULL,
+                        `type_code` TEXT NOT NULL DEFAULT '',
+                        `type_name` TEXT NOT NULL DEFAULT '',
+                        `is_mandatory` INTEGER NOT NULL DEFAULT 0,
+                        `status` TEXT NOT NULL DEFAULT 'missing',
+                        `person_document_id` INTEGER,
+                        PRIMARY KEY(`unique_id_value`, `document_type_id`)
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -182,7 +219,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_1_2,
                         MIGRATION_2_3,
                         MIGRATION_3_4,
-                        MIGRATION_4_5
+                        MIGRATION_4_5,
+                        MIGRATION_5_6
                     )
                     .build()
                 INSTANCE = instance

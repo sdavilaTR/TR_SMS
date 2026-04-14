@@ -271,3 +271,32 @@ data class DocumentComplianceDto(
     val isMandatory: Boolean = false,
     val status: String = "MISSING"
 )
+
+// ── Bulk Compliance (sync download) ────────────────────────────────────────
+
+data class BulkComplianceResponse(
+    val trainings: List<BulkTrainingComplianceDto> = emptyList(),
+    val documents: List<BulkDocumentComplianceDto> = emptyList()
+)
+
+data class BulkTrainingComplianceDto(
+    val uniqueIdValue: String = "",
+    val badgeNumber: String = "",
+    val trainingDefinitionId: Long = 0,
+    val trainingCode: String = "",
+    val trainingName: String = "",
+    val isMandatory: Boolean = false,
+    val status: String = "MISSING",
+    val completedDate: String? = null,
+    val expiryDate: String? = null
+)
+
+data class BulkDocumentComplianceDto(
+    val uniqueIdValue: String = "",
+    val documentTypeId: Int = 0,
+    val typeCode: String = "",
+    val typeName: String = "",
+    val isMandatory: Boolean = false,
+    val status: String = "missing",
+    val personDocumentId: Long? = null
+)

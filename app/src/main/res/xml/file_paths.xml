@@ -2,4 +2,6 @@
 <paths>
     <!-- Maps to Context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) -->
     <external-files-path name="apk_downloads" path="Downloads/" />
+    <!-- Downloaded documents for passport viewer -->
+    <cache-path name="documents" path="documents/" />
 </paths>

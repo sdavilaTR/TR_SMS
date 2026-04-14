@@ -277,6 +277,8 @@
     <string name="passport_doc_expiring">Por caducar</string>
     <string name="passport_doc_expired">Caducado</string>
     <string name="passport_doc_missing">Falta</string>
+    <string name="passport_doc_no_connection">Sin conexi\u00f3n para descargar el documento</string>
+    <string name="passport_doc_no_viewer">No hay app para abrir este tipo de archivo</string>
     <string name="passport_compliance">Cumplimiento</string>
     <string name="passport_of">de</string>
 

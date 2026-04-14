@@ -242,7 +242,6 @@ class PassportFragment : Fragment() {
 
     private fun loadComplianceData(person: PersonEntity) {
         val view = this.view ?: return
-        val projectId = person.project_id ?: return
 
         // Reset sections
         view.findViewById<LinearLayout>(R.id.layoutTrainingItems).removeAllViews()
@@ -255,35 +254,33 @@ class PassportFragment : Fragment() {
         view.findViewById<TextView>(R.id.txtDocsCount).text = ""
 
         viewLifecycleOwner.lifecycleScope.launch {
-            // Training compliance
-            try {
-                val trainings = withTimeoutOrNull(5_000L) {
-                    withContext(Dispatchers.IO) {
-                        val api = ServiceLocator.apiClient.getService()
-                        val resp = api.getTrainingCompliance(projectId, person.badge_number)
-                        if (resp.isSuccessful) resp.body() else null
-                    }
-                }
-                if (isAdded) renderTrainings(trainings ?: emptyList())
-            } catch (e: Exception) {
-                Log.w(TAG, "Training compliance load failed: ${e.message}")
-                if (isAdded) renderTrainings(emptyList())
+            val trainings = withContext(Dispatchers.IO) {
+                ServiceLocator.trainingComplianceDao.getByPerson(person.unique_id_value)
             }
+            if (isAdded) renderTrainings(trainings.map { t ->
+                TrainingComplianceDto(
+                    trainingDefinitionId = t.training_definition_id,
+                    trainingCode = t.training_code,
+                    trainingName = t.training_name,
+                    isMandatory = t.is_mandatory,
+                    status = t.status,
+                    completedDate = t.completed_date,
+                    expiryDate = t.expiry_date
+                )
+            })
 
-            // Document compliance
-            try {
-                val docs = withTimeoutOrNull(5_000L) {
-                    withContext(Dispatchers.IO) {
-                        val api = ServiceLocator.apiClient.getService()
-                        val resp = api.getDocumentCompliance(projectId, person.unique_id_value)
-                        if (resp.isSuccessful) resp.body() else null
-                    }
-                }
-                if (isAdded) renderDocuments(docs ?: emptyList())
-            } catch (e: Exception) {
-                Log.w(TAG, "Document compliance load failed: ${e.message}")
-                if (isAdded) renderDocuments(emptyList())
+            val docEntities = withContext(Dispatchers.IO) {
+                ServiceLocator.documentComplianceDao.getByPerson(person.unique_id_value)
             }
+            if (isAdded) renderDocuments(docEntities.map { d ->
+                DocumentComplianceDto(
+                    documentTypeId = d.document_type_id,
+                    typeCode = d.type_code,
+                    typeName = d.type_name,
+                    isMandatory = d.is_mandatory,
+                    status = d.status
+                )
+            }, person, docEntities)
         }
     }
 
@@ -333,7 +330,11 @@ class PassportFragment : Fragment() {
         }
     }
 
-    private fun renderDocuments(docs: List<DocumentComplianceDto>) {
+    private fun renderDocuments(
+        docs: List<DocumentComplianceDto>,
+        person: PersonEntity? = null,
+        entities: List<com.example.hassiwrapper.data.db.entities.DocumentComplianceEntity> = emptyList()
+    ) {
         val view = this.view ?: return
         val container = view.findViewById<LinearLayout>(R.id.layoutDocItems)
         val countView = view.findViewById<TextView>(R.id.txtDocsCount)
@@ -357,6 +358,8 @@ class PassportFragment : Fragment() {
         countView.text = "$valid ${getString(R.string.passport_of)} $total"
         progressView.progress = pct
 
+        val docEntities = entities.associateBy { it.document_type_id }
+
         val sorted = docs.sortedWith(compareByDescending<DocumentComplianceDto> { it.isMandatory }
             .thenBy { docStatusOrder(it.status) })
 
@@ -373,6 +376,13 @@ class PassportFragment : Fragment() {
             text2.text = docStatusText(d.status)
             text2.textSize = 10f
             text2.setTextColor(docStatusColor(d.status))
+
+            val docEntity = docEntities[d.documentTypeId]
+            if (docEntity?.person_document_id != null && person != null) {
+                row.setOnClickListener {
+                    downloadAndOpenDocument(person, docEntity.person_document_id)
+                }
+            }
 
             container.addView(row)
         }
@@ -423,6 +433,58 @@ class PassportFragment : Fragment() {
             else                      -> R.color.on_surface_variant
         }
         return resources.getColor(colorRes, null)
+    }
+
+    // ── Document download on click ────────────────────────────────────────
+
+    private fun downloadAndOpenDocument(person: PersonEntity, documentId: Long) {
+        val projectId = person.project_id ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val result = withTimeoutOrNull(10_000L) {
+                    withContext(Dispatchers.IO) {
+                        val api = ServiceLocator.apiClient.getService()
+                        val resp = api.downloadDocument(projectId, person.unique_id_value, documentId)
+                        if (resp.isSuccessful) resp else null
+                    }
+                }
+                if (result == null) {
+                    if (isAdded) Toast.makeText(requireContext(), getString(R.string.passport_doc_no_connection), Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val body = result.body() ?: return@launch
+                val contentDisposition = result.headers()["Content-Disposition"] ?: ""
+                val fileName = Regex("filename=\"?(.+?)\"?$").find(contentDisposition)?.groupValues?.get(1)
+                    ?: "document_$documentId"
+                val contentType = result.headers()["Content-Type"] ?: "application/octet-stream"
+
+                val file = withContext(Dispatchers.IO) {
+                    val dir = File(requireContext().cacheDir, "documents")
+                    if (!dir.exists()) dir.mkdirs()
+                    val f = File(dir, fileName)
+                    f.outputStream().use { out -> body.byteStream().copyTo(out) }
+                    f
+                }
+
+                if (isAdded) {
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        requireContext(), "${requireContext().packageName}.provider", file)
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, contentType)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    try {
+                        startActivity(intent)
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        Toast.makeText(requireContext(), getString(R.string.passport_doc_no_viewer), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Document download failed: ${e.message}")
+                if (isAdded) Toast.makeText(requireContext(), getString(R.string.passport_doc_no_connection), Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     // ── Photo: local cache helpers ──────────────────────────────────────────

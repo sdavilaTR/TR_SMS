@@ -2,10 +2,8 @@ package com.example.hassiwrapper.update
 
 import android.app.DownloadManager
 import android.app.PendingIntent
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
@@ -14,20 +12,20 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.example.hassiwrapper.BuildConfig
+import com.example.hassiwrapper.receiver.DownloadCompleteReceiver
 import java.io.File
 
 object UpdateInstaller {
 
-    private const val APK_FILENAME = "atlas-update.apk"
+    const val APK_FILENAME = "atlas-update.apk"
     private const val ACTION_INSTALL_STATUS = "com.example.hassiwrapper.INSTALL_STATUS"
 
     /**
-     * Enqueues an APK download via [DownloadManager] and installs it automatically
-     * via [PackageInstaller.Session] once the download completes.
+     * Enqueues an APK download via [DownloadManager].
      *
-     * Using PackageInstaller.Session instead of ACTION_VIEW avoids Play Store
-     * interception and the multi-step file-manager flow — the user sees a single
-     * system confirmation dialog and taps Install.
+     * Installation is triggered by [DownloadCompleteReceiver] (a static manifest-
+     * registered receiver) so it works even when HyperOS / MIUI kills the Activity
+     * before the download finishes.
      */
     fun downloadAndInstall(context: Context, updateInfo: UpdateInfo) {
         val downloadDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
@@ -53,54 +51,43 @@ object UpdateInstaller {
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadId = dm.enqueue(request)
 
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context, intent: Intent) {
-                val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                if (id != downloadId) return
-                ctx.unregisterReceiver(this)
+        // Persist the download ID so the static receiver can match it
+        DownloadCompleteReceiver.savePendingDownloadId(context, downloadId)
 
-                val query = DownloadManager.Query().setFilterById(downloadId)
-                val cursor = dm.query(query)
-                if (cursor.moveToFirst()) {
-                    val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                    if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                        installApkViaSession(ctx, apkFile)
-                    } else {
-                        val reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
-                        val uri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_URI))
-                        Log.e("UpdateInstaller", "Download failed — status=$status reason=$reason url=$uri")
-                        Toast.makeText(ctx, "Error al descargar (código $reason)", Toast.LENGTH_LONG).show()
-                    }
-                }
-                cursor.close()
-            }
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(
-                receiver,
-                IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-                Context.RECEIVER_NOT_EXPORTED
-            )
-        } else {
-            @Suppress("UnspecifiedRegisterReceiverFlag")
-            context.registerReceiver(receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
-        }
+        Log.d("UpdateInstaller", "Download enqueued (id=$downloadId)")
     }
 
     /**
-     * Installs the APK via [PackageInstaller.Session].
-     *
-     * This bypasses the Play Store / file-manager interception that happens with
-     * ACTION_VIEW and shows a single system "Install?" dialog instead.
-     * On Android 12+ with device-owner privileges the install can be fully silent.
+     * Installs a previously-downloaded APK.
+     * Called by [DownloadCompleteReceiver] and by MainActivity.onResume (as a safety net
+     * in case the receiver was suppressed by the OS).
      */
-    private fun installApkViaSession(context: Context, apkFile: File) {
+    fun installApk(context: Context, apkFile: File) {
         if (!apkFile.exists()) {
-            Toast.makeText(context, "Archivo de actualización no encontrado", Toast.LENGTH_LONG).show()
+            Log.w("UpdateInstaller", "APK file not found: ${apkFile.absolutePath}")
             return
         }
+        installApkViaSession(context, apkFile)
+    }
 
+    /**
+     * Checks if there's a downloaded APK waiting to be installed.
+     * Called from MainActivity.onResume as a fallback for devices (Xiaomi HyperOS)
+     * where the broadcast receiver may not fire reliably.
+     */
+    fun installPendingApkIfExists(context: Context) {
+        val apkFile = File(
+            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: return,
+            APK_FILENAME
+        )
+        if (apkFile.exists() && apkFile.length() > 0) {
+            Log.d("UpdateInstaller", "Found pending APK in onResume, installing…")
+            DownloadCompleteReceiver.clearPendingDownloadId(context)
+            installApk(context, apkFile)
+        }
+    }
+
+    private fun installApkViaSession(context: Context, apkFile: File) {
         try {
             val packageInstaller = context.packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(
@@ -108,9 +95,6 @@ object UpdateInstaller {
             ).apply {
                 setAppPackageName(context.packageName)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    // Request silent install — honoured when the app holds
-                    // INSTALL_PACKAGES (device-owner / privileged system app).
-                    // Gracefully falls back to a single confirmation dialog otherwise.
                     setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
                 }
             }
@@ -134,13 +118,15 @@ object UpdateInstaller {
 
             Log.d("UpdateInstaller", "PackageInstaller session committed (id=$sessionId)")
 
+            // Delete the APK after committing the session so onResume doesn't re-trigger
+            apkFile.delete()
+
         } catch (e: Exception) {
             Log.e("UpdateInstaller", "PackageInstaller.Session failed, using fallback", e)
             installApkFallback(context, apkFile)
         }
     }
 
-    /** Fallback: open APK via ACTION_VIEW if the session API is unavailable. */
     private fun installApkFallback(context: Context, apkFile: File) {
         val apkUri = FileProvider.getUriForFile(
             context, "${context.packageName}.provider", apkFile

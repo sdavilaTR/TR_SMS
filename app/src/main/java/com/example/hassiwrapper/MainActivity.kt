@@ -171,6 +171,12 @@ class MainActivity : AppCompatActivity() {
             pendingUpdate = null
             UpdateInstaller.downloadAndInstall(this, pending)
         }
+
+        // Safety net for Xiaomi HyperOS / MIUI: if the static receiver was suppressed
+        // and a downloaded APK is sitting on disk, install it now.
+        if (canInstallPackages()) {
+            UpdateInstaller.installPendingApkIfExists(this)
+        }
     }
 
     override fun onPause() {

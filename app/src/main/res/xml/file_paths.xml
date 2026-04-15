@@ -4,4 +4,6 @@
     <external-files-path name="apk_downloads" path="Downloads/" />
     <!-- Downloaded documents for passport viewer -->
     <cache-path name="documents" path="documents/" />
+    <!-- HSE observation photos (internal storage) -->
+    <files-path name="observations" path="observations/" />
 </paths>

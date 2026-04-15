@@ -196,7 +196,18 @@ data class ObservationUploadDto(
     @SerializedName("action_taken") val actionTaken: String?,
     @SerializedName("coaching_status") val coachingStatus: String,
     @SerializedName("additional_comments") val additionalComments: String?,
-    val categories: List<String>?
+    val categories: List<String>?,
+    @SerializedName("target_type") val targetType: String? = "WORKER",
+    @SerializedName("observer_unique_id") val observerUniqueId: String? = null,
+    @SerializedName("observer_name") val observerName: String? = null,
+    @SerializedName("observer_position") val observerPosition: String? = null,
+    @SerializedName("observer_contractor") val observerContractor: String? = null,
+    @SerializedName("vehicle_asset_id") val vehicleAssetId: Long? = null,
+    @SerializedName("vehicle_identifier") val vehicleIdentifier: String? = null,
+    @SerializedName("vehicle_name") val vehicleName: String? = null,
+    @SerializedName("vehicle_type") val vehicleType: String? = null,
+    @SerializedName("vehicle_contractor") val vehicleContractor: String? = null,
+    @SerializedName("equipment_description") val equipmentDescription: String? = null
 )
 
 data class UploadResponse(val success: Boolean = false)

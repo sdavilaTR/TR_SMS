@@ -38,6 +38,15 @@ interface AtlasApiService {
     @POST("/api/trac/sync/upload-observations")
     suspend fun uploadObservations(@Body body: UploadObservationsRequest): Response<UploadResponse>
 
+    // ── Sync: Upload HSE Observation Photo (multipart, one-by-one) ────────
+    @Multipart
+    @POST("/api/trac/sync/upload-observation-photos")
+    suspend fun uploadObservationPhoto(
+        @Part("observation_uuid") observationUuid: okhttp3.RequestBody,
+        @Part("sort_order") sortOrder: okhttp3.RequestBody,
+        @Part file: MultipartBody.Part
+    ): Response<UploadResponse>
+
     // ── Sync: Register Device ────────────────────────────
     @POST("/api/trac/sync/register-device")
     suspend fun registerDevice(@Body body: RegisterDeviceRequest): Response<Void>

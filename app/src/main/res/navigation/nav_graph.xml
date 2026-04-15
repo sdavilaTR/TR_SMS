@@ -12,7 +12,24 @@
     <fragment android:id="@+id/workersFragment"    android:name="com.example.hassiwrapper.ui.workers.WorkersFragment"      android:label="@string/menu_workers" />
     <fragment android:id="@+id/vehiclesFragment"   android:name="com.example.hassiwrapper.ui.vehicles.VehiclesFragment"   android:label="@string/menu_vehicles" />
     <fragment android:id="@+id/settingsFragment"   android:name="com.example.hassiwrapper.ui.settings.SettingsFragment"   android:label="@string/menu_settings" />
-    <fragment android:id="@+id/observationFragment"          android:name="com.example.hassiwrapper.ui.observation.ObservationFragment"              android:label="@string/obs_title" />
+    <fragment android:id="@+id/observationFragment"          android:name="com.example.hassiwrapper.ui.observation.ObservationFragment"              android:label="@string/obs_title">
+        <argument android:name="target_type"          app:argType="string" android:defaultValue="WORKER" app:nullable="false" />
+        <argument android:name="unique_id_value"      app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="observed_name"        app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="observed_badge"       app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="observed_department"  app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="observed_position"    app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="observed_contractor"  app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="observer_unique_id"   app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="observer_name"        app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="observer_position"    app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="observer_contractor"  app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="vehicle_asset_id"     app:argType="long"   android:defaultValue="0L" />
+        <argument android:name="vehicle_identifier"   app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="vehicle_name"         app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="vehicle_type"         app:argType="string" app:nullable="true" android:defaultValue="@null" />
+        <argument android:name="vehicle_contractor"   app:argType="string" app:nullable="true" android:defaultValue="@null" />
+    </fragment>
     <fragment android:id="@+id/observationsGeneralFragment" android:name="com.example.hassiwrapper.ui.comingsoon.ObservationsGeneralFragment"       android:label="@string/menu_observations_general" />
     <fragment android:id="@+id/inspectionsFragment"         android:name="com.example.hassiwrapper.ui.comingsoon.InspectionsFragment"               android:label="@string/menu_inspections" />
 

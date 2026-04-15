@@ -256,6 +256,27 @@ interface HseObservationDao {
 }
 
 @Dao
+interface HseObservationPhotoDao {
+    @Insert
+    suspend fun insert(photo: HseObservationPhotoEntity): Long
+
+    @Query("SELECT * FROM hse_observation_photos WHERE observation_uuid = :obsUuid ORDER BY sort_order ASC")
+    suspend fun getByObservationUuid(obsUuid: String): List<HseObservationPhotoEntity>
+
+    @Query("SELECT * FROM hse_observation_photos WHERE synced = 0")
+    suspend fun getPending(): List<HseObservationPhotoEntity>
+
+    @Query("UPDATE hse_observation_photos SET synced = 1 WHERE id IN (:ids)")
+    suspend fun markSynced(ids: List<Long>)
+
+    @Query("DELETE FROM hse_observation_photos WHERE observation_uuid = :obsUuid")
+    suspend fun deleteByObservation(obsUuid: String)
+
+    @Query("SELECT COUNT(*) FROM hse_observation_photos WHERE synced = 0")
+    suspend fun getPendingCount(): Int
+}
+
+@Dao
 interface WorkSessionDao {
     @Insert
     suspend fun insert(session: WorkSessionEntity): Long

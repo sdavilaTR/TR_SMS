@@ -36,6 +36,7 @@ class SyncService(
     private val workSessionDao: WorkSessionDao,
     private val pendingPhotoDao: PendingPhotoDao? = null,
     private val hseObservationDao: HseObservationDao? = null,
+    private val hseObservationPhotoDao: HseObservationPhotoDao? = null,
     private val heartbeatManager: HeartbeatManager? = null,
     private val vehicleDao: VehicleDao? = null,
     private val authRepo: AuthRepository? = null,
@@ -68,6 +69,8 @@ class SyncService(
         val photosUploaded: Int = 0,
         val photosFailed: Int = 0,
         val photoErrors: List<String> = emptyList(),
+        val observationPhotosUploaded: Int = 0,
+        val observationPhotosFailed: Int = 0,
         val error: String? = null
     )
 
@@ -76,7 +79,8 @@ class SyncService(
         val incidents: Int = 0,
         val sessions: Int = 0,
         val photos: Int = 0,
-        val observations: Int = 0
+        val observations: Int = 0,
+        val observationPhotos: Int = 0
     )
 
     /** Structured info passed to the caller on each retry so the UI can show it. */
@@ -88,7 +92,8 @@ class SyncService(
             incidents = incidentDao.getPendingCount(),
             sessions = workSessionDao.getPendingCount(),
             photos = pendingPhotoDao?.count() ?: 0,
-            observations = hseObservationDao?.getPendingCount() ?: 0
+            observations = hseObservationDao?.getPendingCount() ?: 0,
+            observationPhotos = hseObservationPhotoDao?.getPendingCount() ?: 0
         )
     }
 
@@ -218,6 +223,9 @@ class SyncService(
         // 5. Upload pending photos (non-fatal)
         val photoResult = uploadPendingPhotos(api)
 
+        // 5b. Upload pending HSE observation photos (non-fatal, best-effort)
+        val obsPhotoResult = uploadObservationPhotos(api)
+
         val uploadErrors = listOfNotNull(logsError, incidentsError, sessionsError, observationsError)
         val success = uploadErrors.isEmpty()
 
@@ -242,6 +250,8 @@ class SyncService(
             photosUploaded = photoResult.uploaded,
             photosFailed = photoResult.failed,
             photoErrors = photoResult.errors,
+            observationPhotosUploaded = obsPhotoResult.uploaded,
+            observationPhotosFailed = obsPhotoResult.failed,
             error = if (uploadErrors.isNotEmpty()) uploadErrors.joinToString("; ") else null
         )
     }
@@ -599,7 +609,18 @@ class SyncService(
                 actionTaken = obs.action_taken,
                 coachingStatus = obs.coaching_status,
                 additionalComments = obs.additional_comments,
-                categories = cats
+                categories = cats,
+                targetType = obs.target_type,
+                observerUniqueId = obs.observer_unique_id,
+                observerName = obs.observer_name,
+                observerPosition = obs.observer_position,
+                observerContractor = obs.observer_contractor,
+                vehicleAssetId = obs.vehicle_asset_id,
+                vehicleIdentifier = obs.vehicle_identifier,
+                vehicleName = obs.vehicle_name,
+                vehicleType = obs.vehicle_type,
+                vehicleContractor = obs.vehicle_contractor,
+                equipmentDescription = obs.equipment_description
             )
         }
 
@@ -677,6 +698,56 @@ class SyncService(
                 Log.w(TAG, "Photo upload error for ${photo.unique_id_value}: ${e.message}")
             }
         }
+        return PhotoUploadResult(uploaded, failed, errors)
+    }
+
+    // ── Pending observation photo uploads ─────────────────────────────────────
+
+    private suspend fun uploadObservationPhotos(api: AtlasApiService): PhotoUploadResult {
+        val dao = hseObservationPhotoDao ?: return PhotoUploadResult()
+        val pending = dao.getPending()
+        if (pending.isEmpty()) return PhotoUploadResult()
+
+        Log.i(TAG, "Uploading ${pending.size} pending observation photo(s)")
+        var uploaded = 0
+        var failed = 0
+        val errors = mutableListOf<String>()
+        val okIds = mutableListOf<Long>()
+
+        for (photo in pending) {
+            try {
+                val file = File(photo.local_path)
+                if (!file.exists()) {
+                    Log.w(TAG, "Observation photo missing: ${photo.local_path}")
+                    failed++
+                    continue
+                }
+                val bytes = file.readBytes()
+                val fileBody = bytes.toRequestBody("image/jpeg".toMediaType())
+                val filePart = MultipartBody.Part.createFormData(
+                    "file",
+                    photo.file_name ?: file.name,
+                    fileBody
+                )
+                val uuidBody = photo.observation_uuid.toRequestBody("text/plain".toMediaType())
+                val orderBody = photo.sort_order.toString().toRequestBody("text/plain".toMediaType())
+
+                val response = api.uploadObservationPhoto(uuidBody, orderBody, filePart)
+                if (response.isSuccessful) {
+                    okIds.add(photo.id)
+                    uploaded++
+                } else {
+                    failed++
+                    errors.add("[obs ${photo.observation_uuid}] HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                failed++
+                errors.add("[obs ${photo.observation_uuid}] ${e.javaClass.simpleName}: ${e.message}")
+                Log.w(TAG, "Observation photo upload error: ${e.message}")
+            }
+        }
+
+        if (okIds.isNotEmpty()) dao.markSynced(okIds)
         return PhotoUploadResult(uploaded, failed, errors)
     }
 }

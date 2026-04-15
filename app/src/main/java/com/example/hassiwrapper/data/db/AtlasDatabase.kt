@@ -25,11 +25,12 @@ import com.example.hassiwrapper.data.db.entities.*
         WorkSessionEntity::class,
         PendingPhotoEntity::class,
         HseObservationEntity::class,
+        HseObservationPhotoEntity::class,
         VehicleEntity::class,
         TrainingComplianceEntity::class,
         DocumentComplianceEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -47,6 +48,7 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun workSessionDao(): WorkSessionDao
     abstract fun pendingPhotoDao(): PendingPhotoDao
     abstract fun hseObservationDao(): HseObservationDao
+    abstract fun hseObservationPhotoDao(): HseObservationPhotoDao
     abstract fun vehicleDao(): VehicleDao
     abstract fun trainingComplianceDao(): TrainingComplianceDao
     abstract fun documentComplianceDao(): DocumentComplianceDao
@@ -208,6 +210,36 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v6 → v7: added observation multi-target fields + photos table
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 6 → 7: extend hse_observations + create hse_observation_photos")
+                db.execSQL("ALTER TABLE `hse_observations` ADD COLUMN `target_type` TEXT NOT NULL DEFAULT 'WORKER'")
+                db.execSQL("ALTER TABLE `hse_observations` ADD COLUMN `observer_unique_id` TEXT")
+                db.execSQL("ALTER TABLE `hse_observations` ADD COLUMN `observer_name` TEXT")
+                db.execSQL("ALTER TABLE `hse_observations` ADD COLUMN `observer_position` TEXT")
+                db.execSQL("ALTER TABLE `hse_observations` ADD COLUMN `observer_contractor` TEXT")
+                db.execSQL("ALTER TABLE `hse_observations` ADD COLUMN `vehicle_asset_id` INTEGER")
+                db.execSQL("ALTER TABLE `hse_observations` ADD COLUMN `vehicle_identifier` TEXT")
+                db.execSQL("ALTER TABLE `hse_observations` ADD COLUMN `vehicle_name` TEXT")
+                db.execSQL("ALTER TABLE `hse_observations` ADD COLUMN `vehicle_type` TEXT")
+                db.execSQL("ALTER TABLE `hse_observations` ADD COLUMN `vehicle_contractor` TEXT")
+                db.execSQL("ALTER TABLE `hse_observations` ADD COLUMN `equipment_description` TEXT")
+                db.execSQL("UPDATE `hse_observations` SET `target_type` = 'WORKER' WHERE `target_type` IS NULL OR `target_type` = ''")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `hse_observation_photos` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `uuid` TEXT NOT NULL,
+                        `observation_uuid` TEXT NOT NULL,
+                        `local_path` TEXT NOT NULL,
+                        `file_name` TEXT,
+                        `sort_order` INTEGER NOT NULL DEFAULT 0,
+                        `synced` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -220,7 +252,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_2_3,
                         MIGRATION_3_4,
                         MIGRATION_4_5,
-                        MIGRATION_5_6
+                        MIGRATION_5_6,
+                        MIGRATION_6_7
                     )
                     .build()
                 INSTANCE = instance

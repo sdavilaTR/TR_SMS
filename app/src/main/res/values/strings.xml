@@ -259,6 +259,33 @@
     <string name="obs_type_required">Seleccione el tipo de observaci\u00f3n</string>
     <string name="obs_safety_required">Seleccione el tipo de seguridad</string>
 
+    <!-- Observations hub -->
+    <string name="obs_hub_title">Observaciones HSE</string>
+    <string name="obs_observer_label">Observador HSE</string>
+    <string name="obs_observer_empty">Sin registrar — escanee el badge del supervisor</string>
+    <string name="obs_observer_format">%1$s — %2$s</string>
+    <string name="obs_scan_observer">Escanear Badge Supervisor</string>
+    <string name="obs_select_target">Seleccione tipo de observaci\u00f3n</string>
+    <string name="obs_not_hse_error">Solo supervisores HSE pueden ser observadores</string>
+    <string name="obs_observer_not_found">Observador no encontrado en la base local</string>
+    <string name="obs_observer_required">Escanee primero el badge del supervisor HSE</string>
+    <string name="obs_target_worker">Trabajador</string>
+    <string name="obs_target_vehicle">Veh\u00edculo</string>
+    <string name="obs_target_site">Sitio / Zona</string>
+    <string name="obs_target_equipment">Equipo</string>
+    <string name="obs_target_worker_banner">OBSERVACI\u00d3N — TRABAJADOR</string>
+    <string name="obs_target_vehicle_banner">OBSERVACI\u00d3N — VEH\u00cdCULO</string>
+    <string name="obs_target_site_banner">OBSERVACI\u00d3N — SITIO / ZONA</string>
+    <string name="obs_target_equipment_banner">OBSERVACI\u00d3N — EQUIPO</string>
+    <string name="obs_photos">Fotos (m\u00e1x. 8)</string>
+    <string name="obs_add_photo_camera">C\u00e1mara</string>
+    <string name="obs_add_photo_gallery">Galer\u00eda</string>
+    <string name="obs_photo_max">M\u00e1ximo 8 fotos por observaci\u00f3n</string>
+
+    <!-- Equipment / Vehicle labels -->
+    <string name="equipment_description">Descripci\u00f3n del equipo</string>
+    <string name="vehicle_info_format">%1$s — %2$s (%3$s)</string>
+
     <!-- Menu: new sections -->
     <string name="menu_observations_general">Observaciones</string>
     <string name="menu_inspections">Inspecciones</string>

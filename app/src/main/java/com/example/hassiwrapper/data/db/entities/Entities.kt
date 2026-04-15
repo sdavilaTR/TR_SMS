@@ -156,6 +156,28 @@ data class HseObservationEntity(
     val coaching_status: String = "NOT_REQUIRED",
     val additional_comments: String? = null,
     val categories: String? = null,
+    val synced: Boolean = false,
+    val target_type: String = "WORKER",
+    val observer_unique_id: String? = null,
+    val observer_name: String? = null,
+    val observer_position: String? = null,
+    val observer_contractor: String? = null,
+    val vehicle_asset_id: Long? = null,
+    val vehicle_identifier: String? = null,
+    val vehicle_name: String? = null,
+    val vehicle_type: String? = null,
+    val vehicle_contractor: String? = null,
+    val equipment_description: String? = null
+)
+
+@Entity(tableName = "hse_observation_photos")
+data class HseObservationPhotoEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val uuid: String,
+    val observation_uuid: String,
+    val local_path: String,
+    val file_name: String? = null,
+    val sort_order: Int = 0,
     val synced: Boolean = false
 )
 

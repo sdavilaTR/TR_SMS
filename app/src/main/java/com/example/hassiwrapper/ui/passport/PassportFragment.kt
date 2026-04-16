@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.SoundPool
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -18,6 +19,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -43,8 +45,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.ByteArrayOutputStream
+import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -86,10 +87,21 @@ class PassportFragment : Fragment() {
         else Toast.makeText(requireContext(), getString(R.string.scanner_error_camera_permission), Toast.LENGTH_SHORT).show()
     }
 
+    /** URI where the camera will write the full-resolution photo. */
+    private var pendingPhotoUri: Uri? = null
+    private var pendingPhotoFile: File? = null
+
     private val takePhotoLauncher = registerForActivityResult(
-        ActivityResultContracts.TakePicturePreview()
-    ) { bitmap ->
-        if (bitmap != null) onPhotoCaptured(bitmap)
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            val file = pendingPhotoFile
+            if (file != null && file.exists()) {
+                onPhotoCapturedFile(file)
+            } else {
+                Log.w(TAG, "Camera returned success but photo file missing")
+            }
+        }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -576,19 +588,32 @@ class PassportFragment : Fragment() {
     }
 
     private fun launchPhotoCameraCapture() {
-        takePhotoLauncher.launch(null)
+        val ctx = requireContext()
+        val photoDir = File(ctx.cacheDir, "photos")
+        if (!photoDir.exists()) photoDir.mkdirs()
+        val file = File(photoDir, "capture_${System.currentTimeMillis()}.jpg")
+        pendingPhotoFile = file
+        pendingPhotoUri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.provider", file)
+        takePhotoLauncher.launch(pendingPhotoUri)
     }
 
-    private fun onPhotoCaptured(bitmap: Bitmap) {
+    /**
+     * Called when TakePicture() returns a full-resolution photo saved to [file].
+     * Mirrors the front-end flow: send the raw file as multipart "file" field.
+     */
+    private fun onPhotoCapturedFile(file: File) {
         val view = this.view ?: return
         val person = currentPerson ?: return
 
-        // Show preview immediately
+        // Show preview immediately from the file
         val imgView = view.findViewById<ImageView>(R.id.imgWorkerPhoto)
         val placeholder = view.findViewById<View>(R.id.layoutPhotoPlaceholder)
-        imgView.setImageBitmap(bitmap)
-        imgView.visibility = View.VISIBLE
-        placeholder.visibility = View.GONE
+        val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+        if (bitmap != null) {
+            imgView.setImageBitmap(bitmap)
+            imgView.visibility = View.VISIBLE
+            placeholder.visibility = View.GONE
+        }
 
         val projectId = person.project_id
         if (projectId == null) {
@@ -597,11 +622,15 @@ class PassportFragment : Fragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            // Always save to local cache first
-            val cachedFile = savePhotoToCache(person.unique_id_value, bitmap)
+            // Copy to persistent cache so it survives if the temp file is deleted
+            val cachedFile = withContext(Dispatchers.IO) {
+                val dest = getCachedPhotoFile(person.unique_id_value)
+                file.copyTo(dest, overwrite = true)
+                dest
+            }
 
-            // Try upload with 5s timeout
-            val uploaded = tryUploadPhoto(projectId, person.unique_id_value, bitmap)
+            // Try upload with 15s timeout (photos can be large)
+            val uploaded = tryUploadPhotoFile(projectId, person.unique_id_value, cachedFile)
 
             if (uploaded) {
                 if (isAdded) {
@@ -614,33 +643,24 @@ class PassportFragment : Fragment() {
                     Toast.makeText(requireContext(), getString(R.string.passport_photo_no_connection), Toast.LENGTH_SHORT).show()
                 }
             }
-        }
-    }
 
-    private suspend fun savePhotoToCache(personUuid: String, bitmap: Bitmap): File {
-        return withContext(Dispatchers.IO) {
-            val file = getCachedPhotoFile(personUuid)
-            file.outputStream().use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
-            }
-            file
+            // Clean up temp capture file
+            file.delete()
         }
     }
 
     /**
-     * Attempts to upload the photo to the API. Returns true if successful,
-     * false if network is unavailable or the request fails/times out.
+     * Uploads the photo file directly to the API — mirrors front-end logic:
+     * FormData.append('file', rawFile) → POST multipart/form-data.
+     * Returns true if successful.
      */
-    private suspend fun tryUploadPhoto(projectId: Int, personUuid: String, bitmap: Bitmap): Boolean {
+    private suspend fun tryUploadPhotoFile(projectId: Int, personUuid: String, photoFile: File): Boolean {
         return try {
-            val result = withTimeoutOrNull(5_000L) {
+            val result = withTimeoutOrNull(15_000L) {
                 withContext(Dispatchers.IO) {
-                    val baos = ByteArrayOutputStream()
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos)
-                    val bytes = baos.toByteArray()
-
-                    val requestBody = bytes.toRequestBody("image/jpeg".toMediaType())
-                    val filePart = MultipartBody.Part.createFormData("file", "photo.jpg", requestBody)
+                    val mediaType = "image/jpeg".toMediaType()
+                    val requestBody = photoFile.asRequestBody(mediaType)
+                    val filePart = MultipartBody.Part.createFormData("file", photoFile.name, requestBody)
 
                     val api = ServiceLocator.apiClient.getService()
                     val response = api.uploadWorkerPhoto(projectId, personUuid, filePart)
@@ -651,16 +671,18 @@ class PassportFragment : Fragment() {
                             ServiceLocator.personDao.updatePhotoUrl(personUuid, photoUrl)
                             currentPerson = currentPerson?.copy(photo_url = photoUrl)
                         }
+                        Log.i(TAG, "Photo uploaded OK for $personUuid → $photoUrl")
                         true
                     } else {
-                        Log.w(TAG, "Photo upload failed: HTTP ${response.code()}")
+                        val errorBody = response.errorBody()?.string() ?: "(no body)"
+                        Log.e(TAG, "Photo upload failed: HTTP ${response.code()} — $errorBody")
                         false
                     }
                 }
             }
             result == true
         } catch (e: Exception) {
-            Log.w(TAG, "Photo upload exception: ${e.message}")
+            Log.e(TAG, "Photo upload exception: ${e.javaClass.simpleName}: ${e.message}", e)
             false
         }
     }

@@ -11,6 +11,7 @@ import com.example.hassiwrapper.network.dto.*
 import kotlinx.coroutines.delay
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.time.Instant
@@ -673,9 +674,9 @@ class SyncService(
                     continue
                 }
 
-                val bytes = file.readBytes()
-                val requestBody = bytes.toRequestBody("image/jpeg".toMediaType())
-                val filePart = MultipartBody.Part.createFormData("file", "photo.jpg", requestBody)
+                // Send the raw file directly as multipart — same as the web front-end
+                val requestBody = file.asRequestBody("image/jpeg".toMediaType())
+                val filePart = MultipartBody.Part.createFormData("file", file.name, requestBody)
 
                 val response = api.uploadWorkerPhoto(photo.project_id, photo.unique_id_value, filePart)
                 if (response.isSuccessful) {
@@ -687,10 +688,11 @@ class SyncService(
                     uploaded++
                     Log.i(TAG, "Uploaded pending photo for ${photo.unique_id_value}")
                 } else {
+                    val errorBody = response.errorBody()?.string() ?: "(no body)"
                     failed++
-                    val detail = "HTTP ${response.code()}"
+                    val detail = "HTTP ${response.code()} — $errorBody"
                     errors.add("[${photo.unique_id_value}] $detail")
-                    Log.w(TAG, "Photo upload failed for ${photo.unique_id_value}: $detail")
+                    Log.e(TAG, "Photo upload failed for ${photo.unique_id_value}: $detail")
                 }
             } catch (e: Exception) {
                 failed++

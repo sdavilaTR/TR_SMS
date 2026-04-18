@@ -701,17 +701,10 @@ class PassportFragment : Fragment() {
 
     private fun openObservation() {
         val person = currentPerson ?: return
-        val contractor = view?.findViewById<TextView>(R.id.txtCompany)?.text?.toString() ?: ""
-
         val bundle = Bundle().apply {
-            putString("unique_id_value", person.unique_id_value)
-            putString("observed_name", "${person.family_name}, ${person.given_name}")
-            putString("observed_badge", person.badge_number)
-            putString("observed_department", person.category_code)
-            putString("observed_position", person.position)
-            putString("observed_contractor", contractor)
+            putString("preloaded_worker_uuid", person.unique_id_value)
         }
-        findNavController().navigate(R.id.observationFragment, bundle)
+        findNavController().navigate(R.id.observationsGeneralFragment, bundle)
     }
 
     private fun showWaiting() {

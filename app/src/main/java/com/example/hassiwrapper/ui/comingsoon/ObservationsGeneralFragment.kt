@@ -1,11 +1,17 @@
 package com.example.hassiwrapper.ui.comingsoon
 
+import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -17,6 +23,7 @@ import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.PersonEntity
 import com.example.hassiwrapper.data.db.entities.VehicleEntity
 import com.example.hassiwrapper.services.ObservationService
+import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
 
@@ -25,10 +32,32 @@ import kotlinx.coroutines.launch
  */
 class ObservationsGeneralFragment : Fragment() {
 
+    companion object {
+        const val ARG_PRELOADED_WORKER_UUID = "preloaded_worker_uuid"
+    }
+
     private enum class ScanMode { NONE, OBSERVER, WORKER, VEHICLE }
 
     private var scanMode: ScanMode = ScanMode.NONE
     private var observer: PersonEntity? = null
+    private var preloadedWorker: PersonEntity? = null
+
+    private val cameraScanner = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.getStringExtra(CustomScannerActivity.EXTRA_RESULT)?.let { code ->
+                handleScan(code.trim())
+            }
+        }
+    }
+
+    private val requestCameraPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) launchCameraScanner()
+        else Toast.makeText(requireContext(), getString(R.string.scanner_error_camera_permission), Toast.LENGTH_SHORT).show()
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return inflater.inflate(R.layout.fragment_observations_hub, container, false)
@@ -37,21 +66,43 @@ class ObservationsGeneralFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        view.findViewById<MaterialButton>(R.id.btnScanObserver).setOnClickListener {
+        val preloadedUuid = arguments?.getString(ARG_PRELOADED_WORKER_UUID)
+        if (!preloadedUuid.isNullOrBlank()) {
+            viewLifecycleOwner.lifecycleScope.launch {
+                preloadedWorker = ServiceLocator.personDao.getByUuid(preloadedUuid)
+                    ?: ServiceLocator.personDao.getByBadge(preloadedUuid)
+            }
+        }
+
+        view.findViewById<MaterialButton>(R.id.btnScanObserverLaser).setOnClickListener {
             scanMode = ScanMode.OBSERVER
             Toast.makeText(requireContext(), getString(R.string.obs_scan_observer), Toast.LENGTH_SHORT).show()
         }
 
+        view.findViewById<MaterialButton>(R.id.btnScanObserverCamera).setOnClickListener {
+            requestCameraIfNeededAndScan()
+        }
+
         view.findViewById<MaterialButton>(R.id.btnTargetWorker).setOnClickListener {
             if (!requireObserver()) return@setOnClickListener
-            scanMode = ScanMode.WORKER
-            Toast.makeText(requireContext(), getString(R.string.obs_target_worker), Toast.LENGTH_SHORT).show()
+            showTargetScanPanel(ScanMode.WORKER)
         }
 
         view.findViewById<MaterialButton>(R.id.btnTargetVehicle).setOnClickListener {
             if (!requireObserver()) return@setOnClickListener
-            scanMode = ScanMode.VEHICLE
-            Toast.makeText(requireContext(), getString(R.string.obs_target_vehicle), Toast.LENGTH_SHORT).show()
+            showTargetScanPanel(ScanMode.VEHICLE)
+        }
+
+        view.findViewById<MaterialButton>(R.id.btnScanTargetLaser).setOnClickListener {
+            Toast.makeText(requireContext(), getString(R.string.scanner_laser_hint), Toast.LENGTH_SHORT).show()
+        }
+
+        view.findViewById<MaterialButton>(R.id.btnScanTargetCamera).setOnClickListener {
+            requestCameraIfNeededAndScan()
+        }
+
+        view.findViewById<MaterialButton>(R.id.btnScanTargetCancel).setOnClickListener {
+            hideTargetScanPanel()
         }
 
         view.findViewById<MaterialButton>(R.id.btnTargetSite).setOnClickListener {
@@ -109,7 +160,43 @@ class ObservationsGeneralFragment : Fragment() {
             val name = "${person.given_name} ${person.family_name}".trim()
             val summary = getString(R.string.obs_observer_format, name, person.position.ifBlank { "—" })
             view?.findViewById<TextView>(R.id.txtObserverInfo)?.text = summary
+
+            preloadedWorker?.let { worker ->
+                navigateToObservation(ObservationService.TARGET_WORKER, worker, null)
+            }
         }
+    }
+
+    private fun showTargetScanPanel(mode: ScanMode) {
+        scanMode = mode
+        val v = view ?: return
+        val titleRes = when (mode) {
+            ScanMode.WORKER -> R.string.obs_scan_worker_title
+            ScanMode.VEHICLE -> R.string.obs_scan_vehicle_title
+            else -> return
+        }
+        v.findViewById<TextView>(R.id.txtTargetScanTitle).setText(titleRes)
+        v.findViewById<View>(R.id.cardTargetScan).visibility = View.VISIBLE
+    }
+
+    private fun hideTargetScanPanel() {
+        scanMode = ScanMode.NONE
+        view?.findViewById<View>(R.id.cardTargetScan)?.visibility = View.GONE
+    }
+
+    private fun requestCameraIfNeededAndScan() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            launchCameraScanner()
+        } else {
+            requestCameraPermission.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    private fun launchCameraScanner() {
+        val intent = Intent(requireContext(), CustomScannerActivity::class.java)
+        cameraScanner.launch(intent)
     }
 
     private fun handleWorkerScan(code: String) {
@@ -120,7 +207,7 @@ class ObservationsGeneralFragment : Fragment() {
                 Toast.makeText(requireContext(), getString(R.string.obs_observer_not_found), Toast.LENGTH_LONG).show()
                 return@launch
             }
-            scanMode = ScanMode.NONE
+            hideTargetScanPanel()
             navigateToObservation(ObservationService.TARGET_WORKER, person, null)
         }
     }
@@ -135,7 +222,7 @@ class ObservationsGeneralFragment : Fragment() {
                 Toast.makeText(requireContext(), getString(R.string.obs_observer_not_found), Toast.LENGTH_LONG).show()
                 return@launch
             }
-            scanMode = ScanMode.NONE
+            hideTargetScanPanel()
             navigateToObservation(ObservationService.TARGET_VEHICLE, null, vehicle)
         }
     }

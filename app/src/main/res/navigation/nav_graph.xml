@@ -30,7 +30,9 @@
         <argument android:name="vehicle_type"         app:argType="string" app:nullable="true" android:defaultValue="@null" />
         <argument android:name="vehicle_contractor"   app:argType="string" app:nullable="true" android:defaultValue="@null" />
     </fragment>
-    <fragment android:id="@+id/observationsGeneralFragment" android:name="com.example.hassiwrapper.ui.comingsoon.ObservationsGeneralFragment"       android:label="@string/menu_observations_general" />
+    <fragment android:id="@+id/observationsGeneralFragment" android:name="com.example.hassiwrapper.ui.comingsoon.ObservationsGeneralFragment"       android:label="@string/menu_observations_general">
+        <argument android:name="preloaded_worker_uuid" app:argType="string" app:nullable="true" android:defaultValue="@null" />
+    </fragment>
     <fragment android:id="@+id/inspectionsFragment"         android:name="com.example.hassiwrapper.ui.comingsoon.InspectionsFragment"               android:label="@string/menu_inspections" />
 
 </navigation>

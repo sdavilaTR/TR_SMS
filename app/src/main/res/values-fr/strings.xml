@@ -349,4 +349,9 @@
     <string name="update_btn_later">Plus tard</string>
     <string name="update_downloading">Téléchargement de la mise à jour…</string>
     <string name="update_permission_needed">Activez l\'installation d\'applications inconnues pour continuer la mise à jour</string>
+
+    <!-- Retour arrière -->
+    <string name="settings_reinstall_previous">Réinstaller la version précédente</string>
+    <string name="settings_reinstall_previous_title">Réinstaller la version précédente</string>
+    <string name="settings_reinstall_previous_confirm">La version précédente conservée comme sauvegarde sera réinstallée. Continuer ?</string>
 </resources>

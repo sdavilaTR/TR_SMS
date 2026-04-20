@@ -19,6 +19,7 @@ import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
+import com.example.hassiwrapper.update.UpdateInstaller
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +38,7 @@ class SettingsFragment : Fragment() {
         val btnLogout = view.findViewById<MaterialButton>(R.id.btnLogout)
         val btnLogin = view.findViewById<MaterialButton>(R.id.btnLogin)
         val btnCheckUpdates = view.findViewById<MaterialButton>(R.id.btnCheckUpdates)
+        val btnReinstallPrevious = view.findViewById<MaterialButton>(R.id.btnReinstallPrevious)
 
         populateAppInfo(view)
         setupProfileSelector(view)
@@ -72,6 +74,21 @@ class SettingsFragment : Fragment() {
             }
         }
 
+        // Rollback: reinstall previous version (only shown when a previous APK exists)
+        btnReinstallPrevious.visibility =
+            if (UpdateInstaller.hasPreviousApk(requireContext())) View.VISIBLE else View.GONE
+
+        btnReinstallPrevious.setOnClickListener {
+            AlertDialog.Builder(requireContext())
+                .setTitle(R.string.settings_reinstall_previous_title)
+                .setMessage(R.string.settings_reinstall_previous_confirm)
+                .setPositiveButton(android.R.string.ok) { _, _ ->
+                    UpdateInstaller.reinstallPreviousVersion(requireContext())
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
+
         // Logout — clear session and refresh buttons immediately
         btnLogout.setOnClickListener {
             viewLifecycleOwner.lifecycleScope.launch {
@@ -85,6 +102,8 @@ class SettingsFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         refreshAuthButtons()
+        view?.findViewById<MaterialButton>(R.id.btnReinstallPrevious)?.visibility =
+            if (UpdateInstaller.hasPreviousApk(requireContext())) View.VISIBLE else View.GONE
     }
 
     private fun refreshAuthButtons() {

@@ -326,6 +326,17 @@
             android:layout_marginTop="4dp"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
+        <!-- Rollback: reinstall previous version (hidden when no previous APK exists) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnReinstallPrevious"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/settings_reinstall_previous"
+            android:textAllCaps="false"
+            android:layout_marginTop="8dp"
+            android:visibility="gone"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
         <!-- Login (shown when not authenticated) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnLogin"

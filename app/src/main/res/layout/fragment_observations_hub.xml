@@ -1,211 +1,471 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:background="@color/background">
 
+    <!-- Banner + step progress header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="12dp"
+        android:background="@color/surface"
+        android:elevation="2dp">
 
         <TextView
-            android:layout_width="wrap_content"
+            android:id="@+id/txtStepTitle"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/obs_hub_title"
             android:textColor="@color/on_surface"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="16dp" />
-
-        <!-- Observer card -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/surface"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
-            android:layout_marginBottom="16dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/obs_observer_label"
-                    android:textColor="@color/on_surface_variant"
-                    android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/txtObserverInfo"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/obs_observer_empty"
-                    android:textColor="@color/on_surface"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:layout_marginTop="4dp"
-                    android:layout_marginBottom="12dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScanObserverLaser"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="4dp"
-                        android:text="@string/obs_scan_observer_laser"
-                        android:textAllCaps="false"
-                        app:backgroundTint="@color/primary" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScanObserverCamera"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:layout_marginStart="4dp"
-                        android:text="@string/obs_scan_observer_camera"
-                        android:textAllCaps="false"
-                        app:backgroundTint="@color/primary" />
-                </LinearLayout>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
         <TextView
-            android:layout_width="wrap_content"
+            android:id="@+id/txtStepSubtitle"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/obs_select_target"
-            android:textColor="@color/on_surface"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
+            android:textColor="@color/on_surface_variant"
+            android:textSize="13sp"
+            android:layout_marginTop="2dp" />
 
-        <!-- Target buttons grid 2x2 -->
+        <!-- Progress indicator: 3 segments + labels -->
         <LinearLayout
+            android:id="@+id/stepIndicator"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
+            android:layout_marginTop="12dp"
+            android:baselineAligned="false">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTargetWorker"
+            <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="72dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                android:text="@string/obs_target_worker"
-                android:textAllCaps="false"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                android:orientation="vertical"
+                android:gravity="center">
+                <View
+                    android:id="@+id/stepBar1"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:background="@color/primary" />
+                <TextView
+                    android:id="@+id/stepLabel1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/obs_step1_label"
+                    android:textSize="11sp"
+                    android:textColor="@color/primary"
+                    android:textStyle="bold"
+                    android:layout_marginTop="6dp" />
+            </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTargetVehicle"
+            <View
+                android:layout_width="6dp"
+                android:layout_height="1dp" />
+
+            <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="72dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:text="@string/obs_target_vehicle"
-                android:textAllCaps="false"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                android:orientation="vertical"
+                android:gravity="center">
+                <View
+                    android:id="@+id/stepBar2"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:background="@color/divider" />
+                <TextView
+                    android:id="@+id/stepLabel2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/obs_step2_label"
+                    android:textSize="11sp"
+                    android:textColor="@color/on_surface_variant"
+                    android:layout_marginTop="6dp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="6dp"
+                android:layout_height="1dp" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+                <View
+                    android:id="@+id/stepBar3"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:background="@color/divider" />
+                <TextView
+                    android:id="@+id/stepLabel3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/obs_step3_label"
+                    android:textSize="11sp"
+                    android:textColor="@color/on_surface_variant"
+                    android:layout_marginTop="6dp" />
+            </LinearLayout>
         </LinearLayout>
+    </LinearLayout>
 
+    <!-- Steps container -->
+    <FrameLayout
+        android:id="@+id/stepsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- ── STEP 1: SCAN OBSERVER ──────────────────────────────────── -->
         <LinearLayout
+            android:id="@+id/stepObserver"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="visible">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTargetSite"
-                android:layout_width="0dp"
-                android:layout_height="72dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                android:text="@string/obs_target_site"
-                android:textAllCaps="false"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+            <!-- Scanner top area -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTargetEquipment"
-                android:layout_width="0dp"
-                android:layout_height="72dp"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:text="@string/obs_target_equipment"
-                android:textAllCaps="false"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-        </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/observerLaserArea"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="16dp">
+                    <ImageView
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:src="@drawable/ic_scanner"
+                        app:tint="@color/primary"
+                        android:layout_marginBottom="12dp"
+                        android:contentDescription="@null" />
+                    <TextView
+                        android:id="@+id/txtObserverStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/obs_scan_observer_prompt"
+                        android:textColor="@color/on_surface"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:gravity="center" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/scanner_hint_usage"
+                        android:textColor="@color/on_surface_variant"
+                        android:textSize="12sp"
+                        android:gravity="center"
+                        android:layout_marginTop="6dp" />
+                </LinearLayout>
 
-        <!-- Target scan panel (shown after tapping Worker/Vehicle) -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cardTargetScan"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone"
-            app:cardBackgroundColor="@color/surface"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
-            android:layout_marginTop="16dp">
+                <FrameLayout
+                    android:id="@+id/observerCameraArea"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#000000"
+                    android:visibility="gone">
+                    <com.journeyapps.barcodescanner.BarcodeView
+                        android:id="@+id/observerBarcodeView"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+                    <com.example.hassiwrapper.ui.scanner.ScanOverlayView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+                </FrameLayout>
+            </FrameLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:background="@color/surface"
+                android:elevation="2dp">
 
-                <TextView
-                    android:id="@+id/txtTargetScanTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/on_surface"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="12dp" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnObserverCameraToggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:text="@string/scanner_btn_camera"
+                    android:textAllCaps="false"
+                    android:textSize="12sp"
+                    app:icon="@drawable/ic_camera"
+                    app:iconSize="18dp"
+                    app:cornerRadius="10dp"
+                    android:layout_marginEnd="8dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnObserverFlash"
+                    android:layout_width="48dp"
+                    android:layout_height="42dp"
+                    android:visibility="gone"
+                    app:icon="@drawable/ic_flashlight_on"
+                    app:iconSize="20dp"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:cornerRadius="10dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ── STEP 2: TARGET TYPE SELECTION ─────────────────────────── -->
+        <LinearLayout
+            android:id="@+id/stepTargetType"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <!-- Observer summary -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                android:layout_marginBottom="16dp">
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScanTargetLaser"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="4dp"
-                        android:text="@string/obs_scan_observer_laser"
-                        android:textAllCaps="false"
-                        app:backgroundTint="@color/primary" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScanTargetCamera"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:layout_marginStart="4dp"
-                        android:text="@string/obs_scan_observer_camera"
-                        android:textAllCaps="false"
-                        app:backgroundTint="@color/primary" />
+                    android:orientation="vertical"
+                    android:padding="12dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/obs_observer_label"
+                        android:textColor="@color/on_surface_variant"
+                        android:textSize="11sp"
+                        android:textAllCaps="true" />
+                    <TextView
+                        android:id="@+id/txtObserverInfo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/obs_observer_empty"
+                        android:textColor="@color/on_surface"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:layout_marginTop="2dp" />
                 </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/obs_select_target"
+                android:textColor="@color/on_surface"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="10dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="10dp">
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnScanTargetCancel"
-                    android:layout_width="match_parent"
-                    android:layout_height="40dp"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/obs_scan_cancel"
+                    android:id="@+id/btnTargetWorker"
+                    android:layout_width="0dp"
+                    android:layout_height="96dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="5dp"
+                    android:text="@string/obs_target_worker"
                     android:textAllCaps="false"
-                    style="@style/Widget.MaterialComponents.Button.TextButton" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_workers"
+                    app:iconGravity="top"
+                    app:iconPadding="4dp"
+                    app:iconSize="28dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTargetVehicle"
+                    android:layout_width="0dp"
+                    android:layout_height="96dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="5dp"
+                    android:text="@string/obs_target_vehicle"
+                    android:textAllCaps="false"
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_truck_24"
+                    app:iconGravity="top"
+                    app:iconPadding="4dp"
+                    app:iconSize="28dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTargetSite"
+                    android:layout_width="0dp"
+                    android:layout_height="96dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="5dp"
+                    android:text="@string/obs_target_site"
+                    android:textAllCaps="false"
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_home"
+                    app:iconGravity="top"
+                    app:iconPadding="4dp"
+                    app:iconSize="28dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTargetEquipment"
+                    android:layout_width="0dp"
+                    android:layout_height="96dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="5dp"
+                    android:text="@string/obs_target_equipment"
+                    android:textAllCaps="false"
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_settings"
+                    app:iconGravity="top"
+                    app:iconPadding="4dp"
+                    app:iconSize="28dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ── STEP 3: TARGET SCAN (worker or vehicle) ───────────────── -->
+        <LinearLayout
+            android:id="@+id/stepTargetScan"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:id="@+id/targetLaserArea"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="16dp">
+                    <ImageView
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:src="@drawable/ic_scanner"
+                        app:tint="@color/primary"
+                        android:layout_marginBottom="12dp"
+                        android:contentDescription="@null" />
+                    <TextView
+                        android:id="@+id/txtTargetStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/obs_scan_worker_title"
+                        android:textColor="@color/on_surface"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:gravity="center" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/scanner_hint_usage"
+                        android:textColor="@color/on_surface_variant"
+                        android:textSize="12sp"
+                        android:gravity="center"
+                        android:layout_marginTop="6dp" />
+                </LinearLayout>
+
+                <FrameLayout
+                    android:id="@+id/targetCameraArea"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#000000"
+                    android:visibility="gone">
+                    <com.journeyapps.barcodescanner.BarcodeView
+                        android:id="@+id/targetBarcodeView"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+                    <com.example.hassiwrapper.ui.scanner.ScanOverlayView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+                </FrameLayout>
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:background="@color/surface"
+                android:elevation="2dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTargetCameraToggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:text="@string/scanner_btn_camera"
+                    android:textAllCaps="false"
+                    android:textSize="12sp"
+                    app:icon="@drawable/ic_camera"
+                    app:iconSize="18dp"
+                    app:cornerRadius="10dp"
+                    android:layout_marginEnd="8dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTargetFlash"
+                    android:layout_width="48dp"
+                    android:layout_height="42dp"
+                    android:visibility="gone"
+                    app:icon="@drawable/ic_flashlight_on"
+                    app:iconSize="20dp"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:cornerRadius="10dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Bottom bar with Back button (hidden on Step 1) -->
+    <LinearLayout
+        android:id="@+id/bottomBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:background="@color/surface"
+        android:elevation="4dp"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWizardBack"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:text="@string/obs_back"
+            android:textAllCaps="false"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
     </LinearLayout>
-</ScrollView>
+</LinearLayout>

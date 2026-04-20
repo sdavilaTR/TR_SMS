@@ -275,6 +275,10 @@
     <string name="obs_scan_worker_title">Escanear badge del trabajador</string>
     <string name="obs_scan_vehicle_title">Escanear QR del veh\u00edculo</string>
     <string name="obs_scan_cancel">Cancelar</string>
+    <string name="obs_step1_label">Observador</string>
+    <string name="obs_step2_label">Tipo</string>
+    <string name="obs_step3_label">Objetivo</string>
+    <string name="obs_scan_observer_prompt">Escanea tu badge HSE</string>
     <string name="obs_select_target">Seleccione tipo de observaci\u00f3n</string>
     <string name="obs_not_hse_error">No eres HSE — no tienes permisos para abrir observaciones</string>
     <string name="obs_observer_not_found">Observador no encontrado en la base local</string>

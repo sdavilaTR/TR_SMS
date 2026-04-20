@@ -305,6 +305,10 @@
     <string name="obs_scan_worker_title">Scan worker badge</string>
     <string name="obs_scan_vehicle_title">Scan vehicle QR</string>
     <string name="obs_scan_cancel">Cancel</string>
+    <string name="obs_step1_label">Observer</string>
+    <string name="obs_step2_label">Type</string>
+    <string name="obs_step3_label">Target</string>
+    <string name="obs_scan_observer_prompt">Scan your HSE badge</string>
     <string name="obs_observer_label">HSE Observer</string>
     <string name="obs_observer_empty">Not registered — scan the supervisor badge</string>
     <string name="obs_observer_format">%1$s — %2$s</string>

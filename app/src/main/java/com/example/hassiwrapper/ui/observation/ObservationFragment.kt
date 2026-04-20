@@ -234,6 +234,8 @@ class ObservationFragment : Fragment() {
                 val destPath = withContext(Dispatchers.IO) { compressAndSave(uri) }
                 if (destPath != null) {
                     pendingPhotoPaths.add(destPath)
+                    view?.findViewById<TextView>(R.id.txtObsPhotoCount)
+                        ?.text = "${pendingPhotoPaths.size} / $MAX_PHOTOS"
                     Toast.makeText(
                         requireContext(),
                         "Foto ${pendingPhotoPaths.size}/${MAX_PHOTOS}",

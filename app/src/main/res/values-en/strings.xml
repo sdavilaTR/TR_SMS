@@ -278,4 +278,75 @@
     <string name="sync_auto_relogin">Re-authenticating automatically…</string>
     <string name="sync_auto_relogin_ok">Session renewed, retrying sync</string>
     <string name="sync_auto_relogin_fail">Could not renew session automatically</string>
+
+    <!-- Coming soon -->
+    <string name="coming_soon_title">Coming soon</string>
+    <string name="coming_soon_inspections">The inspections module will let you plan, execute and document site safety inspections.</string>
+    <string name="coming_soon_observations">The general observations module will let you record safety observations not linked to a specific worker.</string>
+
+    <!-- Menu -->
+    <string name="menu_inspections">Inspections</string>
+    <string name="menu_observations_general">Observations</string>
+
+    <!-- HSE observations -->
+    <string name="obs_hub_title">HSE Observations</string>
+    <string name="obs_select_target">Select observation type</string>
+    <string name="obs_target_worker">Worker</string>
+    <string name="obs_target_vehicle">Vehicle</string>
+    <string name="obs_target_site">Site / Zone</string>
+    <string name="obs_target_equipment">Equipment</string>
+    <string name="obs_target_worker_banner">OBSERVATION — WORKER</string>
+    <string name="obs_target_vehicle_banner">OBSERVATION — VEHICLE</string>
+    <string name="obs_target_site_banner">OBSERVATION — SITE / ZONE</string>
+    <string name="obs_target_equipment_banner">OBSERVATION — EQUIPMENT</string>
+    <string name="obs_scan_observer">Scan Supervisor Badge</string>
+    <string name="obs_scan_observer_laser">Laser</string>
+    <string name="obs_scan_observer_camera">Camera</string>
+    <string name="obs_scan_worker_title">Scan worker badge</string>
+    <string name="obs_scan_vehicle_title">Scan vehicle QR</string>
+    <string name="obs_scan_cancel">Cancel</string>
+    <string name="obs_observer_label">HSE Observer</string>
+    <string name="obs_observer_empty">Not registered — scan the supervisor badge</string>
+    <string name="obs_observer_format">%1$s — %2$s</string>
+    <string name="obs_observer_not_found">Observer not found in local database</string>
+    <string name="obs_observer_required">Scan the HSE supervisor badge first</string>
+    <string name="obs_not_hse_error">You are not HSE — you don\'t have permission to open observations</string>
+    <string name="obs_photos">Photos (optional, max. 8)</string>
+    <string name="obs_photos_hint">You can save without photos. If added, they will sync when the terminal regains connection.</string>
+    <string name="obs_photo_max">Maximum 8 photos per observation</string>
+    <string name="obs_add_photo_camera">Camera</string>
+    <string name="obs_add_photo_gallery">Gallery</string>
+    <string name="equipment_description">Equipment description</string>
+    <string name="vehicle_info_format">%1$s — %2$s (%3$s)</string>
+
+    <!-- Passport -->
+    <string name="passport_compliance">Compliance</string>
+    <string name="passport_section_docs">Documents</string>
+    <string name="passport_section_trainings">Trainings</string>
+    <string name="passport_doc_valid">Valid</string>
+    <string name="passport_doc_expiring">Expiring soon</string>
+    <string name="passport_doc_expired">Expired</string>
+    <string name="passport_doc_missing">Missing</string>
+    <string name="passport_doc_no_connection">No connection to download the document</string>
+    <string name="passport_doc_no_viewer">No app available to open this file type</string>
+    <string name="passport_training_completed">Completed</string>
+    <string name="passport_training_pending">Pending</string>
+    <string name="passport_training_expired">Expired</string>
+    <string name="passport_training_missing">Missing</string>
+    <string name="passport_mandatory">Mandatory</string>
+    <string name="passport_no_docs">No documents registered</string>
+    <string name="passport_no_trainings">No trainings registered</string>
+    <string name="passport_of">of</string>
+
+    <!-- Profile -->
+    <string name="profile_hse">HSE</string>
+    <string name="profile_hse_desc">HSE — Passport + Observations + Inspections (Production)</string>
+
+    <!-- App update -->
+    <string name="update_title">New update available</string>
+    <string name="update_message">Version %s available.\nDo you want to update the app now?</string>
+    <string name="update_btn_update">Update</string>
+    <string name="update_btn_later">Later</string>
+    <string name="update_downloading">Downloading update…</string>
+    <string name="update_permission_needed">Enable installation of unknown apps to continue with the update</string>
 </resources>

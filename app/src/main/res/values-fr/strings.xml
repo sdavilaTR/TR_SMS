@@ -278,4 +278,75 @@
     <string name="sync_auto_relogin">Réauthentification automatique…</string>
     <string name="sync_auto_relogin_ok">Session renouvelée, nouvelle tentative de sync</string>
     <string name="sync_auto_relogin_fail">Impossible de renouveler la session automatiquement</string>
+
+    <!-- Bientôt disponible -->
+    <string name="coming_soon_title">Bientôt disponible</string>
+    <string name="coming_soon_inspections">Le module d\'inspections permettra de planifier, exécuter et documenter les inspections de sécurité sur le site.</string>
+    <string name="coming_soon_observations">Le module d\'observations générales permettra d\'enregistrer des observations de sécurité non liées à un travailleur spécifique.</string>
+
+    <!-- Menu -->
+    <string name="menu_inspections">Inspections</string>
+    <string name="menu_observations_general">Observations</string>
+
+    <!-- Observations HSE -->
+    <string name="obs_hub_title">Observations HSE</string>
+    <string name="obs_select_target">Sélectionnez le type d\'observation</string>
+    <string name="obs_target_worker">Travailleur</string>
+    <string name="obs_target_vehicle">Véhicule</string>
+    <string name="obs_target_site">Site / Zone</string>
+    <string name="obs_target_equipment">Équipement</string>
+    <string name="obs_target_worker_banner">OBSERVATION — TRAVAILLEUR</string>
+    <string name="obs_target_vehicle_banner">OBSERVATION — VÉHICULE</string>
+    <string name="obs_target_site_banner">OBSERVATION — SITE / ZONE</string>
+    <string name="obs_target_equipment_banner">OBSERVATION — ÉQUIPEMENT</string>
+    <string name="obs_scan_observer">Scanner Badge Superviseur</string>
+    <string name="obs_scan_observer_laser">Laser</string>
+    <string name="obs_scan_observer_camera">Caméra</string>
+    <string name="obs_scan_worker_title">Scanner le badge du travailleur</string>
+    <string name="obs_scan_vehicle_title">Scanner le QR du véhicule</string>
+    <string name="obs_scan_cancel">Annuler</string>
+    <string name="obs_observer_label">Observateur HSE</string>
+    <string name="obs_observer_empty">Non enregistré — scannez le badge du superviseur</string>
+    <string name="obs_observer_format">%1$s — %2$s</string>
+    <string name="obs_observer_not_found">Observateur introuvable dans la base locale</string>
+    <string name="obs_observer_required">Scannez d\'abord le badge du superviseur HSE</string>
+    <string name="obs_not_hse_error">Vous n\'êtes pas HSE — vous n\'avez pas la permission d\'ouvrir des observations</string>
+    <string name="obs_photos">Photos (optionnel, max. 8)</string>
+    <string name="obs_photos_hint">Vous pouvez enregistrer sans photos. Si ajoutées, elles seront synchronisées lorsque le terminal retrouvera la connexion.</string>
+    <string name="obs_photo_max">Maximum 8 photos par observation</string>
+    <string name="obs_add_photo_camera">Caméra</string>
+    <string name="obs_add_photo_gallery">Galerie</string>
+    <string name="equipment_description">Description de l\'équipement</string>
+    <string name="vehicle_info_format">%1$s — %2$s (%3$s)</string>
+
+    <!-- Passeport -->
+    <string name="passport_compliance">Conformité</string>
+    <string name="passport_section_docs">Documents</string>
+    <string name="passport_section_trainings">Formations</string>
+    <string name="passport_doc_valid">Valide</string>
+    <string name="passport_doc_expiring">Bientôt expiré</string>
+    <string name="passport_doc_expired">Expiré</string>
+    <string name="passport_doc_missing">Manquant</string>
+    <string name="passport_doc_no_connection">Pas de connexion pour télécharger le document</string>
+    <string name="passport_doc_no_viewer">Aucune application pour ouvrir ce type de fichier</string>
+    <string name="passport_training_completed">Terminée</string>
+    <string name="passport_training_pending">En attente</string>
+    <string name="passport_training_expired">Expirée</string>
+    <string name="passport_training_missing">Manquante</string>
+    <string name="passport_mandatory">Obligatoire</string>
+    <string name="passport_no_docs">Aucun document enregistré</string>
+    <string name="passport_no_trainings">Aucune formation enregistrée</string>
+    <string name="passport_of">sur</string>
+
+    <!-- Profil -->
+    <string name="profile_hse">HSE</string>
+    <string name="profile_hse_desc">HSE — Passeport + Observations + Inspections (Production)</string>
+
+    <!-- Mise à jour -->
+    <string name="update_title">Nouvelle mise à jour disponible</string>
+    <string name="update_message">Version %s disponible.\nVoulez-vous mettre à jour l\'application maintenant ?</string>
+    <string name="update_btn_update">Mettre à jour</string>
+    <string name="update_btn_later">Plus tard</string>
+    <string name="update_downloading">Téléchargement de la mise à jour…</string>
+    <string name="update_permission_needed">Activez l\'installation d\'applications inconnues pour continuer la mise à jour</string>
 </resources>

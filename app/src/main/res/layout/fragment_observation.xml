@@ -282,8 +282,17 @@
             android:layout_marginBottom="12dp"
             app:chipSpacingVertical="4dp" />
 
-        <!-- Photos -->
+        <!-- Photos (optional, applies to all observation types) -->
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/obs_photos" android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="4dp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/obs_photos_hint" android:textColor="@color/on_surface_variant" android:textSize="11sp" android:layout_marginBottom="6dp" />
+        <TextView
+            android:id="@+id/txtObsPhotoCount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="0 / 8"
+            android:textColor="@color/on_surface_variant"
+            android:textSize="11sp"
+            android:layout_marginBottom="4dp" />
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvObsPhotos"
             android:layout_width="match_parent"

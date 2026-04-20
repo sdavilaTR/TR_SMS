@@ -80,6 +80,7 @@ class ObservationsGeneralFragment : Fragment() {
         }
 
         view.findViewById<MaterialButton>(R.id.btnScanObserverCamera).setOnClickListener {
+            scanMode = ScanMode.OBSERVER
             requestCameraIfNeededAndScan()
         }
 

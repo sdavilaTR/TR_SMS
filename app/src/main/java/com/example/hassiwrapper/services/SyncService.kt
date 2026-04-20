@@ -361,11 +361,18 @@ class SyncService(
             }
             if (entities.isNotEmpty() && vehicleDao != null) {
                 val existingUuids = vehicleDao.getAllUuids().toHashSet()
+                val incomingUuids = entities.map { it.asset_uuid }.toHashSet()
                 val added = entities.count { it.asset_uuid !in existingUuids }
                 val updated = entities.count { it.asset_uuid in existingUuids }
                 vehicleDao.insertAll(entities)
+
+                // Soft-delete de vehículos no presentes en el servidor
+                val obsolete = existingUuids - incomingUuids
+                if (obsolete.isNotEmpty()) {
+                    vehicleDao.deactivateByUuids(obsolete.toList())
+                }
                 vResult = VehicleResult(added, updated)
-                Log.d(TAG, "Vehicles: $added added, $updated updated")
+                Log.d(TAG, "Vehicles: $added added, $updated updated, ${obsolete.size} deactivated")
             }
         }
 
@@ -386,14 +393,23 @@ class SyncService(
         val existingUuids = personDao.getAllUuids().toHashSet()
         val entities = persons.map { transformWorker(it).copy(syncStatus = "SYNCED") }
 
+        val incomingUuids = entities.map { it.unique_id_value }.toHashSet()
         val added   = entities.count { it.unique_id_value !in existingUuids }
         val updated = entities.count { it.unique_id_value  in existingUuids }
 
         // Atomic batch — Room wraps @Insert in a single transaction
         personDao.insertAll(entities)
 
+        // Soft-delete: desactivar locales que el servidor ya no envía.
+        // No borramos físicamente para preservar FKs (access_logs, work_sessions).
+        val obsolete = existingUuids - incomingUuids
+        if (obsolete.isNotEmpty()) {
+            personDao.deactivateByUuids(obsolete.toList())
+            Log.d(TAG, "Workers: ${obsolete.size} deactivated (missing from server)")
+        }
+
         configRepo.set("online_workers_count", entities.size.toString())
-        Log.d(TAG, "Workers: $added added, $updated updated")
+        Log.d(TAG, "Workers: $added added, $updated updated, ${obsolete.size} deactivated")
         return WorkerResult(added, updated, 0)
     }
 

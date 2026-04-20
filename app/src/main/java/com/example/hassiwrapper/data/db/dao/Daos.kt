@@ -98,6 +98,12 @@ interface PersonDao {
     @Query("SELECT COUNT(*) FROM persons")
     suspend fun count(): Int
 
+    @Query("SELECT COUNT(*) FROM persons WHERE is_active = 1")
+    suspend fun countActive(): Int
+
+    @Query("UPDATE persons SET is_active = 0 WHERE unique_id_value IN (:uuids)")
+    suspend fun deactivateByUuids(uuids: List<String>)
+
     @Query("DELETE FROM persons")
     suspend fun deleteAll()
 
@@ -349,4 +355,10 @@ interface VehicleDao {
 
     @Query("SELECT COUNT(*) FROM vehicles")
     suspend fun count(): Int
+
+    @Query("SELECT COUNT(*) FROM vehicles WHERE is_active = 1")
+    suspend fun countActive(): Int
+
+    @Query("UPDATE vehicles SET is_active = 0 WHERE asset_uuid IN (:uuids)")
+    suspend fun deactivateByUuids(uuids: List<String>)
 }

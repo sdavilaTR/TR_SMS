@@ -24,7 +24,8 @@ class ObservationService(
         const val TARGET_SITE = "SITE_CONDITION"
         const val TARGET_EQUIPMENT = "EQUIPMENT"
 
-        val HSE_ROLE_KEYWORDS = listOf("HSE", "SUPERVISOR", "SAFETY", "SEGURIDAD", "QHSE")
+        /** Código de categoría HSE según ATLAS_Worker_Import_Template (I08 - HSE). */
+        const val HSE_CATEGORY_CODE = "I08"
 
         val CATEGORY_CODES = listOf(
             "PPE", "SITUATIONAL_AWARENESS", "SAFETY_DEVICES", "ISOLATION_LOCKOUT",
@@ -87,11 +88,10 @@ class ObservationService(
             )
         )
 
-        /** Case-insensitive match against a person's position/category_code. */
+        /** Solo valida la categoría HSE exacta (I08) del template de importación. */
         fun isHseRole(person: PersonEntity?): Boolean {
             if (person == null) return false
-            val haystack = ((person.position ?: "") + " " + (person.category_code ?: "")).uppercase()
-            return HSE_ROLE_KEYWORDS.any { haystack.contains(it) }
+            return person.category_code.trim().equals(HSE_CATEGORY_CODE, ignoreCase = true)
         }
     }
 

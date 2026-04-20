@@ -271,7 +271,7 @@
     <string name="obs_scan_vehicle_title">Escanear QR del veh\u00edculo</string>
     <string name="obs_scan_cancel">Cancelar</string>
     <string name="obs_select_target">Seleccione tipo de observaci\u00f3n</string>
-    <string name="obs_not_hse_error">Solo supervisores HSE pueden ser observadores</string>
+    <string name="obs_not_hse_error">No eres HSE — no tienes permisos para abrir observaciones</string>
     <string name="obs_observer_not_found">Observador no encontrado en la base local</string>
     <string name="obs_observer_required">Escanee primero el badge del supervisor HSE</string>
     <string name="obs_target_worker">Trabajador</string>
@@ -282,7 +282,8 @@
     <string name="obs_target_vehicle_banner">OBSERVACI\u00d3N — VEH\u00cdCULO</string>
     <string name="obs_target_site_banner">OBSERVACI\u00d3N — SITIO / ZONA</string>
     <string name="obs_target_equipment_banner">OBSERVACI\u00d3N — EQUIPO</string>
-    <string name="obs_photos">Fotos (m\u00e1x. 8)</string>
+    <string name="obs_photos">Fotos (opcional, m\u00e1x. 8)</string>
+    <string name="obs_photos_hint">Puedes guardar sin fotos. Si a\u00f1ades, se sincronizar\u00e1n cuando el terminal recupere conexi\u00f3n.</string>
     <string name="obs_add_photo_camera">C\u00e1mara</string>
     <string name="obs_add_photo_gallery">Galer\u00eda</string>
     <string name="obs_photo_max">M\u00e1ximo 8 fotos por observaci\u00f3n</string>

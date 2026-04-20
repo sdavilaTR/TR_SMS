@@ -40,8 +40,8 @@ class HomeFragment : Fragment() {
     private fun loadStats() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val workerCount = ServiceLocator.personDao.count()
-                val vehicleCount = ServiceLocator.vehicleDao.count()
+                val workerCount = ServiceLocator.personDao.countActive()
+                val vehicleCount = ServiceLocator.vehicleDao.countActive()
                 val todayStr = LocalDate.now().toString() + "T00:00:00Z"
                 val scansToday = ServiceLocator.accessLogDao.getTodayCount(todayStr)
                 val pending = ServiceLocator.syncService.getPendingCounts()

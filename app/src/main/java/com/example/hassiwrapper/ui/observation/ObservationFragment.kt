@@ -221,7 +221,7 @@ class ObservationFragment : Fragment() {
         val file = File(dir, "photo_${System.currentTimeMillis()}.jpg")
         val uri = FileProvider.getUriForFile(
             requireContext(),
-            "${requireContext().packageName}.fileprovider",
+            "${requireContext().packageName}.provider",
             file
         )
         cameraTempUri = uri

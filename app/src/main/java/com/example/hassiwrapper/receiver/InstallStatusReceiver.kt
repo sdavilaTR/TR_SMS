@@ -43,11 +43,13 @@ class InstallStatusReceiver : BroadcastReceiver() {
 
             PackageInstaller.STATUS_SUCCESS -> {
                 Log.d(TAG, "Install succeeded — promoting update APK to previous")
+                UpdateInstaller.clearSessionInFlight(context)
                 UpdateInstaller.promoteUpdateToPrevious(context)
             }
 
             else -> {
                 Log.e(TAG, "Install failed — status=$status message=$message")
+                UpdateInstaller.clearSessionInFlight(context)
                 Toast.makeText(
                     context,
                     "Error al instalar: $message",

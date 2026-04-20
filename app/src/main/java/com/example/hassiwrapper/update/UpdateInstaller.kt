@@ -23,6 +23,37 @@ object UpdateInstaller {
 
     private const val TAG = "UpdateInstaller"
 
+    // ── Install-in-flight flag (prevents duplicate PackageInstaller sessions) ──
+    // Without this, MainActivity.onResume fires while the user is looking at the
+    // system install confirmation (Play Protect scan briefly backgrounds the app)
+    // and we'd open a second session → the dialog re-appears on top of itself.
+    private const val PREF_NAME = "update_installer"
+    private const val KEY_IN_FLIGHT_AT = "session_in_flight_at"
+    // If the receiver never fires back (device killed, receiver disabled),
+    // let the flag expire so the user isn't stuck forever.
+    private const val IN_FLIGHT_TIMEOUT_MS = 5 * 60 * 1000L
+
+    private fun markSessionInFlight(context: Context) {
+        context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+            .edit().putLong(KEY_IN_FLIGHT_AT, System.currentTimeMillis()).apply()
+    }
+
+    fun clearSessionInFlight(context: Context) {
+        context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+            .edit().remove(KEY_IN_FLIGHT_AT).apply()
+    }
+
+    private fun isSessionInFlight(context: Context): Boolean {
+        val at = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+            .getLong(KEY_IN_FLIGHT_AT, 0L)
+        if (at == 0L) return false
+        if (System.currentTimeMillis() - at > IN_FLIGHT_TIMEOUT_MS) {
+            clearSessionInFlight(context)
+            return false
+        }
+        return true
+    }
+
     // ── Public file helpers (also used by the status receiver) ─────────────
 
     fun getUpdateApkFile(context: Context): File? {
@@ -85,6 +116,10 @@ object UpdateInstaller {
             Log.w(TAG, "APK not found or empty: ${apkFile.absolutePath}")
             return
         }
+        if (isSessionInFlight(context)) {
+            Log.d(TAG, "Install session already in flight — skipping duplicate")
+            return
+        }
         if (!isValidApk(apkFile)) {
             val preview = readFilePreview(apkFile, 200)
             Log.e(TAG, "Downloaded file is not a valid APK. First 200 bytes: $preview")
@@ -106,11 +141,17 @@ object UpdateInstaller {
      */
     fun installPendingApkIfExists(context: Context) {
         val apkFile = getUpdateApkFile(context) ?: return
-        if (apkFile.exists() && apkFile.length() > 0) {
-            Log.d(TAG, "Found pending APK in onResume, installing…")
-            DownloadCompleteReceiver.clearPendingDownloadId(context)
-            installApk(context, apkFile)
+        if (!apkFile.exists() || apkFile.length() == 0L) return
+        if (isSessionInFlight(context)) {
+            // The system confirmation dialog is already showing — don't relaunch
+            // a second session when the user briefly returns to the app during
+            // the Play Protect / MIUI scan step.
+            Log.d(TAG, "Pending APK exists but install session already in flight — skipping")
+            return
         }
+        Log.d(TAG, "Found pending APK in onResume, installing…")
+        DownloadCompleteReceiver.clearPendingDownloadId(context)
+        installApk(context, apkFile)
     }
 
     /**
@@ -200,6 +241,7 @@ object UpdateInstaller {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
                 val pendingIntent = PendingIntent.getBroadcast(context, sessionId, statusIntent, flags)
 
+                markSessionInFlight(context)
                 session.commit(pendingIntent.intentSender)
             }
 
@@ -210,6 +252,7 @@ object UpdateInstaller {
 
         } catch (e: Exception) {
             Log.e(TAG, "PackageInstaller.Session failed, using fallback", e)
+            clearSessionInFlight(context)
             installApkFallback(context, apkFile)
         }
     }

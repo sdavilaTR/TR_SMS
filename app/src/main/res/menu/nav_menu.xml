@@ -8,6 +8,5 @@
     <item android:id="@+id/workersFragment"    android:icon="@drawable/ic_workers"    android:title="@string/menu_workers" />
     <item android:id="@+id/vehiclesFragment"            android:icon="@drawable/ic_truck_24"        android:title="@string/menu_vehicles" />
     <item android:id="@+id/observationsGeneralFragment" android:icon="@drawable/ic_observation"     android:title="@string/menu_observations_general" />
-    <item android:id="@+id/inspectionsFragment"         android:icon="@drawable/ic_clipboard_check" android:title="@string/menu_inspections" />
     <item android:id="@+id/settingsFragment"            android:icon="@drawable/ic_settings"        android:title="@string/menu_settings" />
 </menu>

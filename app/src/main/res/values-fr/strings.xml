@@ -4,11 +4,11 @@
     <!-- Navigation -->
     <string name="nav_header_title">TR Contrôle d\'accès</string>
     <string name="menu_home">Accueil</string>
-    <string name="menu_scanner">Contrôle d\'accès</string>
-    <string name="menu_passport">Passeport Numérique</string>
+    <string name="menu_scanner">Smart Material System</string>
+    <string name="menu_passport">Packet Lists</string>
     <string name="menu_attendance">Registres</string>
     <string name="menu_sync">Synchronisation</string>
-    <string name="menu_workers">Travailleurs</string>
+    <string name="menu_workers">Spools</string>
     <string name="menu_settings">Paramètres</string>
 
     <!-- Home -->

@@ -5,10 +5,10 @@
     <string name="nav_header_title">Smart Material System</string>
     <string name="menu_home">Home</string>
     <string name="menu_scanner">Smart Material System</string>
-    <string name="menu_passport">Digital Passport</string>
+    <string name="menu_passport">Packet Lists</string>
     <string name="menu_attendance">Records</string>
     <string name="menu_sync">Synchronization</string>
-    <string name="menu_workers">Workers</string>
+    <string name="menu_workers">Spools</string>
     <string name="menu_settings">Settings</string>
 
     <!-- Home -->

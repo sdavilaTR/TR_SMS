@@ -4,7 +4,7 @@
     <!-- Navigation -->
     <string name="nav_header_title">TR Contrôle d\'accès</string>
     <string name="menu_home">Accueil</string>
-    <string name="menu_scanner">Smart Material System</string>
+    <string name="menu_scanner">Créer Spool</string>
     <string name="menu_passport">Packet Lists</string>
     <string name="menu_attendance">Registres de Spools</string>
     <string name="menu_sync">Synchronisation</string>

@@ -4,7 +4,7 @@
     <!-- Navigation -->
     <string name="nav_header_title">Smart Material System</string>
     <string name="menu_home">Home</string>
-    <string name="menu_scanner">Smart Material System</string>
+    <string name="menu_scanner">Create Spool</string>
     <string name="menu_passport">Packet Lists</string>
     <string name="menu_attendance">Spool Records</string>
     <string name="menu_sync">Synchronization</string>

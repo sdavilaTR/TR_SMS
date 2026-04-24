@@ -142,6 +142,9 @@
     <string name="menu_vehicles">Vehículos</string>
     <string name="vehicles_hint_search">Buscar vehículo…</string>
     <string name="vehicles_count">%d vehículos</string>
+    <string name="vehicles_packet_list_label">Packet List asociado</string>
+    <string name="vehicles_packet_list_none">Sin asignar</string>
+    <string name="vehicles_assign_packet_list">Asociar Packet List</string>
     <string name="vehicles_item_format">%1$s | %2$s</string>
     <string name="vehicles_plate_format">Matrícula: %s</string>
 

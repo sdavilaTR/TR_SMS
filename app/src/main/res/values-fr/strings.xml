@@ -42,8 +42,8 @@
     <string name="scanner_exit">↓ SORTIE</string>
 
     <!-- Passport -->
-    <string name="passport_waiting_title">Scanner un travailleur</string>
-    <string name="passport_waiting_hint">Le passeport numérique apparaîtra ici après le scan</string>
+    <string name="passport_waiting_title">Scanner spool</string>
+    <string name="passport_waiting_hint">Les informations du spool apparaîtront ici après le scan</string>
     <string name="passport_card_title">UTE TR — SE HASSI MESSAOUD PROJECT</string>
     <string name="passport_scanned_at">Scanné : %s</string>
     <string name="passport_label_family_name">Nom</string>

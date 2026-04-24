@@ -6,14 +6,14 @@
     <string name="menu_home">Inicio</string>
     <string name="menu_scanner">Smart Material System</string>
     <string name="menu_passport">Packet Lists</string>
-    <string name="menu_attendance">Registros</string>
+    <string name="menu_attendance">Registros de Spools</string>
     <string name="menu_sync">Sincronización</string>
     <string name="menu_workers">Spools</string>
     <string name="menu_settings">Configuración</string>
 
     <!-- Home -->
     <string name="home_label_terminal">Terminal</string>
-    <string name="home_label_workers">Trabajadores</string>
+    <string name="home_label_workers">Spools</string>
     <string name="home_label_scans_today">Escaneos Hoy</string>
     <string name="home_label_pending">Pendientes</string>
     <string name="home_label_incidents">Incidencias</string>
@@ -42,8 +42,8 @@
     <string name="scanner_exit">↓ SALIDA</string>
 
     <!-- Passport -->
-    <string name="passport_waiting_title">Escanear trabajador</string>
-    <string name="passport_waiting_hint">El pasaporte digital aparecerá aquí al escanear</string>
+    <string name="passport_waiting_title">Escanear spool</string>
+    <string name="passport_waiting_hint">La información del spool aparecerá aquí al escanear</string>
     <string name="passport_card_title">UTE TR — SE HASSI MESSAOUD PROJECT</string>
     <string name="passport_scanned_at">Escaneado: %s</string>
     <string name="passport_label_family_name">Apellido</string>
@@ -65,7 +65,7 @@
     <string name="passport_photo_no_connection">Foto guardada localmente. Se subirá en la próxima sincronización</string>
 
     <!-- Attendance -->
-    <string name="attendance_title">Registros de Acceso</string>
+    <string name="attendance_title">Registros de Spools</string>
     <string name="attendance_filter_all">Todos</string>
     <string name="attendance_filter_synced">Sincronizados</string>
     <string name="attendance_filter_pending">Pendientes</string>
@@ -128,10 +128,26 @@
     <string name="workers_count">%d trabajadores</string>
     <string name="workers_badge_format">Badge: %1$s | %2$s</string>
 
+    <!-- Spools sections -->
+    <string name="spools_section_workshop">Workshop</string>
+    <string name="spools_section_laydown">Laydown</string>
+    <string name="spools_section_site">Site</string>
+    <string name="spools_section_hint_workshop">Spools en fabricación</string>
+    <string name="spools_section_hint_laydown">Spools en almacén / patio</string>
+    <string name="spools_section_hint_site">Spools instalados en obra</string>
+    <string name="spools_empty_placeholder">Sin datos — pendiente de sincronización con ATLAS</string>
+    <string name="spools_count_format">%d spools</string>
+
     <!-- Vehicles -->
     <string name="menu_vehicles">Vehículos</string>
     <string name="vehicles_hint_search">Buscar vehículo…</string>
     <string name="vehicles_count">%d vehículos</string>
+    <string name="vehicles_packet_list_label">Packet List asociado</string>
+    <string name="vehicles_packet_list_none">Sin asignar</string>
+    <string name="vehicles_assign_packet_list">Asociar Packet List</string>
+    <string name="vehicles_title">Vehículos</string>
+    <string name="vehicles_empty_placeholder">No hay vehículos registrados — pendiente de creación en ATLAS</string>
+    <string name="vehicles_add">Añadir vehículo</string>
     <string name="vehicles_item_format">%1$s | %2$s</string>
     <string name="vehicles_plate_format">Matrícula: %s</string>
 

@@ -5,7 +5,7 @@
     <item android:id="@+id/passportFragment"   android:icon="@drawable/ic_passport"   android:title="@string/menu_passport" />
     <item android:id="@+id/attendanceFragment" android:icon="@drawable/ic_attendance" android:title="@string/menu_attendance" />
     <item android:id="@+id/syncFragment"       android:icon="@drawable/ic_sync"       android:title="@string/menu_sync" />
-    <item android:id="@+id/workersFragment"    android:icon="@drawable/ic_workers"    android:title="@string/menu_workers" />
+    <item android:id="@+id/workersFragment"    android:icon="@drawable/ic_spool"      android:title="@string/menu_workers" />
     <item android:id="@+id/vehiclesFragment"            android:icon="@drawable/ic_truck_24"        android:title="@string/menu_vehicles" />
     <item android:id="@+id/observationsGeneralFragment" android:icon="@drawable/ic_observation"     android:title="@string/menu_observations_general" />
     <item android:id="@+id/settingsFragment"            android:icon="@drawable/ic_settings"        android:title="@string/menu_settings" />

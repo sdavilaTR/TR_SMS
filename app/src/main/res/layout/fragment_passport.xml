@@ -14,11 +14,11 @@
         android:gravity="center"
         android:padding="32dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🪪"
-            android:textSize="64sp"
+        <ImageView
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:src="@drawable/ic_package_qr"
+            android:contentDescription="@string/passport_waiting_title"
             android:layout_marginBottom="20dp" />
 
         <TextView

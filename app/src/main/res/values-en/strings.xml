@@ -6,14 +6,14 @@
     <string name="menu_home">Home</string>
     <string name="menu_scanner">Smart Material System</string>
     <string name="menu_passport">Packet Lists</string>
-    <string name="menu_attendance">Records</string>
+    <string name="menu_attendance">Spool Records</string>
     <string name="menu_sync">Synchronization</string>
     <string name="menu_workers">Spools</string>
     <string name="menu_settings">Settings</string>
 
     <!-- Home -->
     <string name="home_label_terminal">Terminal</string>
-    <string name="home_label_workers">Workers</string>
+    <string name="home_label_workers">Spools</string>
     <string name="home_label_scans_today">Scans Today</string>
     <string name="home_label_pending">Pending</string>
     <string name="home_label_incidents">Incidents</string>
@@ -42,8 +42,8 @@
     <string name="scanner_exit">↓ EXIT</string>
 
     <!-- Passport -->
-    <string name="passport_waiting_title">Scan a worker</string>
-    <string name="passport_waiting_hint">The digital passport will appear here after scanning</string>
+    <string name="passport_waiting_title">Scan spool</string>
+    <string name="passport_waiting_hint">The spool information will appear here after scanning</string>
     <string name="passport_card_title">UTE TR — SE HASSI MESSAOUD PROJECT</string>
     <string name="passport_scanned_at">Scanned: %s</string>
     <string name="passport_label_family_name">Last Name</string>
@@ -66,7 +66,7 @@
     <string name="sync_pending_photos">Photos: %d</string>
 
     <!-- Attendance -->
-    <string name="attendance_title">Access Records</string>
+    <string name="attendance_title">Spool Records</string>
     <string name="attendance_filter_all">All</string>
     <string name="attendance_filter_synced">Synced</string>
     <string name="attendance_filter_pending">Pending</string>

@@ -13,7 +13,7 @@
 
     <!-- Home -->
     <string name="home_label_terminal">Terminal</string>
-    <string name="home_label_workers">Travailleurs</string>
+    <string name="home_label_workers">Spools</string>
     <string name="home_label_scans_today">Scans Aujourd\'hui</string>
     <string name="home_label_pending">En attente</string>
     <string name="home_label_incidents">Incidents</string>

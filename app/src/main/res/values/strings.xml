@@ -145,6 +145,9 @@
     <string name="vehicles_packet_list_label">Packet List asociado</string>
     <string name="vehicles_packet_list_none">Sin asignar</string>
     <string name="vehicles_assign_packet_list">Asociar Packet List</string>
+    <string name="vehicles_title">Vehículos</string>
+    <string name="vehicles_empty_placeholder">No hay vehículos registrados — pendiente de creación en ATLAS</string>
+    <string name="vehicles_add">Añadir vehículo</string>
     <string name="vehicles_item_format">%1$s | %2$s</string>
     <string name="vehicles_plate_format">Matrícula: %s</string>
 

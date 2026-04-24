@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">ATLAS Access Control</string>
+    <string name="app_name">Smart Material System</string>
 
     <!-- Navigation -->
-    <string name="nav_header_title">TR Access Control</string>
+    <string name="nav_header_title">Smart Material System</string>
     <string name="menu_home">Inicio</string>
-    <string name="menu_scanner">Control de Acceso</string>
+    <string name="menu_scanner">Smart Material System</string>
     <string name="menu_passport">Pasaporte Digital</string>
     <string name="menu_attendance">Registros</string>
     <string name="menu_sync">Sincronización</string>
@@ -17,7 +17,7 @@
     <string name="home_label_scans_today">Escaneos Hoy</string>
     <string name="home_label_pending">Pendientes</string>
     <string name="home_label_incidents">Incidencias</string>
-    <string name="home_btn_access">Control de Acceso</string>
+    <string name="home_btn_access">Smart Material System</string>
     <string name="home_btn_sync">Sincronizar</string>
     <string name="home_last_sync_none">Última sincronización: —</string>
     <string name="home_last_sync_format">Última sincronización: %s</string>
@@ -137,7 +137,7 @@
 
     <!-- Login -->
     <string name="login_app_name">ATLAS</string>
-    <string name="login_subtitle">Access Control</string>
+    <string name="login_subtitle">Smart Material System</string>
     <string name="login_hint_email">Email</string>
     <string name="login_hint_password">Contraseña</string>
     <string name="login_btn">Iniciar Sesión</string>

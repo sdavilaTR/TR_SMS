@@ -20,7 +20,7 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@color/primary"
             android:elevation="4dp"
-            app:title="ATLAS Access Control"
+            app:title="Smart Material System"
             app:titleTextColor="@color/on_primary"
             app:navigationIconTint="@color/on_primary"
             app:navigationIcon="@drawable/ic_menu" />

@@ -83,7 +83,7 @@ object UpdateInstaller {
         if (apkFile.exists()) apkFile.delete()
 
         val request = DownloadManager.Request(Uri.parse(updateInfo.downloadUrl))
-            .setTitle("ATLAS Access Control")
+            .setTitle("Smart Material System")
             .setDescription("Descargando versión ${updateInfo.version}…")
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, APK_FILENAME)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)

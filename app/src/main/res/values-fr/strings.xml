@@ -358,4 +358,21 @@
     <string name="settings_reinstall_previous">Réinstaller la version précédente</string>
     <string name="settings_reinstall_previous_title">Réinstaller la version précédente</string>
     <string name="settings_reinstall_previous_confirm">La version précédente conservée comme sauvegarde sera réinstallée. Continuer ?</string>
+    <!-- Spools sections -->
+    <string name="spools_section_workshop">Workshop</string>
+    <string name="spools_section_laydown">Laydown</string>
+    <string name="spools_section_site">Site</string>
+    <string name="spools_section_hint_workshop">Spools en fabrication</string>
+    <string name="spools_section_hint_laydown">Spools en stockage / parc</string>
+    <string name="spools_section_hint_site">Spools installés sur site</string>
+    <string name="spools_empty_placeholder">Aucune donnée — en attente de synchronisation avec ATLAS</string>
+    <string name="spools_count_format">%d spools</string>
+
+    <!-- Vehicles -->
+    <string name="vehicles_packet_list_label">Packet List associé</string>
+    <string name="vehicles_packet_list_none">Non assigné</string>
+    <string name="vehicles_assign_packet_list">Associer Packet List</string>
+    <string name="vehicles_title">Véhicules</string>
+    <string name="vehicles_empty_placeholder">Aucun véhicule enregistré — en attente de création dans ATLAS</string>
+    <string name="vehicles_add">Ajouter véhicule</string>
 </resources>

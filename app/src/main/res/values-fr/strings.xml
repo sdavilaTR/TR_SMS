@@ -6,7 +6,7 @@
     <string name="menu_home">Accueil</string>
     <string name="menu_scanner">Smart Material System</string>
     <string name="menu_passport">Packet Lists</string>
-    <string name="menu_attendance">Registres</string>
+    <string name="menu_attendance">Registres de Spools</string>
     <string name="menu_sync">Synchronisation</string>
     <string name="menu_workers">Spools</string>
     <string name="menu_settings">Paramètres</string>
@@ -66,7 +66,7 @@
     <string name="sync_pending_photos">Photos : %d</string>
 
     <!-- Attendance -->
-    <string name="attendance_title">Registres d\'accès</string>
+    <string name="attendance_title">Registres de Spools</string>
     <string name="attendance_filter_all">Tous</string>
     <string name="attendance_filter_synced">Synchronisés</string>
     <string name="attendance_filter_pending">En attente</string>

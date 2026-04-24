@@ -4,7 +4,7 @@
     <!-- Navigation -->
     <string name="nav_header_title">Smart Material System</string>
     <string name="menu_home">Home</string>
-    <string name="menu_scanner">Smart Material System</string>
+    <string name="menu_scanner">Create Spool</string>
     <string name="menu_passport">Packet Lists</string>
     <string name="menu_attendance">Spool Records</string>
     <string name="menu_sync">Synchronization</string>
@@ -358,4 +358,21 @@
     <string name="settings_reinstall_previous">Reinstall previous version</string>
     <string name="settings_reinstall_previous_title">Reinstall previous version</string>
     <string name="settings_reinstall_previous_confirm">The previous version kept as backup will be reinstalled. Continue?</string>
+    <!-- Spools sections -->
+    <string name="spools_section_workshop">Workshop</string>
+    <string name="spools_section_laydown">Laydown</string>
+    <string name="spools_section_site">Site</string>
+    <string name="spools_section_hint_workshop">Spools in fabrication</string>
+    <string name="spools_section_hint_laydown">Spools in storage / yard</string>
+    <string name="spools_section_hint_site">Spools installed on site</string>
+    <string name="spools_empty_placeholder">No data — waiting for ATLAS sync</string>
+    <string name="spools_count_format">%d spools</string>
+
+    <!-- Vehicles -->
+    <string name="vehicles_packet_list_label">Associated Packet List</string>
+    <string name="vehicles_packet_list_none">Unassigned</string>
+    <string name="vehicles_assign_packet_list">Assign Packet List</string>
+    <string name="vehicles_title">Vehicles</string>
+    <string name="vehicles_empty_placeholder">No vehicles registered — pending creation in ATLAS</string>
+    <string name="vehicles_add">Add vehicle</string>
 </resources>

@@ -128,6 +128,16 @@
     <string name="workers_count">%d trabajadores</string>
     <string name="workers_badge_format">Badge: %1$s | %2$s</string>
 
+    <!-- Spools sections -->
+    <string name="spools_section_workshop">Workshop</string>
+    <string name="spools_section_laydown">Laydown</string>
+    <string name="spools_section_site">Site</string>
+    <string name="spools_section_hint_workshop">Spools en fabricación</string>
+    <string name="spools_section_hint_laydown">Spools en almacén / patio</string>
+    <string name="spools_section_hint_site">Spools instalados en obra</string>
+    <string name="spools_empty_placeholder">Sin datos — pendiente de sincronización con ATLAS</string>
+    <string name="spools_count_format">%d spools</string>
+
     <!-- Vehicles -->
     <string name="menu_vehicles">Vehículos</string>
     <string name="vehicles_hint_search">Buscar vehículo…</string>

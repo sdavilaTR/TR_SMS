@@ -89,4 +89,20 @@ interface AtlasApiService {
     // ── Heartbeat ───────────────────────────────────────
     @POST("/api/trac/sync/heartbeat")
     suspend fun sendHeartbeat(@Body payload: HeartbeatPayload): Response<Void>
+
+    // ── SMS Spools ──────────────────────────────────────
+    // GET /api/atlas/projects/{projectCode}/spools  →  raw JSON (parsed in fragment after logging)
+    @GET("/api/atlas/projects/{projectCode}/spools")
+    suspend fun getSpools(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
+
+    // ── SMS Packing Lists ──────────────────────────────
+    @GET("/api/atlas/projects/{projectCode}/packing-lists")
+    suspend fun getPackingLists(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
+
+    @GET("/api/atlas/projects/{projectCode}/packing-lists/{id}/spools")
+    suspend fun getPackingListSpools(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("id") packingListId: String
+    ): Response<okhttp3.ResponseBody>
+
 }

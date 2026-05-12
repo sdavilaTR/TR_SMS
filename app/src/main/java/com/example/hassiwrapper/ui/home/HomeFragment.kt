@@ -40,13 +40,42 @@ class HomeFragment : Fragment() {
     private fun loadStats() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val workerCount = ServiceLocator.personDao.countActive()
                 val vehicleCount = ServiceLocator.vehicleDao.countActive()
                 val todayStr = LocalDate.now().toString() + "T00:00:00Z"
                 val scansToday = ServiceLocator.accessLogDao.getTodayCount(todayStr)
                 val pending = ServiceLocator.syncService.getPendingCounts()
                 val incidents = ServiceLocator.incidentDao.getUnresolvedCount()
                 val lastSync = ServiceLocator.configRepo.get("last_sync")
+
+                val projectId = 6
+                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+
+                suspend fun fetchCount(call: suspend (String) -> retrofit2.Response<okhttp3.ResponseBody>): Int {
+                    if (projectCode.isNullOrBlank()) return -1
+                    return try {
+                        val resp = call(projectCode)
+                        if (!resp.isSuccessful) -1
+                        else {
+                            val raw = resp.body()?.string().orEmpty()
+                            val el = com.google.gson.JsonParser.parseString(raw)
+                            when {
+                                el.isJsonArray -> el.asJsonArray.size()
+                                el.isJsonObject -> {
+                                    val obj = el.asJsonObject
+                                    listOf("data", "items", "results", "spools", "packingLists", "packing_lists")
+                                        .mapNotNull { obj.get(it) }
+                                        .firstOrNull { it.isJsonArray }
+                                        ?.asJsonArray?.size() ?: -1
+                                }
+                                else -> -1
+                            }
+                        }
+                    } catch (_: Exception) { -1 }
+                }
+
+                val api = ServiceLocator.apiClient.getService()
+                val spoolCount = fetchCount { api.getSpools(it) }
+                val packingListCount = fetchCount { api.getPackingLists(it) }
 
                 val terminalName     = ServiceLocator.configRepo.get("device_name")     ?: "—"
                 val terminalLocation = ServiceLocator.configRepo.get("device_location") ?: ""
@@ -60,11 +89,12 @@ class HomeFragment : Fragment() {
                     } else {
                         txtLoc.visibility = android.view.View.GONE
                     }
-                    v.findViewById<TextView>(R.id.txtWorkerCount).text = workerCount.toString()
                     v.findViewById<TextView>(R.id.txtVehicleCount).text = vehicleCount.toString()
                     v.findViewById<TextView>(R.id.txtScansToday).text = scansToday.toString()
                     v.findViewById<TextView>(R.id.txtPendingCount).text = (pending.logs + pending.incidents + pending.sessions).toString()
                     v.findViewById<TextView>(R.id.txtIncidentCount).text = incidents.toString()
+                    v.findViewById<TextView>(R.id.txtSpoolCount).text = if (spoolCount >= 0) spoolCount.toString() else "—"
+                    v.findViewById<TextView>(R.id.txtPackingListCount).text = if (packingListCount >= 0) packingListCount.toString() else "—"
                     v.findViewById<TextView>(R.id.txtLastSync).text = if (lastSync != null) {
                         getString(R.string.home_last_sync_format, lastSync.take(19).replace('T', ' '))
                     } else getString(R.string.home_last_sync_none)

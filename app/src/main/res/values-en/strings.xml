@@ -4,8 +4,13 @@
     <!-- Navigation -->
     <string name="nav_header_title">Smart Material System</string>
     <string name="menu_home">Home</string>
-    <string name="menu_scanner">Create Spool</string>
-    <string name="menu_passport">Packet Lists</string>
+    <string name="menu_scanner">Spools List</string>
+    <string name="menu_passport">Packing List</string>
+    <string name="packing_lists_empty">No packing lists.</string>
+    <string name="packing_lists_count">%1$d packing lists</string>
+    <string name="packing_lists_error_prefix">Error: %s</string>
+    <string name="packing_lists_error_http">HTTP %d</string>
+    <string name="home_label_packing_lists">Packing Lists</string>
     <string name="menu_attendance">Spool Records</string>
     <string name="menu_sync">Synchronization</string>
     <string name="menu_workers">Spools</string>
@@ -13,7 +18,8 @@
 
     <!-- Home -->
     <string name="home_label_terminal">Terminal</string>
-    <string name="home_label_workers">Spools</string>
+    <string name="home_label_workers">Workers</string>
+    <string name="home_label_spools">Spools</string>
     <string name="home_label_scans_today">Scans Today</string>
     <string name="home_label_pending">Pending</string>
     <string name="home_label_incidents">Incidents</string>
@@ -375,4 +381,9 @@
     <string name="vehicles_title">Vehicles</string>
     <string name="vehicles_empty_placeholder">No vehicles registered — pending creation in ATLAS</string>
     <string name="vehicles_add">Add vehicle</string>
+    <!-- Spools List -->
+    <string name="spools_list_count">%1$d spools</string>
+    <string name="spools_list_empty">No spools in ATLAS for this project</string>
+    <string name="spools_list_error_prefix">Error: %1$s</string>
+    <string name="spools_list_error_http">HTTP %1$d</string>
 </resources>

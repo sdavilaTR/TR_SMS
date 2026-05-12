@@ -77,6 +77,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.homeFragment,
                 R.id.scannerFragment,
                 R.id.passportFragment,
+                R.id.packingListsFragment,
                 R.id.attendanceFragment,
                 R.id.syncFragment,
                 R.id.workersFragment,
@@ -274,8 +275,8 @@ class MainActivity : AppCompatActivity() {
         val isHse  = profile == ProfileManager.Profile.HSE
         val isFull = !isUser && !isHse  // ADMIN, PRE, DEV
 
-        // Passport: visible for HSE, ADMIN, PRE, DEV
-        menu.findItem(R.id.passportFragment)?.isVisible    = !isUser
+        // Packing Lists (replaces old passport menu entry): visible for HSE, ADMIN, PRE, DEV
+        menu.findItem(R.id.packingListsFragment)?.isVisible = !isUser
 
         // Attendance, Workers, Vehicles: only full profiles (ADMIN, PRE, DEV)
         menu.findItem(R.id.attendanceFragment)?.isVisible  = isFull
@@ -308,7 +309,7 @@ class MainActivity : AppCompatActivity() {
         if (profile == ProfileManager.Profile.HSE) {
             val allowedInHse = setOf(
                 R.id.homeFragment, R.id.scannerFragment, R.id.syncFragment, R.id.settingsFragment,
-                R.id.passportFragment, R.id.observationsGeneralFragment, R.id.inspectionsFragment,
+                R.id.passportFragment, R.id.packingListsFragment, R.id.observationsGeneralFragment, R.id.inspectionsFragment,
                 R.id.observationFragment
             )
             if (currentDest != null && currentDest !in allowedInHse) {

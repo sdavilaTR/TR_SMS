@@ -5,8 +5,9 @@
     app:startDestination="@id/homeFragment">
 
     <fragment android:id="@+id/homeFragment"       android:name="com.example.hassiwrapper.ui.home.HomeFragment"           android:label="@string/menu_home" />
-    <fragment android:id="@+id/scannerFragment"    android:name="com.example.hassiwrapper.ui.scanner.ScannerFragment"      android:label="@string/menu_scanner" />
-    <fragment android:id="@+id/passportFragment"   android:name="com.example.hassiwrapper.ui.passport.PassportFragment"    android:label="@string/menu_passport" />
+    <fragment android:id="@+id/scannerFragment"    android:name="com.example.hassiwrapper.ui.createspool.CreateSpoolFragment" android:label="@string/menu_scanner" />
+    <fragment android:id="@+id/passportFragment"   android:name="com.example.hassiwrapper.ui.passport.PassportFragment"    android:label="@string/passport_screen_title" />
+    <fragment android:id="@+id/packingListsFragment" android:name="com.example.hassiwrapper.ui.packinglists.PackingListsFragment" android:label="@string/menu_passport" />
     <fragment android:id="@+id/attendanceFragment" android:name="com.example.hassiwrapper.ui.attendance.AttendanceFragment" android:label="@string/menu_attendance" />
     <fragment android:id="@+id/syncFragment"       android:name="com.example.hassiwrapper.ui.sync.SyncFragment"            android:label="@string/menu_sync" />
     <fragment android:id="@+id/workersFragment"    android:name="com.example.hassiwrapper.ui.workers.WorkersFragment"      android:label="@string/menu_workers" />

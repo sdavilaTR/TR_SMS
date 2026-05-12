@@ -4,8 +4,14 @@
     <!-- Navigation -->
     <string name="nav_header_title">Smart Material System</string>
     <string name="menu_home">Inicio</string>
-    <string name="menu_scanner">Crear Spool</string>
-    <string name="menu_passport">Packet Lists</string>
+    <string name="menu_scanner">Spools List</string>
+    <string name="menu_passport">Packing List</string>
+    <string name="passport_screen_title">Pasaporte</string>
+    <string name="packing_lists_empty">No hay packing lists.</string>
+    <string name="packing_lists_count">%1$d packing lists</string>
+    <string name="packing_lists_error_prefix">Error: %s</string>
+    <string name="packing_lists_error_http">Error HTTP %d</string>
+    <string name="home_label_packing_lists">Packing Lists</string>
     <string name="menu_attendance">Registros de Spools</string>
     <string name="menu_sync">Sincronización</string>
     <string name="menu_workers">Spools</string>
@@ -13,10 +19,11 @@
 
     <!-- Home -->
     <string name="home_label_terminal">Terminal</string>
-    <string name="home_label_workers">Spools</string>
+    <string name="home_label_workers">Trabajadores</string>
     <string name="home_label_scans_today">Escaneos Hoy</string>
     <string name="home_label_pending">Pendientes</string>
     <string name="home_label_incidents">Incidencias</string>
+    <string name="home_label_spools">Spools</string>
     <string name="home_btn_access">Smart Material System</string>
     <string name="home_btn_sync">Sincronizar</string>
     <string name="home_last_sync_none">Última sincronización: —</string>
@@ -375,4 +382,10 @@
     <string name="sync_auto_relogin">Reautenticando automáticamente…</string>
     <string name="sync_auto_relogin_ok">Sesión renovada, reintentando sincronización</string>
     <string name="sync_auto_relogin_fail">No se pudo renovar la sesión automáticamente</string>
+
+    <!-- Spools List -->
+    <string name="spools_list_count">%1$d spools</string>
+    <string name="spools_list_empty">No hay spools en ATLAS para este proyecto</string>
+    <string name="spools_list_error_prefix">Error: %1$s</string>
+    <string name="spools_list_error_http">HTTP %1$d</string>
 </resources>

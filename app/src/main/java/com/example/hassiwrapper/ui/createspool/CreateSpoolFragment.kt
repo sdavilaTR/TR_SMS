@@ -17,7 +17,9 @@ import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.network.dto.SpoolDto
+import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import kotlinx.coroutines.launch
@@ -38,6 +40,7 @@ class CreateSpoolFragment : Fragment() {
     private lateinit var txtError: TextView
     private lateinit var txtCount: TextView
     private lateinit var toggleFilter: MaterialButtonToggleGroup
+    private lateinit var fabNewSpool: FloatingActionButton
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_create_spool, container, false)
@@ -51,6 +54,10 @@ class CreateSpoolFragment : Fragment() {
         txtError     = view.findViewById(R.id.txtError)
         txtCount     = view.findViewById(R.id.txtCount)
         toggleFilter = view.findViewById(R.id.toggleFilter)
+        fabNewSpool  = view.findViewById(R.id.fabNewSpool)
+        fabNewSpool.setOnClickListener {
+            findNavController().navigate(R.id.action_scannerFragment_to_newSpoolFragment)
+        }
 
         adapter = SpoolAdapter()
         rv.layoutManager = LinearLayoutManager(requireContext())
@@ -68,7 +75,7 @@ class CreateSpoolFragment : Fragment() {
         }
 
         swipe.setOnRefreshListener { loadSpools(forceRefresh = true) }
-        loadSpools(forceRefresh = true)
+        loadSpools(forceRefresh = false)
     }
 
     private fun applyFilter() {
@@ -80,6 +87,11 @@ class CreateSpoolFragment : Fragment() {
         }
         adapter.notifyDataSetChanged()
         refreshCounts()
+    }
+
+    private suspend fun refreshPackingListMap(projectId: Int) {
+        val pls = ServiceLocator.smsPackingListDao.getByProject(projectId)
+        adapter.packingLists = pls.associate { it.packing_list_id to it.packing_list_name }
     }
 
     private fun loadSpools(forceRefresh: Boolean) {
@@ -99,6 +111,7 @@ class CreateSpoolFragment : Fragment() {
                 allInDb.forEach { s -> Log.d("SpoolsDebug", "  spool_id=${s.spool_id} code=${s.spool_code} pid=${s.project_id} active=${s.is_active} pl=${s.packing_list_id}") }
                 txtCount.text = "DBG pid=$projectId total=$totalInDb pids=$projectIds proj=$countForProj active=$countActive ignoreActive=${allInDb.size}"
 
+                refreshPackingListMap(projectId)
                 val cached = ServiceLocator.smsSpoolDao.getByProject(projectId)
                 if (cached.isNotEmpty() && !forceRefresh) {
                     Log.d("SpoolsDebug", "Using cache: ${cached.size} spools")
@@ -129,7 +142,7 @@ class CreateSpoolFragment : Fragment() {
                     Log.d("SpoolsDebug", "Parsed ${entities.size} entities from API")
                     entities.forEach { e -> Log.d("SpoolsDebug", "  entity spool_id=${e.spool_id} code=${e.spool_code} suffix=${e.spool_suffix} active=${e.is_active} pl=${e.packing_list_id}") }
                     if (entities.isNotEmpty()) {
-                        ServiceLocator.smsSpoolDao.deleteByProject(projectId)
+                        ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
                         ServiceLocator.smsSpoolDao.insertAll(entities)
                         Log.d("SpoolsDebug", "Inserted ${entities.size} spools")
                     } else {
@@ -192,6 +205,7 @@ class CreateSpoolFragment : Fragment() {
                 Log.d("SpoolsRAW", "element[$idx]: $element")
                 try {
                     val dto = gson.fromJson(element, SpoolDto::class.java)
+                    Log.d("SpoolsDTO", "[$idx] spoolCode=${dto.spoolCode} spoolSuffix=${dto.spoolSuffix} resolvedId=${dto.toEntity().spool_id}")
                     val entity = dto.toEntity()
                     if (entity.spool_id == 0L) return@mapIndexedNotNull null
                     // When spoolId is a non-numeric string (no true PK from API), mix in the
@@ -230,10 +244,14 @@ class CreateSpoolFragment : Fragment() {
     }
 
     private inner class SpoolAdapter : RecyclerView.Adapter<SpoolAdapter.VH>() {
+        var packingLists: Map<Long, String> = emptyMap()
+
         inner class VH(view: View) : RecyclerView.ViewHolder(view) {
-            val code:    TextView = view.findViewById(R.id.txtSpoolCode)
-            val line:    TextView = view.findViewById(R.id.txtSpoolLine)
-            val details: TextView = view.findViewById(R.id.txtSpoolDetails)
+            val code:        TextView = view.findViewById(R.id.txtSpoolCode)
+            val suffix:      TextView = view.findViewById(R.id.txtSpoolSuffix)
+            val line:        TextView = view.findViewById(R.id.txtSpoolLine)
+            val details:     TextView = view.findViewById(R.id.txtSpoolDetails)
+            val packingList: TextView = view.findViewById(R.id.txtPackingList)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
@@ -243,19 +261,24 @@ class CreateSpoolFragment : Fragment() {
 
         override fun onBindViewHolder(h: VH, position: Int) {
             val spool = items[position]
-            h.code.text = spool.displayCode.ifBlank { spool.spool_id.toString() }
+            Log.d("SpoolsUI", "bind[${spool.spool_id}] code=${spool.spool_code} suffix=${spool.spool_suffix}")
+            h.code.text = spool.spool_code.ifBlank { spool.spool_id.toString() }
+            h.suffix.text = spool.spool_suffix.orEmpty()
             if (!spool.line_code.isNullOrBlank()) {
                 h.line.text = spool.line_code
                 h.line.visibility = View.VISIBLE
             } else {
                 h.line.visibility = View.GONE
             }
-            val detail = listOfNotNull(spool.service, spool.train, spool.module).joinToString(" · ")
-            if (detail.isNotBlank()) {
-                h.details.text = detail
-                h.details.visibility = View.VISIBLE
+            h.details.visibility = View.GONE
+            val plId = spool.packing_list_id
+            if (plId != null) {
+                val plName = packingLists[plId] ?: "PL #$plId"
+                h.packingList.text = getString(R.string.spool_item_pl_assigned, plName)
+                h.packingList.setTextColor(requireContext().getColor(R.color.on_surface_variant))
             } else {
-                h.details.visibility = View.GONE
+                h.packingList.text = getString(R.string.spool_item_pl_none)
+                h.packingList.setTextColor(requireContext().getColor(R.color.on_surface_variant))
             }
             h.itemView.setOnClickListener { showSpoolDialog(spool) }
         }

@@ -49,7 +49,8 @@ object ServiceLocator {
             db.vehicleDao(),
             authRepo,
             db.trainingComplianceDao(),
-            db.documentComplianceDao()
+            db.documentComplianceDao(),
+            db.smsSpoolDao()
         )
     }
 

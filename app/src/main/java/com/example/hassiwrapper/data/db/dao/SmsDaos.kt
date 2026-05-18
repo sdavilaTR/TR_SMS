@@ -191,6 +191,21 @@ interface SmsSpoolDao {
 
     @Query("DELETE FROM sms_spool")
     suspend fun deleteAll()
+
+    @Query("SELECT MAX(spool_id) FROM sms_spool")
+    suspend fun getMaxId(): Long?
+
+    @Query("SELECT COUNT(*) FROM sms_spool WHERE project_id = :projectId AND spool_code = :spoolCode")
+    suspend fun countByProjectAndCode(projectId: Int, spoolCode: String): Int
+
+    @Query("SELECT * FROM sms_spool WHERE synced = 0")
+    suspend fun getUnsynced(): List<SmsSpoolEntity>
+
+    @Query("UPDATE sms_spool SET synced = 1 WHERE spool_id IN (:ids)")
+    suspend fun markSynced(ids: List<Long>)
+
+    @Query("DELETE FROM sms_spool WHERE project_id = :projectId AND synced = 1")
+    suspend fun deleteSyncedByProject(projectId: Int)
 }
 
 @Dao

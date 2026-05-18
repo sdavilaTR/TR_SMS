@@ -403,4 +403,25 @@
     <string name="spools_filter_all">Todos</string>
     <string name="spools_filter_assigned">Con PL</string>
     <string name="spools_filter_unassigned">Sin PL</string>
+
+    <!-- New Spool -->
+    <string name="new_spool_title">Nuevo Spool</string>
+    <string name="new_spool_section_id">Identificación ({unidad}-{línea}-{código}-{tren})</string>
+    <string name="new_spool_section_property">Propiedades</string>
+    <string name="new_spool_field_unit">Unidad *</string>
+    <string name="new_spool_field_line">Línea *</string>
+    <string name="new_spool_field_code">Código *</string>
+    <string name="new_spool_field_train">Tren *</string>
+    <string name="new_spool_preview_label">Código:</string>
+    <string name="new_spool_field_diameter_inches">Diámetro (pulgadas)</string>
+    <string name="new_spool_field_diameter">Diámetro</string>
+    <string name="new_spool_field_bore_size_id">ID Bore Size</string>
+    <string name="new_spool_field_weight_kg">Peso (kg)</string>
+    <string name="new_spool_btn_save">Guardar Spool</string>
+    <string name="new_spool_btn_create">Crear nuevo spool</string>
+    <string name="new_spool_success">Spool creado correctamente</string>
+    <string name="new_spool_error_field_required">Requerido</string>
+    <string name="new_spool_error_save">Error al guardar: %1$s</string>
+    <string name="spool_item_pl_assigned">Packing List: %1$s</string>
+    <string name="spool_item_pl_none">Sin Packing List asignado</string>
 </resources>

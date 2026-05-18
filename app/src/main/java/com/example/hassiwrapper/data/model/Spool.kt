@@ -23,7 +23,8 @@ data class Spool(
     val createdAt: String,
     val createdBy: String,
     val updatedAt: String?,
-    val updatedBy: String?
+    val updatedBy: String?,
+    val packingListId: Long? = null
 ) {
     val displayCode: String
         get() = if (spoolSuffix.isNullOrBlank()) spoolCode else "$spoolCode-$spoolSuffix"

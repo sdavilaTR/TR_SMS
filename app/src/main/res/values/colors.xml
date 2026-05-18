@@ -37,4 +37,5 @@
     <!-- Card and divider -->
     <color name="card_bg">#FFFFFFFF</color>
     <color name="divider">#FFE2E8F0</color>
+    <color name="surface_warning">#FFFFF8E1</color>
 </resources>

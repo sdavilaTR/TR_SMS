@@ -281,7 +281,7 @@ class SettingsFragment : Fragment() {
             .setTitle(getString(R.string.profile_access_code_title))
             .setView(input)
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                val code = input.text.toString().trim()
+                val code = input.text.toString().trim().uppercase()
                 if (ProfileManager.validateAccessCode(code)) {
                     switchProfile(target, label)
                 } else {

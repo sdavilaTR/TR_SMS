@@ -28,9 +28,25 @@ import com.example.hassiwrapper.data.db.entities.*
         HseObservationPhotoEntity::class,
         VehicleEntity::class,
         TrainingComplianceEntity::class,
-        DocumentComplianceEntity::class
+        DocumentComplianceEntity::class,
+        SmsAreaEntity::class,
+        SmsBoreSizeEntity::class,
+        SmsIncompleteStatusEntity::class,
+        SmsIsoTypeEntity::class,
+        SmsPackingListEntity::class,
+        SmsPackingListSpoolEntity::class,
+        SmsPositionEntity::class,
+        SmsSpecEntity::class,
+        SmsSpoolEntity::class,
+        SmsSpoolEventEntity::class,
+        SmsSpoolPropertyEntity::class,
+        SmsSpoolStatusEntity::class,
+        SmsSpoolStatusFlagsEntity::class,
+        SmsSubcontractorEntity::class,
+        SmsUnitEntity::class,
+        SmsVehicleEntity::class
     ],
-    version = 7,
+    version = 9,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -52,6 +68,22 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
     abstract fun trainingComplianceDao(): TrainingComplianceDao
     abstract fun documentComplianceDao(): DocumentComplianceDao
+    abstract fun smsAreaDao(): SmsAreaDao
+    abstract fun smsBoreSizeDao(): SmsBoreSizeDao
+    abstract fun smsIncompleteStatusDao(): SmsIncompleteStatusDao
+    abstract fun smsIsoTypeDao(): SmsIsoTypeDao
+    abstract fun smsPackingListDao(): SmsPackingListDao
+    abstract fun smsPackingListSpoolDao(): SmsPackingListSpoolDao
+    abstract fun smsPositionDao(): SmsPositionDao
+    abstract fun smsSpecDao(): SmsSpecDao
+    abstract fun smsSpoolDao(): SmsSpoolDao
+    abstract fun smsSpoolEventDao(): SmsSpoolEventDao
+    abstract fun smsSpoolPropertyDao(): SmsSpoolPropertyDao
+    abstract fun smsSpoolStatusDao(): SmsSpoolStatusDao
+    abstract fun smsSpoolStatusFlagsDao(): SmsSpoolStatusFlagsDao
+    abstract fun smsSubcontractorDao(): SmsSubcontractorDao
+    abstract fun smsUnitDao(): SmsUnitDao
+    abstract fun smsVehicleDao(): SmsVehicleDao
 
     /** Clears all data from every table (used when switching to DEV profile). */
     suspend fun clearAllData() {
@@ -210,6 +242,215 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v7 → v8: added all 16 SMS tables
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 7 → 8: create SMS tables")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_area` (
+                        `area_id` INTEGER NOT NULL PRIMARY KEY,
+                        `project_id` INTEGER NOT NULL,
+                        `parent_area_id` INTEGER,
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `full_path` TEXT NOT NULL DEFAULT '',
+                        `level` INTEGER NOT NULL DEFAULT 0,
+                        `is_active` INTEGER NOT NULL DEFAULT 1,
+                        `created_at` TEXT NOT NULL DEFAULT '',
+                        `created_by` TEXT NOT NULL DEFAULT '',
+                        `updated_at` TEXT,
+                        `updated_by` TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_bore_size` (
+                        `bore_size_id` INTEGER NOT NULL PRIMARY KEY,
+                        `code` TEXT NOT NULL DEFAULT '',
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `sort_order` INTEGER,
+                        `is_active` INTEGER NOT NULL DEFAULT 1
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_incomplete_status` (
+                        `incomplete_status_id` INTEGER NOT NULL PRIMARY KEY,
+                        `code` TEXT NOT NULL DEFAULT '',
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `sort_order` INTEGER,
+                        `is_active` INTEGER NOT NULL DEFAULT 1
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_iso_type` (
+                        `iso_type_id` INTEGER NOT NULL PRIMARY KEY,
+                        `code` TEXT NOT NULL DEFAULT '',
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `sort_order` INTEGER,
+                        `is_active` INTEGER NOT NULL DEFAULT 1
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_packing_list` (
+                        `packing_list_id` INTEGER NOT NULL PRIMARY KEY,
+                        `project_id` INTEGER NOT NULL,
+                        `packing_list_name` TEXT NOT NULL DEFAULT '',
+                        `vehicle_id` INTEGER,
+                        `position_id` INTEGER,
+                        `packing_date` TEXT NOT NULL DEFAULT '',
+                        `total_spools_count` INTEGER,
+                        `total_weight_kg` REAL,
+                        `notes` TEXT,
+                        `is_active` INTEGER NOT NULL DEFAULT 1,
+                        `created_at` TEXT NOT NULL DEFAULT '',
+                        `created_by` TEXT,
+                        `updated_at` TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_packing_list_spool` (
+                        `packing_list_spool_id` INTEGER NOT NULL PRIMARY KEY,
+                        `packing_list_id` INTEGER NOT NULL,
+                        `spool_id` INTEGER NOT NULL,
+                        `sequence_number` INTEGER,
+                        `added_at` TEXT NOT NULL DEFAULT '',
+                        `added_by` TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_position` (
+                        `position_id` INTEGER NOT NULL PRIMARY KEY,
+                        `code` TEXT NOT NULL DEFAULT '',
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `sort_order` INTEGER,
+                        `is_active` INTEGER NOT NULL DEFAULT 1
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_spec` (
+                        `spec_id` INTEGER NOT NULL PRIMARY KEY,
+                        `project_id` INTEGER NOT NULL,
+                        `code` TEXT NOT NULL DEFAULT '',
+                        `description` TEXT,
+                        `material_type` TEXT,
+                        `is_active` INTEGER NOT NULL DEFAULT 1,
+                        `created_at` TEXT NOT NULL DEFAULT '',
+                        `created_by` TEXT NOT NULL DEFAULT '',
+                        `updated_at` TEXT,
+                        `updated_by` TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_spool` (
+                        `spool_id` INTEGER NOT NULL PRIMARY KEY,
+                        `project_id` INTEGER NOT NULL,
+                        `spool_code` TEXT NOT NULL DEFAULT '',
+                        `spool_suffix` TEXT,
+                        `line_code` TEXT,
+                        `unit_id` INTEGER,
+                        `service` TEXT,
+                        `train` TEXT,
+                        `module` TEXT,
+                        `iso_type_id` INTEGER,
+                        `spec_id` INTEGER,
+                        `iso_revision_date` TEXT,
+                        `subcontractor_id` INTEGER,
+                        `area_id` INTEGER,
+                        `is_active` INTEGER NOT NULL DEFAULT 1,
+                        `created_at` TEXT NOT NULL DEFAULT '',
+                        `created_by` TEXT NOT NULL DEFAULT '',
+                        `updated_at` TEXT,
+                        `updated_by` TEXT,
+                        `packing_list_id` INTEGER
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_spool_event` (
+                        `event_id` INTEGER NOT NULL PRIMARY KEY,
+                        `event_date` TEXT NOT NULL DEFAULT '',
+                        `spool_id` INTEGER NOT NULL,
+                        `event_type` TEXT NOT NULL DEFAULT '',
+                        `old_value` TEXT,
+                        `new_value` TEXT,
+                        `source` TEXT,
+                        `created_at` TEXT NOT NULL DEFAULT '',
+                        `created_by` TEXT NOT NULL DEFAULT ''
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_spool_property` (
+                        `spool_id` INTEGER NOT NULL PRIMARY KEY,
+                        `diameter_inches` REAL,
+                        `diameter` REAL,
+                        `bore_size_id` INTEGER,
+                        `weight_kg` REAL,
+                        `updated_at` TEXT NOT NULL DEFAULT ''
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_spool_status` (
+                        `status_id` INTEGER NOT NULL PRIMARY KEY,
+                        `code` TEXT NOT NULL DEFAULT '',
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `sort_order` INTEGER,
+                        `is_active` INTEGER NOT NULL DEFAULT 1
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_spool_status_flags` (
+                        `spool_id` INTEGER NOT NULL PRIMARY KEY,
+                        `status_id` INTEGER,
+                        `incomplete_status_id` INTEGER,
+                        `position_id` INTEGER,
+                        `hold` INTEGER NOT NULL DEFAULT 0,
+                        `damaged` INTEGER NOT NULL DEFAULT 0,
+                        `returned_to_factory` INTEGER NOT NULL DEFAULT 0,
+                        `position_status_discrepancy` INTEGER NOT NULL DEFAULT 0,
+                        `review_discrepancy` INTEGER NOT NULL DEFAULT 0,
+                        `last_event_date` TEXT,
+                        `pca_status_date` TEXT,
+                        `pca_entry_date` TEXT,
+                        `updated_at` TEXT NOT NULL DEFAULT ''
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_subcontractor` (
+                        `subcontractor_id` INTEGER NOT NULL PRIMARY KEY,
+                        `project_id` INTEGER NOT NULL,
+                        `code` TEXT NOT NULL DEFAULT '',
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `is_active` INTEGER NOT NULL DEFAULT 1,
+                        `created_at` TEXT NOT NULL DEFAULT '',
+                        `created_by` TEXT NOT NULL DEFAULT '',
+                        `updated_at` TEXT,
+                        `updated_by` TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_unit` (
+                        `unit_id` INTEGER NOT NULL PRIMARY KEY,
+                        `code` TEXT NOT NULL DEFAULT '',
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `sort_order` INTEGER,
+                        `is_active` INTEGER NOT NULL DEFAULT 1
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_vehicle` (
+                        `vehicle_id` INTEGER NOT NULL PRIMARY KEY,
+                        `project_id` INTEGER NOT NULL,
+                        `company` TEXT,
+                        `license_plate` TEXT NOT NULL DEFAULT '',
+                        `vehicle_name` TEXT,
+                        `vehicle_type` TEXT,
+                        `capacity_weight_kg` REAL,
+                        `is_active` INTEGER NOT NULL DEFAULT 1,
+                        `created_at` TEXT NOT NULL DEFAULT '',
+                        `created_by` TEXT,
+                        `updated_at` TEXT
+                    )
+                """.trimIndent())
+            }
+        }
+
         // v6 → v7: added observation multi-target fields + photos table
         private val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -240,6 +481,14 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v8 → v9: added vehicle_plate column to sms_packing_list
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 8 → 9: add vehicle_plate to sms_packing_list")
+                db.execSQL("ALTER TABLE `sms_packing_list` ADD COLUMN `vehicle_plate` TEXT")
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -253,7 +502,9 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_3_4,
                         MIGRATION_4_5,
                         MIGRATION_5_6,
-                        MIGRATION_6_7
+                        MIGRATION_6_7,
+                        MIGRATION_7_8,
+                        MIGRATION_8_9
                     )
                     .build()
                 INSTANCE = instance

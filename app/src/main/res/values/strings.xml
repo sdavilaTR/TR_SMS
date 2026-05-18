@@ -157,6 +157,11 @@
     <string name="vehicles_add">Añadir vehículo</string>
     <string name="vehicles_item_format">%1$s | %2$s</string>
     <string name="vehicles_plate_format">Matrícula: %s</string>
+    <string name="vehicles_empty">No hay vehículos cargados.</string>
+    <string name="vehicles_error_prefix">Error: %s</string>
+    <string name="vehicles_error_http">HTTP %d</string>
+    <string name="vehicles_no_packing_lists">Sin packing lists asignados</string>
+    <string name="vehicles_packing_lists_label">Packing Lists</string>
 
     <!-- Login -->
     <string name="login_app_name">ATLAS</string>
@@ -383,9 +388,19 @@
     <string name="sync_auto_relogin_ok">Sesión renovada, reintentando sincronización</string>
     <string name="sync_auto_relogin_fail">No se pudo renovar la sesión automáticamente</string>
 
+    <!-- Debug: Project Switcher -->
+    <string name="home_btn_change_project">[DEBUG] Cambiar Proyecto</string>
+    <string name="home_dialog_select_project">Seleccionar proyecto</string>
+    <string name="home_syncing_project">Sincronizando…</string>
+    <string name="home_project_synced">Proyecto actualizado: %s</string>
+    <string name="home_project_label">Proyecto: %s</string>
+
     <!-- Spools List -->
     <string name="spools_list_count">%1$d spools</string>
     <string name="spools_list_empty">No hay spools en ATLAS para este proyecto</string>
     <string name="spools_list_error_prefix">Error: %1$s</string>
     <string name="spools_list_error_http">HTTP %1$d</string>
+    <string name="spools_filter_all">Todos</string>
+    <string name="spools_filter_assigned">Con PL</string>
+    <string name="spools_filter_unassigned">Sin PL</string>
 </resources>

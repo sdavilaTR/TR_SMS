@@ -42,7 +42,8 @@ class SyncService(
     private val vehicleDao: VehicleDao? = null,
     private val authRepo: AuthRepository? = null,
     private val trainingComplianceDao: com.example.hassiwrapper.data.db.dao.TrainingComplianceDao? = null,
-    private val documentComplianceDao: com.example.hassiwrapper.data.db.dao.DocumentComplianceDao? = null
+    private val documentComplianceDao: com.example.hassiwrapper.data.db.dao.DocumentComplianceDao? = null,
+    private val smsSpoolDao: SmsSpoolDao? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -220,6 +221,9 @@ class SyncService(
         val (incidentsUploaded, incidentsError) = uploadIncidents(api)
         val (sessionsUploaded, sessionsError)  = uploadSessions(api)
         val (observationsUploaded, observationsError) = uploadObservations(api)
+
+        // 4b. Upload locally-created spools (best-effort)
+        uploadNewSpools(api)
 
         // 5. Upload pending photos (non-fatal)
         val photoResult = uploadPendingPhotos(api)
@@ -659,6 +663,48 @@ class SyncService(
                 Pair(0, "Observaciones no subidas (HTTP ${response.code()})")
             }
         }
+    }
+
+    // ── New spool upload ──────────────────────────────────────────────────────
+
+    private suspend fun uploadNewSpools(api: AtlasApiService) {
+        val dao = smsSpoolDao ?: return
+        val unsynced = dao.getUnsynced()
+        if (unsynced.isEmpty()) return
+
+        Log.i(TAG, "Uploading ${unsynced.size} new spool(s)")
+        val synced = mutableListOf<Long>()
+
+        for (spool in unsynced) {
+            val projectId = spool.project_id
+            val project = projectDao.getById(projectId)
+            val projectCode = project?.project_code
+            if (projectCode.isNullOrBlank()) {
+                Log.w(TAG, "No project code for spool ${spool.spool_id}, skipping")
+                continue
+            }
+            try {
+                val body = CreateSpoolRequest(
+                    spoolCode   = spool.spool_code,
+                    spoolSuffix = spool.spool_suffix,
+                    lineCode    = spool.line_code,
+                    projectId   = projectId,
+                    createdAt   = spool.created_at,
+                    createdBy   = spool.created_by
+                )
+                val response = api.createSpool(projectCode, body)
+                if (response.isSuccessful) {
+                    synced.add(spool.spool_id)
+                    Log.i(TAG, "Spool ${spool.spool_id} uploaded")
+                } else {
+                    Log.e(TAG, "Spool ${spool.spool_id} upload failed: HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Spool ${spool.spool_id} upload error: ${e.message}")
+            }
+        }
+
+        if (synced.isNotEmpty()) dao.markSynced(synced)
     }
 
     // ── Pending photo uploads ─────────────────────────────────────────────────

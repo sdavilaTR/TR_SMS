@@ -46,7 +46,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsUnitEntity::class,
         SmsVehicleEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -489,6 +489,14 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v9 → v10: added synced column to sms_spool
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 9 → 10: add synced to sms_spool")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `synced` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -504,7 +512,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_5_6,
                         MIGRATION_6_7,
                         MIGRATION_7_8,
-                        MIGRATION_8_9
+                        MIGRATION_8_9,
+                        MIGRATION_9_10
                     )
                     .build()
                 INSTANCE = instance

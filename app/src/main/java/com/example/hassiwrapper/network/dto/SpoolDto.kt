@@ -5,11 +5,22 @@ import com.google.gson.annotations.SerializedName
 import com.example.hassiwrapper.data.model.Spool
 import java.util.zip.CRC32
 
+data class CreateSpoolRequest(
+    @SerializedName("spoolCode")   val spoolCode: String,
+    @SerializedName("spoolSuffix") val spoolSuffix: String?,
+    @SerializedName("lineCode")    val lineCode: String?,
+    @SerializedName("projectId")   val projectId: Int,
+    @SerializedName("createdAt")   val createdAt: String,
+    @SerializedName("createdBy")   val createdBy: String,
+    @SerializedName("isActive")    val isActive: Boolean = true
+)
+
 /** Transport object matching the JSON shape returned by ATLAS for [sms].[sms_spool].
  *  Handles two API formats:
  *   - Legacy: numeric spool_id, spool_code, spool_suffix fields
  *   - Current: string spoolId like "886-600C-65440-002", no spool_code field */
 data class SpoolDto(
+    @SerializedName(value = "id",                 alternate = ["numericId"])         val id: Long? = null,
     @SerializedName(value = "spool_id",           alternate = ["spoolId"])           val spoolId: String? = null,
     @SerializedName(value = "project_id",         alternate = ["projectId"])         val projectId: String? = null,
     @SerializedName(value = "project_code",       alternate = ["projectCode"])       val projectCode: String? = null,
@@ -47,7 +58,8 @@ data class SpoolDto(
      *  String IDs like "886-600C-65440-002" get a CRC32-based hash.
      *  Suffix is included in the hash key so SP01/SP02/... on the same code are distinct. */
     private fun resolveSpoolId(): Long {
-        val s = spoolId?.trim() ?: return 0L
+        if (id != null && id != 0L) return id
+        val s = (spoolId ?: spoolCode)?.trim() ?: return 0L
         if (s.isEmpty()) return 0L
         val numeric = s.toDoubleOrNull()?.toLong()
         if (numeric != null && numeric != 0L) return numeric
@@ -62,8 +74,7 @@ data class SpoolDto(
     /** Resolves display code: prefers explicit spool_code, falls back to full spoolId string. */
     private fun resolveSpoolCode(): String = spoolCode ?: spoolId.orEmpty()
 
-    /** Resolves unit/service label from either the legacy service field or the new assignedUnit. */
-    private fun resolveService(): String? = service ?: assignedUnit
+    private fun resolveService(): String? = service
 
     fun toModel(): Spool = Spool(
         resolveSpoolId(),
@@ -108,6 +119,7 @@ data class SpoolDto(
         created_by      = createdBy.orEmpty(),
         updated_at      = updatedAt,
         updated_by      = updatedBy,
-        packing_list_id = packingListId ?: defaultPackingListId
+        packing_list_id = packingListId ?: defaultPackingListId,
+        synced          = true
     )
 }

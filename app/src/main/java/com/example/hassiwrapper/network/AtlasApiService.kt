@@ -95,6 +95,12 @@ interface AtlasApiService {
     @GET("/api/atlas/projects/{projectCode}/spools")
     suspend fun getSpools(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
 
+    @POST("/api/atlas/projects/{projectCode}/spools")
+    suspend fun createSpool(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @Body body: CreateSpoolRequest
+    ): Response<okhttp3.ResponseBody>
+
     // ── SMS Packing Lists ──────────────────────────────
     @GET("/api/atlas/projects/{projectCode}/packing-lists")
     suspend fun getPackingLists(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>

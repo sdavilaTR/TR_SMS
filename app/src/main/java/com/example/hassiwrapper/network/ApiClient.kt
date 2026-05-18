@@ -1,5 +1,6 @@
 package com.example.hassiwrapper.network
 
+import com.example.hassiwrapper.BuildConfig
 import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.data.ConfigRepository
 import kotlinx.coroutines.Dispatchers
@@ -11,7 +12,12 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 
 /**
  * API client with primary/fallback URL resolution, JWT auth interceptor,
@@ -71,10 +77,26 @@ class ApiClient(
     /** Quick ping — returns true if the host responds within PING_TIMEOUT_MS. */
     private suspend fun ping(baseUrl: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            val client = OkHttpClient.Builder()
+            val pingBuilder = OkHttpClient.Builder()
                 .connectTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .readTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                .build()
+
+            // TODO: DELETE FOR PRODUCTION — bypasses SSL cert validation in debug builds
+            if (BuildConfig.DEBUG) {
+                val trustAll = object : X509TrustManager {
+                    override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+                    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+                    override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+                }
+                val sslContext = SSLContext.getInstance("TLS").apply {
+                    init(null, arrayOf<TrustManager>(trustAll), SecureRandom())
+                }
+                pingBuilder
+                    .sslSocketFactory(sslContext.socketFactory, trustAll)
+                    .hostnameVerifier { _, _ -> true }
+            }
+
+            val client = pingBuilder.build()
             val healthPath = if (ProfileManager.usesPublicProxy())
                 "${ProfileManager.PRO_PATH_PREFIX}/health" else "/health"
             val request = Request.Builder().url("$baseUrl$healthPath").get().build()
@@ -128,14 +150,30 @@ class ApiClient(
             chain.proceed(builder.build())
         }
 
-        val client = OkHttpClient.Builder()
+        val clientBuilder = OkHttpClient.Builder()
             .connectTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
             .readTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
             .writeTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
             .addInterceptor(proxyPrefixInterceptor)
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
-            .build()
+
+        // TODO: DELETE FOR PRODUCTION — bypasses SSL cert validation in debug builds
+        if (BuildConfig.DEBUG) {
+            val trustAll = object : X509TrustManager {
+                override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+                override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+                override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+            }
+            val sslContext = SSLContext.getInstance("TLS").apply {
+                init(null, arrayOf<TrustManager>(trustAll), SecureRandom())
+            }
+            clientBuilder
+                .sslSocketFactory(sslContext.socketFactory, trustAll)
+                .hostnameVerifier { _, _ -> true }
+        }
+
+        val client = clientBuilder.build()
 
         // Ensure baseUrl ends with /
         val normalizedBase = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"

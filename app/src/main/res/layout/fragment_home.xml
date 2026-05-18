@@ -446,6 +446,26 @@
             app:iconGravity="textStart"
             app:cornerRadius="12dp" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnChangeProject"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/home_btn_change_project"
+            android:textAllCaps="false"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_marginBottom="4dp"
+            app:cornerRadius="12dp" />
+
+        <TextView
+            android:id="@+id/txtProjectLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="@color/on_surface_variant"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:layout_marginBottom="4dp" />
+
         <TextView
             android:id="@+id/txtLastSync"
             android:layout_width="match_parent"

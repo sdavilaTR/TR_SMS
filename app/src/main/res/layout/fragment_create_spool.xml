@@ -24,6 +24,46 @@
         android:visibility="gone"
         android:layout_marginBottom="8dp" />
 
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/toggleFilter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        app:singleSelection="true"
+        app:selectionRequired="true">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFilterAll"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="@string/spools_filter_all"
+            android:textSize="13sp"
+            android:textAllCaps="false"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            app:cornerRadius="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFilterAssigned"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="@string/spools_filter_assigned"
+            android:textSize="13sp"
+            android:textAllCaps="false"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            app:cornerRadius="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFilterUnassigned"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="@string/spools_filter_unassigned"
+            android:textSize="13sp"
+            android:textAllCaps="false"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            app:cornerRadius="8dp" />
+
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefresh"
         android:layout_width="match_parent"

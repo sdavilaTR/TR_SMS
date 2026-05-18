@@ -67,4 +67,22 @@ object ServiceLocator {
     val vehicleDao get() = db.vehicleDao()
     val trainingComplianceDao get() = db.trainingComplianceDao()
     val documentComplianceDao get() = db.documentComplianceDao()
+
+    // SMS DAOs
+    val smsSpoolDao get() = db.smsSpoolDao()
+    val smsPackingListDao get() = db.smsPackingListDao()
+    val smsPackingListSpoolDao get() = db.smsPackingListSpoolDao()
+    val smsAreaDao get() = db.smsAreaDao()
+    val smsBoreSizeDao get() = db.smsBoreSizeDao()
+    val smsIncompleteStatusDao get() = db.smsIncompleteStatusDao()
+    val smsIsoTypeDao get() = db.smsIsoTypeDao()
+    val smsPositionDao get() = db.smsPositionDao()
+    val smsSpecDao get() = db.smsSpecDao()
+    val smsSpoolEventDao get() = db.smsSpoolEventDao()
+    val smsSpoolPropertyDao get() = db.smsSpoolPropertyDao()
+    val smsSpoolStatusDao get() = db.smsSpoolStatusDao()
+    val smsSpoolStatusFlagsDao get() = db.smsSpoolStatusFlagsDao()
+    val smsSubcontractorDao get() = db.smsSubcontractorDao()
+    val smsUnitDao get() = db.smsUnitDao()
+    val smsVehicleDao get() = db.smsVehicleDao()
 }

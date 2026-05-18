@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardVehicle"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="10dp"
@@ -39,37 +40,18 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/vehicles_packet_list_label"
+            android:text="@string/vehicles_packing_lists_label"
             android:textColor="@color/on_surface_variant"
             android:textSize="10sp"
             android:textAllCaps="true"
             android:letterSpacing="0.05" />
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/txtPacketList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginTop="4dp">
+            android:layout_marginTop="4dp"
+            android:textSize="14sp" />
 
-            <TextView
-                android:id="@+id/txtPacketList"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/vehicles_packet_list_none"
-                android:textColor="@color/on_surface"
-                android:textSize="14sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAssignPacketList"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:text="@string/vehicles_assign_packet_list"
-                android:textAllCaps="false"
-                android:textSize="12sp"
-                app:cornerRadius="8dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-        </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

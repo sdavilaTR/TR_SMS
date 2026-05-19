@@ -111,6 +111,20 @@ interface AtlasApiService {
         @retrofit2.http.Path("id") packingListId: String
     ): Response<okhttp3.ResponseBody>
 
+    @POST("/api/atlas/projects/{projectCode}/packing-lists/{plId}/spools")
+    suspend fun addSpoolToPackingList(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("plId") packingListId: Long,
+        @Body body: AssignSpoolRequest
+    ): Response<okhttp3.ResponseBody>
+
+    @DELETE("/api/atlas/projects/{projectCode}/packing-lists/{plId}/spools/{spoolId}")
+    suspend fun removeSpoolFromPackingList(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("plId") packingListId: Long,
+        @retrofit2.http.Path("spoolId") spoolId: Long
+    ): Response<okhttp3.ResponseBody>
+
     // ── SMS Vehicles ───────────────────────────────────
     @GET("/api/atlas/projects/{projectCode}/vehicles")
     suspend fun getVehicles(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
@@ -147,22 +161,22 @@ interface AtlasApiService {
     ): Response<okhttp3.ResponseBody>
 
     // ── SMS Global Lookups ────────────────────────────
-    @GET("/api/atlas/sms/bore-sizes")
-    suspend fun getBoreSizes(): Response<okhttp3.ResponseBody>
+    @GET("api/atlas/projects/{projectCode}/bore-sizes")
+    suspend fun getBoreSizes(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
 
-    @GET("/api/atlas/sms/iso-types")
-    suspend fun getIsoTypes(): Response<okhttp3.ResponseBody>
+    @GET("api/atlas/projects/{projectCode}/iso-types")
+    suspend fun getIsoTypes(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
 
-    @GET("/api/atlas/sms/positions")
-    suspend fun getPositions(): Response<okhttp3.ResponseBody>
+    @GET("api/atlas/projects/{projectCode}/positions")
+    suspend fun getPositions(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
 
-    @GET("/api/atlas/sms/spool-statuses")
-    suspend fun getSpoolStatuses(): Response<okhttp3.ResponseBody>
+    @GET("api/atlas/projects/{projectCode}/spool-statuses")
+    suspend fun getSpoolStatuses(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
 
-    @GET("/api/atlas/sms/units")
-    suspend fun getUnits(): Response<okhttp3.ResponseBody>
+    @GET("api/atlas/projects/{projectCode}/units")
+    suspend fun getUnits(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
 
-    @GET("/api/atlas/sms/incomplete-statuses")
-    suspend fun getIncompleteStatuses(): Response<okhttp3.ResponseBody>
+    @GET("api/atlas/projects/{projectCode}/incomplete-statuses")
+    suspend fun getIncompleteStatuses(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
 
 }

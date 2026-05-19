@@ -46,7 +46,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsUnitEntity::class,
         SmsVehicleEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -497,6 +497,19 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 10 → 11: add API fields to sms_spool")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `status` TEXT")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `description` TEXT")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `priority` TEXT")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `zone` TEXT")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `assigned_unit` TEXT")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `packing_list_name` TEXT")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `in_transit` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -513,7 +526,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_6_7,
                         MIGRATION_7_8,
                         MIGRATION_8_9,
-                        MIGRATION_9_10
+                        MIGRATION_9_10,
+                        MIGRATION_10_11
                     )
                     .build()
                 INSTANCE = instance

@@ -5,6 +5,11 @@ import com.google.gson.annotations.SerializedName
 import com.example.hassiwrapper.data.model.Spool
 import java.util.zip.CRC32
 
+data class AssignSpoolRequest(
+    @SerializedName("spoolId") val spoolId: Long,
+    @SerializedName("sequenceNumber") val sequenceNumber: Int
+)
+
 data class CreateSpoolRequest(
     @SerializedName("spoolCode")   val spoolCode: String,
     @SerializedName("spoolSuffix") val spoolSuffix: String?,
@@ -45,7 +50,10 @@ data class SpoolDto(
     @SerializedName(value = "created_by",         alternate = ["createdBy"])         val createdBy: String? = null,
     @SerializedName(value = "updated_at",         alternate = ["updatedAt"])         val updatedAt: String? = null,
     @SerializedName(value = "updated_by",         alternate = ["updatedBy", "lastModifiedBy"]) val updatedBy: String? = null,
-    @SerializedName(value = "packing_list_id",    alternate = ["packingListId"])     val packingListId: Long? = null
+    @SerializedName(value = "packing_list_id",    alternate = ["packingListId"])     val packingListId: Long? = null,
+    @SerializedName(value = "priority")                                              val priority: String? = null,
+    @SerializedName(value = "in_transit",        alternate = ["inTransit"])         val inTransit: Boolean? = null,
+    @SerializedName(value = "packing_list_name", alternate = ["packingListName"])   val packingListName: String? = null
 ) {
     private fun String?.toLongOrNullSafe(): Long? =
         this?.trim()?.takeIf { it.isNotEmpty() }?.toDoubleOrNull()?.toLong()
@@ -120,6 +128,13 @@ data class SpoolDto(
         updated_at      = updatedAt,
         updated_by      = updatedBy,
         packing_list_id = packingListId ?: defaultPackingListId,
-        synced          = true
+        synced          = true,
+        status          = status?.takeIf { it.isNotBlank() },
+        description     = description?.takeIf { it.isNotBlank() },
+        priority        = priority?.takeIf { it.isNotBlank() },
+        zone            = zone?.takeIf { it.isNotBlank() },
+        assigned_unit   = assignedUnit?.takeIf { it.isNotBlank() },
+        packing_list_name = packingListName?.takeIf { it.isNotBlank() },
+        in_transit      = inTransit ?: false
     )
 }

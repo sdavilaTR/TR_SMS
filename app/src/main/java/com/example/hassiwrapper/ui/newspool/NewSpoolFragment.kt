@@ -6,6 +6,8 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -13,8 +15,15 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
+import com.example.hassiwrapper.data.db.entities.SmsBoreSizeEntity
+import com.example.hassiwrapper.data.db.entities.SmsIncompleteStatusEntity
+import com.example.hassiwrapper.data.db.entities.SmsIsoTypeEntity
+import com.example.hassiwrapper.data.db.entities.SmsPositionEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolPropertyEntity
+import com.example.hassiwrapper.data.db.entities.SmsSpoolStatusEntity
+import com.example.hassiwrapper.data.db.entities.SmsSpoolStatusFlagsEntity
+import com.example.hassiwrapper.data.db.entities.SmsUnitEntity
 import com.example.hassiwrapper.network.dto.CreateSpoolRequest
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
@@ -29,36 +38,66 @@ class NewSpoolFragment : Fragment() {
     private lateinit var tilLine: TextInputLayout
     private lateinit var tilCode: TextInputLayout
     private lateinit var tilTrain: TextInputLayout
-    private lateinit var etUnit: TextInputEditText
+    private lateinit var tilIsoType: TextInputLayout
+    private lateinit var tilStatus: TextInputLayout
+    private lateinit var tilPosition: TextInputLayout
+    private lateinit var tilIncompleteStatus: TextInputLayout
+    private lateinit var tilBoreSize: TextInputLayout
+
+    private lateinit var actvUnit: AutoCompleteTextView
     private lateinit var etLine: TextInputEditText
     private lateinit var etCode: TextInputEditText
     private lateinit var etTrain: TextInputEditText
+    private lateinit var actvIsoType: AutoCompleteTextView
+    private lateinit var actvStatus: AutoCompleteTextView
+    private lateinit var actvPosition: AutoCompleteTextView
+    private lateinit var actvIncompleteStatus: AutoCompleteTextView
+    private lateinit var actvBoreSize: AutoCompleteTextView
+
     private lateinit var txtCodePreview: TextView
     private lateinit var txtSuffixPreview: TextView
     private lateinit var etDiameterInches: TextInputEditText
     private lateinit var etDiameter: TextInputEditText
-    private lateinit var etBoreSizeId: TextInputEditText
     private lateinit var etWeightKg: TextInputEditText
     private lateinit var btnSave: MaterialButton
+
+    private var selectedUnitId: Int? = null
+    private var selectedUnitCode: String = ""
+    private var selectedIsoTypeId: Int? = null
+    private var selectedStatusId: Int? = null
+    private var selectedPositionId: Int? = null
+    private var selectedIncompleteStatusId: Int? = null
+    private var selectedBoreSizeId: Int? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_new_spool, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        tilUnit          = view.findViewById(R.id.tilUnit)
-        tilLine          = view.findViewById(R.id.tilLine)
-        tilCode          = view.findViewById(R.id.tilCode)
-        tilTrain         = view.findViewById(R.id.tilTrain)
-        etUnit           = view.findViewById(R.id.etUnit)
-        etLine           = view.findViewById(R.id.etLine)
-        etCode           = view.findViewById(R.id.etCode)
-        etTrain          = view.findViewById(R.id.etTrain)
+        tilUnit             = view.findViewById(R.id.tilUnit)
+        tilLine             = view.findViewById(R.id.tilLine)
+        tilCode             = view.findViewById(R.id.tilCode)
+        tilTrain            = view.findViewById(R.id.tilTrain)
+        tilIsoType          = view.findViewById(R.id.tilIsoType)
+        tilStatus           = view.findViewById(R.id.tilStatus)
+        tilPosition         = view.findViewById(R.id.tilPosition)
+        tilIncompleteStatus = view.findViewById(R.id.tilIncompleteStatus)
+        tilBoreSize         = view.findViewById(R.id.tilBoreSize)
+
+        actvUnit             = view.findViewById(R.id.actvUnit)
+        etLine               = view.findViewById(R.id.etLine)
+        etCode               = view.findViewById(R.id.etCode)
+        etTrain              = view.findViewById(R.id.etTrain)
+        actvIsoType          = view.findViewById(R.id.actvIsoType)
+        actvStatus           = view.findViewById(R.id.actvStatus)
+        actvPosition         = view.findViewById(R.id.actvPosition)
+        actvIncompleteStatus = view.findViewById(R.id.actvIncompleteStatus)
+        actvBoreSize         = view.findViewById(R.id.actvBoreSize)
+
         txtCodePreview   = view.findViewById(R.id.txtSpoolCodePreview)
         txtSuffixPreview = view.findViewById(R.id.txtSuffixPreview)
         etDiameterInches = view.findViewById(R.id.etDiameterInches)
         etDiameter       = view.findViewById(R.id.etDiameter)
-        etBoreSizeId     = view.findViewById(R.id.etBoreSizeId)
         etWeightKg       = view.findViewById(R.id.etWeightKg)
         btnSave          = view.findViewById(R.id.btnSave)
 
@@ -67,7 +106,6 @@ class NewSpoolFragment : Fragment() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
             override fun afterTextChanged(s: Editable?) { updatePreview() }
         }
-        etUnit.addTextChangedListener(codeWatcher)
         etLine.addTextChangedListener(codeWatcher)
         etCode.addTextChangedListener(codeWatcher)
         etTrain.addTextChangedListener(codeWatcher)
@@ -75,10 +113,55 @@ class NewSpoolFragment : Fragment() {
         txtSuffixPreview.setTextColor(requireContext().getColor(R.color.primary))
         updatePreview()
         btnSave.setOnClickListener { saveSpool() }
+
+        loadDropdownData()
+    }
+
+    private fun loadDropdownData() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val units             = ServiceLocator.smsUnitDao.getAll()
+            val isoTypes          = ServiceLocator.smsIsoTypeDao.getAll()
+            val statuses          = ServiceLocator.smsSpoolStatusDao.getAll()
+            val positions         = ServiceLocator.smsPositionDao.getAll()
+            val incompleteStatuses = ServiceLocator.smsIncompleteStatusDao.getAll()
+            val boreSizes         = ServiceLocator.smsBoreSizeDao.getAll()
+
+            setupUnitDropdown(units)
+            setupDropdown(actvIsoType, isoTypes, { it.name.ifBlank { it.code } }) { selectedIsoTypeId = it?.iso_type_id }
+            setupDropdown(actvStatus, statuses, { it.name.ifBlank { it.code } }) { selectedStatusId = it?.status_id }
+            setupDropdown(actvPosition, positions, { it.name.ifBlank { it.code } }) { selectedPositionId = it?.position_id }
+            setupDropdown(actvIncompleteStatus, incompleteStatuses, { it.name.ifBlank { it.code } }) { selectedIncompleteStatusId = it?.incomplete_status_id }
+            setupDropdown(actvBoreSize, boreSizes, { it.name.ifBlank { it.code } }) { selectedBoreSizeId = it?.bore_size_id }
+        }
+    }
+
+    private fun setupUnitDropdown(units: List<SmsUnitEntity>) {
+        val labels = units.map { it.name.ifBlank { it.code } }
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, labels)
+        actvUnit.setAdapter(adapter)
+        actvUnit.setOnItemClickListener { _, _, position, _ ->
+            val unit = units[position]
+            selectedUnitId   = unit.unit_id
+            selectedUnitCode = unit.code
+            tilUnit.error    = null
+            updatePreview()
+        }
+    }
+
+    private fun <T> setupDropdown(
+        actv: AutoCompleteTextView,
+        items: List<T>,
+        displayFn: (T) -> String,
+        onSelect: (T?) -> Unit
+    ) {
+        val labels = items.map(displayFn)
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, labels)
+        actv.setAdapter(adapter)
+        actv.setOnItemClickListener { _, _, position, _ -> onSelect(items[position]) }
     }
 
     private fun buildSpoolCode(): String {
-        val unit  = etUnit.text?.toString()?.trim().orEmpty()
+        val unit  = selectedUnitCode
         val line  = etLine.text?.toString()?.trim().orEmpty()
         val code  = etCode.text?.toString()?.trim().orEmpty()
         val train = etTrain.text?.toString()?.trim().orEmpty()
@@ -100,7 +183,6 @@ class NewSpoolFragment : Fragment() {
     }
 
     private fun saveSpool() {
-        val unit  = etUnit.text?.toString()?.trim().orEmpty()
         val line  = etLine.text?.toString()?.trim().orEmpty()
         val code  = etCode.text?.toString()?.trim().orEmpty()
         val train = etTrain.text?.toString()?.trim().orEmpty()
@@ -111,7 +193,7 @@ class NewSpoolFragment : Fragment() {
         tilTrain.error = null
 
         var valid = true
-        if (unit.isEmpty())  { tilUnit.error  = getString(R.string.new_spool_error_field_required); valid = false }
+        if (selectedUnitId == null) { tilUnit.error  = getString(R.string.new_spool_error_field_required); valid = false }
         if (line.isEmpty())  { tilLine.error  = getString(R.string.new_spool_error_field_required); valid = false }
         if (code.isEmpty())  { tilCode.error  = getString(R.string.new_spool_error_field_required); valid = false }
         if (train.isEmpty()) { tilTrain.error = getString(R.string.new_spool_error_field_required); valid = false }
@@ -122,25 +204,26 @@ class NewSpoolFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                val spoolCode = "$unit-$line-$code-$train"
+                val spoolCode = "$selectedUnitCode-$line-$code-$train"
                 val count     = ServiceLocator.smsSpoolDao.countByProjectAndCode(projectId, spoolCode)
                 val suffix    = "SP%02d".format(count + 1)
                 val spoolId   = (ServiceLocator.smsSpoolDao.getMaxId() ?: 0L) + 1L
                 val now       = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
 
                 val spool = SmsSpoolEntity(
-                    spool_id   = spoolId,
-                    project_id = projectId,
-                    spool_code = spoolCode,
+                    spool_id     = spoolId,
+                    project_id   = projectId,
+                    spool_code   = spoolCode,
                     spool_suffix = suffix,
-                    line_code  = line,
-                    is_active  = true,
-                    created_at = now,
-                    created_by = ""
+                    line_code    = line,
+                    unit_id      = selectedUnitId,
+                    iso_type_id  = selectedIsoTypeId,
+                    is_active    = true,
+                    created_at   = now,
+                    created_by   = ""
                 )
                 ServiceLocator.smsSpoolDao.insertAll(listOf(spool))
 
-                // Intentar subir inmediatamente; si falla, SyncService reintenta
                 try {
                     val project = ServiceLocator.projectDao.getById(projectId)
                     val projectCode = project?.project_code
@@ -166,11 +249,20 @@ class NewSpoolFragment : Fragment() {
                     spool_id        = spoolId,
                     diameter_inches = etDiameterInches.text?.toString()?.trim()?.toDoubleOrNull(),
                     diameter        = etDiameter.text?.toString()?.trim()?.toDoubleOrNull(),
-                    bore_size_id    = etBoreSizeId.text?.toString()?.trim()?.toIntOrNull(),
+                    bore_size_id    = selectedBoreSizeId,
                     weight_kg       = etWeightKg.text?.toString()?.trim()?.toDoubleOrNull(),
                     updated_at      = now
                 )
                 ServiceLocator.smsSpoolPropertyDao.insertAll(listOf(property))
+
+                val statusFlags = SmsSpoolStatusFlagsEntity(
+                    spool_id             = spoolId,
+                    status_id            = selectedStatusId,
+                    incomplete_status_id = selectedIncompleteStatusId,
+                    position_id          = selectedPositionId,
+                    updated_at           = now
+                )
+                ServiceLocator.smsSpoolStatusFlagsDao.insertAll(listOf(statusFlags))
 
                 Toast.makeText(requireContext(), getString(R.string.new_spool_success), Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()

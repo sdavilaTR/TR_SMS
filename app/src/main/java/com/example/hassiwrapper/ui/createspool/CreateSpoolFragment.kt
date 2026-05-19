@@ -1,6 +1,5 @@
 package com.example.hassiwrapper.ui.createspool
 
-import android.app.AlertDialog
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -285,27 +284,9 @@ class CreateSpoolFragment : Fragment() {
     }
 
     private fun showSpoolDialog(spool: SmsSpoolEntity) {
-        val body = buildString {
-            appendLine("ID: ${spool.spool_id}")
-            appendLine("Código: ${spool.displayCode}")
-            spool.line_code?.let { appendLine("Línea: $it") }
-            spool.service?.let { appendLine("Servicio: $it") }
-            spool.train?.let { appendLine("Tren: $it") }
-            spool.module?.let { appendLine("Módulo: $it") }
-            spool.iso_revision_date?.let { appendLine("Fecha ISO: $it") }
-            spool.area_id?.let { appendLine("Área ID: $it") }
-            spool.spec_id?.let { appendLine("Spec ID: $it") }
-            spool.subcontractor_id?.let { appendLine("Subcontratista ID: $it") }
-            spool.packing_list_id?.let { appendLine("Packing List ID: $it") }
-                ?: appendLine("Sin Packing List asignado")
-            appendLine("Activo: ${if (spool.is_active) "Sí" else "No"}")
-            appendLine("Creado: ${spool.created_at} por ${spool.created_by}")
-            spool.updated_at?.let { appendLine("Actualizado: $it por ${spool.updated_by.orEmpty()}") }
-        }.trimEnd()
-        AlertDialog.Builder(requireContext())
-            .setTitle(spool.displayCode.ifBlank { "Spool ${spool.spool_id}" })
-            .setMessage(body)
-            .setPositiveButton(android.R.string.ok, null)
-            .show()
+        SpoolDetailBottomSheet.newInstance(spool.spool_id).also { sheet ->
+            sheet.onSpoolUpdated = { loadSpools(forceRefresh = false) }
+            sheet.show(childFragmentManager, "spool_detail")
+        }
     }
 }

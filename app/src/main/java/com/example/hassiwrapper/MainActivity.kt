@@ -21,9 +21,9 @@ import com.example.hassiwrapper.ui.login.LoginActivity
 import com.example.hassiwrapper.update.UpdateChecker
 import com.example.hassiwrapper.update.UpdateInfo
 import com.example.hassiwrapper.update.UpdateInstaller
-import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
-import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
-import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
+import com.example.hassiwrapper.data.db.entities.*
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
 import com.example.hassiwrapper.network.dto.SmsPackingListDto
 import com.example.hassiwrapper.network.dto.SmsVehicleDto
 import com.example.hassiwrapper.network.dto.SpoolDto
@@ -318,8 +318,13 @@ class MainActivity : AppCompatActivity() {
 
             val spoolResp = service.getSpools(projectCode)
             if (spoolResp.isSuccessful) {
-                val entities = parseSpoolEntities(spoolResp.body()?.string().orEmpty(), projectId)
+                val spoolRaw = spoolResp.body()?.string().orEmpty()
+                Log.d(TAG, "syncSmsData spools raw(500): ${spoolRaw.take(500)}")
+                val entities = parseSpoolEntities(spoolRaw, projectId)
                 if (entities.isNotEmpty()) {
+                    entities.take(2).forEach { e ->
+                        Log.d(TAG, "spool entity: id=${e.spool_id} code=${e.spool_code} suf=${e.spool_suffix} line=${e.line_code} service=${e.service} train=${e.train} module=${e.module} area=${e.area_id} spec=${e.spec_id} unit=${e.unit_id} iso=${e.iso_type_id} sub=${e.subcontractor_id}")
+                    }
                     ServiceLocator.smsSpoolDao.deleteByProject(projectId)
                     ServiceLocator.smsSpoolDao.insertAll(entities)
                     Log.d(TAG, "syncSmsData: inserted ${entities.size} spools")
@@ -346,6 +351,83 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "syncSmsData: inserted ${entities.size} vehicles")
                 }
             }
+
+            // Project-specific lookups
+            fun logLookup(name: String, resp: retrofit2.Response<okhttp3.ResponseBody>, count: Int) {
+                Log.d(TAG, "syncSMS lookup $name: HTTP ${resp.code()} → parsed $count")
+                if (!resp.isSuccessful) Log.w(TAG, "syncSMS lookup $name error body: ${resp.errorBody()?.string()?.take(200)}")
+            }
+            service.getAreas(projectCode).let { r ->
+                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                Log.d(TAG, "syncSMS areas raw(200): ${raw.take(200)}")
+                parseAreaEntities(raw, projectId).also { list ->
+                    logLookup("areas", r, list.size)
+                    if (list.isNotEmpty()) { ServiceLocator.smsAreaDao.deleteByProject(projectId); ServiceLocator.smsAreaDao.insertAll(list) }
+                }
+            }
+            service.getSpecs(projectCode).let { r ->
+                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                Log.d(TAG, "syncSMS specs raw(200): ${raw.take(200)}")
+                parseSpecEntities(raw, projectId).also { list ->
+                    logLookup("specs", r, list.size)
+                    if (list.isNotEmpty()) { ServiceLocator.smsSpecDao.deleteByProject(projectId); ServiceLocator.smsSpecDao.insertAll(list) }
+                }
+            }
+            service.getSubcontractors(projectCode).let { r ->
+                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                Log.d(TAG, "syncSMS subcontractors raw(200): ${raw.take(200)}")
+                parseSubcontractorEntities(raw, projectId).also { list ->
+                    logLookup("subcontractors", r, list.size)
+                    if (list.isNotEmpty()) { ServiceLocator.smsSubcontractorDao.deleteByProject(projectId); ServiceLocator.smsSubcontractorDao.insertAll(list) }
+                }
+            }
+
+            service.getBoreSizes(projectCode).let { r ->
+                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                Log.d(TAG, "syncSMS bore-sizes raw(300): ${raw.take(300)}")
+                parseBoreSizes(raw).also { list ->
+                    logLookup("bore-sizes", r, list.size)
+                    if (list.isNotEmpty()) { ServiceLocator.smsBoreSizeDao.deleteAll(); ServiceLocator.smsBoreSizeDao.insertAll(list) }
+                }
+            }
+            service.getIsoTypes(projectCode).let { r ->
+                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                Log.d(TAG, "syncSMS iso-types raw(300): ${raw.take(300)}")
+                parseIsoTypes(raw).also { list ->
+                    logLookup("iso-types", r, list.size)
+                    if (list.isNotEmpty()) { ServiceLocator.smsIsoTypeDao.deleteAll(); ServiceLocator.smsIsoTypeDao.insertAll(list) }
+                }
+            }
+            service.getPositions(projectCode).let { r ->
+                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                parsePositions(raw).also { list ->
+                    logLookup("positions", r, list.size)
+                    if (list.isNotEmpty()) { ServiceLocator.smsPositionDao.deleteAll(); ServiceLocator.smsPositionDao.insertAll(list) }
+                }
+            }
+            service.getSpoolStatuses(projectCode).let { r ->
+                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                Log.d(TAG, "syncSMS spool-statuses raw(300): ${raw.take(300)}")
+                parseSpoolStatuses(raw).also { list ->
+                    logLookup("spool-statuses", r, list.size)
+                    if (list.isNotEmpty()) { ServiceLocator.smsSpoolStatusDao.deleteAll(); ServiceLocator.smsSpoolStatusDao.insertAll(list) }
+                }
+            }
+            service.getUnits(projectCode).let { r ->
+                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                parseUnits(raw).also { list ->
+                    logLookup("units", r, list.size)
+                    if (list.isNotEmpty()) { ServiceLocator.smsUnitDao.deleteAll(); ServiceLocator.smsUnitDao.insertAll(list) }
+                }
+            }
+            service.getIncompleteStatuses(projectCode).let { r ->
+                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                parseIncompleteStatuses(raw).also { list ->
+                    logLookup("incomplete-statuses", r, list.size)
+                    if (list.isNotEmpty()) { ServiceLocator.smsIncompleteStatusDao.deleteAll(); ServiceLocator.smsIncompleteStatusDao.insertAll(list) }
+                }
+            }
+
         } catch (e: Exception) {
             Log.e(TAG, "syncSmsData failed", e)
         }
@@ -420,6 +502,94 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) { emptyList() }
     }
 
+    private fun parseAreaEntities(raw: String, projectId: Int): List<SmsAreaEntity> =
+        smsJsonArray(raw).mapNotNull { el ->
+            if (!el.isJsonObject) null else el.asJsonObject.let { o ->
+                val id = o.jLong("areaId", "area_id", "id") ?: return@mapNotNull null
+                SmsAreaEntity(id, projectId, o.jLong("parentAreaId", "parent_area_id"),
+                    o.jStr("name").orEmpty(), o.jStr("fullPath", "full_path").orEmpty(),
+                    o.jInt("level") ?: 0, o.jBool("isActive", "is_active") ?: true,
+                    o.jStr("createdAt", "created_at").orEmpty(), o.jStr("createdBy", "created_by").orEmpty(),
+                    o.jStr("updatedAt", "updated_at"), o.jStr("updatedBy", "updated_by"))
+            }
+        }
+
+    private fun parseSpecEntities(raw: String, projectId: Int): List<SmsSpecEntity> =
+        smsJsonArray(raw).mapNotNull { el ->
+            if (!el.isJsonObject) null else el.asJsonObject.let { o ->
+                val id = o.jLong("specId", "spec_id", "id") ?: return@mapNotNull null
+                SmsSpecEntity(id, projectId, o.jStr("code").orEmpty(), o.jStr("description"),
+                    o.jStr("materialType", "material_type"), o.jBool("isActive", "is_active") ?: true,
+                    o.jStr("createdAt", "created_at").orEmpty(), o.jStr("createdBy", "created_by").orEmpty(),
+                    o.jStr("updatedAt", "updated_at"), o.jStr("updatedBy", "updated_by"))
+            }
+        }
+
+    private fun parseSubcontractorEntities(raw: String, projectId: Int): List<SmsSubcontractorEntity> =
+        smsJsonArray(raw).mapNotNull { el ->
+            if (!el.isJsonObject) null else el.asJsonObject.let { o ->
+                val id = o.jLong("subcontractorId", "subcontractor_id", "id") ?: return@mapNotNull null
+                SmsSubcontractorEntity(id, projectId, o.jStr("code").orEmpty(), o.jStr("name").orEmpty(),
+                    o.jBool("isActive", "is_active") ?: true, o.jStr("createdAt", "created_at").orEmpty(),
+                    o.jStr("createdBy", "created_by").orEmpty(), o.jStr("updatedAt", "updated_at"),
+                    o.jStr("updatedBy", "updated_by"))
+            }
+        }
+
+    private fun parseBoreSizes(raw: String): List<SmsBoreSizeEntity> =
+        smsJsonArray(raw).mapNotNull { el ->
+            if (!el.isJsonObject) null else el.asJsonObject.let { o ->
+                val id = o.jInt("boreSizeId", "bore_size_id", "id") ?: return@mapNotNull null
+                SmsBoreSizeEntity(id, o.jStr("code").orEmpty(), o.jStr("name").orEmpty(),
+                    o.jInt("sortOrder", "sort_order"), o.jBool("isActive", "is_active") ?: true)
+            }
+        }
+
+    private fun parseIsoTypes(raw: String): List<SmsIsoTypeEntity> =
+        smsJsonArray(raw).mapNotNull { el ->
+            if (!el.isJsonObject) null else el.asJsonObject.let { o ->
+                val id = o.jInt("isoTypeId", "iso_type_id", "id") ?: return@mapNotNull null
+                SmsIsoTypeEntity(id, o.jStr("code").orEmpty(), o.jStr("name").orEmpty(),
+                    o.jInt("sortOrder", "sort_order"), o.jBool("isActive", "is_active") ?: true)
+            }
+        }
+
+    private fun parsePositions(raw: String): List<SmsPositionEntity> =
+        smsJsonArray(raw).mapNotNull { el ->
+            if (!el.isJsonObject) null else el.asJsonObject.let { o ->
+                val id = o.jInt("positionId", "position_id", "id") ?: return@mapNotNull null
+                SmsPositionEntity(id, o.jStr("code").orEmpty(), o.jStr("name").orEmpty(),
+                    o.jInt("sortOrder", "sort_order"), o.jBool("isActive", "is_active") ?: true)
+            }
+        }
+
+    private fun parseSpoolStatuses(raw: String): List<SmsSpoolStatusEntity> =
+        smsJsonArray(raw).mapNotNull { el ->
+            if (!el.isJsonObject) null else el.asJsonObject.let { o ->
+                val id = o.jInt("statusId", "status_id", "id") ?: return@mapNotNull null
+                SmsSpoolStatusEntity(id, o.jStr("code").orEmpty(), o.jStr("name").orEmpty(),
+                    o.jInt("sortOrder", "sort_order"), o.jBool("isActive", "is_active") ?: true)
+            }
+        }
+
+    private fun parseUnits(raw: String): List<SmsUnitEntity> =
+        smsJsonArray(raw).mapNotNull { el ->
+            if (!el.isJsonObject) null else el.asJsonObject.let { o ->
+                val id = o.jInt("unitId", "unit_id", "id") ?: return@mapNotNull null
+                SmsUnitEntity(id, o.jStr("code").orEmpty(), o.jStr("name").orEmpty(),
+                    o.jInt("sortOrder", "sort_order"), o.jBool("isActive", "is_active") ?: true)
+            }
+        }
+
+    private fun parseIncompleteStatuses(raw: String): List<SmsIncompleteStatusEntity> =
+        smsJsonArray(raw).mapNotNull { el ->
+            if (!el.isJsonObject) null else el.asJsonObject.let { o ->
+                val id = o.jInt("incompleteStatusId", "incomplete_status_id", "id") ?: return@mapNotNull null
+                SmsIncompleteStatusEntity(id, o.jStr("code").orEmpty(), o.jStr("name").orEmpty(),
+                    o.jInt("sortOrder", "sort_order"), o.jBool("isActive", "is_active") ?: true)
+            }
+        }
+
     /** Called from SettingsFragment after a profile change. */
     fun refreshProfileMenu() {
         val navView = findViewById<NavigationView>(R.id.navView)
@@ -448,3 +618,41 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
+
+// ── SMS JSON parse helpers ────────────────────────────────────────────────────
+
+internal fun smsJsonArray(raw: String): List<JsonElement> = try {
+    val el = JsonParser.parseString(raw)
+    when {
+        el.isJsonArray -> el.asJsonArray.toList()
+        el.isJsonObject -> listOf("data", "items", "results").asSequence()
+            .mapNotNull { el.asJsonObject.get(it) }
+            .firstOrNull { it.isJsonArray }?.asJsonArray?.toList()
+        else -> null
+    } ?: emptyList()
+} catch (_: Exception) { emptyList() }
+
+internal fun JsonObject.jStr(vararg keys: String): String? =
+    keys.firstNotNullOfOrNull { k ->
+        if (has(k) && !get(k).isJsonNull) try { get(k).asString } catch (_: Exception) { null } else null
+    }
+
+internal fun JsonObject.jInt(vararg keys: String): Int? =
+    keys.firstNotNullOfOrNull { k ->
+        if (has(k) && !get(k).isJsonNull) try { get(k).asInt } catch (_: Exception) { null } else null
+    }
+
+internal fun JsonObject.jLong(vararg keys: String): Long? =
+    keys.firstNotNullOfOrNull { k ->
+        if (has(k) && !get(k).isJsonNull) try { get(k).asLong } catch (_: Exception) { null } else null
+    }
+
+internal fun JsonObject.jDbl(vararg keys: String): Double? =
+    keys.firstNotNullOfOrNull { k ->
+        if (has(k) && !get(k).isJsonNull) try { get(k).asDouble } catch (_: Exception) { null } else null
+    }
+
+internal fun JsonObject.jBool(vararg keys: String): Boolean? =
+    keys.firstNotNullOfOrNull { k ->
+        if (has(k) && !get(k).isJsonNull) try { get(k).asBoolean } catch (_: Exception) { null } else null
+    }

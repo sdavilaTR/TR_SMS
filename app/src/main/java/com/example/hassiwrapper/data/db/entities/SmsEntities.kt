@@ -118,7 +118,15 @@ data class SmsSpoolEntity(
     val updated_at: String? = null,
     val updated_by: String? = null,
     val packing_list_id: Long? = null,
-    val synced: Boolean = false
+    val synced: Boolean = false,
+    // Fields from API response (not always populated, depend on project/API version)
+    val status: String? = null,
+    val description: String? = null,
+    val priority: String? = null,
+    val zone: String? = null,
+    val assigned_unit: String? = null,
+    val packing_list_name: String? = null,
+    val in_transit: Boolean = false
 ) {
     val displayCode: String
         get() = if (spool_suffix.isNullOrBlank()) spool_code else "$spool_code-$spool_suffix"

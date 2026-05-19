@@ -101,14 +101,23 @@ interface SmsPackingListSpoolDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<SmsPackingListSpoolEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(item: SmsPackingListSpoolEntity)
+
     @Query("SELECT * FROM sms_packing_list_spool WHERE packing_list_id = :packingListId ORDER BY sequence_number ASC")
     suspend fun getByPackingList(packingListId: Long): List<SmsPackingListSpoolEntity>
 
     @Query("SELECT spool_id FROM sms_packing_list_spool WHERE packing_list_id = :packingListId")
     suspend fun getSpoolIdsByPackingList(packingListId: Long): List<Long>
 
+    @Query("SELECT COUNT(*) FROM sms_packing_list_spool WHERE packing_list_id = :packingListId")
+    suspend fun countByPackingList(packingListId: Long): Int
+
     @Query("DELETE FROM sms_packing_list_spool WHERE packing_list_id = :packingListId")
     suspend fun deleteByPackingList(packingListId: Long)
+
+    @Query("DELETE FROM sms_packing_list_spool WHERE spool_id = :spoolId")
+    suspend fun deleteBySpoolId(spoolId: Long)
 
     @Query("DELETE FROM sms_packing_list_spool")
     suspend fun deleteAll()
@@ -206,6 +215,9 @@ interface SmsSpoolDao {
 
     @Query("DELETE FROM sms_spool WHERE project_id = :projectId AND synced = 1")
     suspend fun deleteSyncedByProject(projectId: Int)
+
+    @Query("UPDATE sms_spool SET packing_list_id = :packingListId, synced = 0 WHERE spool_id = :spoolId")
+    suspend fun updatePackingList(spoolId: Long, packingListId: Long?)
 }
 
 @Dao
@@ -245,6 +257,9 @@ interface SmsSpoolStatusDao {
 
     @Query("SELECT * FROM sms_spool_status WHERE status_id = :id")
     suspend fun getById(id: Int): SmsSpoolStatusEntity?
+
+    @Query("SELECT * FROM sms_spool_status WHERE UPPER(code) = UPPER(:code) LIMIT 1")
+    suspend fun getByCode(code: String): SmsSpoolStatusEntity?
 
     @Query("DELETE FROM sms_spool_status")
     suspend fun deleteAll()

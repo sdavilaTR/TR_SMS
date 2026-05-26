@@ -6,8 +6,9 @@ import com.example.hassiwrapper.data.model.Spool
 import java.util.zip.CRC32
 
 data class AssignSpoolRequest(
-    @SerializedName("spoolId") val spoolId: Long,
-    @SerializedName("sequenceNumber") val sequenceNumber: Int
+    @SerializedName("spoolId")        val spoolId: Long,
+    @SerializedName("addedBy")        val addedBy: String,
+    @SerializedName("sequenceNumber") val sequenceNumber: Int? = null
 )
 
 data class CreateSpoolRequest(
@@ -17,7 +18,25 @@ data class CreateSpoolRequest(
     @SerializedName("projectId")   val projectId: Int,
     @SerializedName("createdAt")   val createdAt: String,
     @SerializedName("createdBy")   val createdBy: String,
-    @SerializedName("isActive")    val isActive: Boolean = true
+    @SerializedName("isActive")    val isActive: Boolean = true,
+    @SerializedName("unitId")      val unitId: Int? = null,
+    @SerializedName("isoTypeId")   val isoTypeId: Int? = null,
+    @SerializedName("train")       val train: String? = null
+)
+
+data class CreateSpoolPropertyRequest(
+    @SerializedName("spoolId")        val spoolId: Long,
+    @SerializedName("diameterInches") val diameterInches: Double?,
+    @SerializedName("diameter")       val diameter: Double?,
+    @SerializedName("boreSizeId")     val boreSizeId: Int?,
+    @SerializedName("weightKg")       val weightKg: Double?
+)
+
+data class CreateSpoolStatusFlagsRequest(
+    @SerializedName("spoolId")            val spoolId: Long,
+    @SerializedName("statusId")           val statusId: Int?,
+    @SerializedName("incompleteStatusId") val incompleteStatusId: Int?,
+    @SerializedName("positionId")         val positionId: Int?
 )
 
 /** Transport object matching the JSON shape returned by ATLAS for [sms].[sms_spool].

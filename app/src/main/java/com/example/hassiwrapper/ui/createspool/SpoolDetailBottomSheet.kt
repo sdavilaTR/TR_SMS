@@ -27,6 +27,7 @@ import android.util.Log
 import com.example.hassiwrapper.data.db.entities.SmsPackingListSpoolEntity
 import com.example.hassiwrapper.network.dto.AssignSpoolRequest
 import com.google.gson.JsonParser
+import com.example.hassiwrapper.ProfileManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -40,6 +41,9 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
     companion object {
         private const val TAG = "SpoolDetail"
         private const val ARG_SPOOL_ID = "spool_id"
+
+        /** Spools deleted locally this session — syncSmsData filters these out to prevent re-insertion. */
+        val locallyDeletedSpoolIds = mutableSetOf<Long>()
 
         fun newInstance(spoolId: Long): SpoolDetailBottomSheet =
             SpoolDetailBottomSheet().apply {
@@ -62,7 +66,115 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val spoolId = arguments?.getLong(ARG_SPOOL_ID) ?: return
+        view.findViewById<MaterialButton>(R.id.btnDeleteSpool).setOnClickListener {
+            confirmDeleteSpool(spoolId)
+        }
+        val btnHardDelete = view.findViewById<MaterialButton>(R.id.btnHardDeleteSpool)
+        if (ProfileManager.currentProfile() == ProfileManager.Profile.DEV) {
+            btnHardDelete.visibility = View.VISIBLE
+            btnHardDelete.setOnClickListener { confirmHardDeleteSpool(spoolId) }
+        }
         viewLifecycleOwner.lifecycleScope.launch { loadAndBind(view, spoolId) }
+    }
+
+    private fun confirmDeleteSpool(spoolId: Long) {
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.spool_detail_confirm_delete_title))
+            .setMessage(getString(R.string.spool_detail_confirm_delete_msg))
+            .setPositiveButton(android.R.string.ok) { _, _ -> deleteSpool(spoolId) }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun deleteSpool(spoolId: Long) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // Read before deleting — needed for API unlink call
+                val plId = ServiceLocator.smsSpoolDao.getById(spoolId)?.packing_list_id
+                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+
+                // Local deletion
+                locallyDeletedSpoolIds.add(spoolId)
+                ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(spoolId)
+                ServiceLocator.smsSpoolDao.deleteById(spoolId)
+                if (plId != null) refreshPlSpoolCount(plId)
+
+                // API sync — before dismiss() so the coroutine scope stays alive
+                if (!projectCode.isNullOrBlank()) {
+                    if (plId != null) {
+                        try {
+                            val r = ServiceLocator.apiClient.getService().removeSpoolFromPackingList(projectCode, plId, spoolId)
+                            Log.d(TAG, "removeSpoolFromPL → HTTP ${r.code()}")
+                        } catch (e: Exception) { Log.w(TAG, "removeSpoolFromPackingList failed", e) }
+                    }
+                    try {
+                        val r = ServiceLocator.apiClient.getService().deleteSpool(projectCode, spoolId)
+                        Log.d(TAG, "deleteSpool → HTTP ${r.code()} body=${r.errorBody()?.string()?.take(200)}")
+                        if (!r.isSuccessful && isAdded) {
+                            android.widget.Toast.makeText(requireContext(), "API eliminar spool: HTTP ${r.code()}", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    } catch (e: Exception) { Log.w(TAG, "deleteSpool API failed", e) }
+                    // Re-delete locally in case auto-sync re-imported the record while the API call was in-flight
+                    ServiceLocator.smsSpoolDao.deleteById(spoolId)
+                }
+
+                // UI last — dismiss() cancels viewLifecycleOwner so it must be final
+                if (isAdded) android.widget.Toast.makeText(requireContext(), getString(R.string.spool_detail_deleted), android.widget.Toast.LENGTH_SHORT).show()
+                onSpoolUpdated?.invoke()
+                dismiss()
+            } catch (e: Exception) {
+                Log.e(TAG, "deleteSpool error", e)
+                if (isAdded) android.widget.Toast.makeText(requireContext(), "Error al eliminar: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun confirmHardDeleteSpool(spoolId: Long) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.spool_detail_confirm_hard_delete_title))
+            .setMessage(getString(R.string.spool_detail_confirm_hard_delete_msg))
+            .setPositiveButton(android.R.string.ok) { _, _ -> hardDeleteSpool(spoolId) }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun hardDeleteSpool(spoolId: Long) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val plId = ServiceLocator.smsSpoolDao.getById(spoolId)?.packing_list_id
+                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+
+                locallyDeletedSpoolIds.add(spoolId)
+                ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(spoolId)
+                ServiceLocator.smsSpoolDao.deleteById(spoolId)
+                if (plId != null) refreshPlSpoolCount(plId)
+
+                if (!projectCode.isNullOrBlank()) {
+                    if (plId != null) {
+                        try {
+                            ServiceLocator.apiClient.getService().removeSpoolFromPackingList(projectCode, plId, spoolId)
+                        } catch (e: Exception) { Log.w(TAG, "hardDelete: removeSpoolFromPL failed", e) }
+                    }
+                    try {
+                        val r = ServiceLocator.apiClient.getService().hardDeleteSpool(projectCode, spoolId)
+                        Log.d(TAG, "hardDeleteSpool → HTTP ${r.code()} body=${r.errorBody()?.string()?.take(200)}")
+                        if (!r.isSuccessful && isAdded) {
+                            android.widget.Toast.makeText(requireContext(), "API hard delete: HTTP ${r.code()}", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    } catch (e: Exception) { Log.w(TAG, "hardDeleteSpool API failed", e) }
+                    ServiceLocator.smsSpoolDao.deleteById(spoolId)
+                }
+
+                if (isAdded) android.widget.Toast.makeText(requireContext(), getString(R.string.spool_detail_hard_deleted), android.widget.Toast.LENGTH_SHORT).show()
+                onSpoolUpdated?.invoke()
+                dismiss()
+            } catch (e: Exception) {
+                Log.e(TAG, "hardDeleteSpool error", e)
+                if (isAdded) android.widget.Toast.makeText(requireContext(), "Error: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private suspend fun loadAndBind(view: View, spoolId: Long) {
@@ -252,6 +364,13 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
             .show()
     }
 
+    private suspend fun refreshPlSpoolCount(plId: Long) {
+        val count = ServiceLocator.smsSpoolDao.getByPackingList(plId).size
+        ServiceLocator.smsPackingListDao.getById(plId)?.let { pl ->
+            ServiceLocator.smsPackingListDao.insertAll(listOf(pl.copy(total_spools_count = count, synced = false)))
+        }
+    }
+
     private fun doAssign(spoolId: Long, newPlId: Long?, plName: String?, txtCurrentPl: TextView, btnRemove: MaterialButton) {
         viewLifecycleOwner.lifecycleScope.launch {
             Log.d(TAG, "doAssign START: spoolId=$spoolId newPlId=$newPlId")
@@ -261,6 +380,8 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
 
             // Local DB: sms_spool
             ServiceLocator.smsSpoolDao.updatePackingList(spoolId, newPlId)
+            if (oldPlId != null) refreshPlSpoolCount(oldPlId)
+            if (newPlId != null) refreshPlSpoolCount(newPlId)
             val spoolAfterUpdate = ServiceLocator.smsSpoolDao.getById(spoolId)
             Log.d(TAG, "doAssign: sms_spool after update → packing_list_id=${spoolAfterUpdate?.packing_list_id} synced=${spoolAfterUpdate?.synced}")
 
@@ -303,7 +424,7 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
                 if (projectCode != null) {
                     val service = ServiceLocator.apiClient.getService()
                     val resp = when {
-                        newPlId != null -> service.addSpoolToPackingList(projectCode, newPlId, AssignSpoolRequest(spoolId, nextSequence))
+                        newPlId != null -> service.addSpoolToPackingList(projectCode, newPlId, AssignSpoolRequest(spoolId, "API", nextSequence))
                         oldPlId != null -> service.removeSpoolFromPackingList(projectCode, oldPlId, spoolId)
                         else -> null
                     }

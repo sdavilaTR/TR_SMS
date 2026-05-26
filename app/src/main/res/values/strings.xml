@@ -1,11 +1,30 @@
 <resources>
     <string name="app_name">Smart Material System</string>
 
+    <!-- QR Scanner FAB -->
+    <string name="qr_scan_button">Escanear código QR</string>
+    <string name="qr_result_title">Código QR detectado</string>
+
+    <!-- QR Scanner Fragment -->
+    <string name="menu_qr_scanner">Escáner QR</string>
+    <string name="qr_scanner_status_waiting">Esperando escaneo…\nUse el escáner láser o el botón de cámara</string>
+    <string name="qr_scanner_status_processing">Procesando código…</string>
+    <string name="qr_scanner_status_spool_found">Spool encontrado: %1$s</string>
+    <string name="qr_scanner_status_vehicle_found">Vehículo encontrado: %1$s</string>
+    <string name="qr_scanner_btn_camera">Escanear con cámara</string>
+    <string name="qr_scanner_hint_laser">Pulse el botón lateral del terminal para escanear con láser</string>
+    <string name="qr_scanner_result_spool_not_found">Spool no encontrado en BD local — sincronice primero</string>
+    <string name="qr_scanner_result_vehicle_not_found">Vehículo no encontrado en BD local — sincronice primero</string>
+    <string name="qr_scanner_result_vehicle_badge">Vehículo (badge UUID)</string>
+    <string name="qr_scanner_result_badge_unsupported">Badge UUID no está asociado a un vehículo SMS. Use el QR del vehículo en el sistema ATLAS.</string>
+    <string name="qr_scanner_result_unknown">Código QR no reconocido</string>
+    <string name="qr_scanner_result_id_detail">ID: %1$s</string>
+
     <!-- Navigation -->
     <string name="nav_header_title">Smart Material System</string>
     <string name="menu_home">Inicio</string>
     <string name="menu_scanner">Spools List</string>
-    <string name="menu_passport">Packing List</string>
+    <string name="menu_passport">Packing Lists</string>
     <string name="passport_screen_title">Pasaporte</string>
     <string name="packing_lists_empty">No hay packing lists.</string>
     <string name="packing_lists_count">%1$d packing lists</string>
@@ -162,6 +181,19 @@
     <string name="vehicles_error_http">HTTP %d</string>
     <string name="vehicles_no_packing_lists">Sin packing lists asignados</string>
     <string name="vehicles_packing_lists_label">Packing Lists</string>
+
+    <!-- New Vehicle -->
+    <string name="new_vehicle_title">Nuevo Vehículo</string>
+    <string name="new_vehicle_section_details">Datos del Vehículo</string>
+    <string name="new_vehicle_field_plate">Matrícula *</string>
+    <string name="new_vehicle_field_name">Nombre del vehículo</string>
+    <string name="new_vehicle_field_company">Empresa</string>
+    <string name="new_vehicle_field_type">Tipo de vehículo</string>
+    <string name="new_vehicle_field_capacity">Capacidad (kg)</string>
+    <string name="new_vehicle_btn_save">Guardar Vehículo</string>
+    <string name="new_vehicle_error_plate_required">La matrícula es obligatoria</string>
+    <string name="new_vehicle_success">Vehículo creado correctamente</string>
+    <string name="new_vehicle_error_save">Error al guardar: %s</string>
 
     <!-- Login -->
     <string name="login_app_name">ATLAS</string>
@@ -405,6 +437,54 @@
     <string name="spools_filter_unassigned">Sin PL</string>
 
     <!-- New Spool -->
+    <!-- New Packing List -->
+    <string name="new_packing_list_title">Nuevo Packing List</string>
+    <string name="new_packing_list_field_name">Nombre *</string>
+    <string name="new_packing_list_field_vehicle">Vehículo</string>
+    <string name="new_packing_list_field_position">Posición *</string>
+    <string name="new_packing_list_field_notes">Notas</string>
+    <string name="new_packing_list_btn_add_spools">Seleccionar Spools sin PL</string>
+    <string name="new_packing_list_spools_selected">%d spool(s) seleccionados</string>
+    <string name="new_packing_list_no_spools_available">No hay spools sin PL para este proyecto</string>
+    <string name="new_packing_list_btn_save">Guardar Packing List</string>
+    <string name="new_packing_list_btn_create">Crear nuevo packing list</string>
+    <string name="new_packing_list_success">Packing List creado</string>
+    <string name="new_packing_list_error_field_required">Requerido</string>
+    <string name="new_packing_list_error_save">Error al guardar: %1$s</string>
+    <string name="new_packing_list_preview_label">Nombre:</string>
+    <string name="new_packing_list_section_details">Detalles</string>
+    <string name="new_packing_list_section_spools">Spools</string>
+
+    <string name="pl_detail_title">Detalle Packing List</string>
+    <string name="pl_detail_section_info">INFORMACIÓN</string>
+    <string name="pl_detail_section_spools">SPOOLS ASIGNADOS</string>
+    <string name="pl_detail_label_date">Fecha</string>
+    <string name="pl_detail_label_position">Posición</string>
+    <string name="pl_detail_label_vehicle">Vehículo</string>
+    <string name="pl_detail_label_notes">Notas</string>
+    <string name="pl_detail_loading_spools">Cargando spools…</string>
+    <string name="pl_detail_no_spools">Sin spools asignados</string>
+    <string name="pl_detail_btn_edit">Editar</string>
+    <string name="pl_detail_btn_delete">Eliminar</string>
+    <string name="pl_detail_confirm_delete_title">Eliminar Packing List</string>
+    <string name="pl_detail_confirm_delete_msg">¿Seguro que desea eliminar este Packing List?</string>
+    <string name="pl_detail_deleted">Packing List eliminado</string>
+    <string name="pl_detail_error_delete">Error al eliminar: %1$s</string>
+    <string name="pl_edit_title">Editar Packing List</string>
+    <string name="pl_edit_current_name_label">Nombre:</string>
+    <string name="pl_edit_btn_update">Actualizar Packing List</string>
+    <string name="pl_edit_success">Packing List actualizado</string>
+    <string name="pl_edit_error_save">Error al actualizar: %1$s</string>
+    <string name="pl_edit_btn_cancel">Cancelar</string>
+    <string name="pl_detail_btn_add_spool">Añadir Spool</string>
+    <string name="pl_detail_btn_remove_spool">Quitar</string>
+    <string name="pl_detail_add_spool_title">Añadir Spool al Packing List</string>
+    <string name="pl_detail_no_available_spools">No hay spools disponibles sin Packing List</string>
+    <string name="pl_detail_spool_added">Spool añadido al Packing List</string>
+    <string name="pl_detail_spool_removed">Spool eliminado del Packing List</string>
+    <string name="pl_detail_remove_spool_title">Quitar Spool</string>
+    <string name="pl_detail_remove_spool_msg">¿Quitar %1$s de este Packing List?</string>
+
     <string name="new_spool_title">Nuevo Spool</string>
     <string name="new_spool_section_id">Identificación ({unidad}-{línea}-{código}-{tren})</string>
     <string name="new_spool_section_property">Propiedades</string>
@@ -472,9 +552,88 @@
     <string name="spool_detail_field_pca_entry">Fecha entrada PCA</string>
     <string name="spool_detail_btn_assign_pl">Asignar a PL</string>
     <string name="spool_detail_btn_remove_pl">Sacar de PL</string>
+    <string name="spool_detail_btn_delete">Eliminar Spool</string>
+    <string name="spool_detail_confirm_delete_title">Eliminar Spool</string>
+    <string name="spool_detail_confirm_delete_msg">¿Eliminar este spool de la base de datos local?</string>
+    <string name="spool_detail_deleted">Spool eliminado</string>
+    <string name="pl_detail_btn_hard_delete">[DEV] Eliminar PL permanente</string>
+    <string name="pl_detail_confirm_hard_delete_title">[DEV] Eliminar PL permanente</string>
+    <string name="pl_detail_confirm_hard_delete_msg">Borrado físico en el servidor. No se puede deshacer. ¿Continuar?</string>
+    <string name="pl_detail_hard_deleted">Packing list eliminada permanentemente del servidor</string>
+    <string name="spool_detail_btn_hard_delete">[DEV] Eliminar permanente</string>
+    <string name="spool_detail_confirm_hard_delete_title">[DEV] Eliminar permanente</string>
+    <string name="spool_detail_confirm_hard_delete_msg">Borrado físico en el servidor. No se puede deshacer. ¿Continuar?</string>
+    <string name="spool_detail_hard_deleted">Spool eliminado permanentemente del servidor</string>
     <string name="spool_detail_events_empty">Sin eventos registrados</string>
     <string name="spool_detail_assign_pl_title">Seleccionar Packing List</string>
     <string name="spool_detail_assign_pl_remove">Quitar asignación</string>
     <string name="spool_detail_yes">Sí</string>
     <string name="spool_detail_no">No</string>
+
+    <!-- Vehicle Detail -->
+    <string name="vehicle_detail_title">Detalle Vehículo</string>
+    <string name="vehicle_detail_section_info">INFORMACIÓN</string>
+    <string name="vehicle_detail_section_packing_lists">PACKING LISTS ASIGNADOS</string>
+    <string name="vehicle_detail_label_plate">Matrícula</string>
+    <string name="vehicle_detail_label_name">Nombre</string>
+    <string name="vehicle_detail_label_company">Empresa</string>
+    <string name="vehicle_detail_label_type">Tipo</string>
+    <string name="vehicle_detail_label_capacity">Capacidad</string>
+    <string name="vehicle_detail_loading_pls">Cargando packing lists…</string>
+    <string name="vehicle_detail_no_pls">Sin packing lists asignados</string>
+    <string name="vehicle_detail_btn_add_pl">Añadir Packing List sin vehículo</string>
+    <string name="vehicle_detail_btn_edit">Editar Vehículo</string>
+    <string name="vehicle_detail_btn_hard_delete">Eliminar Vehículo permanente</string>
+    <string name="vehicle_detail_btn_remove_pl">Desasignar</string>
+    <string name="vehicle_detail_add_pl_title">Añadir Packing List al Vehículo</string>
+    <string name="vehicle_detail_no_unassigned_pls">No hay packing lists sin vehículo asignado</string>
+    <string name="vehicle_detail_pl_added">Packing List asignado al vehículo</string>
+    <string name="vehicle_detail_pl_removed">Packing List desasignado del vehículo</string>
+    <string name="vehicle_detail_remove_pl_title">Desasignar Packing List</string>
+    <string name="vehicle_detail_remove_pl_msg">¿Desasignar %1$s de este vehículo?</string>
+    <string name="vehicle_detail_confirm_hard_delete_title">Eliminar Vehículo permanente</string>
+    <string name="vehicle_detail_confirm_hard_delete_msg">Borrado físico en el servidor y en la base de datos local. No se puede deshacer. ¿Continuar?</string>
+    <string name="vehicle_detail_hard_deleted">Vehículo eliminado permanentemente</string>
+
+    <!-- Edit Vehicle -->
+    <string name="edit_vehicle_title">Editar Vehículo</string>
+    <string name="edit_vehicle_btn_update">Guardar Cambios</string>
+    <string name="edit_vehicle_btn_cancel">Cancelar</string>
+    <string name="edit_vehicle_success">Vehículo actualizado correctamente</string>
+    <string name="edit_vehicle_error_not_found">Vehículo no encontrado</string>
+    <string name="edit_vehicle_error_save">Error al guardar: %s</string>
+
+    <!-- Load Spools into Vehicle -->
+    <string name="load_spools_title">Cargar Spools en Vehículo</string>
+    <string name="load_spools_fab">Cargar Spools</string>
+    <string name="load_spools_step1_title">Paso 1: Seleccionar Vehículo</string>
+    <string name="load_spools_step2_title">Paso 2: Escanear Spools</string>
+    <string name="load_spools_plate_hint">Matrícula del vehículo</string>
+    <string name="load_spools_scan_vehicle">Escanear QR del vehículo</string>
+    <string name="load_spools_confirm_vehicle">Confirmar Vehículo</string>
+    <string name="load_spools_vehicle_not_found">Vehículo no encontrado. Compruebe la matrícula o sincronice primero.</string>
+    <string name="load_spools_vehicle_selected">Vehículo seleccionado: %s</string>
+    <string name="load_spools_spool_code_hint">Código del spool</string>
+    <string name="load_spools_spool_suffix_hint">Sufijo (opcional)</string>
+    <string name="load_spools_scan_spool">Escanear Spool</string>
+    <string name="load_spools_add_spool">Añadir</string>
+    <string name="load_spools_save">Guardar Carga</string>
+    <string name="load_spools_spool_not_found">Spool no encontrado en BD local. Se añadirá sin datos de packing list.</string>
+    <string name="load_spools_spools_count">Spools añadidos: %1$d</string>
+    <string name="load_spools_warning_multi_pl">⚠ Atención: los spools pertenecen a %1$d Packing Lists diferentes.</string>
+    <string name="load_spools_error_incomplete">Packing Lists incompletos:\n%1$s</string>
+    <string name="load_spools_confirm_incomplete_title">Packing Lists incompletos</string>
+    <string name="load_spools_confirm_incomplete_msg">Hay Packing Lists sin todos sus spools cargados:\n\n%1$s\n\n¿Desea continuar de todas formas?</string>
+    <string name="load_spools_confirm_second_title">Confirmar guardado</string>
+    <string name="load_spools_confirm_second_msg">Esta acción guardará la carga con Packing Lists incompletos. Esta operación NO se puede deshacer. ¿Confirma?</string>
+    <string name="load_spools_saved">Carga guardada correctamente (pendiente de sincronización)</string>
+    <string name="load_spools_spool_duplicate">Este spool ya fue añadido.</string>
+    <string name="load_spools_enter_code">Introduzca un código de spool.</string>
+    <string name="load_spools_enter_plate">Introduzca o escanee la matrícula del vehículo.</string>
+    <string name="load_spools_spool_added">Spool %1$s añadido.</string>
+    <string name="load_spools_no_pl">Sin Packing List</string>
+    <string name="load_spools_empty_error">Añada al menos un spool antes de guardar.</string>
+    <string name="load_spools_btn_continue">Continuar</string>
+    <string name="load_spools_btn_save_anyway">Guardar de todas formas</string>
+
 </resources>

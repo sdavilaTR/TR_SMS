@@ -114,10 +114,13 @@
 
             <!-- Spools (moved here from row 3) -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardSpools"
                 android:layout_width="0dp"
                 android:layout_height="96dp"
                 android:layout_weight="1"
                 android:layout_marginStart="6dp"
+                android:clickable="true"
+                android:focusable="true"
                 app:cardBackgroundColor="@color/card_bg"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="3dp"
@@ -184,10 +187,13 @@
 
             <!-- Vehículos -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardVehicles"
                 android:layout_width="0dp"
                 android:layout_height="96dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="6dp"
+                android:clickable="true"
+                android:focusable="true"
                 app:cardBackgroundColor="@color/card_bg"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="3dp"
@@ -366,10 +372,13 @@
 
             <!-- Packing Lists -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardPackingLists"
                 android:layout_width="0dp"
                 android:layout_height="96dp"
                 android:layout_weight="1"
                 android:layout_marginStart="6dp"
+                android:clickable="true"
+                android:focusable="true"
                 app:cardBackgroundColor="@color/card_bg"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="3dp"

@@ -39,6 +39,15 @@ class HomeFragment : Fragment() {
         view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
             findNavController().navigate(R.id.syncFragment)
         }
+        view.findViewById<View>(R.id.cardSpools).setOnClickListener {
+            findNavController().navigate(R.id.action_homeFragment_to_scannerFragment)
+        }
+        view.findViewById<View>(R.id.cardVehicles).setOnClickListener {
+            findNavController().navigate(R.id.action_homeFragment_to_vehiclesFragment)
+        }
+        view.findViewById<View>(R.id.cardPackingLists).setOnClickListener {
+            findNavController().navigate(R.id.action_homeFragment_to_packingListsFragment)
+        }
         // DEBUG BUTTON — remove btnChangeProject from layout + this block before production
         view.findViewById<View>(R.id.btnChangeProject).setOnClickListener {
             showProjectPickerDialog()
@@ -91,26 +100,26 @@ class HomeFragment : Fragment() {
                 val spoolResp = service.getSpools(projectCode)
                 if (spoolResp.isSuccessful) {
                     val entities = parseSpoolEntities(spoolResp.body()?.string().orEmpty(), projectId)
-                    Log.d("HomeDebug", "syncProject: ${entities.size} spools for $projectCode")
-                    if (entities.isNotEmpty()) {
-                        ServiceLocator.smsSpoolDao.deleteByProject(projectId)
-                        ServiceLocator.smsSpoolDao.insertAll(entities)
-                    }
+                    val activeSpools = entities.filter { it.is_active }
+                    Log.d("HomeDebug", "syncProject: ${activeSpools.size} active spools for $projectCode (${entities.size - activeSpools.size} inactive skipped)")
+                    ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
+                    if (activeSpools.isNotEmpty()) ServiceLocator.smsSpoolDao.insertAll(activeSpools)
                 } else {
                     Log.w("HomeDebug", "getSpools HTTP ${spoolResp.code()}")
                 }
+                ServiceLocator.smsSpoolDao.deleteInactive()
 
                 val plResp = service.getPackingLists(projectCode)
                 if (plResp.isSuccessful) {
                     val entities = parsePackingListEntities(plResp.body()?.string().orEmpty(), projectId)
-                    Log.d("HomeDebug", "syncProject: ${entities.size} packing lists for $projectCode")
-                    if (entities.isNotEmpty()) {
-                        ServiceLocator.smsPackingListDao.deleteByProject(projectId)
-                        ServiceLocator.smsPackingListDao.insertAll(entities)
-                    }
+                    val activePLs = entities.filter { it.is_active }
+                    Log.d("HomeDebug", "syncProject: ${activePLs.size} active packing lists for $projectCode (${entities.size - activePLs.size} inactive skipped)")
+                    ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
+                    if (activePLs.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(activePLs)
                 } else {
                     Log.w("HomeDebug", "getPackingLists HTTP ${plResp.code()}")
                 }
+                ServiceLocator.smsPackingListDao.deleteInactive()
 
                 val vehicleResp = service.getVehicles(projectCode)
                 if (vehicleResp.isSuccessful) {

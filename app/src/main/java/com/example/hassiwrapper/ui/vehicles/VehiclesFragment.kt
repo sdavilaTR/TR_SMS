@@ -11,6 +11,7 @@ import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -19,6 +20,8 @@ import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.network.dto.SmsVehicleDto
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import kotlinx.coroutines.launch
@@ -39,22 +42,34 @@ class VehiclesFragment : Fragment() {
     private lateinit var txtEmpty: TextView
     private lateinit var txtError: TextView
     private lateinit var txtCount: TextView
+    private lateinit var fabNewVehicle: FloatingActionButton
+    private lateinit var fabLoadSpools: ExtendedFloatingActionButton
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_vehicles, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        rv       = view.findViewById(R.id.rvVehicles)
-        swipe    = view.findViewById(R.id.swipeRefresh)
-        progress = view.findViewById(R.id.progress)
-        txtEmpty = view.findViewById(R.id.txtEmpty)
-        txtError = view.findViewById(R.id.txtError)
-        txtCount = view.findViewById(R.id.txtCount)
+        rv            = view.findViewById(R.id.rvVehicles)
+        swipe         = view.findViewById(R.id.swipeRefresh)
+        progress      = view.findViewById(R.id.progress)
+        txtEmpty      = view.findViewById(R.id.txtEmpty)
+        txtError      = view.findViewById(R.id.txtError)
+        txtCount      = view.findViewById(R.id.txtCount)
+        fabNewVehicle = view.findViewById(R.id.fabNewVehicle)
+        fabLoadSpools = view.findViewById(R.id.fabLoadSpools)
 
         adapter = VehicleAdapter()
         rv.layoutManager = LinearLayoutManager(requireContext())
         rv.adapter = adapter
+
+        fabNewVehicle.setOnClickListener {
+            findNavController().navigate(R.id.action_vehiclesFragment_to_newVehicleFragment)
+        }
+
+        fabLoadSpools.setOnClickListener {
+            findNavController().navigate(R.id.action_vehiclesFragment_to_loadSpoolsFragment)
+        }
 
         swipe.setOnRefreshListener { load(forceRefresh = true) }
         load(forceRefresh = true)
@@ -220,6 +235,13 @@ class VehiclesFragment : Fragment() {
                 h.packetList.setTextColor(ContextCompat.getColor(requireContext(), R.color.on_surface))
                 h.packetList.text = pls.joinToString("\n") { "• ${it.packing_list_name}" }
             }
+
+            h.card.setOnClickListener { navigateToVehicleDetail(item) }
         }
+    }
+
+    private fun navigateToVehicleDetail(item: VehicleItem) {
+        val args = Bundle().apply { putLong("vehicleId", item.vehicle.vehicle_id) }
+        findNavController().navigate(R.id.action_vehiclesFragment_to_vehicleDetailFragment, args)
     }
 }

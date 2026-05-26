@@ -24,8 +24,11 @@ import com.example.hassiwrapper.data.db.entities.SmsSpoolPropertyEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolStatusEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolStatusFlagsEntity
 import com.example.hassiwrapper.data.db.entities.SmsUnitEntity
+import com.example.hassiwrapper.network.dto.CreateSpoolPropertyRequest
 import com.example.hassiwrapper.network.dto.CreateSpoolRequest
+import com.example.hassiwrapper.network.dto.CreateSpoolStatusFlagsRequest
 import com.google.android.material.button.MaterialButton
+import com.google.gson.JsonParser
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
@@ -218,12 +221,14 @@ class NewSpoolFragment : Fragment() {
                     line_code    = line,
                     unit_id      = selectedUnitId,
                     iso_type_id  = selectedIsoTypeId,
+                    train        = train.takeIf { it.isNotBlank() },
                     is_active    = true,
                     created_at   = now,
                     created_by   = ""
                 )
                 ServiceLocator.smsSpoolDao.insertAll(listOf(spool))
 
+                var serverSpoolId = spoolId
                 try {
                     val project = ServiceLocator.projectDao.getById(projectId)
                     val projectCode = project?.project_code
@@ -234,19 +239,48 @@ class NewSpoolFragment : Fragment() {
                             lineCode    = line,
                             projectId   = projectId,
                             createdAt   = now,
-                            createdBy   = ""
+                            createdBy   = "",
+                            unitId      = selectedUnitId,
+                            isoTypeId   = selectedIsoTypeId,
+                            train       = train.takeIf { it.isNotBlank() }
                         )
                         val response = ServiceLocator.apiClient.getService().createSpool(projectCode, body)
                         if (response.isSuccessful) {
-                            ServiceLocator.smsSpoolDao.markSynced(listOf(spoolId))
+                            val raw = response.body()?.string().orEmpty()
+                            val parsedId = parseCreatedSpoolId(raw)
+                            if (parsedId != null && parsedId > 0L && parsedId != spoolId) {
+                                ServiceLocator.smsSpoolDao.deleteById(spoolId)
+                                ServiceLocator.smsSpoolDao.insertAll(listOf(spool.copy(spool_id = parsedId, synced = true)))
+                                serverSpoolId = parsedId
+                            } else {
+                                ServiceLocator.smsSpoolDao.markSynced(listOf(spoolId))
+                            }
+
+                            val diamIn = etDiameterInches.text?.toString()?.trim()?.toDoubleOrNull()
+                            val diam   = etDiameter.text?.toString()?.trim()?.toDoubleOrNull()
+                            val wt     = etWeightKg.text?.toString()?.trim()?.toDoubleOrNull()
+                            if (diamIn != null || diam != null || selectedBoreSizeId != null || wt != null) {
+                                try {
+                                    ServiceLocator.apiClient.getService().createSpoolProperty(
+                                        projectCode, serverSpoolId,
+                                        CreateSpoolPropertyRequest(serverSpoolId, diamIn, diam, selectedBoreSizeId, wt)
+                                    )
+                                } catch (_: Exception) {}
+                            }
+                            if (selectedStatusId != null || selectedIncompleteStatusId != null || selectedPositionId != null) {
+                                try {
+                                    ServiceLocator.apiClient.getService().createSpoolStatusFlags(
+                                        projectCode, serverSpoolId,
+                                        CreateSpoolStatusFlagsRequest(serverSpoolId, selectedStatusId, selectedIncompleteStatusId, selectedPositionId)
+                                    )
+                                } catch (_: Exception) {}
+                            }
                         }
                     }
-                } catch (_: Exception) {
-                    // Sin red — quedará synced=false, SyncService lo reintenta
-                }
+                } catch (_: Exception) {}
 
                 val property = SmsSpoolPropertyEntity(
-                    spool_id        = spoolId,
+                    spool_id        = serverSpoolId,
                     diameter_inches = etDiameterInches.text?.toString()?.trim()?.toDoubleOrNull(),
                     diameter        = etDiameter.text?.toString()?.trim()?.toDoubleOrNull(),
                     bore_size_id    = selectedBoreSizeId,
@@ -256,7 +290,7 @@ class NewSpoolFragment : Fragment() {
                 ServiceLocator.smsSpoolPropertyDao.insertAll(listOf(property))
 
                 val statusFlags = SmsSpoolStatusFlagsEntity(
-                    spool_id             = spoolId,
+                    spool_id             = serverSpoolId,
                     status_id            = selectedStatusId,
                     incomplete_status_id = selectedIncompleteStatusId,
                     position_id          = selectedPositionId,
@@ -271,5 +305,20 @@ class NewSpoolFragment : Fragment() {
                 Toast.makeText(requireContext(), getString(R.string.new_spool_error_save, e.message), Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    private fun parseCreatedSpoolId(raw: String): Long? {
+        return try {
+            val el = JsonParser.parseString(raw)
+            val obj = when {
+                el.isJsonObject && el.asJsonObject.has("data") && !el.asJsonObject.get("data").isJsonNull ->
+                    el.asJsonObject.getAsJsonObject("data")
+                el.isJsonObject -> el.asJsonObject
+                else -> return null
+            }
+            obj.get("spoolId")?.takeIf { !it.isJsonNull }?.asLong
+                ?: obj.get("spool_id")?.takeIf { !it.isJsonNull }?.asLong
+                ?: obj.get("id")?.takeIf { !it.isJsonNull }?.asLong
+        } catch (_: Exception) { null }
     }
 }

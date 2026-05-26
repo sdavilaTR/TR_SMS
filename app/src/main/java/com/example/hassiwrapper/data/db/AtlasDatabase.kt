@@ -44,9 +44,11 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsSpoolStatusFlagsEntity::class,
         SmsSubcontractorEntity::class,
         SmsUnitEntity::class,
-        SmsVehicleEntity::class
+        SmsVehicleEntity::class,
+        SmsVehicleLoadingEntity::class,
+        SmsVehicleLoadingSpoolEntity::class
     ],
-    version = 11,
+    version = 14,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -84,6 +86,7 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun smsSubcontractorDao(): SmsSubcontractorDao
     abstract fun smsUnitDao(): SmsUnitDao
     abstract fun smsVehicleDao(): SmsVehicleDao
+    abstract fun smsVehicleLoadingDao(): SmsVehicleLoadingDao
 
     /** Clears all data from every table (used when switching to DEV profile). */
     suspend fun clearAllData() {
@@ -497,6 +500,47 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 11 → 12: add synced to sms_packing_list")
+                db.execSQL("ALTER TABLE `sms_packing_list` ADD COLUMN `synced` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 12 → 13: add synced to sms_vehicle")
+                db.execSQL("ALTER TABLE `sms_vehicle` ADD COLUMN `synced` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 13 → 14: create sms_vehicle_loading tables")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_vehicle_loading` (
+                        `loading_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `vehicle_id` INTEGER NOT NULL,
+                        `vehicle_plate` TEXT NOT NULL DEFAULT '',
+                        `project_id` INTEGER NOT NULL,
+                        `created_at` TEXT NOT NULL DEFAULT '',
+                        `synced` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_vehicle_loading_spool` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `loading_id` INTEGER NOT NULL,
+                        `spool_id` INTEGER NOT NULL,
+                        `spool_code` TEXT NOT NULL DEFAULT '',
+                        `spool_suffix` TEXT,
+                        `packing_list_id` INTEGER,
+                        `packing_list_name` TEXT
+                    )
+                """.trimIndent())
+            }
+        }
+
         private val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "Migration 10 → 11: add API fields to sms_spool")
@@ -527,7 +571,10 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_7_8,
                         MIGRATION_8_9,
                         MIGRATION_9_10,
-                        MIGRATION_10_11
+                        MIGRATION_10_11,
+                        MIGRATION_11_12,
+                        MIGRATION_12_13,
+                        MIGRATION_13_14
                     )
                     .build()
                 INSTANCE = instance

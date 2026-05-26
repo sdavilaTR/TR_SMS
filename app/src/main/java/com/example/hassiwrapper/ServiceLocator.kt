@@ -50,7 +50,9 @@ object ServiceLocator {
             authRepo,
             db.trainingComplianceDao(),
             db.documentComplianceDao(),
-            db.smsSpoolDao()
+            db.smsSpoolDao(),
+            db.smsPackingListDao(),
+            db.smsPositionDao()
         )
     }
 
@@ -86,4 +88,5 @@ object ServiceLocator {
     val smsSubcontractorDao get() = db.smsSubcontractorDao()
     val smsUnitDao get() = db.smsUnitDao()
     val smsVehicleDao get() = db.smsVehicleDao()
+    val smsVehicleLoadingDao get() = db.smsVehicleLoadingDao()
 }

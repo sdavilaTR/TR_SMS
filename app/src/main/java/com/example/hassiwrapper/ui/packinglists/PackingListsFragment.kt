@@ -1,6 +1,5 @@
 package com.example.hassiwrapper.ui.packinglists
 
-import android.app.AlertDialog
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -10,6 +9,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -17,7 +17,7 @@ import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
 import com.example.hassiwrapper.network.dto.SmsPackingListDto
-import com.example.hassiwrapper.network.dto.SpoolDto
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import kotlinx.coroutines.launch
@@ -33,6 +33,7 @@ class PackingListsFragment : Fragment() {
     private lateinit var txtEmpty: TextView
     private lateinit var txtError: TextView
     private lateinit var txtCount: TextView
+    private lateinit var fab: FloatingActionButton
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_packing_lists, container, false)
@@ -45,12 +46,20 @@ class PackingListsFragment : Fragment() {
         txtEmpty = view.findViewById(R.id.txtEmpty)
         txtError = view.findViewById(R.id.txtError)
         txtCount = view.findViewById(R.id.txtCount)
+        fab      = view.findViewById(R.id.fabNewPackingList)
+        fab.setOnClickListener {
+            findNavController().navigate(R.id.action_packingListsFragment_to_newPackingListFragment)
+        }
 
         adapter = PLAdapter()
         rv.layoutManager = LinearLayoutManager(requireContext())
         rv.adapter = adapter
         swipe.setOnRefreshListener { load(forceRefresh = true) }
-        load(forceRefresh = true)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        load(forceRefresh = false)
     }
 
     private fun load(forceRefresh: Boolean) {
@@ -92,9 +101,9 @@ class PackingListsFragment : Fragment() {
                     Log.d("PackingListsJSON", "Raw (first 500): ${raw.take(500)}")
                     val entities = parsePackingListEntities(raw, projectId)
                     Log.d("PackingListsDebug", "Parsed ${entities.size} packing list entities")
-                    if (entities.isNotEmpty()) {
-                        ServiceLocator.smsPackingListDao.insertAll(entities)
-                    }
+                    val (active, inactive) = entities.partition { it.is_active }
+                    inactive.forEach { ServiceLocator.smsPackingListDao.deleteById(it.packing_list_id) }
+                    if (active.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(active)
                     items.clear()
                     items += ServiceLocator.smsPackingListDao.getByProject(projectId)
                     Log.d("PackingListsDebug", "Displaying ${items.size} packing lists after insert")
@@ -194,80 +203,11 @@ class PackingListsFragment : Fragment() {
             }
             h.sub.text = sub
             h.sub.visibility = View.VISIBLE
-            h.itemView.setOnClickListener { openSpools(pl) }
-        }
-    }
-
-    private fun openSpools(pl: SmsPackingListEntity) {
-        val title = pl.packing_list_name.ifBlank { "PL ${pl.packing_list_id}" }
-        val dialog = AlertDialog.Builder(requireContext())
-            .setTitle(title)
-            .setMessage("Cargando spools...")
-            .setPositiveButton(android.R.string.ok, null)
-            .show()
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                var spools = ServiceLocator.smsSpoolDao.getByPackingList(pl.packing_list_id)
-                if (spools.isEmpty()) {
-                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                        ?: run { dialog.setMessage("Falta projectCode"); return@launch }
-                    val resp = ServiceLocator.apiClient.getService()
-                        .getPackingListSpools(projectCode, pl.packing_list_id.toString())
-                    if (!resp.isSuccessful) {
-                        dialog.setMessage("HTTP ${resp.code()}"); return@launch
-                    }
-                    val raw = resp.body()?.string().orEmpty()
-                    Log.d("PackingListsJSON", "Spools raw: $raw")
-                    val entities = parseSpoolEntities(raw, projectId, pl.packing_list_id)
-                    if (entities.isNotEmpty()) {
-                        ServiceLocator.smsSpoolDao.insertAll(entities)
-                    }
-                    spools = ServiceLocator.smsSpoolDao.getByPackingList(pl.packing_list_id)
-                }
-                if (spools.isEmpty()) {
-                    dialog.setMessage("Sin spools en este packing list.")
-                    return@launch
-                }
-                val body = spools.joinToString("\n") { s ->
-                    "• ${s.displayCode}" + (s.line_code?.let { "  — $it" } ?: "")
-                }
-                dialog.setMessage("${spools.size} spool(s):\n\n$body")
-            } catch (e: Exception) {
-                dialog.setMessage(e.message ?: e.javaClass.simpleName)
+            h.itemView.setOnClickListener {
+                val bundle = Bundle().apply { putLong("packingListId", pl.packing_list_id) }
+                findNavController().navigate(R.id.action_packingListsFragment_to_packingListDetailFragment, bundle)
             }
         }
     }
 
-    private fun parseSpoolEntities(raw: String, defaultProjectId: Int, packingListId: Long): List<com.example.hassiwrapper.data.db.entities.SmsSpoolEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> {
-                    val obj = el.asJsonObject
-                    listOf("data", "items", "results", "spools").asSequence()
-                        .mapNotNull { obj.get(it) }
-                        .firstOrNull { it.isJsonArray }?.asJsonArray
-                }
-                else -> null
-            } ?: return emptyList()
-            array.mapNotNull { element ->
-                if (!element.isJsonObject) return@mapNotNull null
-                try {
-                    val dto = gson.fromJson(element, SpoolDto::class.java)
-                    val entity = dto.toEntity(defaultPackingListId = packingListId)
-                    if (entity.spool_id == 0L) null
-                    else entity.copy(project_id = defaultProjectId)
-                } catch (e: Exception) {
-                    Log.w("PackingListsJSON", "Failed to parse spool element", e)
-                    null
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("PackingListsJSON", "Parse error", e)
-            emptyList()
-        }
-    }
 }

@@ -140,25 +140,19 @@ class CreateSpoolFragment : Fragment() {
                     val entities = parseSpoolEntities(raw, projectId)
                     Log.d("SpoolsDebug", "Parsed ${entities.size} entities from API")
                     entities.forEach { e -> Log.d("SpoolsDebug", "  entity spool_id=${e.spool_id} code=${e.spool_code} suffix=${e.spool_suffix} active=${e.is_active} pl=${e.packing_list_id}") }
-                    if (entities.isNotEmpty()) {
+                    val locallyDeleted = SpoolDetailBottomSheet.locallyDeletedSpoolIds
+                    val activeEntities = entities.filter { it.is_active && it.spool_id !in locallyDeleted }
+                    if (activeEntities.isNotEmpty()) {
                         ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
-                        ServiceLocator.smsSpoolDao.insertAll(entities)
-                        Log.d("SpoolsDebug", "Inserted ${entities.size} spools")
+                        ServiceLocator.smsSpoolDao.insertAll(activeEntities)
+                        Log.d("SpoolsDebug", "Inserted ${activeEntities.size} spools (${entities.size - activeEntities.size} inactive/deleted skipped)")
                     } else {
-                        Log.w("SpoolsDebug", "Parse returned 0 entities. Raw snippet: ${raw.take(300)}")
+                        ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
+                        Log.d("SpoolsDebug", "No active spools to insert — cleared synced, kept unsynced")
                     }
                     allItems.clear()
                     allItems += ServiceLocator.smsSpoolDao.getByProject(projectId)
                     Log.d("SpoolsDebug", "After insert, getByProject($projectId) = ${allItems.size}")
-                    // If still empty, try ignoring is_active filter
-                    if (allItems.isEmpty()) {
-                        val ignoreActive = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
-                        Log.w("SpoolsDebug", "getByProjectIgnoreActive($projectId) = ${ignoreActive.size} (is_active may be 0)")
-                        if (ignoreActive.isNotEmpty()) {
-                            allItems += ignoreActive
-                            showError("Advertencia: ${ignoreActive.size} spools con is_active=false")
-                        }
-                    }
                     applyFilter()
                 } else {
                     val err = response.errorBody()?.string().orEmpty()

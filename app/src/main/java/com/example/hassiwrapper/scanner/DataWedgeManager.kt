@@ -48,6 +48,10 @@ class DataWedgeManager(private val context: Context) {
     private val _scanFlow = MutableSharedFlow<String>(extraBufferCapacity = 10)
     val scanFlow: SharedFlow<String> = _scanFlow
 
+    fun emitScan(data: String) {
+        _scanFlow.tryEmit(data.trim())
+    }
+
     private val scanReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val action = intent?.action ?: return

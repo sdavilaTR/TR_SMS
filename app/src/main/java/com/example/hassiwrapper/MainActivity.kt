@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -16,6 +17,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
+import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.example.hassiwrapper.scanner.DataWedgeManager
 import com.example.hassiwrapper.ui.login.LoginActivity
 import com.example.hassiwrapper.update.UpdateChecker
@@ -46,9 +49,17 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var navController: NavController
 
-    // Holds a pending update if the user needs to grant install-unknown-apps permission first
     private var pendingUpdate: UpdateInfo? = null
     private var autoSyncJob: Job? = null
+
+    private val qrScanLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val code = result.data?.getStringExtra(CustomScannerActivity.EXTRA_RESULT)
+            code?.let { showQrResultDialog(it) }
+        }
+    }
 
     companion object {
         private const val TAG = "MainActivity"
@@ -84,6 +95,7 @@ class MainActivity : AppCompatActivity() {
         navView.setNavigationItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.homeFragment,
+                R.id.qrScannerFragment,
                 R.id.scannerFragment,
                 R.id.passportFragment,
                 R.id.packingListsFragment,
@@ -139,6 +151,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         startAutoSync()
+
+        findViewById<FloatingActionButton>(R.id.fabQrScan).setOnClickListener {
+            val intent = Intent(this, CustomScannerActivity::class.java)
+                .putExtra(CustomScannerActivity.EXTRA_FRONT_CAMERA, false)
+            qrScanLauncher.launch(intent)
+        }
     }
 
     private fun startAutoSync() {
@@ -201,6 +219,23 @@ class MainActivity : AppCompatActivity() {
         dataWedgeManager.unregister()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // DataWedge "Activity" delivery mode: barcode sent via startActivity to the foreground activity
+        val data = intent.getStringExtra("data")
+            ?: intent.getStringExtra("barcode_data")
+            ?: intent.getStringExtra("com.symbol.datawedge.data_string")
+            ?: run {
+                // Try any String extra >= 3 chars as fallback
+                intent.extras?.keySet()?.firstNotNullOfOrNull { k ->
+                    intent.getStringExtra(k)?.takeIf { it.length >= 3 }
+                }
+            }
+            ?: return
+        Log.d(TAG, "onNewIntent: DataWedge activity-mode data='$data' action=${intent.action}")
+        dataWedgeManager.emitScan(data)
+    }
+
     override fun onBackPressed() {
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayout)
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
@@ -212,6 +247,14 @@ class MainActivity : AppCompatActivity() {
                 super.onBackPressed()
             }
         }
+    }
+
+    private fun showQrResultDialog(code: String) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.qr_result_title)
+            .setMessage(code)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     private fun showUpdateDialog(update: UpdateInfo) {
@@ -325,22 +368,26 @@ class MainActivity : AppCompatActivity() {
                     entities.take(2).forEach { e ->
                         Log.d(TAG, "spool entity: id=${e.spool_id} code=${e.spool_code} suf=${e.spool_suffix} line=${e.line_code} service=${e.service} train=${e.train} module=${e.module} area=${e.area_id} spec=${e.spec_id} unit=${e.unit_id} iso=${e.iso_type_id} sub=${e.subcontractor_id}")
                     }
-                    ServiceLocator.smsSpoolDao.deleteByProject(projectId)
-                    ServiceLocator.smsSpoolDao.insertAll(entities)
-                    Log.d(TAG, "syncSmsData: inserted ${entities.size} spools")
+                    val deleted = com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet.locallyDeletedSpoolIds
+                    val toInsert = entities.filter { it.is_active && it.spool_id !in deleted }
+                    ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
+                    ServiceLocator.smsSpoolDao.insertAll(toInsert)
+                    Log.d(TAG, "syncSmsData: inserted ${toInsert.size} spools (${entities.size - toInsert.size} locally deleted filtered)")
                 }
             }
+            ServiceLocator.smsSpoolDao.deleteInactive()
 
             val plResp = service.getPackingLists(projectCode)
             if (plResp.isSuccessful) {
                 val raw = plResp.body()?.string().orEmpty()
                 val entities = parsePackingListEntities(raw, projectId)
-                if (entities.isNotEmpty()) {
-                    ServiceLocator.smsPackingListDao.deleteByProject(projectId)
-                    ServiceLocator.smsPackingListDao.insertAll(entities)
-                    Log.d(TAG, "syncSmsData: inserted ${entities.size} packing lists")
-                }
+                val deletedPLs = com.example.hassiwrapper.ui.packinglists.PackingListDetailFragment.locallyDeletedPLIds
+                val activePLs = entities.filter { it.is_active && it.packing_list_id !in deletedPLs }
+                ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
+                if (activePLs.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(activePLs)
+                Log.d(TAG, "syncSmsData: inserted ${activePLs.size} packing lists (${entities.size - activePLs.size} inactive/deleted skipped)")
             }
+            ServiceLocator.smsPackingListDao.deleteInactive()
 
             val vehicleResp = service.getVehicles(projectCode)
             if (vehicleResp.isSuccessful) {
@@ -600,7 +647,7 @@ class MainActivity : AppCompatActivity() {
 
         // If USER and currently on a hidden fragment, navigate to scanner
         if (profile == ProfileManager.Profile.USER) {
-            val allowedInUser = setOf(R.id.homeFragment, R.id.scannerFragment, R.id.syncFragment, R.id.settingsFragment)
+            val allowedInUser = setOf(R.id.homeFragment, R.id.qrScannerFragment, R.id.scannerFragment, R.id.syncFragment, R.id.settingsFragment)
             if (currentDest != null && currentDest !in allowedInUser) {
                 navController.navigate(R.id.scannerFragment)
             }
@@ -608,7 +655,7 @@ class MainActivity : AppCompatActivity() {
         // If HSE and currently on an ADMIN-only fragment, navigate to scanner
         if (profile == ProfileManager.Profile.HSE) {
             val allowedInHse = setOf(
-                R.id.homeFragment, R.id.scannerFragment, R.id.syncFragment, R.id.settingsFragment,
+                R.id.homeFragment, R.id.qrScannerFragment, R.id.scannerFragment, R.id.syncFragment, R.id.settingsFragment,
                 R.id.passportFragment, R.id.packingListsFragment, R.id.observationsGeneralFragment, R.id.inspectionsFragment,
                 R.id.observationFragment
             )

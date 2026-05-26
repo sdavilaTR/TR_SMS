@@ -60,7 +60,8 @@ data class SmsPackingListEntity(
     val is_active: Boolean = true,
     val created_at: String = "",
     val created_by: String? = null,
-    val updated_at: String? = null
+    val updated_at: String? = null,
+    val synced: Boolean = false
 )
 
 @Entity(tableName = "sms_packing_list_spool")
@@ -203,6 +204,27 @@ data class SmsUnitEntity(
     val is_active: Boolean = true
 )
 
+@Entity(tableName = "sms_vehicle_loading")
+data class SmsVehicleLoadingEntity(
+    @PrimaryKey(autoGenerate = true) val loading_id: Long = 0,
+    val vehicle_id: Long,
+    val vehicle_plate: String,
+    val project_id: Int,
+    val created_at: String,
+    val synced: Boolean = false
+)
+
+@Entity(tableName = "sms_vehicle_loading_spool")
+data class SmsVehicleLoadingSpoolEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val loading_id: Long,
+    val spool_id: Long,
+    val spool_code: String,
+    val spool_suffix: String?,
+    val packing_list_id: Long?,
+    val packing_list_name: String?
+)
+
 @Entity(tableName = "sms_vehicle")
 data class SmsVehicleEntity(
     @PrimaryKey val vehicle_id: Long,
@@ -215,5 +237,6 @@ data class SmsVehicleEntity(
     val is_active: Boolean = true,
     val created_at: String = "",
     val created_by: String? = null,
-    val updated_at: String? = null
+    val updated_at: String? = null,
+    val synced: Boolean = false
 )

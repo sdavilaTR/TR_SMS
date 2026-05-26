@@ -101,9 +101,27 @@ interface AtlasApiService {
         @Body body: CreateSpoolRequest
     ): Response<okhttp3.ResponseBody>
 
+    @DELETE("/api/atlas/projects/{projectCode}/spools/{spoolId}")
+    suspend fun deleteSpool(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("spoolId") spoolId: Long
+    ): Response<okhttp3.ResponseBody>
+
+    @DELETE("/api/atlas/projects/{projectCode}/spools/{spoolId}/hard")
+    suspend fun hardDeleteSpool(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("spoolId") spoolId: Long
+    ): Response<okhttp3.ResponseBody>
+
     // ── SMS Packing Lists ──────────────────────────────
     @GET("/api/atlas/projects/{projectCode}/packing-lists")
     suspend fun getPackingLists(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
+
+    @POST("/api/atlas/projects/{projectCode}/packing-lists")
+    suspend fun createPackingList(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @Body body: CreatePackingListRequest
+    ): Response<okhttp3.ResponseBody>
 
     @GET("/api/atlas/projects/{projectCode}/packing-lists/{id}/spools")
     suspend fun getPackingListSpools(
@@ -125,9 +143,45 @@ interface AtlasApiService {
         @retrofit2.http.Path("spoolId") spoolId: Long
     ): Response<okhttp3.ResponseBody>
 
+    @PUT("/api/atlas/projects/{projectCode}/packing-lists")
+    suspend fun updatePackingList(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @Body body: com.example.hassiwrapper.network.dto.UpdatePackingListRequest
+    ): Response<okhttp3.ResponseBody>
+
+    @DELETE("/api/atlas/projects/{projectCode}/packing-lists/{plId}")
+    suspend fun deletePackingList(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("plId") packingListId: Long
+    ): Response<okhttp3.ResponseBody>
+
+    @DELETE("/api/atlas/projects/{projectCode}/packing-lists/{plId}/hard")
+    suspend fun hardDeletePackingList(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("plId") packingListId: Long
+    ): Response<okhttp3.ResponseBody>
+
     // ── SMS Vehicles ───────────────────────────────────
     @GET("/api/atlas/projects/{projectCode}/vehicles")
     suspend fun getVehicles(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
+
+    @POST("/api/atlas/projects/{projectCode}/vehicles")
+    suspend fun createVehicle(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @Body body: CreateVehicleRequest
+    ): Response<okhttp3.ResponseBody>
+
+    @PUT("/api/atlas/projects/{projectCode}/vehicles")
+    suspend fun updateVehicle(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @Body body: UpdateVehicleRequest
+    ): Response<okhttp3.ResponseBody>
+
+    @DELETE("/api/atlas/projects/{projectCode}/vehicles/{vehicleId}/hard")
+    suspend fun hardDeleteVehicle(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("vehicleId") vehicleId: Long
+    ): Response<okhttp3.ResponseBody>
 
     // ── SMS Areas ─────────────────────────────────────
     @GET("/api/atlas/projects/{projectCode}/areas")
@@ -142,6 +196,20 @@ interface AtlasApiService {
     suspend fun getSubcontractors(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
 
     // ── SMS Spool detail endpoints ────────────────────
+    @POST("/api/atlas/projects/{projectCode}/spools/{spoolId}/property")
+    suspend fun createSpoolProperty(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("spoolId") spoolId: Long,
+        @Body body: CreateSpoolPropertyRequest
+    ): Response<okhttp3.ResponseBody>
+
+    @POST("/api/atlas/projects/{projectCode}/spools/{spoolId}/status-flags")
+    suspend fun createSpoolStatusFlags(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("spoolId") spoolId: Long,
+        @Body body: CreateSpoolStatusFlagsRequest
+    ): Response<okhttp3.ResponseBody>
+
     @GET("/api/atlas/projects/{projectCode}/spools/{spoolId}/events")
     suspend fun getSpoolEvents(
         @retrofit2.http.Path("projectCode") projectCode: String,

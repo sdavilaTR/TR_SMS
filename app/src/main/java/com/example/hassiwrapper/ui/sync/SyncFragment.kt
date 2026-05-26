@@ -357,22 +357,24 @@ class SyncFragment : Fragment() {
             val spoolResp = service.getSpools(projectCode)
             if (spoolResp.isSuccessful) {
                 val entities = parseSpoolEntities(spoolResp.body()?.string().orEmpty(), projectId)
-                Log.d("SyncSMS", "${entities.size} spools parsed")
-                if (entities.isNotEmpty()) {
-                    ServiceLocator.smsSpoolDao.deleteByProject(projectId)
-                    ServiceLocator.smsSpoolDao.insertAll(entities)
-                }
+                val deletedSpools = com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet.locallyDeletedSpoolIds
+                val activeSpools = entities.filter { it.is_active && it.spool_id !in deletedSpools }
+                Log.d("SyncSMS", "${activeSpools.size} spools parsed (${entities.size - activeSpools.size} inactive/deleted skipped)")
+                ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
+                if (activeSpools.isNotEmpty()) ServiceLocator.smsSpoolDao.insertAll(activeSpools)
             }
+            ServiceLocator.smsSpoolDao.deleteInactive()
 
             val plResp = service.getPackingLists(projectCode)
             if (plResp.isSuccessful) {
                 val entities = parsePackingListEntities(plResp.body()?.string().orEmpty(), projectId)
-                Log.d("SyncSMS", "${entities.size} packing lists parsed")
-                if (entities.isNotEmpty()) {
-                    ServiceLocator.smsPackingListDao.deleteByProject(projectId)
-                    ServiceLocator.smsPackingListDao.insertAll(entities)
-                }
+                val deletedPLs = com.example.hassiwrapper.ui.packinglists.PackingListDetailFragment.locallyDeletedPLIds
+                val activePLs = entities.filter { it.is_active && it.packing_list_id !in deletedPLs }
+                Log.d("SyncSMS", "${activePLs.size} packing lists parsed (${entities.size - activePLs.size} inactive/deleted skipped)")
+                ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
+                if (activePLs.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(activePLs)
             }
+            ServiceLocator.smsPackingListDao.deleteInactive()
 
             val vehicleResp = service.getVehicles(projectCode)
             if (vehicleResp.isSuccessful) {

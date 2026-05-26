@@ -74,7 +74,7 @@ interface SmsPackingListDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<SmsPackingListEntity>)
 
-    @Query("SELECT * FROM sms_packing_list WHERE project_id = :projectId ORDER BY packing_date DESC")
+    @Query("SELECT * FROM sms_packing_list WHERE project_id = :projectId AND is_active = 1 ORDER BY packing_date DESC")
     suspend fun getByProject(projectId: Int): List<SmsPackingListEntity>
 
     @Query("SELECT * FROM sms_packing_list WHERE vehicle_id = :vehicleId AND is_active = 1 ORDER BY packing_date DESC")
@@ -89,8 +89,32 @@ interface SmsPackingListDao {
     @Query("SELECT COUNT(*) FROM sms_packing_list WHERE project_id = :projectId")
     suspend fun countByProject(projectId: Int): Int
 
+    @Query("SELECT MAX(packing_list_id) FROM sms_packing_list")
+    suspend fun getMaxId(): Long?
+
+    @Query("SELECT COUNT(*) FROM sms_packing_list WHERE project_id = :projectId AND position_id = :positionId AND vehicle_id = :vehicleId")
+    suspend fun countByProjectPositionVehicle(projectId: Int, positionId: Int, vehicleId: Long): Int
+
+    @Query("SELECT COUNT(*) FROM sms_packing_list WHERE project_id = :projectId AND position_id = :positionId AND vehicle_id IS NULL")
+    suspend fun countByProjectPositionNoVehicle(projectId: Int, positionId: Int): Int
+
+    @Query("SELECT * FROM sms_packing_list WHERE synced = 0")
+    suspend fun getUnsynced(): List<SmsPackingListEntity>
+
+    @Query("UPDATE sms_packing_list SET synced = 1 WHERE packing_list_id IN (:ids)")
+    suspend fun markSynced(ids: List<Long>)
+
+    @Query("DELETE FROM sms_packing_list WHERE packing_list_id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("DELETE FROM sms_packing_list WHERE project_id = :projectId")
     suspend fun deleteByProject(projectId: Int)
+
+    @Query("DELETE FROM sms_packing_list WHERE project_id = :projectId AND synced = 1")
+    suspend fun deleteSyncedByProject(projectId: Int)
+
+    @Query("DELETE FROM sms_packing_list WHERE is_active = 0")
+    suspend fun deleteInactive()
 
     @Query("DELETE FROM sms_packing_list")
     suspend fun deleteAll()
@@ -161,7 +185,7 @@ interface SmsSpoolDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(spools: List<SmsSpoolEntity>)
 
-    @Query("SELECT * FROM sms_spool WHERE project_id = :projectId ORDER BY spool_code ASC, spool_suffix ASC")
+    @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND is_active = 1 ORDER BY spool_code ASC, spool_suffix ASC")
     suspend fun getByProject(projectId: Int): List<SmsSpoolEntity>
 
     @Query("SELECT * FROM sms_spool WHERE spool_id = :id")
@@ -183,6 +207,9 @@ interface SmsSpoolDao {
     @Query("SELECT COUNT(*) FROM sms_spool WHERE project_id = :projectId")
     suspend fun countByProject(projectId: Int): Int
 
+    @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND packing_list_id IS NULL AND is_active = 1 ORDER BY spool_code ASC, spool_suffix ASC")
+    suspend fun getWithoutPackingList(projectId: Int): List<SmsSpoolEntity>
+
     @Query("SELECT COUNT(*) FROM sms_spool WHERE project_id = :projectId AND is_active = 1")
     suspend fun countActiveByProject(projectId: Int): Int
 
@@ -195,8 +222,14 @@ interface SmsSpoolDao {
     @Query("SELECT * FROM sms_spool WHERE project_id = :projectId ORDER BY spool_code ASC, spool_suffix ASC")
     suspend fun getByProjectIgnoreActive(projectId: Int): List<SmsSpoolEntity>
 
+    @Query("DELETE FROM sms_spool WHERE spool_id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("DELETE FROM sms_spool WHERE project_id = :projectId")
     suspend fun deleteByProject(projectId: Int)
+
+    @Query("DELETE FROM sms_spool WHERE is_active = 0")
+    suspend fun deleteInactive()
 
     @Query("DELETE FROM sms_spool")
     suspend fun deleteAll()
@@ -218,6 +251,12 @@ interface SmsSpoolDao {
 
     @Query("UPDATE sms_spool SET packing_list_id = :packingListId, synced = 0 WHERE spool_id = :spoolId")
     suspend fun updatePackingList(spoolId: Long, packingListId: Long?)
+
+    @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND UPPER(spool_code) = UPPER(:code) AND UPPER(COALESCE(spool_suffix,'')) = UPPER(:suffix) LIMIT 1")
+    suspend fun findByCodeAndSuffix(projectId: Int, code: String, suffix: String): SmsSpoolEntity?
+
+    @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND UPPER(spool_code) = UPPER(:code) LIMIT 1")
+    suspend fun findByCode(projectId: Int, code: String): SmsSpoolEntity?
 }
 
 @Dao
@@ -327,12 +366,57 @@ interface SmsVehicleDao {
     @Query("SELECT * FROM sms_vehicle WHERE vehicle_id = :id")
     suspend fun getById(id: Long): SmsVehicleEntity?
 
+    @Query("SELECT * FROM sms_vehicle WHERE UPPER(license_plate) = UPPER(:plate) LIMIT 1")
+    suspend fun getByLicensePlate(plate: String): SmsVehicleEntity?
+
     @Query("SELECT COUNT(*) FROM sms_vehicle WHERE project_id = :projectId")
     suspend fun countByProject(projectId: Int): Int
+
+    @Query("SELECT MAX(vehicle_id) FROM sms_vehicle")
+    suspend fun getMaxId(): Long?
+
+    @Query("SELECT * FROM sms_vehicle WHERE synced = 0")
+    suspend fun getUnsynced(): List<SmsVehicleEntity>
+
+    @Query("UPDATE sms_vehicle SET synced = 1 WHERE vehicle_id IN (:ids)")
+    suspend fun markSynced(ids: List<Long>)
+
+    @Query("DELETE FROM sms_vehicle WHERE vehicle_id = :id")
+    suspend fun deleteById(id: Long)
 
     @Query("DELETE FROM sms_vehicle WHERE project_id = :projectId")
     suspend fun deleteByProject(projectId: Int)
 
     @Query("DELETE FROM sms_vehicle")
     suspend fun deleteAll()
+}
+
+@Dao
+interface SmsVehicleLoadingDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(entity: SmsVehicleLoadingEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSpools(spools: List<SmsVehicleLoadingSpoolEntity>)
+
+    @Query("SELECT * FROM sms_vehicle_loading WHERE synced = 0")
+    suspend fun getUnsynced(): List<SmsVehicleLoadingEntity>
+
+    @Query("SELECT * FROM sms_vehicle_loading_spool WHERE loading_id = :loadingId")
+    suspend fun getSpoolsByLoading(loadingId: Long): List<SmsVehicleLoadingSpoolEntity>
+
+    @Query("UPDATE sms_vehicle_loading SET synced = 1 WHERE loading_id IN (:ids)")
+    suspend fun markSynced(ids: List<Long>)
+
+    @Query("DELETE FROM sms_vehicle_loading WHERE loading_id = :id")
+    suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM sms_vehicle_loading")
+    suspend fun deleteAll()
+
+    @Query("DELETE FROM sms_vehicle_loading_spool WHERE loading_id = :loadingId")
+    suspend fun deleteSpoolsByLoading(loadingId: Long)
+
+    @Query("DELETE FROM sms_vehicle_loading_spool")
+    suspend fun deleteAllSpools()
 }

@@ -8,33 +8,50 @@
     android:background="@color/background">
 
     <!-- Main content -->
-    <LinearLayout
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="match_parent">
 
-        <!-- Top App Bar -->
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@color/primary"
-            android:elevation="4dp"
-            app:title="Smart Material System"
-            app:titleTextColor="@color/on_primary"
-            app:navigationIconTint="@color/on_primary"
-            app:navigationIcon="@drawable/ic_menu" />
-
-        <!-- NavHost -->
-        <androidx.fragment.app.FragmentContainerView
-            android:id="@+id/navHostFragment"
-            android:name="androidx.navigation.fragment.NavHostFragment"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:defaultNavHost="true"
-            app:navGraph="@navigation/nav_graph" />
+            android:orientation="vertical">
 
-    </LinearLayout>
+            <!-- Top App Bar -->
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="@color/primary"
+                android:elevation="4dp"
+                app:title="Smart Material System"
+                app:titleTextColor="@color/on_primary"
+                app:navigationIconTint="@color/on_primary"
+                app:navigationIcon="@drawable/ic_menu" />
+
+            <!-- NavHost -->
+            <androidx.fragment.app.FragmentContainerView
+                android:id="@+id/navHostFragment"
+                android:name="androidx.navigation.fragment.NavHostFragment"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:defaultNavHost="true"
+                app:navGraph="@navigation/nav_graph" />
+
+        </LinearLayout>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabQrScan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="16dp"
+            android:src="@drawable/ic_qr_scan"
+            android:contentDescription="@string/qr_scan_button"
+            app:backgroundTint="@color/green"
+            app:elevation="6dp" />
+
+    </FrameLayout>
 
     <!-- Navigation Drawer -->
     <com.google.android.material.navigation.NavigationView

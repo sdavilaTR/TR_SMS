@@ -34,6 +34,9 @@
     <color name="exit_bg">#FFDBEAFE</color>
     <color name="exit_text">#FF1D4ED8</color>
 
+    <!-- QR Scanner FAB -->
+    <color name="green">#FF2E7D32</color>
+
     <!-- Card and divider -->
     <color name="card_bg">#FFFFFFFF</color>
     <color name="divider">#FFE2E8F0</color>

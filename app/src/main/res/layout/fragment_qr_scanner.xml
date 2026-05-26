@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Scan area -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="24dp"
+            android:background="@color/surface"
+            android:layout_marginBottom="16dp">
+
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:src="@drawable/ic_qr_scan"
+                android:layout_marginBottom="16dp"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:id="@+id/txtScanStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textSize="15sp"
+                android:textColor="@color/on_surface_variant"
+                android:layout_marginBottom="20dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnScanCamera"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/qr_scanner_btn_camera"
+                android:textAllCaps="false"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="@string/qr_scanner_hint_laser"
+                android:textSize="12sp"
+                android:textColor="@color/on_surface_variant" />
+
+        </LinearLayout>
+
+        <!-- Keyboard-wedge capture: invisible 1×1 EditText that stays focused.
+             The Honeywell imager (com.intermec.datacollectionservice) sends scan
+             data as key events in keyboard-wedge mode. TextWatcher + 250ms timer
+             reassembles multi-line QR payloads before processing. -->
+        <EditText
+            android:id="@+id/etKeyboardWedge"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:alpha="0"
+            android:inputType="textMultiLine"
+            android:maxLines="50"
+            android:background="@null"
+            android:importantForAutofill="no" />
+
+        <!-- Result card: visible after a scan attempt -->
+        <LinearLayout
+            android:id="@+id/layoutResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="@color/surface"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/txtResultType"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:textColor="@color/on_surface"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/txtResultDetail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="@color/on_surface_variant" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

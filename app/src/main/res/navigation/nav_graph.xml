@@ -4,17 +4,51 @@
     android:id="@+id/nav_graph"
     app:startDestination="@id/homeFragment">
 
-    <fragment android:id="@+id/homeFragment"       android:name="com.example.hassiwrapper.ui.home.HomeFragment"           android:label="@string/menu_home" />
+    <fragment android:id="@+id/homeFragment"       android:name="com.example.hassiwrapper.ui.home.HomeFragment"           android:label="@string/menu_home">
+        <action android:id="@+id/action_homeFragment_to_scannerFragment"      app:destination="@id/scannerFragment" />
+        <action android:id="@+id/action_homeFragment_to_vehiclesFragment"     app:destination="@id/vehiclesFragment" />
+        <action android:id="@+id/action_homeFragment_to_packingListsFragment" app:destination="@id/packingListsFragment" />
+    </fragment>
+    <fragment android:id="@+id/qrScannerFragment" android:name="com.example.hassiwrapper.ui.qrscanner.QrScannerFragment"   android:label="@string/menu_qr_scanner">
+        <action android:id="@+id/action_qrScannerFragment_to_vehicleDetailFragment" app:destination="@id/vehicleDetailFragment" />
+    </fragment>
     <fragment android:id="@+id/scannerFragment"    android:name="com.example.hassiwrapper.ui.createspool.CreateSpoolFragment" android:label="@string/menu_scanner">
         <action android:id="@+id/action_scannerFragment_to_newSpoolFragment" app:destination="@id/newSpoolFragment" />
     </fragment>
     <fragment android:id="@+id/newSpoolFragment"   android:name="com.example.hassiwrapper.ui.newspool.NewSpoolFragment"       android:label="@string/new_spool_title" />
     <fragment android:id="@+id/passportFragment"   android:name="com.example.hassiwrapper.ui.passport.PassportFragment"    android:label="@string/passport_screen_title" />
-    <fragment android:id="@+id/packingListsFragment" android:name="com.example.hassiwrapper.ui.packinglists.PackingListsFragment" android:label="@string/menu_passport" />
+    <fragment android:id="@+id/packingListsFragment" android:name="com.example.hassiwrapper.ui.packinglists.PackingListsFragment" android:label="@string/menu_passport">
+        <action android:id="@+id/action_packingListsFragment_to_newPackingListFragment" app:destination="@id/newPackingListFragment" />
+        <action android:id="@+id/action_packingListsFragment_to_packingListDetailFragment" app:destination="@id/packingListDetailFragment" />
+    </fragment>
+    <fragment android:id="@+id/newPackingListFragment" android:name="com.example.hassiwrapper.ui.packinglists.NewPackingListFragment" android:label="@string/new_packing_list_title">
+        <argument android:name="vehicleId"    app:argType="long"   android:defaultValue="0L" />
+        <argument android:name="vehiclePlate" app:argType="string" app:nullable="true" android:defaultValue="@null" />
+    </fragment>
+    <fragment android:id="@+id/packingListDetailFragment" android:name="com.example.hassiwrapper.ui.packinglists.PackingListDetailFragment" android:label="@string/pl_detail_title">
+        <argument android:name="packingListId" app:argType="long" android:defaultValue="0L" />
+        <action android:id="@+id/action_packingListDetailFragment_to_editPackingListFragment" app:destination="@id/editPackingListFragment" />
+    </fragment>
+    <fragment android:id="@+id/editPackingListFragment" android:name="com.example.hassiwrapper.ui.packinglists.EditPackingListFragment" android:label="@string/pl_edit_title">
+        <argument android:name="packingListId" app:argType="long" android:defaultValue="0L" />
+    </fragment>
     <fragment android:id="@+id/attendanceFragment" android:name="com.example.hassiwrapper.ui.attendance.AttendanceFragment" android:label="@string/menu_attendance" />
     <fragment android:id="@+id/syncFragment"       android:name="com.example.hassiwrapper.ui.sync.SyncFragment"            android:label="@string/menu_sync" />
     <fragment android:id="@+id/workersFragment"    android:name="com.example.hassiwrapper.ui.workers.WorkersFragment"      android:label="@string/menu_workers" />
-    <fragment android:id="@+id/vehiclesFragment"   android:name="com.example.hassiwrapper.ui.vehicles.VehiclesFragment"   android:label="@string/menu_vehicles" />
+    <fragment android:id="@+id/vehiclesFragment" android:name="com.example.hassiwrapper.ui.vehicles.VehiclesFragment" android:label="@string/menu_vehicles">
+        <action android:id="@+id/action_vehiclesFragment_to_newVehicleFragment"     app:destination="@id/newVehicleFragment" />
+        <action android:id="@+id/action_vehiclesFragment_to_vehicleDetailFragment"  app:destination="@id/vehicleDetailFragment" />
+        <action android:id="@+id/action_vehiclesFragment_to_loadSpoolsFragment"     app:destination="@id/loadSpoolsFragment" />
+    </fragment>
+    <fragment android:id="@+id/loadSpoolsFragment" android:name="com.example.hassiwrapper.ui.vehicles.LoadSpoolsFragment" android:label="@string/load_spools_title" />
+    <fragment android:id="@+id/newVehicleFragment" android:name="com.example.hassiwrapper.ui.vehicles.NewVehicleFragment" android:label="@string/new_vehicle_title" />
+    <fragment android:id="@+id/vehicleDetailFragment" android:name="com.example.hassiwrapper.ui.vehicles.VehicleDetailFragment" android:label="@string/vehicle_detail_title">
+        <argument android:name="vehicleId" app:argType="long" android:defaultValue="0L" />
+        <action android:id="@+id/action_vehicleDetailFragment_to_editVehicleFragment" app:destination="@id/editVehicleFragment" />
+    </fragment>
+    <fragment android:id="@+id/editVehicleFragment" android:name="com.example.hassiwrapper.ui.vehicles.EditVehicleFragment" android:label="@string/edit_vehicle_title">
+        <argument android:name="vehicleId" app:argType="long" android:defaultValue="0L" />
+    </fragment>
     <fragment android:id="@+id/settingsFragment"   android:name="com.example.hassiwrapper.ui.settings.SettingsFragment"   android:label="@string/menu_settings" />
     <fragment android:id="@+id/observationFragment"          android:name="com.example.hassiwrapper.ui.observation.ObservationFragment"              android:label="@string/obs_title">
         <argument android:name="target_type"          app:argType="string" android:defaultValue="WORKER" app:nullable="false" />

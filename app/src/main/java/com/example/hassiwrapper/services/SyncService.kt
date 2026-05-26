@@ -43,7 +43,9 @@ class SyncService(
     private val authRepo: AuthRepository? = null,
     private val trainingComplianceDao: com.example.hassiwrapper.data.db.dao.TrainingComplianceDao? = null,
     private val documentComplianceDao: com.example.hassiwrapper.data.db.dao.DocumentComplianceDao? = null,
-    private val smsSpoolDao: SmsSpoolDao? = null
+    private val smsSpoolDao: SmsSpoolDao? = null,
+    private val smsPackingListDao: SmsPackingListDao? = null,
+    private val smsPositionDao: SmsPositionDao? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -128,7 +130,7 @@ class SyncService(
                 onRetry?.invoke(RetryState(attempt, (actualWait / 1000).toInt()))
                 delay(actualWait)
                 waitMs = minOf(waitMs * 2, RETRY_MAX_MS)
-                // Re-resolve URL before next attempt in case connectivity changed
+                 // Re-resolve URL before next attempt in case connectivity changed
                 apiClient.resetResolvedBase()
             } catch (e: Exception) {
                 // Non-transient (auth error, bad request, etc.) — surface immediately
@@ -222,7 +224,8 @@ class SyncService(
         val (sessionsUploaded, sessionsError)  = uploadSessions(api)
         val (observationsUploaded, observationsError) = uploadObservations(api)
 
-        // 4b. Upload locally-created spools (best-effort)
+        // 4b. Upload locally-created spools and packing lists (best-effort)
+        uploadNewPackingLists(api)
         uploadNewSpools(api)
 
         // 5. Upload pending photos (non-fatal)
@@ -663,6 +666,54 @@ class SyncService(
                 Pair(0, "Observaciones no subidas (HTTP ${response.code()})")
             }
         }
+    }
+
+    // ── New packing list upload ───────────────────────────────────────────────
+
+    private suspend fun uploadNewPackingLists(api: AtlasApiService) {
+        val dao = smsPackingListDao ?: return
+        val unsynced = dao.getUnsynced()
+        if (unsynced.isEmpty()) return
+
+        Log.i(TAG, "Uploading ${unsynced.size} new packing list(s)")
+        val synced = mutableListOf<Long>()
+
+        for (pl in unsynced) {
+            val project = projectDao.getById(pl.project_id)
+            val projectCode = project?.project_code
+            if (projectCode.isNullOrBlank()) {
+                Log.w(TAG, "No project code for PL ${pl.packing_list_id}, skipping")
+                continue
+            }
+            try {
+                val positionName = pl.position_id?.let { pid ->
+                    smsPositionDao?.getAll()?.find { it.position_id == pid }?.name
+                }
+                val body = CreatePackingListRequest(
+                    packingListName  = pl.packing_list_name,
+                    vehicle          = pl.vehicle_plate,
+                    vehicleId        = pl.vehicle_id,
+                    position         = positionName,
+                    positionId       = pl.position_id,
+                    packingDate      = pl.packing_date.takeIf { it.isNotBlank() } ?: pl.created_at,
+                    notes            = pl.notes,
+                    createdBy        = pl.created_by ?: "API",
+                    projectCode      = projectCode,
+                    totalSpoolsCount = pl.total_spools_count ?: 0
+                )
+                val response = api.createPackingList(projectCode, body)
+                if (response.isSuccessful) {
+                    synced.add(pl.packing_list_id)
+                    Log.i(TAG, "PL ${pl.packing_list_id} uploaded")
+                } else {
+                    Log.e(TAG, "PL ${pl.packing_list_id} upload failed: HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "PL ${pl.packing_list_id} upload error: ${e.message}")
+            }
+        }
+
+        if (synced.isNotEmpty()) dao.markSynced(synced)
     }
 
     // ── New spool upload ──────────────────────────────────────────────────────

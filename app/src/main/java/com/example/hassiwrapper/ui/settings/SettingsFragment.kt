@@ -22,6 +22,7 @@ import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.update.UpdateInstaller
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -44,6 +45,8 @@ class SettingsFragment : Fragment() {
         setupProfileSelector(view)
         setupLanguageSelector(view)
         setupDeviceCode(view)
+        setupLocationConfig(view)
+        setupDebugLocationButton(view)
 
         refreshAuthButtons()
 
@@ -329,6 +332,62 @@ class SettingsFragment : Fragment() {
         // Refresh navigation menu visibility and device code card
         (requireActivity() as? MainActivity)?.refreshProfileMenu()
         view?.let { setupDeviceCode(it) }
+    }
+
+    // ── Location config (Laydown sections / Site units) ────────────────
+
+    private fun setupLocationConfig(view: View) {
+        val inputSections = view.findViewById<TextInputEditText>(R.id.inputLaydownSections)
+        val inputUnits    = view.findViewById<TextInputEditText>(R.id.inputSiteUnits)
+        val btnSave       = view.findViewById<MaterialButton>(R.id.btnSaveLocationConfig)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val sections = ServiceLocator.configRepo.get("laydown_sections") ?: "1A,2A,1B,2B,1C,2C,1D,2D"
+            val units    = ServiceLocator.configRepo.get("site_units") ?: "1,2,3,4"
+            inputSections.setText(sections)
+            inputUnits.setText(units)
+        }
+
+        btnSave.setOnClickListener {
+            val sections = inputSections.text.toString().trim()
+            val units    = inputUnits.text.toString().trim()
+            viewLifecycleOwner.lifecycleScope.launch {
+                ServiceLocator.configRepo.set("laydown_sections", sections)
+                ServiceLocator.configRepo.set("site_units", units)
+                Toast.makeText(requireContext(), R.string.settings_location_config_saved, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // TODO: BORRAR - Solo para debug: permite cambiar la ubicación del terminal manualmente
+    private fun setupDebugLocationButton(view: View) {
+        val btn = view.findViewById<MaterialButton>(R.id.btnDebugChangeLocation)
+        val txtLocation = view.findViewById<TextView>(R.id.txtDeviceLocation)
+        btn.setOnClickListener {
+            viewLifecycleOwner.lifecycleScope.launch {
+                val positions = ServiceLocator.smsPositionDao.getAll()
+                val options = if (positions.isNotEmpty()) {
+                    positions.map { it.code }.toTypedArray()
+                } else {
+                    arrayOf("WORKSHOP", "LAYDOWN", "SITE")
+                }
+                AlertDialog.Builder(requireContext())
+                    .setTitle(getString(R.string.settings_debug_location_btn))
+                    .setItems(options) { _, which ->
+                        val selected = options[which]
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            ServiceLocator.configRepo.set("device_location", selected)
+                            txtLocation.text = selected
+                            Toast.makeText(
+                                requireContext(),
+                                getString(R.string.settings_debug_location_changed, selected),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                    .show()
+            }
+        }
     }
 
     private fun populateAppInfo(view: View) {

@@ -16,17 +16,8 @@ import androidx.lifecycle.lifecycleScope
 import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
-import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
-import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
-import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
-import com.example.hassiwrapper.network.dto.SmsPackingListDto
-import com.example.hassiwrapper.network.dto.SmsVehicleDto
-import com.example.hassiwrapper.network.dto.SpoolDto
 import com.google.android.material.button.MaterialButton
-import com.google.gson.Gson
-import com.google.gson.JsonParser
 import kotlinx.coroutines.launch
-import java.util.zip.CRC32
 
 class SyncFragment : Fragment() {
 
@@ -343,120 +334,13 @@ class SyncFragment : Fragment() {
     }
 
     private suspend fun syncSmsData(status: TextView) {
-        val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-        val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-        if (projectCode.isNullOrBlank()) {
-            Log.w("SyncSMS", "No project code for id=$projectId, skipping SMS sync")
-            return
-        }
-        Log.d("SyncSMS", "Syncing SMS data for $projectCode (id=$projectId)")
         status.text = getString(R.string.home_syncing_project)
         try {
-            val service = ServiceLocator.apiClient.getService()
-
-            val spoolResp = service.getSpools(projectCode)
-            if (spoolResp.isSuccessful) {
-                val entities = parseSpoolEntities(spoolResp.body()?.string().orEmpty(), projectId)
-                val deletedSpools = com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet.locallyDeletedSpoolIds
-                val activeSpools = entities.filter { it.is_active && it.spool_id !in deletedSpools }
-                Log.d("SyncSMS", "${activeSpools.size} spools parsed (${entities.size - activeSpools.size} inactive/deleted skipped)")
-                ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
-                if (activeSpools.isNotEmpty()) ServiceLocator.smsSpoolDao.insertAll(activeSpools)
-            }
-            ServiceLocator.smsSpoolDao.deleteInactive()
-
-            val plResp = service.getPackingLists(projectCode)
-            if (plResp.isSuccessful) {
-                val entities = parsePackingListEntities(plResp.body()?.string().orEmpty(), projectId)
-                val deletedPLs = com.example.hassiwrapper.ui.packinglists.PackingListDetailFragment.locallyDeletedPLIds
-                val activePLs = entities.filter { it.is_active && it.packing_list_id !in deletedPLs }
-                Log.d("SyncSMS", "${activePLs.size} packing lists parsed (${entities.size - activePLs.size} inactive/deleted skipped)")
-                ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
-                if (activePLs.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(activePLs)
-            }
-            ServiceLocator.smsPackingListDao.deleteInactive()
-
-            val vehicleResp = service.getVehicles(projectCode)
-            if (vehicleResp.isSuccessful) {
-                val entities = parseVehicleEntities(vehicleResp.body()?.string().orEmpty(), projectId)
-                Log.d("SyncSMS", "${entities.size} vehicles parsed")
-                if (entities.isNotEmpty()) {
-                    ServiceLocator.smsVehicleDao.insertAll(entities)
-                }
-            }
+            (requireActivity() as? com.example.hassiwrapper.MainActivity)?.syncSmsData()
         } catch (e: Exception) {
             Log.e("SyncSMS", "SMS sync failed", e)
         } finally {
             status.text = ""
         }
-    }
-
-    private fun parseSpoolEntities(raw: String, projectId: Int): List<SmsSpoolEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> listOf("data","items","results","spools").asSequence()
-                    .mapNotNull { el.asJsonObject.get(it) }.firstOrNull { it.isJsonArray }?.asJsonArray
-                else -> null
-            } ?: return emptyList()
-            array.mapIndexedNotNull { idx, element ->
-                if (!element.isJsonObject) return@mapIndexedNotNull null
-                try {
-                    val dto = gson.fromJson(element, SpoolDto::class.java)
-                    val entity = dto.toEntity()
-                    if (entity.spool_id == 0L) return@mapIndexedNotNull null
-                    val finalId = if (dto.spoolId?.toDoubleOrNull() == null && !dto.spoolId.isNullOrEmpty()) {
-                        val key = "${dto.spoolId}-${dto.spoolSuffix.orEmpty()}-$idx"
-                        val crc = CRC32(); crc.update(key.toByteArray())
-                        crc.value.toLong().takeIf { it != 0L } ?: (idx + 1L)
-                    } else entity.spool_id
-                    entity.copy(spool_id = finalId, project_id = projectId)
-                } catch (e: Exception) { null }
-            }
-        } catch (e: Exception) { emptyList() }
-    }
-
-    private fun parsePackingListEntities(raw: String, projectId: Int): List<SmsPackingListEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> listOf("data","items","results","packingLists","packing_lists").asSequence()
-                    .mapNotNull { el.asJsonObject.get(it) }.firstOrNull { it.isJsonArray }?.asJsonArray
-                else -> null
-            } ?: return emptyList()
-            array.mapNotNull { element ->
-                if (!element.isJsonObject) return@mapNotNull null
-                try {
-                    val dto = gson.fromJson(element, SmsPackingListDto::class.java)
-                    val entity = dto.toEntity(projectId)
-                    if (entity.packing_list_id == 0L) null else entity
-                } catch (e: Exception) { null }
-            }
-        } catch (e: Exception) { emptyList() }
-    }
-
-    private fun parseVehicleEntities(raw: String, projectId: Int): List<SmsVehicleEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> listOf("data","items","results","vehicles").asSequence()
-                    .mapNotNull { el.asJsonObject.get(it) }.firstOrNull { it.isJsonArray }?.asJsonArray
-                else -> null
-            } ?: return emptyList()
-            array.mapNotNull { element ->
-                if (!element.isJsonObject) return@mapNotNull null
-                try {
-                    val dto = gson.fromJson(element, SmsVehicleDto::class.java)
-                    val entity = dto.toEntity(projectId)
-                    if (entity.vehicle_id == 0L) null else entity
-                } catch (e: Exception) { null }
-            }
-        } catch (e: Exception) { emptyList() }
     }
 }

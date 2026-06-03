@@ -31,7 +31,9 @@ data class SmsPackingListDto(
     @SerializedName(value = "created_by", alternate = ["createdBy"])
     val createdBy: String? = null,
     @SerializedName(value = "updated_at", alternate = ["updatedAt"])
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
+    @SerializedName(value = "ready_to_send", alternate = ["readyToSend"])
+    val readyToSend: Boolean? = null
 ) {
     private fun String?.toLongOrNullSafe(): Long? =
         this?.trim()?.takeIf { it.isNotEmpty() }?.toDoubleOrNull()?.toLong()
@@ -56,6 +58,7 @@ data class SmsPackingListDto(
         is_active = isActive ?: true,
         created_at = createdAt.orEmpty(),
         created_by = createdBy,
-        updated_at = updatedAt
+        updated_at = updatedAt,
+        ready_to_send = readyToSend ?: false
     )
 }

@@ -46,9 +46,11 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsUnitEntity::class,
         SmsVehicleEntity::class,
         SmsVehicleLoadingEntity::class,
-        SmsVehicleLoadingSpoolEntity::class
+        SmsVehicleLoadingSpoolEntity::class,
+        SmsTransferEntity::class,
+        SmsTransferSpoolEntity::class
     ],
-    version = 14,
+    version = 17,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -87,6 +89,7 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun smsUnitDao(): SmsUnitDao
     abstract fun smsVehicleDao(): SmsVehicleDao
     abstract fun smsVehicleLoadingDao(): SmsVehicleLoadingDao
+    abstract fun smsTransferDao(): SmsTransferDao
 
     /** Clears all data from every table (used when switching to DEV profile). */
     suspend fun clearAllData() {
@@ -541,6 +544,53 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 15 → 16: add on_route + destination to sms_vehicle")
+                db.execSQL("ALTER TABLE `sms_vehicle` ADD COLUMN `on_route` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `sms_vehicle` ADD COLUMN `destination` INTEGER")
+            }
+        }
+
+        private val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 16 → 17: add ready_to_send to sms_packing_list")
+                db.execSQL("ALTER TABLE `sms_packing_list` ADD COLUMN `ready_to_send` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 14 → 15: create sms_transfer tables")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_transfer` (
+                        `transfer_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `transfer_type` TEXT NOT NULL DEFAULT '',
+                        `packing_list_id` INTEGER NOT NULL,
+                        `packing_list_name` TEXT NOT NULL DEFAULT '',
+                        `vehicle_id` INTEGER NOT NULL,
+                        `vehicle_plate` TEXT NOT NULL DEFAULT '',
+                        `origin_location` TEXT NOT NULL DEFAULT '',
+                        `destination_location` TEXT NOT NULL DEFAULT '',
+                        `signature_data` TEXT NOT NULL DEFAULT '',
+                        `created_at` TEXT NOT NULL DEFAULT '',
+                        `project_id` INTEGER NOT NULL,
+                        `synced` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_transfer_spool` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `transfer_id` INTEGER NOT NULL,
+                        `spool_id` INTEGER NOT NULL,
+                        `spool_code` TEXT NOT NULL DEFAULT '',
+                        `spool_suffix` TEXT,
+                        `assignment` TEXT
+                    )
+                """.trimIndent())
+            }
+        }
+
         private val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "Migration 10 → 11: add API fields to sms_spool")
@@ -574,7 +624,10 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_10_11,
                         MIGRATION_11_12,
                         MIGRATION_12_13,
-                        MIGRATION_13_14
+                        MIGRATION_13_14,
+                        MIGRATION_14_15,
+                        MIGRATION_15_16,
+                        MIGRATION_16_17
                     )
                     .build()
                 INSTANCE = instance

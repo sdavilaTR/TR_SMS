@@ -2,12 +2,8 @@ package com.example.hassiwrapper.ui.qrscanner
 
 import android.Manifest
 import android.app.Activity
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -27,11 +23,11 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.fragment.findNavController
 import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
-import com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet
+import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
+import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
@@ -51,6 +47,7 @@ class QrScannerFragment : Fragment() {
         val text = etKeyboardWedge.text?.toString()?.trimEnd('\n', '\r', ' ').orEmpty()
         etKeyboardWedge.setText("")
         etKeyboardWedge.requestFocus()
+        Log.w(TAG, "=== WEDGE TRIGGER === text='${text.take(80)}' blank=${text.isBlank()}")
         if (text.isNotBlank()) {
             Log.d(TAG, "Keyboard-wedge scan (${text.length} chars): ${text.take(120)}")
             handleScanResult(text)
@@ -76,32 +73,6 @@ class QrScannerFragment : Fragment() {
         else Toast.makeText(requireContext(), getString(R.string.scanner_error_camera_permission), Toast.LENGTH_SHORT).show()
     }
 
-    // ── direct intent receiver (Intermec / Honeywell intent-output mode) ─────
-
-    private val directScanReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            intent ?: return
-            Log.d(TAG, "Direct receiver: action=${intent.action}")
-            intent.extras?.keySet()?.forEach { key ->
-                Log.d(TAG, "  extra[$key] = ${intent.extras?.get(key)}")
-            }
-            val data = intent.getStringExtra("data")
-                ?: intent.getStringExtra("barcode_data")
-                ?: intent.getStringExtra("com.symbol.datawedge.data_string")
-                ?: run {
-                    intent.extras?.keySet()?.firstNotNullOfOrNull { k ->
-                        when (val v = intent.extras?.get(k)) {
-                            is String -> v.takeIf { it.length >= 3 }
-                            is ByteArray -> runCatching { String(v, Charsets.UTF_8) }.getOrNull()?.takeIf { it.length >= 3 }
-                            else -> null
-                        }
-                    }
-                } ?: return
-            Log.d(TAG, "Direct receiver data: $data")
-            handleScanResult(data)
-        }
-    }
-
     // ── lifecycle ─────────────────────────────────────────────────────────────
 
     override fun onCreateView(
@@ -116,6 +87,7 @@ class QrScannerFragment : Fragment() {
         txtResultType    = view.findViewById(R.id.txtResultType)
         txtResultDetail  = view.findViewById(R.id.txtResultDetail)
         etKeyboardWedge  = view.findViewById(R.id.etKeyboardWedge)
+        etKeyboardWedge.showSoftInputOnFocus = false
 
         txtScanStatus.text = getString(R.string.qr_scanner_status_waiting)
 
@@ -123,6 +95,7 @@ class QrScannerFragment : Fragment() {
         etKeyboardWedge.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                Log.w(TAG, "=== WEDGE TEXT === len=${s?.length} chars=${s?.take(20)}")
                 if ((s?.length ?: 0) > 0) {
                     wedgeHandler.removeCallbacks(wedgeTrigger)
                     wedgeHandler.postDelayed(wedgeTrigger, 250)
@@ -157,25 +130,11 @@ class QrScannerFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         etKeyboardWedge.requestFocus()
-        Log.d(TAG, "onResume: keyboard-wedge ready, registering intent receiver")
-        val filter = IntentFilter().apply {
-            addAction("com.honeywell.sample.action.BARCODE")
-            addAction("com.honeywell.decode.intent.action.EDIT_DATA")
-            addAction("com.intermec.decode.intent.action.EDIT_DATA")
-            addAction("com.honeywell.decode.intent.action.BARCODE_DATA")
-            addCategory(Intent.CATEGORY_DEFAULT)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requireContext().registerReceiver(directScanReceiver, filter, Context.RECEIVER_EXPORTED)
-        } else {
-            requireContext().registerReceiver(directScanReceiver, filter)
-        }
     }
 
     override fun onPause() {
         super.onPause()
         wedgeHandler.removeCallbacks(wedgeTrigger)
-        try { requireContext().unregisterReceiver(directScanReceiver) } catch (_: IllegalArgumentException) {}
     }
 
     // ── camera ────────────────────────────────────────────────────────────────
@@ -197,7 +156,7 @@ class QrScannerFragment : Fragment() {
         layoutResult.visibility = View.GONE
 
         when (val result = parseQr(code)) {
-            is QrResult.Spool        -> lookupSpool(result.spoolId)
+            is QrResult.Spool        -> lookupSpool(result.spoolCode, result.spoolSuffix)
             is QrResult.VehicleId    -> lookupVehicleById(result.id)
             is QrResult.VehiclePlate -> lookupVehicleByPlate(result.plate)
             is QrResult.VehicleBadge -> showError(
@@ -211,19 +170,21 @@ class QrScannerFragment : Fragment() {
         }
     }
 
-    private fun lookupSpool(spoolId: Long) {
+    private fun lookupSpool(spoolCode: String, spoolSuffix: String?) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val spool = ServiceLocator.smsSpoolDao.getById(spoolId)
+                val spools = ServiceLocator.smsSpoolDao.getByCode(spoolCode)
+                val spool = if (spoolSuffix != null)
+                    spools.find { it.spool_suffix == spoolSuffix } ?: spools.firstOrNull()
+                else
+                    spools.firstOrNull()
                 if (spool != null) {
                     txtScanStatus.text = getString(R.string.qr_scanner_status_spool_found, spool.displayCode)
-                    layoutResult.visibility = View.GONE
-                    SpoolDetailBottomSheet.newInstance(spool.spool_id)
-                        .show(childFragmentManager, "spool_detail")
+                    showResult(spool.displayCode, buildSpoolDetail(spool))
                 } else {
                     showError(
                         getString(R.string.qr_scanner_result_spool_not_found),
-                        getString(R.string.qr_scanner_result_id_detail, spoolId.toString())
+                        getString(R.string.qr_scanner_result_id_detail, spoolCode)
                     )
                 }
             } catch (e: Exception) {
@@ -239,9 +200,7 @@ class QrScannerFragment : Fragment() {
                 val vehicle = ServiceLocator.smsVehicleDao.getById(vehicleId)
                 if (vehicle != null) {
                     txtScanStatus.text = getString(R.string.qr_scanner_status_vehicle_found, vehicle.license_plate)
-                    layoutResult.visibility = View.GONE
-                    val bundle = Bundle().apply { putLong("vehicleId", vehicle.vehicle_id) }
-                    findNavController().navigate(R.id.action_qrScannerFragment_to_vehicleDetailFragment, bundle)
+                    showResult(vehicle.license_plate, buildVehicleDetail(vehicle))
                 } else {
                     showError(
                         getString(R.string.qr_scanner_result_vehicle_not_found),
@@ -261,9 +220,7 @@ class QrScannerFragment : Fragment() {
                 val vehicle = ServiceLocator.smsVehicleDao.getByLicensePlate(plate)
                 if (vehicle != null) {
                     txtScanStatus.text = getString(R.string.qr_scanner_status_vehicle_found, vehicle.license_plate)
-                    layoutResult.visibility = View.GONE
-                    val bundle = Bundle().apply { putLong("vehicleId", vehicle.vehicle_id) }
-                    findNavController().navigate(R.id.action_qrScannerFragment_to_vehicleDetailFragment, bundle)
+                    showResult(vehicle.license_plate, buildVehicleDetail(vehicle))
                 } else {
                     showError(
                         getString(R.string.qr_scanner_result_vehicle_not_found),
@@ -277,43 +234,34 @@ class QrScannerFragment : Fragment() {
         }
     }
 
+    private fun showResult(title: String, detail: String) {
+        layoutResult.visibility = View.VISIBLE
+        txtResultType.text = title
+        txtResultDetail.text = detail
+    }
+
     private fun showError(type: String, detail: String) {
         txtScanStatus.text = getString(R.string.qr_scanner_status_waiting)
-        layoutResult.visibility = View.VISIBLE
-        txtResultType.text = type
-        txtResultDetail.text = detail
+        showResult(type, detail)
         Toast.makeText(requireContext(), "$type\n$detail", Toast.LENGTH_LONG).show()
     }
+
+    private fun buildSpoolDetail(spool: SmsSpoolEntity) = buildString {
+        spool.packing_list_name?.let { appendLine("PL: $it") }
+        spool.status?.let { appendLine("Estado: $it") }
+        spool.description?.let { appendLine(it) }
+        spool.line_code?.let { appendLine("Línea: $it") }
+        spool.zone?.let { append("Zona: $it") }
+    }.trimEnd()
+
+    private fun buildVehicleDetail(v: SmsVehicleEntity) = buildString {
+        v.vehicle_name?.let { appendLine(it) }
+        v.vehicle_type?.let { appendLine("Tipo: $it") }
+        v.company?.let { append("Empresa: $it") }
+    }.trimEnd()
 
     companion object {
         private const val TAG = "QrScannerFragment"
     }
 }
 
-// ── QR format parser ──────────────────────────────────────────────────────────
-
-private sealed class QrResult {
-    data class Spool(val spoolId: Long, val suffix: String?) : QrResult()
-    data class VehicleId(val id: Long) : QrResult()
-    data class VehiclePlate(val plate: String) : QrResult()
-    data class VehicleBadge(val uuid: String) : QrResult()
-    data class Unknown(val raw: String) : QrResult()
-}
-
-private fun parseQr(text: String): QrResult {
-    val upper = text.uppercase()
-    if (upper.startsWith("JAFURAH PACKING LIST") || upper.startsWith("RIYAS PACKING LIST")) {
-        val lines = text.lines()
-        val idLine = lines.find { it.trimStart().uppercase().startsWith("ID:") }
-        val spoolId = idLine?.substringAfter(":")?.trim()?.toLongOrNull()
-        val suffix = lines.find { it.trimStart().uppercase().startsWith("SUFFIX:") }
-            ?.substringAfter(":")?.trim()?.takeIf { it.isNotBlank() }
-        android.util.Log.d("QrScannerFragment", "parseQr spool block: idLine=$idLine spoolId=$spoolId")
-        return if (spoolId != null) QrResult.Spool(spoolId, suffix) else QrResult.Unknown(text)
-    }
-    if (text.startsWith("VEH:")) return QrResult.VehicleBadge(text.removePrefix("VEH:"))
-    val urlVehicleId = Regex("""/vehicles?/(\d+)""").find(text)
-        ?.groupValues?.getOrNull(1)?.toLongOrNull()
-    if (urlVehicleId != null) return QrResult.VehicleId(urlVehicleId)
-    return QrResult.VehiclePlate(text)
-}

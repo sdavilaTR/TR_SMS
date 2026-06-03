@@ -34,8 +34,9 @@ class DataWedgeManager(private val context: Context) {
         private const val EXTRA_AIMID = "aimid"
         private const val EXTRA_CHARSET = "charset"
 
-        // Honeywell standard decode intent (fallback)
+        // Honeywell standard decode intents
         private const val ACTION_DECODE = "com.honeywell.decode.intent.action.EDIT_DATA"
+        private const val ACTION_BARCODE_DATA_HW = "com.honeywell.decode.intent.action.BARCODE_DATA"
 
         // Intermec intent (legacy fallback)
         private const val ACTION_INTERMEC = "com.intermec.decode.intent.action.EDIT_DATA"
@@ -55,13 +56,15 @@ class DataWedgeManager(private val context: Context) {
     private val scanReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val action = intent?.action ?: return
-            Log.d(TAG, "Intent received: action=$action")
+            val keys = intent.extras?.keySet()?.joinToString() ?: "none"
+            Log.w(TAG, "=== SCAN BROADCAST === action=$action extras=[$keys]")
 
             val scannedData = when (action) {
                 ACTION_BARCODE_DATA -> getStringOrBytes(intent.extras, EXTRA_DATA)
-                ACTION_DECODE, ACTION_INTERMEC -> {
+                ACTION_DECODE, ACTION_INTERMEC, ACTION_BARCODE_DATA_HW -> {
                     getStringOrBytes(intent.extras, "data")
                         ?: getStringOrBytes(intent.extras, "barcode_data")
+                        ?: extractFromBundle(intent.extras)
                 }
                 else -> {
                     intent.getStringExtra("com.symbol.datawedge.data_string")
@@ -115,8 +118,9 @@ class DataWedgeManager(private val context: Context) {
         val filter = IntentFilter().apply {
             addAction(ACTION_BARCODE_DATA)
             addAction(ACTION_DECODE)
+            addAction(ACTION_BARCODE_DATA_HW)
             addAction(ACTION_INTERMEC)
-            addCategory(Intent.CATEGORY_DEFAULT)
+            // No addCategory — DataWedge broadcasts typically have no category
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

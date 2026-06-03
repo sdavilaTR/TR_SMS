@@ -89,4 +89,5 @@ object ServiceLocator {
     val smsUnitDao get() = db.smsUnitDao()
     val smsVehicleDao get() = db.smsVehicleDao()
     val smsVehicleLoadingDao get() = db.smsVehicleLoadingDao()
+    val smsTransferDao get() = db.smsTransferDao()
 }

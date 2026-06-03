@@ -18,8 +18,10 @@
     <fragment android:id="@+id/newSpoolFragment"   android:name="com.example.hassiwrapper.ui.newspool.NewSpoolFragment"       android:label="@string/new_spool_title" />
     <fragment android:id="@+id/passportFragment"   android:name="com.example.hassiwrapper.ui.passport.PassportFragment"    android:label="@string/passport_screen_title" />
     <fragment android:id="@+id/packingListsFragment" android:name="com.example.hassiwrapper.ui.packinglists.PackingListsFragment" android:label="@string/menu_passport">
-        <action android:id="@+id/action_packingListsFragment_to_newPackingListFragment" app:destination="@id/newPackingListFragment" />
-        <action android:id="@+id/action_packingListsFragment_to_packingListDetailFragment" app:destination="@id/packingListDetailFragment" />
+        <action android:id="@+id/action_packingListsFragment_to_newPackingListFragment"      app:destination="@id/newPackingListFragment" />
+        <action android:id="@+id/action_packingListsFragment_to_packingListDetailFragment"   app:destination="@id/packingListDetailFragment" />
+        <action android:id="@+id/action_packingListsFragment_to_sendPackingListFragment"     app:destination="@id/sendPackingListFragment" />
+        <action android:id="@+id/action_packingListsFragment_to_receivePackingListFragment"  app:destination="@id/receivePackingListFragment" />
     </fragment>
     <fragment android:id="@+id/newPackingListFragment" android:name="com.example.hassiwrapper.ui.packinglists.NewPackingListFragment" android:label="@string/new_packing_list_title">
         <argument android:name="vehicleId"    app:argType="long"   android:defaultValue="0L" />
@@ -36,11 +38,19 @@
     <fragment android:id="@+id/syncFragment"       android:name="com.example.hassiwrapper.ui.sync.SyncFragment"            android:label="@string/menu_sync" />
     <fragment android:id="@+id/workersFragment"    android:name="com.example.hassiwrapper.ui.workers.WorkersFragment"      android:label="@string/menu_workers" />
     <fragment android:id="@+id/vehiclesFragment" android:name="com.example.hassiwrapper.ui.vehicles.VehiclesFragment" android:label="@string/menu_vehicles">
-        <action android:id="@+id/action_vehiclesFragment_to_newVehicleFragment"     app:destination="@id/newVehicleFragment" />
-        <action android:id="@+id/action_vehiclesFragment_to_vehicleDetailFragment"  app:destination="@id/vehicleDetailFragment" />
-        <action android:id="@+id/action_vehiclesFragment_to_loadSpoolsFragment"     app:destination="@id/loadSpoolsFragment" />
+        <action android:id="@+id/action_vehiclesFragment_to_newVehicleFragment"          app:destination="@id/newVehicleFragment" />
+        <action android:id="@+id/action_vehiclesFragment_to_vehicleDetailFragment"       app:destination="@id/vehicleDetailFragment" />
+        <action android:id="@+id/action_vehiclesFragment_to_loadSpoolsFragment"          app:destination="@id/loadSpoolsFragment" />
+        <action android:id="@+id/action_vehiclesFragment_to_sendPackingListFragment"     app:destination="@id/sendPackingListFragment" />
+        <action android:id="@+id/action_vehiclesFragment_to_receivePackingListFragment"  app:destination="@id/receivePackingListFragment" />
     </fragment>
     <fragment android:id="@+id/loadSpoolsFragment" android:name="com.example.hassiwrapper.ui.vehicles.LoadSpoolsFragment" android:label="@string/load_spools_title" />
+    <fragment android:id="@+id/transfersFragment" android:name="com.example.hassiwrapper.ui.transfers.TransfersFragment" android:label="@string/menu_transfers">
+        <action android:id="@+id/action_transfersFragment_to_sendPackingListFragment"    app:destination="@id/sendPackingListFragment" />
+        <action android:id="@+id/action_transfersFragment_to_receivePackingListFragment" app:destination="@id/receivePackingListFragment" />
+    </fragment>
+    <fragment android:id="@+id/sendPackingListFragment"    android:name="com.example.hassiwrapper.ui.transfers.SendPackingListFragment"    android:label="@string/transfer_send_title" />
+    <fragment android:id="@+id/receivePackingListFragment" android:name="com.example.hassiwrapper.ui.transfers.ReceivePackingListFragment" android:label="@string/transfer_receive_title" />
     <fragment android:id="@+id/newVehicleFragment" android:name="com.example.hassiwrapper.ui.vehicles.NewVehicleFragment" android:label="@string/new_vehicle_title" />
     <fragment android:id="@+id/vehicleDetailFragment" android:name="com.example.hassiwrapper.ui.vehicles.VehicleDetailFragment" android:label="@string/vehicle_detail_title">
         <argument android:name="vehicleId" app:argType="long" android:defaultValue="0L" />
@@ -49,6 +59,8 @@
     <fragment android:id="@+id/editVehicleFragment" android:name="com.example.hassiwrapper.ui.vehicles.EditVehicleFragment" android:label="@string/edit_vehicle_title">
         <argument android:name="vehicleId" app:argType="long" android:defaultValue="0L" />
     </fragment>
+    <action android:id="@+id/action_global_vehicleDetailFragment" app:destination="@id/vehicleDetailFragment" />
+
     <fragment android:id="@+id/settingsFragment"   android:name="com.example.hassiwrapper.ui.settings.SettingsFragment"   android:label="@string/menu_settings" />
     <fragment android:id="@+id/observationFragment"          android:name="com.example.hassiwrapper.ui.observation.ObservationFragment"              android:label="@string/obs_title">
         <argument android:name="target_type"          app:argType="string" android:defaultValue="WORKER" app:nullable="false" />

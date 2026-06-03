@@ -166,6 +166,16 @@
 
     <!-- Vehicles -->
     <string name="menu_vehicles">Vehículos</string>
+    <string name="menu_transfers">Transferencias</string>
+    <string name="menu_send_packing_list">Envíos</string>
+    <string name="menu_receive_packing_list">Recibos</string>
+    <string name="transfer_send_subtitle">Enviar packing list desde este terminal</string>
+    <string name="transfer_receive_subtitle">Recibir packing list en este terminal</string>
+    <string name="transfer_manual_vehicle_hint">Introducir matrícula manualmente</string>
+    <string name="transfer_manual_spool_hint">Introducir código de spool manualmente</string>
+    <string name="transfer_btn_manual_confirm">Confirmar entrada manual</string>
+    <string name="settings_debug_location_btn">[DEBUG] Cambiar Posición Terminal</string>
+    <string name="settings_debug_location_changed">Posición cambiada a: %s</string>
     <string name="vehicles_hint_search">Buscar vehículo…</string>
     <string name="vehicles_count">%d vehículos</string>
     <string name="vehicles_packet_list_label">Packet List asociado</string>
@@ -462,6 +472,9 @@
     <string name="pl_detail_label_position">Posición</string>
     <string name="pl_detail_label_vehicle">Vehículo</string>
     <string name="pl_detail_label_notes">Notas</string>
+    <string name="pl_detail_label_ready_to_send">Listo para envío</string>
+    <string name="pl_detail_ready_yes">Sí</string>
+    <string name="pl_detail_ready_no">No</string>
     <string name="pl_detail_loading_spools">Cargando spools…</string>
     <string name="pl_detail_no_spools">Sin spools asignados</string>
     <string name="pl_detail_btn_edit">Editar</string>
@@ -626,7 +639,7 @@
     <string name="load_spools_confirm_incomplete_msg">Hay Packing Lists sin todos sus spools cargados:\n\n%1$s\n\n¿Desea continuar de todas formas?</string>
     <string name="load_spools_confirm_second_title">Confirmar guardado</string>
     <string name="load_spools_confirm_second_msg">Esta acción guardará la carga con Packing Lists incompletos. Esta operación NO se puede deshacer. ¿Confirma?</string>
-    <string name="load_spools_saved">Carga guardada correctamente (pendiente de sincronización)</string>
+    <string name="load_spools_saved">Carga guardada correctamente</string>
     <string name="load_spools_spool_duplicate">Este spool ya fue añadido.</string>
     <string name="load_spools_enter_code">Introduzca un código de spool.</string>
     <string name="load_spools_enter_plate">Introduzca o escanee la matrícula del vehículo.</string>
@@ -635,5 +648,66 @@
     <string name="load_spools_empty_error">Añada al menos un spool antes de guardar.</string>
     <string name="load_spools_btn_continue">Continuar</string>
     <string name="load_spools_btn_save_anyway">Guardar de todas formas</string>
+    <string name="load_spools_qr_is_spool">Este QR es de un spool, no de un vehículo. Escanee el QR del vehículo.</string>
+
+    <!-- Transfer: Send Packing List -->
+    <string name="transfer_send_title">Envío de Packing List</string>
+    <string name="transfer_send_step1_title">Paso 1: Seleccionar Packing List</string>
+    <string name="transfer_send_step2_title">Paso 2: Confirmar Vehículo</string>
+    <string name="transfer_send_step3_title">Paso 3: Confirmar Spools</string>
+    <string name="transfer_send_step4_title">Paso 4: Firma</string>
+    <string name="transfer_send_btn_confirm">Confirmar Envío</string>
+    <string name="transfer_send_success">Envío registrado correctamente (pendiente de sincronización)</string>
+    <string name="transfer_send_no_pls">No hay Packing Lists listos para enviar desde esta ubicación.</string>
+    <string name="transfer_select_destination">Seleccionar destino del envío</string>
+    <string name="transfer_destination_laydown">Laydown</string>
+    <string name="transfer_destination_site">Site</string>
+
+    <!-- Transfer: Receive Packing List -->
+    <string name="transfer_receive_title">Recibo de Packing List</string>
+    <string name="transfer_receive_step1_title">Paso 1: Escanear Vehículo</string>
+    <string name="transfer_receive_step2_title">Paso 2: Seleccionar Packing List</string>
+    <string name="transfer_receive_step3_title">Paso 3: Confirmar Spools</string>
+    <string name="transfer_receive_step4_title">Paso 4: Firma</string>
+    <string name="transfer_receive_btn_confirm">Confirmar Recibo</string>
+    <string name="transfer_receive_success">Recibo registrado correctamente (pendiente de sincronización)</string>
+    <string name="transfer_receive_no_pls">No hay Packing Lists en tránsito para este vehículo.</string>
+
+    <!-- Transfer: Shared -->
+    <string name="transfer_spools_progress">%1$d / %2$d spools confirmados</string>
+    <string name="transfer_vehicle_expected">Vehículo esperado: %s</string>
+    <string name="transfer_vehicle_scanned">Vehículo escaneado: %s</string>
+    <string name="transfer_vehicle_mismatch">El vehículo escaneado no coincide con el esperado.</string>
+    <string name="transfer_vehicle_confirmed">✓ Vehículo confirmado: %s</string>
+    <string name="transfer_spool_not_in_list">Este spool no pertenece al Packing List seleccionado.</string>
+    <string name="transfer_spool_already_confirmed">Este spool ya fue confirmado.</string>
+    <string name="transfer_spool_confirmed">✓ Spool %s confirmado.</string>
+    <string name="transfer_signature_empty">Firme antes de confirmar.</string>
+    <string name="transfer_btn_clear_signature">Limpiar firma</string>
+    <string name="transfer_btn_scan_vehicle">Escanear QR del vehículo</string>
+    <string name="transfer_btn_scan_spool">Escanear Spool</string>
+    <string name="transfer_confirm_incomplete_title">Spools sin confirmar</string>
+    <string name="transfer_confirm_incomplete_msg">Hay %1$d spools sin escanear. ¿Desea continuar de todas formas?</string>
+    <string name="transfer_assign_section">Sección</string>
+    <string name="transfer_assign_unit">Unidad</string>
+    <string name="transfer_assign_hint_laydown">Asigne una sección de Laydown</string>
+    <string name="transfer_assign_hint_site">Asigne una unidad de Site</string>
+    <string name="transfer_vehicle_not_found">Vehículo no encontrado en base de datos local.</string>
+    <string name="transfer_vehicle_not_on_route">El vehículo no está en ruta.</string>
+    <string name="transfer_vehicle_wrong_destination">El vehículo no está dirigido a esta ubicación.</string>
+    <string name="transfer_vehicle_wrong_project">El vehículo no pertenece al proyecto actual.</string>
+    <string name="transfer_send_to">Vas a enviar los siguientes PLs a %s</string>
+    <string name="transfer_receive_at">Vas a recibir los siguientes PLs en %s</string>
+    <string name="transfer_pl_label">PL: %1$s</string>
+    <string name="transfer_vehicle_label">Vehículo: %1$s</string>
+
+    <!-- Settings: location config -->
+    <string name="settings_location_config_title">Configuración de Ubicaciones</string>
+    <string name="settings_laydown_sections_label">Secciones Laydown</string>
+    <string name="settings_laydown_sections_hint">Ej: 1A,2A,1B,2B,1C,2C,1D,2D</string>
+    <string name="settings_site_units_label">Unidades Site</string>
+    <string name="settings_site_units_hint">Ej: 1,2,3,4</string>
+    <string name="settings_location_config_save">Guardar</string>
+    <string name="settings_location_config_saved">Configuración de ubicaciones guardada</string>
 
 </resources>

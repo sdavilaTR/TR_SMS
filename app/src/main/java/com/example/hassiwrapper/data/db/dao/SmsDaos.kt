@@ -83,6 +83,9 @@ interface SmsPackingListDao {
     @Query("SELECT * FROM sms_packing_list WHERE vehicle_plate = :plate AND is_active = 1 ORDER BY packing_date DESC")
     suspend fun getByVehiclePlate(plate: String): List<SmsPackingListEntity>
 
+    @Query("SELECT DISTINCT pl.* FROM sms_packing_list pl INNER JOIN sms_spool s ON s.packing_list_id = pl.packing_list_id WHERE pl.vehicle_id = :vehicleId AND s.in_transit = 1 AND pl.is_active = 1 ORDER BY pl.packing_date DESC")
+    suspend fun getWithInTransitSpoolsByVehicle(vehicleId: Long): List<SmsPackingListEntity>
+
     @Query("SELECT * FROM sms_packing_list WHERE packing_list_id = :id")
     suspend fun getById(id: Long): SmsPackingListEntity?
 
@@ -97,6 +100,18 @@ interface SmsPackingListDao {
 
     @Query("SELECT COUNT(*) FROM sms_packing_list WHERE project_id = :projectId AND position_id = :positionId AND vehicle_id IS NULL")
     suspend fun countByProjectPositionNoVehicle(projectId: Int, positionId: Int): Int
+
+    @Query("SELECT * FROM sms_packing_list WHERE project_id = :projectId AND ready_to_send = 1 AND is_active = 1 ORDER BY packing_date DESC")
+    suspend fun getReadyToSend(projectId: Int): List<SmsPackingListEntity>
+
+    @Query("SELECT * FROM sms_packing_list WHERE project_id = :projectId AND position_id = :positionId AND ready_to_send = 1 AND is_active = 1 ORDER BY packing_date DESC")
+    suspend fun getReadyToSendByPosition(projectId: Int, positionId: Int): List<SmsPackingListEntity>
+
+    @Query("UPDATE sms_packing_list SET ready_to_send = :value WHERE packing_list_id = :id")
+    suspend fun setReadyToSend(id: Long, value: Boolean)
+
+    @Query("UPDATE sms_packing_list SET vehicle_id = :vehicleId, vehicle_plate = :vehiclePlate WHERE packing_list_id = :id")
+    suspend fun setVehicle(id: Long, vehicleId: Long, vehiclePlate: String)
 
     @Query("SELECT * FROM sms_packing_list WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsPackingListEntity>
@@ -158,6 +173,9 @@ interface SmsPositionDao {
     @Query("SELECT * FROM sms_position WHERE position_id = :id")
     suspend fun getById(id: Int): SmsPositionEntity?
 
+    @Query("SELECT * FROM sms_position WHERE UPPER(code) = UPPER(:code) LIMIT 1")
+    suspend fun getByCode(code: String): SmsPositionEntity?
+
     @Query("DELETE FROM sms_position")
     suspend fun deleteAll()
 }
@@ -190,6 +208,9 @@ interface SmsSpoolDao {
 
     @Query("SELECT * FROM sms_spool WHERE spool_id = :id")
     suspend fun getById(id: Long): SmsSpoolEntity?
+
+    @Query("SELECT * FROM sms_spool WHERE spool_code = :code ORDER BY spool_suffix ASC")
+    suspend fun getByCode(code: String): List<SmsSpoolEntity>
 
     @Query("SELECT * FROM sms_spool WHERE packing_list_id = :packingListId ORDER BY spool_code ASC, spool_suffix ASC")
     suspend fun getByPackingList(packingListId: Long): List<SmsSpoolEntity>
@@ -257,6 +278,15 @@ interface SmsSpoolDao {
 
     @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND UPPER(spool_code) = UPPER(:code) LIMIT 1")
     suspend fun findByCode(projectId: Int, code: String): SmsSpoolEntity?
+
+    @Query("UPDATE sms_spool SET in_transit = :inTransit, synced = 0 WHERE spool_id = :spoolId")
+    suspend fun updateInTransit(spoolId: Long, inTransit: Boolean)
+
+    @Query("UPDATE sms_spool SET zone = :zone, assigned_unit = :assignedUnit, in_transit = 0, synced = 0 WHERE spool_id = :spoolId")
+    suspend fun updateZoneAndUnit(spoolId: Long, zone: String?, assignedUnit: String?)
+
+    @Query("SELECT * FROM sms_spool WHERE packing_list_id = :packingListId AND in_transit = 1")
+    suspend fun getInTransitByPackingList(packingListId: Long): List<SmsSpoolEntity>
 }
 
 @Dao
@@ -380,6 +410,15 @@ interface SmsVehicleDao {
 
     @Query("UPDATE sms_vehicle SET synced = 1 WHERE vehicle_id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
+
+    @Query("SELECT * FROM sms_vehicle WHERE on_route = 1 ORDER BY license_plate ASC")
+    suspend fun getOnRoute(): List<SmsVehicleEntity>
+
+    @Query("UPDATE sms_vehicle SET on_route = 1, destination = :destinationId, synced = 0 WHERE vehicle_id = :id")
+    suspend fun setOnRoute(id: Long, destinationId: Int?)
+
+    @Query("UPDATE sms_vehicle SET on_route = 0, destination = NULL, synced = 0 WHERE vehicle_id = :id")
+    suspend fun setOffRoute(id: Long)
 
     @Query("DELETE FROM sms_vehicle WHERE vehicle_id = :id")
     suspend fun deleteById(id: Long)

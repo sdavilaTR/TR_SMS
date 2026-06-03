@@ -40,6 +40,7 @@ class PackingListDetailFragment : Fragment() {
     private lateinit var txtPosition: TextView
     private lateinit var txtVehicle: TextView
     private lateinit var txtNotes: TextView
+    private lateinit var txtReadyToSend: TextView
     private lateinit var layoutSpools: LinearLayout
     private lateinit var btnAddSpool: MaterialButton
     private lateinit var btnEdit: MaterialButton
@@ -57,11 +58,12 @@ class PackingListDetailFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        txtName      = view.findViewById(R.id.txtDetailPLName)
-        txtDate      = view.findViewById(R.id.txtDetailDate)
-        txtPosition  = view.findViewById(R.id.txtDetailPosition)
-        txtVehicle   = view.findViewById(R.id.txtDetailVehicle)
-        txtNotes     = view.findViewById(R.id.txtDetailNotes)
+        txtName         = view.findViewById(R.id.txtDetailPLName)
+        txtDate         = view.findViewById(R.id.txtDetailDate)
+        txtPosition     = view.findViewById(R.id.txtDetailPosition)
+        txtVehicle      = view.findViewById(R.id.txtDetailVehicle)
+        txtNotes        = view.findViewById(R.id.txtDetailNotes)
+        txtReadyToSend  = view.findViewById(R.id.txtDetailReadyToSend)
         layoutSpools = view.findViewById(R.id.layoutSpools)
         btnAddSpool  = view.findViewById(R.id.btnAddSpool)
         btnEdit       = view.findViewById(R.id.btnEditPL)
@@ -95,12 +97,14 @@ class PackingListDetailFragment : Fragment() {
                 findNavController().navigateUp()
                 return@launch
             }
-            txtName.text     = pl.packing_list_name.ifBlank { "PL ${pl.packing_list_id}" }
-            txtDate.text     = pl.packing_date.take(10).ifBlank { "—" }
-            txtNotes.text    = pl.notes?.ifBlank { "—" } ?: "—"
-            txtVehicle.text  = pl.vehicle_plate?.ifBlank { "—" } ?: "—"
-            val position     = pl.position_id?.let { ServiceLocator.smsPositionDao.getById(it) }
-            txtPosition.text = position?.let { it.name.ifBlank { it.code } } ?: "—"
+            txtName.text        = pl.packing_list_name.ifBlank { "PL ${pl.packing_list_id}" }
+            txtDate.text        = pl.packing_date.take(10).ifBlank { "—" }
+            txtNotes.text       = pl.notes?.ifBlank { "—" } ?: "—"
+            txtVehicle.text     = pl.vehicle_plate?.ifBlank { "—" } ?: "—"
+            val position        = pl.position_id?.let { ServiceLocator.smsPositionDao.getById(it) }
+            txtPosition.text    = position?.let { it.name.ifBlank { it.code } } ?: "—"
+            txtReadyToSend.text = if (pl.ready_to_send) getString(R.string.pl_detail_ready_yes) else getString(R.string.pl_detail_ready_no)
+            txtReadyToSend.setTextColor(requireContext().getColor(if (pl.ready_to_send) R.color.primary else R.color.on_surface_variant))
             progress.visibility = View.GONE
             loadSpools(pl)
         }

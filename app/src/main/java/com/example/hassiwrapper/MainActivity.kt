@@ -5,7 +5,12 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
+import android.text.Editable
+import android.text.TextWatcher
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.ActionBarDrawerToggle
@@ -33,6 +38,11 @@ import com.example.hassiwrapper.network.dto.SpoolDto
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.navigation.NavigationView
 import android.util.Log
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet
+import com.example.hassiwrapper.ui.qrscanner.QrResult
+import com.example.hassiwrapper.ui.qrscanner.parseQr
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import java.util.zip.CRC32
@@ -48,6 +58,25 @@ class MainActivity : AppCompatActivity() {
         private set
 
     private lateinit var navController: NavController
+    private lateinit var etGlobalWedge: EditText
+
+    private val globalWedgeHandler = Handler(Looper.getMainLooper())
+    private val globalWedgeTrigger = Runnable {
+        val text = etGlobalWedge.text?.toString()?.trimEnd('\n', '\r', ' ').orEmpty()
+        etGlobalWedge.setText("")
+        if (text.isBlank()) return@Runnable
+        val dest = navController.currentDestination?.id
+        when {
+            dest == R.id.qrScannerFragment -> { /* handled by QrScannerFragment */ }
+            dest == R.id.loadSpoolsFragment ||
+            dest == R.id.sendPackingListFragment ||
+            dest == R.id.receivePackingListFragment -> dataWedgeManager.emitScan(text)
+            else -> {
+                Log.d(TAG, "Global keyboard-wedge scan (${text.length} chars): ${text.take(80)}")
+                lifecycleScope.launch { handleGlobalScan(text) }
+            }
+        }
+    }
 
     private var pendingUpdate: UpdateInfo? = null
     private var autoSyncJob: Job? = null
@@ -57,7 +86,16 @@ class MainActivity : AppCompatActivity() {
     ) { result ->
         if (result.resultCode == RESULT_OK) {
             val code = result.data?.getStringExtra(CustomScannerActivity.EXTRA_RESULT)
-            code?.let { showQrResultDialog(it) }
+            code?.let { scanned ->
+                val dest = navController.currentDestination?.id
+                if (dest == R.id.loadSpoolsFragment ||
+                    dest == R.id.sendPackingListFragment ||
+                    dest == R.id.receivePackingListFragment) {
+                    dataWedgeManager.emitScan(scanned)
+                } else {
+                    lifecycleScope.launch { handleGlobalScan(scanned) }
+                }
+            }
         }
     }
 
@@ -103,6 +141,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.syncFragment,
                 R.id.workersFragment,
                 R.id.vehiclesFragment,
+                R.id.transfersFragment,
                 R.id.observationsGeneralFragment,
                 R.id.inspectionsFragment,
                 R.id.settingsFragment -> {
@@ -115,15 +154,45 @@ class MainActivity : AppCompatActivity() {
 
         applyProfileMenuVisibility(navView)
 
+        dataWedgeManager = ServiceLocator.dataWedgeManager()
+
+        etGlobalWedge = findViewById(R.id.etGlobalWedge)
+        etGlobalWedge.showSoftInputOnFocus = false
+
         navController.addOnDestinationChangedListener { _, dest, _ ->
             toolbar.title = dest.label
+            if (dest.id != R.id.qrScannerFragment) {
+                etGlobalWedge.post { etGlobalWedge.requestFocus() }
+            }
         }
 
         navView.getHeaderView(0)
             .findViewById<android.widget.TextView>(R.id.txtNavVersion)
             .text = "ATLAS Native ${BuildConfig.BUILD_TAG}"
+        etGlobalWedge.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if ((s?.length ?: 0) > 0) {
+                    globalWedgeHandler.removeCallbacks(globalWedgeTrigger)
+                    globalWedgeHandler.postDelayed(globalWedgeTrigger, 300)
+                }
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
 
-        dataWedgeManager = ServiceLocator.dataWedgeManager()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                dataWedgeManager.scanFlow.collect { code ->
+                    val dest = navController.currentDestination?.id
+                    if (dest != R.id.qrScannerFragment &&
+                        dest != R.id.loadSpoolsFragment &&
+                        dest != R.id.sendPackingListFragment &&
+                        dest != R.id.receivePackingListFragment) {
+                        handleGlobalScan(code)
+                    }
+                }
+            }
+        }
 
         lifecycleScope.launch {
             try {
@@ -198,6 +267,9 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         startAutoSync()
         dataWedgeManager.register()
+        if (navController.currentDestination?.id != R.id.qrScannerFragment) {
+            etGlobalWedge.requestFocus()
+        }
 
         // If the user just came back from granting the install-unknown-apps permission, proceed
         val pending = pendingUpdate
@@ -247,14 +319,6 @@ class MainActivity : AppCompatActivity() {
                 super.onBackPressed()
             }
         }
-    }
-
-    private fun showQrResultDialog(code: String) {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.qr_result_title)
-            .setMessage(code)
-            .setPositiveButton(android.R.string.ok, null)
-            .show()
     }
 
     private fun showUpdateDialog(update: UpdateInfo) {
@@ -336,10 +400,11 @@ class MainActivity : AppCompatActivity() {
         // Packing Lists (replaces old passport menu entry): visible for HSE, ADMIN, PRE, DEV
         menu.findItem(R.id.packingListsFragment)?.isVisible = !isUser
 
-        // Attendance, Workers, Vehicles: only full profiles (ADMIN, PRE, DEV)
-        menu.findItem(R.id.attendanceFragment)?.isVisible  = isFull
-        menu.findItem(R.id.workersFragment)?.isVisible     = isFull
-        menu.findItem(R.id.vehiclesFragment)?.isVisible    = isFull
+        // Attendance, Workers, Vehicles, Transfers: only full profiles (ADMIN, PRE, DEV)
+        menu.findItem(R.id.attendanceFragment)?.isVisible          = isFull
+        menu.findItem(R.id.workersFragment)?.isVisible             = isFull
+        menu.findItem(R.id.vehiclesFragment)?.isVisible            = isFull
+        menu.findItem(R.id.transfersFragment)?.isVisible           = isFull
 
         // Observations General + Inspections: HSE, ADMIN, PRE, DEV
         menu.findItem(R.id.observationsGeneralFragment)?.isVisible = !isUser
@@ -348,7 +413,7 @@ class MainActivity : AppCompatActivity() {
         // Home + Scanner + Sync + Settings always visible
     }
 
-    private suspend fun syncSmsData() {
+    internal suspend fun syncSmsData() {
         val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
         val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
         if (projectCode.isNullOrBlank()) {
@@ -358,6 +423,81 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "syncSmsData: fetching SMS data for $projectCode")
         try {
             val service = ServiceLocator.apiClient.getService()
+
+            // ── Upload: vehicle loadings ──────────────────────────────────────
+            try {
+                val unsyncedLoadings = ServiceLocator.smsVehicleLoadingDao.getUnsynced()
+                if (unsyncedLoadings.isNotEmpty()) {
+                    val uploaded = mutableListOf<Long>()
+                    val plIdsToMarkReady = mutableSetOf<Long>()
+                    for (loading in unsyncedLoadings) {
+                        val loadingSpools = ServiceLocator.smsVehicleLoadingDao.getSpoolsByLoading(loading.loading_id)
+                        val dto = com.example.hassiwrapper.network.dto.VehicleLoadingUploadDto(
+                            vehicleLoadingId = loading.loading_id,
+                            vehicleId        = loading.vehicle_id,
+                            vehiclePlate     = loading.vehicle_plate,
+                            projectId        = loading.project_id,
+                            createdAt        = loading.created_at,
+                            createdBy        = null,
+                            spools           = loadingSpools.map { s ->
+                                com.example.hassiwrapper.network.dto.VehicleLoadingSpoolUploadDto(
+                                    spoolId       = s.spool_id,
+                                    packingListId = s.packing_list_id
+                                )
+                            }
+                        )
+                        val resp = service.uploadVehicleLoading(projectCode, dto)
+                        if (resp.isSuccessful) {
+                            uploaded += loading.loading_id
+                            loadingSpools.mapNotNull { it.packing_list_id }.forEach { plIdsToMarkReady += it }
+                        } else {
+                            Log.w(TAG, "uploadVehicleLoading ${loading.loading_id}: HTTP ${resp.code()}")
+                        }
+                    }
+                    if (uploaded.isNotEmpty()) ServiceLocator.smsVehicleLoadingDao.markSynced(uploaded)
+                    plIdsToMarkReady.forEach { plId ->
+                        try { service.setPackingListReadyToSend(projectCode, plId, true) } catch (_: Exception) { }
+                    }
+                    Log.d(TAG, "syncSmsData: uploaded ${uploaded.size}/${unsyncedLoadings.size} vehicle loadings")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "syncSmsData: vehicle loading upload failed", e)
+            }
+
+            // ── Upload: transfers ─────────────────────────────────────────────
+            try {
+                val unsyncedTransfers = ServiceLocator.smsTransferDao.getUnsynced()
+                if (unsyncedTransfers.isNotEmpty()) {
+                    val uploaded = mutableListOf<Long>()
+                    for (transfer in unsyncedTransfers) {
+                        val transferSpools = ServiceLocator.smsTransferDao.getSpoolsByTransfer(transfer.transfer_id)
+                        val dto = com.example.hassiwrapper.network.dto.TransferUploadDto(
+                            transferId      = transfer.transfer_id,
+                            type            = transfer.transfer_type,
+                            projectId       = transfer.project_id,
+                            signatureBase64 = transfer.signature_data,
+                            createdAt       = transfer.created_at,
+                            createdBy       = null,
+                            spools          = transferSpools.map { s ->
+                                com.example.hassiwrapper.network.dto.TransferSpoolUploadDto(
+                                    spoolId       = s.spool_id,
+                                    packingListId = null
+                                )
+                            }
+                        )
+                        val resp = service.uploadTransfer(projectCode, dto)
+                        if (resp.isSuccessful) {
+                            uploaded += transfer.transfer_id
+                        } else {
+                            Log.w(TAG, "uploadTransfer ${transfer.transfer_id}: HTTP ${resp.code()}")
+                        }
+                    }
+                    if (uploaded.isNotEmpty()) ServiceLocator.smsTransferDao.markSynced(uploaded)
+                    Log.d(TAG, "syncSmsData: uploaded ${uploaded.size}/${unsyncedTransfers.size} transfers")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "syncSmsData: transfer upload failed", e)
+            }
 
             val spoolResp = service.getSpools(projectCode)
             if (spoolResp.isSuccessful) {
@@ -370,9 +510,22 @@ class MainActivity : AppCompatActivity() {
                     }
                     val deleted = com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet.locallyDeletedSpoolIds
                     val toInsert = entities.filter { it.is_active && it.spool_id !in deleted }
+                    // Preserve locally-set fields that the /spools endpoint doesn't return
+                    val localSpools = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
+                        .associateBy { it.spool_id }
+                    val unsyncedTransferSpoolIds = ServiceLocator.smsTransferDao.getSpoolIdsInUnsyncedTransfers().toSet()
+                    val merged = toInsert.map { s ->
+                        val local = localSpools[s.spool_id] ?: return@map s
+                        s.copy(
+                            // Only preserve in_transit=true if there's an unsynced local transfer for this spool.
+                            // Otherwise trust the backend value (prevents stale in_transit after successful sends).
+                            in_transit = if (local.in_transit && s.spool_id in unsyncedTransferSpoolIds) true else s.in_transit,
+                            packing_list_id = s.packing_list_id ?: local.packing_list_id
+                        )
+                    }
                     ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
-                    ServiceLocator.smsSpoolDao.insertAll(toInsert)
-                    Log.d(TAG, "syncSmsData: inserted ${toInsert.size} spools (${entities.size - toInsert.size} locally deleted filtered)")
+                    ServiceLocator.smsSpoolDao.insertAll(merged)
+                    Log.d(TAG, "syncSmsData: inserted ${merged.size} spools (${entities.size - merged.size} locally deleted filtered)")
                 }
             }
             ServiceLocator.smsSpoolDao.deleteInactive()
@@ -383,9 +536,20 @@ class MainActivity : AppCompatActivity() {
                 val entities = parsePackingListEntities(raw, projectId)
                 val deletedPLs = com.example.hassiwrapper.ui.packinglists.PackingListDetailFragment.locallyDeletedPLIds
                 val activePLs = entities.filter { it.is_active && it.packing_list_id !in deletedPLs }
+                // Preserve locally-set ready_to_send and vehicle assignment so API sync doesn't wipe them
+                val localPLs = ServiceLocator.smsPackingListDao.getByProject(projectId)
+                    .filter { it.ready_to_send }.associateBy { it.packing_list_id }
+                val mergedPLs = activePLs.map { pl ->
+                    val local = localPLs[pl.packing_list_id] ?: return@map pl
+                    pl.copy(
+                        ready_to_send = true,
+                        vehicle_id    = pl.vehicle_id ?: local.vehicle_id,
+                        vehicle_plate = pl.vehicle_plate ?: local.vehicle_plate
+                    )
+                }
                 ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
-                if (activePLs.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(activePLs)
-                Log.d(TAG, "syncSmsData: inserted ${activePLs.size} packing lists (${entities.size - activePLs.size} inactive/deleted skipped)")
+                if (mergedPLs.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(mergedPLs)
+                Log.d(TAG, "syncSmsData: inserted ${mergedPLs.size} packing lists (${entities.size - mergedPLs.size} inactive/deleted skipped)")
             }
             ServiceLocator.smsPackingListDao.deleteInactive()
 
@@ -393,9 +557,16 @@ class MainActivity : AppCompatActivity() {
             if (vehicleResp.isSuccessful) {
                 val entities = parseVehicleEntities(vehicleResp.body()?.string().orEmpty(), projectId)
                 if (entities.isNotEmpty()) {
+                    // Preserve locally-set on_route/destination so API sync doesn't wipe them
+                    val localOnRoute = ServiceLocator.smsVehicleDao.getByProject(projectId)
+                        .filter { it.on_route }.associate { it.vehicle_id to it }
+                    val mergedVehicles = entities.map { v ->
+                        val local = localOnRoute[v.vehicle_id]
+                        if (local != null) v.copy(on_route = true, destination = local.destination) else v
+                    }
                     ServiceLocator.smsVehicleDao.deleteByProject(projectId)
-                    ServiceLocator.smsVehicleDao.insertAll(entities)
-                    Log.d(TAG, "syncSmsData: inserted ${entities.size} vehicles")
+                    ServiceLocator.smsVehicleDao.insertAll(mergedVehicles)
+                    Log.d(TAG, "syncSmsData: inserted ${mergedVehicles.size} vehicles")
                 }
             }
 
@@ -429,7 +600,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            service.getBoreSizes(projectCode).let { r ->
+            service.getBoreSizes().let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 Log.d(TAG, "syncSMS bore-sizes raw(300): ${raw.take(300)}")
                 parseBoreSizes(raw).also { list ->
@@ -437,7 +608,7 @@ class MainActivity : AppCompatActivity() {
                     if (list.isNotEmpty()) { ServiceLocator.smsBoreSizeDao.deleteAll(); ServiceLocator.smsBoreSizeDao.insertAll(list) }
                 }
             }
-            service.getIsoTypes(projectCode).let { r ->
+            service.getIsoTypes().let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 Log.d(TAG, "syncSMS iso-types raw(300): ${raw.take(300)}")
                 parseIsoTypes(raw).also { list ->
@@ -445,14 +616,14 @@ class MainActivity : AppCompatActivity() {
                     if (list.isNotEmpty()) { ServiceLocator.smsIsoTypeDao.deleteAll(); ServiceLocator.smsIsoTypeDao.insertAll(list) }
                 }
             }
-            service.getPositions(projectCode).let { r ->
+            service.getPositions().let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 parsePositions(raw).also { list ->
                     logLookup("positions", r, list.size)
                     if (list.isNotEmpty()) { ServiceLocator.smsPositionDao.deleteAll(); ServiceLocator.smsPositionDao.insertAll(list) }
                 }
             }
-            service.getSpoolStatuses(projectCode).let { r ->
+            service.getSpoolStatuses().let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 Log.d(TAG, "syncSMS spool-statuses raw(300): ${raw.take(300)}")
                 parseSpoolStatuses(raw).also { list ->
@@ -460,14 +631,14 @@ class MainActivity : AppCompatActivity() {
                     if (list.isNotEmpty()) { ServiceLocator.smsSpoolStatusDao.deleteAll(); ServiceLocator.smsSpoolStatusDao.insertAll(list) }
                 }
             }
-            service.getUnits(projectCode).let { r ->
+            service.getUnits().let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 parseUnits(raw).also { list ->
                     logLookup("units", r, list.size)
                     if (list.isNotEmpty()) { ServiceLocator.smsUnitDao.deleteAll(); ServiceLocator.smsUnitDao.insertAll(list) }
                 }
             }
-            service.getIncompleteStatuses(projectCode).let { r ->
+            service.getIncompleteStatuses().let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 parseIncompleteStatuses(raw).also { list ->
                     logLookup("incomplete-statuses", r, list.size)
@@ -636,6 +807,45 @@ class MainActivity : AppCompatActivity() {
                     o.jInt("sortOrder", "sort_order"), o.jBool("isActive", "is_active") ?: true)
             }
         }
+
+    private suspend fun handleGlobalScan(raw: String) {
+        val code = raw.trim().trimStart('﻿')
+        Log.d(TAG, "handleGlobalScan: ${code.take(80)}")
+        when (val result = parseQr(code)) {
+            is QrResult.Spool -> {
+                val spools = ServiceLocator.smsSpoolDao.getByCode(result.spoolCode)
+                val spool = if (result.spoolSuffix != null)
+                    spools.find { it.spool_suffix == result.spoolSuffix } ?: spools.firstOrNull()
+                else
+                    spools.firstOrNull()
+                if (spool != null) {
+                    SpoolDetailBottomSheet.newInstance(spool.spool_id)
+                        .show(supportFragmentManager, "spool_detail_global")
+                } else {
+                    Toast.makeText(this, getString(R.string.qr_scanner_result_spool_not_found), Toast.LENGTH_SHORT).show()
+                }
+            }
+            is QrResult.VehicleId -> {
+                val vehicle = ServiceLocator.smsVehicleDao.getById(result.id)
+                if (vehicle != null) {
+                    navController.navigate(R.id.action_global_vehicleDetailFragment,
+                        Bundle().apply { putLong("vehicleId", vehicle.vehicle_id) })
+                } else {
+                    Toast.makeText(this, getString(R.string.qr_scanner_result_vehicle_not_found), Toast.LENGTH_SHORT).show()
+                }
+            }
+            is QrResult.VehiclePlate -> {
+                val vehicle = ServiceLocator.smsVehicleDao.getByLicensePlate(result.plate)
+                if (vehicle != null) {
+                    navController.navigate(R.id.action_global_vehicleDetailFragment,
+                        Bundle().apply { putLong("vehicleId", vehicle.vehicle_id) })
+                } else {
+                    Toast.makeText(this, getString(R.string.qr_scanner_result_vehicle_not_found), Toast.LENGTH_SHORT).show()
+                }
+            }
+            is QrResult.VehicleBadge, is QrResult.Unknown -> { /* ignore on non-scanner screens */ }
+        }
+    }
 
     /** Called from SettingsFragment after a profile change. */
     fun refreshProfileMenu() {

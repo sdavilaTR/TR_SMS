@@ -14,7 +14,11 @@ data class SmsVehicleDto(
     @SerializedName(value = "is_active",           alternate = ["isActive"])           val isActive: Boolean? = null,
     @SerializedName(value = "created_at",          alternate = ["createdAt"])          val createdAt: String? = null,
     @SerializedName(value = "created_by",          alternate = ["createdBy"])          val createdBy: String? = null,
-    @SerializedName(value = "updated_at",          alternate = ["updatedAt"])          val updatedAt: String? = null
+    @SerializedName(value = "updated_at",          alternate = ["updatedAt"])          val updatedAt: String? = null,
+    @SerializedName(value = "on_route",            alternate = ["onRoute"])            val onRoute: Boolean? = null,
+    @SerializedName(value = "destination")                                              val destination: Int? = null,
+    @SerializedName(value = "destination_code",    alternate = ["destinationCode"])    val destinationCode: String? = null,
+    @SerializedName(value = "destination_name",    alternate = ["destinationName"])    val destinationName: String? = null
 ) {
     private fun String?.toLongOrNullSafe(): Long? =
         this?.trim()?.takeIf { it.isNotEmpty() }?.toDoubleOrNull()?.toLong()
@@ -36,6 +40,8 @@ data class SmsVehicleDto(
         is_active = isActive ?: true,
         created_at = createdAt.orEmpty(),
         created_by = createdBy,
-        updated_at = updatedAt
+        updated_at = updatedAt,
+        on_route = onRoute ?: false,
+        destination = destination
     )
 }

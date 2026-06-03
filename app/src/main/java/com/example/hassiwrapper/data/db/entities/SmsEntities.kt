@@ -61,7 +61,8 @@ data class SmsPackingListEntity(
     val created_at: String = "",
     val created_by: String? = null,
     val updated_at: String? = null,
-    val synced: Boolean = false
+    val synced: Boolean = false,
+    val ready_to_send: Boolean = false
 )
 
 @Entity(tableName = "sms_packing_list_spool")
@@ -238,5 +239,7 @@ data class SmsVehicleEntity(
     val created_at: String = "",
     val created_by: String? = null,
     val updated_at: String? = null,
-    val synced: Boolean = false
+    val synced: Boolean = false,
+    val on_route: Boolean = false,
+    val destination: Int? = null
 )

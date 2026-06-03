@@ -40,6 +40,17 @@
 
         </LinearLayout>
 
+        <!-- Global keyboard-wedge capture for hardware scanner on non-QrScanner screens -->
+        <EditText
+            android:id="@+id/etGlobalWedge"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:alpha="0"
+            android:inputType="textMultiLine"
+            android:maxLines="50"
+            android:background="@null"
+            android:importantForAutofill="no" />
+
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fabQrScan"
             android:layout_width="wrap_content"

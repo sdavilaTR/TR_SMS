@@ -12,8 +12,11 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import com.example.hassiwrapper.MainActivity
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -23,10 +26,13 @@ import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleLoadingEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleLoadingSpoolEntity
+import com.example.hassiwrapper.ui.qrscanner.QrResult
+import com.example.hassiwrapper.ui.qrscanner.parseQr
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputEditText
+import android.util.Log
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
@@ -73,20 +79,7 @@ class LoadSpoolsFragment : Fragment() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val raw = result.data?.getStringExtra(CustomScannerActivity.EXTRA_RESULT)?.trim() ?: return@registerForActivityResult
-            val urlVehicleId = Regex("""/vehicles?/(\d+)""").find(raw)
-                ?.groupValues?.getOrNull(1)?.toLongOrNull()
-            if (urlVehicleId != null) {
-                viewLifecycleOwner.lifecycleScope.launch {
-                    val vehicle = ServiceLocator.smsVehicleDao.getById(urlVehicleId)
-                    if (vehicle != null) {
-                        etPlate.setText(vehicle.license_plate)
-                    } else {
-                        Toast.makeText(requireContext(), getString(R.string.load_spools_vehicle_not_found), Toast.LENGTH_LONG).show()
-                    }
-                }
-            } else {
-                etPlate.setText(raw)
-            }
+            resolveAndSelectVehicle(raw)
         }
     }
 
@@ -145,6 +138,53 @@ class LoadSpoolsFragment : Fragment() {
         btnAddSpool.setOnClickListener { addSpoolManually() }
 
         btnSave.setOnClickListener { onSaveClicked() }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                val activity = requireActivity() as? MainActivity ?: return@repeatOnLifecycle
+                activity.dataWedgeManager.scanFlow.collect { raw ->
+                    handleHardwareScan(raw.trim())
+                }
+            }
+        }
+    }
+
+    private fun handleHardwareScan(raw: String) {
+        if (panelSpools.visibility == View.VISIBLE) {
+            parseAndAddSpoolFromQr(raw)
+        } else {
+            resolveAndSelectVehicle(raw)
+        }
+    }
+
+    private fun resolveAndSelectVehicle(raw: String) {
+        if (parseQr(raw) is QrResult.Spool) {
+            Toast.makeText(requireContext(), getString(R.string.load_spools_qr_is_spool), Toast.LENGTH_LONG).show()
+            return
+        }
+        val urlVehicleId = Regex("""/vehicles?/(\d+)""").find(raw)?.groupValues?.getOrNull(1)?.toLongOrNull()
+        viewLifecycleOwner.lifecycleScope.launch {
+            if (urlVehicleId != null) {
+                val vehicle = ServiceLocator.smsVehicleDao.getById(urlVehicleId)
+                if (vehicle != null) {
+                    etPlate.setText(vehicle.license_plate)
+                    selectVehicle(vehicle)
+                } else Toast.makeText(requireContext(), getString(R.string.load_spools_vehicle_not_found), Toast.LENGTH_LONG).show()
+            } else {
+                val vehicle = ServiceLocator.smsVehicleDao.getByLicensePlate(raw)
+                if (vehicle != null) {
+                    etPlate.setText(vehicle.license_plate)
+                    selectVehicle(vehicle)
+                } else etPlate.setText(raw)
+            }
+        }
+    }
+
+    private fun selectVehicle(vehicle: SmsVehicleEntity) {
+        selectedVehicle = vehicle
+        txtSelectedVehicle.text = getString(R.string.load_spools_vehicle_selected, vehicle.license_plate)
+        panelVehicle.visibility = View.GONE
+        panelSpools.visibility = View.VISIBLE
     }
 
     private fun confirmVehicle() {
@@ -159,32 +199,32 @@ class LoadSpoolsFragment : Fragment() {
                 Toast.makeText(requireContext(), getString(R.string.load_spools_vehicle_not_found), Toast.LENGTH_LONG).show()
                 return@launch
             }
-            selectedVehicle = vehicle
-            txtSelectedVehicle.text = getString(R.string.load_spools_vehicle_selected, vehicle.license_plate)
-            panelVehicle.visibility = View.GONE
-            panelSpools.visibility = View.VISIBLE
+            selectVehicle(vehicle)
         }
     }
 
     private fun parseAndAddSpoolFromQr(raw: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-            val lastDash = raw.lastIndexOf('-')
-            var spool: SmsSpoolEntity? = null
 
-            if (lastDash > 0) {
-                val code   = raw.substring(0, lastDash)
-                val suffix = raw.substring(lastDash + 1)
-                spool = ServiceLocator.smsSpoolDao.findByCodeAndSuffix(projectId, code, suffix)
-                if (spool == null) spool = ServiceLocator.smsSpoolDao.findByCode(projectId, code)
+            val qrResult = parseQr(raw)
+            val (code, suffix) = when (qrResult) {
+                is QrResult.Spool -> qrResult.spoolCode to qrResult.spoolSuffix
+                else -> {
+                    val lastDash = raw.lastIndexOf('-')
+                    if (lastDash > 0) raw.substring(0, lastDash) to raw.substring(lastDash + 1)
+                    else raw to null
+                }
             }
-            if (spool == null) spool = ServiceLocator.smsSpoolDao.findByCode(projectId, raw)
 
-            val (fallbackCode, fallbackSuffix) = if (lastDash > 0) {
-                raw.substring(0, lastDash) to raw.substring(lastDash + 1)
-            } else raw to null
+            val spool = if (!suffix.isNullOrBlank()) {
+                ServiceLocator.smsSpoolDao.findByCodeAndSuffix(projectId, code, suffix)
+                    ?: ServiceLocator.smsSpoolDao.findByCode(projectId, code)
+            } else {
+                ServiceLocator.smsSpoolDao.findByCode(projectId, code)
+            }
 
-            addSpool(spool, fallbackCode, fallbackSuffix)
+            addSpool(spool, code, suffix)
         }
     }
 
@@ -301,33 +341,69 @@ class LoadSpoolsFragment : Fragment() {
 
     private fun saveLoading() {
         val vehicle = selectedVehicle ?: return
+        Log.d("LoadSpools", "saveLoading: vehicle_id=${vehicle.vehicle_id} plate=${vehicle.license_plate} spools=${scannedSpools.size}")
         viewLifecycleOwner.lifecycleScope.launch {
-            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-            val now = LocalDateTime.now().toString()
-            val loadingId = ServiceLocator.smsVehicleLoadingDao.insert(
-                SmsVehicleLoadingEntity(
-                    vehicle_id    = vehicle.vehicle_id,
-                    vehicle_plate = vehicle.license_plate,
-                    project_id    = projectId,
-                    created_at    = now,
-                    synced        = false
-                )
-            )
-            ServiceLocator.smsVehicleLoadingDao.insertSpools(
-                scannedSpools.map { s ->
-                    SmsVehicleLoadingSpoolEntity(
-                        loading_id        = loadingId,
-                        spool_id          = s.spoolId,
-                        spool_code        = s.spoolCode,
-                        spool_suffix      = s.spoolSuffix,
-                        packing_list_id   = s.packingListId,
-                        packing_list_name = s.packingListName
+            try {
+                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                val now = LocalDateTime.now().toString()
+                val loadingId = ServiceLocator.smsVehicleLoadingDao.insert(
+                    SmsVehicleLoadingEntity(
+                        vehicle_id    = vehicle.vehicle_id,
+                        vehicle_plate = vehicle.license_plate,
+                        project_id    = projectId,
+                        created_at    = now,
+                        synced        = false
                     )
+                )
+                Log.d("LoadSpools", "loadingId=$loadingId")
+                ServiceLocator.smsVehicleLoadingDao.insertSpools(
+                    scannedSpools.map { s ->
+                        Log.d("LoadSpools", "  spool: id=${s.spoolId} code=${s.spoolCode} plId=${s.packingListId}")
+                        SmsVehicleLoadingSpoolEntity(
+                            loading_id        = loadingId,
+                            spool_id          = s.spoolId,
+                            spool_code        = s.spoolCode,
+                            spool_suffix      = s.spoolSuffix,
+                            packing_list_id   = s.packingListId,
+                            packing_list_name = s.packingListName
+                        )
+                    }
+                )
+                // DEBUG: dump all scanned spools with their packingListId
+                scannedSpools.forEachIndexed { i, s ->
+                    Log.d("LoadSpools", "  scannedSpool[$i] spoolId=${s.spoolId} code=${s.spoolCode} packingListId=${s.packingListId} packingListName=${s.packingListName}")
                 }
-            )
-            if (!isAdded) return@launch
-            Toast.makeText(requireContext(), getString(R.string.load_spools_saved), Toast.LENGTH_LONG).show()
-            findNavController().navigateUp()
+
+                val plIds = scannedSpools.mapNotNull { it.packingListId }.distinct()
+                Log.d("LoadSpools", "plIds to mark ready: $plIds  (scannedSpools.size=${scannedSpools.size})")
+                plIds.forEach { plId ->
+                    Log.d("LoadSpools", "  calling setReadyToSend+setVehicle(plId=$plId, vehicleId=${vehicle.vehicle_id})")
+                    ServiceLocator.smsPackingListDao.setReadyToSend(plId, true)
+                    ServiceLocator.smsPackingListDao.setVehicle(plId, vehicle.vehicle_id, vehicle.license_plate)
+                    // Verify write
+                    val after = ServiceLocator.smsPackingListDao.getById(plId)
+                    Log.d("LoadSpools", "  after → pl=${after?.packing_list_id} ready_to_send=${after?.ready_to_send} vehicle_id=${after?.vehicle_id} vehicle_plate=${after?.vehicle_plate}")
+                }
+
+                // Notify backend that these PLs are ready to send
+                try {
+                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+                    if (!projectCode.isNullOrBlank()) {
+                        val service = ServiceLocator.apiClient.getService()
+                        plIds.forEach { plId -> service.setPackingListReadyToSend(projectCode, plId, true) }
+                    }
+                } catch (_: Exception) { /* offline – local flag preserved, sync will retry */ }
+
+                val activity = requireActivity() as? MainActivity
+                if (!isAdded) return@launch
+                Toast.makeText(requireContext(), getString(R.string.load_spools_saved), Toast.LENGTH_LONG).show()
+                findNavController().navigateUp()
+                // Fire-and-forget sync so ReceivePackingListFragment sees fresh data
+                activity?.lifecycleScope?.launch { activity.syncSmsData() }
+            } catch (e: Exception) {
+                Log.e("LoadSpools", "saveLoading FAILED", e)
+                if (isAdded) Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 

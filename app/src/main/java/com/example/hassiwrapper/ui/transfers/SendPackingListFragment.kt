@@ -419,10 +419,21 @@ class SendPackingListFragment : Fragment() {
                 ServiceLocator.smsSpoolDao.updateInTransit(sc.spool.spool_id, true)
             }
 
+            ServiceLocator.smsPackingListDao.setReadyToSend(pl.packing_list_id, false)
+
             val destPosition = ServiceLocator.smsPositionDao.getByCode(destination)
             ServiceLocator.smsVehicleDao.setOnRoute(pl.vehicle_id ?: 0L, destPosition?.position_id)
 
+            try {
+                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+                if (!projectCode.isNullOrBlank() && (pl.vehicle_id ?: 0L) != 0L) {
+                    ServiceLocator.apiClient.getService()
+                        .setVehicleOnRoute(projectCode, pl.vehicle_id!!, destPosition?.position_id)
+                }
+            } catch (_: Exception) { }
+
             if (!isAdded) return@launch
+            (requireActivity() as? MainActivity)?.playSuccess()
             Toast.makeText(requireContext(), getString(R.string.transfer_send_success), Toast.LENGTH_LONG).show()
             findNavController().navigateUp()
         }

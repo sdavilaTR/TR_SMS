@@ -287,6 +287,9 @@ interface SmsSpoolDao {
 
     @Query("SELECT * FROM sms_spool WHERE packing_list_id = :packingListId AND in_transit = 1")
     suspend fun getInTransitByPackingList(packingListId: Long): List<SmsSpoolEntity>
+
+    @Query("SELECT COUNT(*) FROM sms_spool WHERE project_id = :projectId AND in_transit = 1")
+    suspend fun countInTransitByProject(projectId: Int): Int
 }
 
 @Dao
@@ -411,13 +414,19 @@ interface SmsVehicleDao {
     @Query("UPDATE sms_vehicle SET synced = 1 WHERE vehicle_id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
 
+    @Query("SELECT * FROM sms_vehicle WHERE route_synced = 0")
+    suspend fun getUnsyncedRouteState(): List<SmsVehicleEntity>
+
+    @Query("UPDATE sms_vehicle SET route_synced = 1 WHERE vehicle_id IN (:ids)")
+    suspend fun markRouteStateSynced(ids: List<Long>)
+
     @Query("SELECT * FROM sms_vehicle WHERE on_route = 1 ORDER BY license_plate ASC")
     suspend fun getOnRoute(): List<SmsVehicleEntity>
 
-    @Query("UPDATE sms_vehicle SET on_route = 1, destination = :destinationId, synced = 0 WHERE vehicle_id = :id")
+    @Query("UPDATE sms_vehicle SET on_route = 1, destination = :destinationId, synced = 0, route_synced = 0 WHERE vehicle_id = :id")
     suspend fun setOnRoute(id: Long, destinationId: Int?)
 
-    @Query("UPDATE sms_vehicle SET on_route = 0, destination = NULL, synced = 0 WHERE vehicle_id = :id")
+    @Query("UPDATE sms_vehicle SET on_route = 0, destination = NULL, synced = 0, route_synced = 0 WHERE vehicle_id = :id")
     suspend fun setOffRoute(id: Long)
 
     @Query("DELETE FROM sms_vehicle WHERE vehicle_id = :id")

@@ -42,6 +42,7 @@ data class SmsVehicleDto(
         created_by = createdBy,
         updated_at = updatedAt,
         on_route = onRoute ?: false,
-        destination = destination
+        destination = destination,
+        route_synced = true
     )
 }

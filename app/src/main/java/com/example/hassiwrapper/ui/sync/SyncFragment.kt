@@ -129,50 +129,50 @@ class SyncFragment : Fragment() {
     private fun loadKpis() {
         viewLifecycleOwner.lifecycleScope.launch {
             val v = view ?: return@launch
-            val counts = ServiceLocator.syncService.getPendingCounts()
-            val workerCount = ServiceLocator.personDao.count()
-            val vehicleCount = ServiceLocator.vehicleDao.count()
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
 
-            // Records KPI
+            val spoolCount = ServiceLocator.smsSpoolDao.countActiveByProject(projectId)
+            val packingListCount = ServiceLocator.smsPackingListDao.countByProject(projectId)
+            val vehicleCount = ServiceLocator.smsVehicleDao.countByProject(projectId)
+            val inTransitCount = ServiceLocator.smsSpoolDao.countInTransitByProject(projectId)
+            val pendingTotal = ServiceLocator.smsSpoolDao.getUnsynced().size +
+                    ServiceLocator.smsPackingListDao.getUnsynced().size +
+                    ServiceLocator.smsVehicleLoadingDao.getUnsynced().size
+
+            val synced = if (apiReachable) getString(R.string.sync_kpi_workers_synced) else ""
+
+            // Spools KPI
+            val txtSpools = v.findViewById<TextView>(R.id.txtKpiRecords)
+            txtSpools.text = spoolCount.toString()
+            txtSpools.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
+            v.findViewById<TextView>(R.id.txtKpiRecordsLabel).text = synced
+
+            // Packing Lists KPI
+            val txtPL = v.findViewById<TextView>(R.id.txtKpiPhotos)
+            txtPL.text = packingListCount.toString()
+            txtPL.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
+            v.findViewById<TextView>(R.id.txtKpiPhotosLabel).text = synced
+
+            // SMS Vehicles KPI
+            val txtVeh = v.findViewById<TextView>(R.id.txtKpiObservations)
+            txtVeh.text = vehicleCount.toString()
+            txtVeh.setTextColor(ContextCompat.getColor(requireContext(), R.color.secondary))
+            v.findViewById<TextView>(R.id.txtKpiObservationsLabel).text = synced
+
+            // En Tránsito KPI
+            val txtTransit = v.findViewById<TextView>(R.id.txtKpiWorkers)
+            txtTransit.text = inTransitCount.toString()
+            txtTransit.setTextColor(ContextCompat.getColor(requireContext(),
+                if (inTransitCount > 0) R.color.warning else R.color.on_surface_variant))
+            v.findViewById<TextView>(R.id.txtKpiWorkersLabel).text =
+                if (inTransitCount > 0) getString(R.string.sync_kpi_in_transit_active) else ""
+
+            // Pendientes Sync KPI
             setupPendingKpi(
-                v.findViewById(R.id.txtKpiRecords),
-                v.findViewById(R.id.txtKpiRecordsLabel),
-                counts.logs
+                v.findViewById(R.id.txtKpiVehicles),
+                v.findViewById(R.id.txtKpiVehiclesLabel),
+                pendingTotal
             )
-
-            // Photos KPI
-            setupPendingKpi(
-                v.findViewById(R.id.txtKpiPhotos),
-                v.findViewById(R.id.txtKpiPhotosLabel),
-                counts.photos
-            )
-
-            // Observations KPI
-            setupPendingKpi(
-                v.findViewById(R.id.txtKpiObservations),
-                v.findViewById(R.id.txtKpiObservationsLabel),
-                counts.observations
-            )
-
-            // Workers KPI
-            val txtWorkers = v.findViewById<TextView>(R.id.txtKpiWorkers)
-            val txtWorkersLabel = v.findViewById<TextView>(R.id.txtKpiWorkersLabel)
-            txtWorkers.text = workerCount.toString()
-            txtWorkersLabel.text = if (apiReachable) {
-                getString(R.string.sync_kpi_workers_synced)
-            } else {
-                ""
-            }
-
-            // Vehicles KPI
-            val txtVehicles = v.findViewById<TextView>(R.id.txtKpiVehicles)
-            val txtVehiclesLabel = v.findViewById<TextView>(R.id.txtKpiVehiclesLabel)
-            txtVehicles.text = vehicleCount.toString()
-            txtVehiclesLabel.text = if (apiReachable) {
-                getString(R.string.sync_kpi_vehicles_synced)
-            } else {
-                ""
-            }
         }
     }
 

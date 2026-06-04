@@ -2,6 +2,8 @@ package com.example.hassiwrapper
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.SoundPool
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -9,7 +11,9 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.text.Editable
+import android.text.InputType
 import android.text.TextWatcher
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -81,6 +85,10 @@ class MainActivity : AppCompatActivity() {
     private var pendingUpdate: UpdateInfo? = null
     private var autoSyncJob: Job? = null
 
+    private var soundPool: SoundPool? = null
+    private var soundSuccess = 0
+    private var soundError = 0
+
     private val qrScanLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -112,6 +120,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val audioAttrs = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        soundPool = SoundPool.Builder().setMaxStreams(2).setAudioAttributes(audioAttrs).build()
+        soundSuccess = soundPool!!.load(this, R.raw.beep_allowed, 1)
+        soundError   = soundPool!!.load(this, R.raw.beep_denied, 1)
+
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayout)
         val navView = findViewById<NavigationView>(R.id.navView)
@@ -134,16 +150,9 @@ class MainActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.homeFragment,
                 R.id.qrScannerFragment,
-                R.id.scannerFragment,
-                R.id.passportFragment,
-                R.id.packingListsFragment,
-                R.id.attendanceFragment,
+                R.id.inventarioFragment,
                 R.id.syncFragment,
-                R.id.workersFragment,
-                R.id.vehiclesFragment,
                 R.id.transfersFragment,
-                R.id.observationsGeneralFragment,
-                R.id.inspectionsFragment,
                 R.id.settingsFragment -> {
                     navController.navigate(item.itemId)
                 }
@@ -158,11 +167,16 @@ class MainActivity : AppCompatActivity() {
 
         etGlobalWedge = findViewById(R.id.etGlobalWedge)
         etGlobalWedge.showSoftInputOnFocus = false
+        etGlobalWedge.inputType = InputType.TYPE_NULL
 
         navController.addOnDestinationChangedListener { _, dest, _ ->
             toolbar.title = dest.label
             if (dest.id != R.id.qrScannerFragment) {
-                etGlobalWedge.post { etGlobalWedge.requestFocus() }
+                etGlobalWedge.post {
+                    etGlobalWedge.requestFocus()
+                    (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                        .hideSoftInputFromWindow(etGlobalWedge.windowToken, 0)
+                }
             }
         }
 
@@ -251,6 +265,7 @@ class MainActivity : AppCompatActivity() {
                     ServiceLocator.syncService.fullSync()
                     syncSmsData()
                     Log.d(TAG, "Auto-sync: completed")
+                    Toast.makeText(this@MainActivity, R.string.auto_sync_completed, Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Log.w(TAG, "Auto-sync: failed silently", e)
                 }
@@ -269,6 +284,8 @@ class MainActivity : AppCompatActivity() {
         dataWedgeManager.register()
         if (navController.currentDestination?.id != R.id.qrScannerFragment) {
             etGlobalWedge.requestFocus()
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                .hideSoftInputFromWindow(etGlobalWedge.windowToken, 0)
         }
 
         // If the user just came back from granting the install-unknown-apps permission, proceed
@@ -290,6 +307,15 @@ class MainActivity : AppCompatActivity() {
         stopAutoSync()
         dataWedgeManager.unregister()
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        soundPool?.release()
+        soundPool = null
+    }
+
+    fun playSuccess() { soundPool?.play(soundSuccess, 1f, 1f, 0, 0, 1f) }
+    fun playError()   { soundPool?.play(soundError,   1f, 1f, 0, 0, 1f) }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -394,23 +420,17 @@ class MainActivity : AppCompatActivity() {
         val menu = navView.menu
         val profile = ProfileManager.currentProfile()
         val isUser = profile == ProfileManager.Profile.USER
-        val isHse  = profile == ProfileManager.Profile.HSE
-        val isFull = !isUser && !isHse  // ADMIN, PRE, DEV
+        val isFull = profile == ProfileManager.Profile.ADMIN ||
+                     profile == ProfileManager.Profile.PRE   ||
+                     profile == ProfileManager.Profile.DEV
 
-        // Packing Lists (replaces old passport menu entry): visible for HSE, ADMIN, PRE, DEV
-        menu.findItem(R.id.packingListsFragment)?.isVisible = !isUser
+        // Inventario (Spools + PLs + Vehículos): HSE, ADMIN, PRE, DEV
+        menu.findItem(R.id.inventarioFragment)?.isVisible = !isUser
 
-        // Attendance, Workers, Vehicles, Transfers: only full profiles (ADMIN, PRE, DEV)
-        menu.findItem(R.id.attendanceFragment)?.isVisible          = isFull
-        menu.findItem(R.id.workersFragment)?.isVisible             = isFull
-        menu.findItem(R.id.vehiclesFragment)?.isVisible            = isFull
-        menu.findItem(R.id.transfersFragment)?.isVisible           = isFull
+        // Transfers: only full profiles (ADMIN, PRE, DEV)
+        menu.findItem(R.id.transfersFragment)?.isVisible = isFull
 
-        // Observations General + Inspections: HSE, ADMIN, PRE, DEV
-        menu.findItem(R.id.observationsGeneralFragment)?.isVisible = !isUser
-        menu.findItem(R.id.inspectionsFragment)?.isVisible         = !isUser
-
-        // Home + Scanner + Sync + Settings always visible
+        // Home + QR Scanner + Sync + Settings always visible
     }
 
     internal suspend fun syncSmsData() {
@@ -499,6 +519,30 @@ class MainActivity : AppCompatActivity() {
                 Log.w(TAG, "syncSmsData: transfer upload failed", e)
             }
 
+            // ── Upload: vehicle on/off-route state ───────────────────────────────────
+            try {
+                val unsyncedRoute = ServiceLocator.smsVehicleDao.getUnsyncedRouteState()
+                if (unsyncedRoute.isNotEmpty()) {
+                    val uploaded = mutableListOf<Long>()
+                    for (vehicle in unsyncedRoute) {
+                        val resp = if (vehicle.on_route) {
+                            service.setVehicleOnRoute(projectCode, vehicle.vehicle_id, vehicle.destination)
+                        } else {
+                            service.setVehicleOffRoute(projectCode, vehicle.vehicle_id)
+                        }
+                        if (resp.isSuccessful) {
+                            uploaded += vehicle.vehicle_id
+                        } else {
+                            Log.w(TAG, "syncSmsData: vehicleRoute ${vehicle.vehicle_id}: HTTP ${resp.code()}")
+                        }
+                    }
+                    if (uploaded.isNotEmpty()) ServiceLocator.smsVehicleDao.markRouteStateSynced(uploaded)
+                    Log.d(TAG, "syncSmsData: synced ${uploaded.size}/${unsyncedRoute.size} vehicle route states")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "syncSmsData: vehicle route state upload failed", e)
+            }
+
             val spoolResp = service.getSpools(projectCode)
             if (spoolResp.isSuccessful) {
                 val spoolRaw = spoolResp.body()?.string().orEmpty()
@@ -513,13 +557,13 @@ class MainActivity : AppCompatActivity() {
                     // Preserve locally-set fields that the /spools endpoint doesn't return
                     val localSpools = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
                         .associateBy { it.spool_id }
-                    val unsyncedTransferSpoolIds = ServiceLocator.smsTransferDao.getSpoolIdsInUnsyncedTransfers().toSet()
+                    // Spools that are SENT but not yet RECEIVED locally — these stay in_transit=true
+                    // regardless of upload status, until a local RECEIVE transfer confirms arrival.
+                    val sentNotReceivedIds = ServiceLocator.smsTransferDao.getSpoolIdsInSentNotReceived().toSet()
                     val merged = toInsert.map { s ->
                         val local = localSpools[s.spool_id] ?: return@map s
                         s.copy(
-                            // Only preserve in_transit=true if there's an unsynced local transfer for this spool.
-                            // Otherwise trust the backend value (prevents stale in_transit after successful sends).
-                            in_transit = if (local.in_transit && s.spool_id in unsyncedTransferSpoolIds) true else s.in_transit,
+                            in_transit = if (s.spool_id in sentNotReceivedIds) true else s.in_transit,
                             packing_list_id = s.packing_list_id ?: local.packing_list_id
                         )
                     }
@@ -538,11 +582,11 @@ class MainActivity : AppCompatActivity() {
                 val activePLs = entities.filter { it.is_active && it.packing_list_id !in deletedPLs }
                 // Preserve locally-set ready_to_send and vehicle assignment so API sync doesn't wipe them
                 val localPLs = ServiceLocator.smsPackingListDao.getByProject(projectId)
-                    .filter { it.ready_to_send }.associateBy { it.packing_list_id }
+                    .associateBy { it.packing_list_id }
                 val mergedPLs = activePLs.map { pl ->
                     val local = localPLs[pl.packing_list_id] ?: return@map pl
                     pl.copy(
-                        ready_to_send = true,
+                        ready_to_send = local.ready_to_send,
                         vehicle_id    = pl.vehicle_id ?: local.vehicle_id,
                         vehicle_plate = pl.vehicle_plate ?: local.vehicle_plate
                     )
@@ -557,12 +601,15 @@ class MainActivity : AppCompatActivity() {
             if (vehicleResp.isSuccessful) {
                 val entities = parseVehicleEntities(vehicleResp.body()?.string().orEmpty(), projectId)
                 if (entities.isNotEmpty()) {
-                    // Preserve locally-set on_route/destination so API sync doesn't wipe them
-                    val localOnRoute = ServiceLocator.smsVehicleDao.getByProject(projectId)
-                        .filter { it.on_route }.associate { it.vehicle_id to it }
+                    // Preserve local route state for vehicles with pending upload (route_synced=false)
+                    val localById = ServiceLocator.smsVehicleDao.getByProject(projectId).associateBy { it.vehicle_id }
                     val mergedVehicles = entities.map { v ->
-                        val local = localOnRoute[v.vehicle_id]
-                        if (local != null) v.copy(on_route = true, destination = local.destination) else v
+                        val local = localById[v.vehicle_id]
+                        if (local != null && !local.route_synced) {
+                            v.copy(on_route = local.on_route, destination = local.destination, route_synced = false)
+                        } else {
+                            v.copy(route_synced = true)
+                        }
                     }
                     ServiceLocator.smsVehicleDao.deleteByProject(projectId)
                     ServiceLocator.smsVehicleDao.insertAll(mergedVehicles)
@@ -819,32 +866,51 @@ class MainActivity : AppCompatActivity() {
                 else
                     spools.firstOrNull()
                 if (spool != null) {
-                    SpoolDetailBottomSheet.newInstance(spool.spool_id)
-                        .show(supportFragmentManager, "spool_detail_global")
+                    showScanRegisteredDialog(getString(R.string.scan_result_spool_registered, spool.displayCode))
                 } else {
-                    Toast.makeText(this, getString(R.string.qr_scanner_result_spool_not_found), Toast.LENGTH_SHORT).show()
+                    showScanNotRegisteredDialog(getString(R.string.scan_result_spool_not_registered)) {
+                        navController.navigate(R.id.action_global_newSpoolFragment,
+                            Bundle().apply { putString("prefillSpoolCode", result.spoolCode) })
+                    }
                 }
             }
             is QrResult.VehicleId -> {
                 val vehicle = ServiceLocator.smsVehicleDao.getById(result.id)
                 if (vehicle != null) {
-                    navController.navigate(R.id.action_global_vehicleDetailFragment,
-                        Bundle().apply { putLong("vehicleId", vehicle.vehicle_id) })
+                    showScanRegisteredDialog(getString(R.string.scan_result_vehicle_registered, vehicle.license_plate))
                 } else {
-                    Toast.makeText(this, getString(R.string.qr_scanner_result_vehicle_not_found), Toast.LENGTH_SHORT).show()
+                    showScanNotRegisteredDialog(getString(R.string.scan_result_vehicle_not_registered)) {
+                        navController.navigate(R.id.action_global_newVehicleFragment, Bundle())
+                    }
                 }
             }
             is QrResult.VehiclePlate -> {
                 val vehicle = ServiceLocator.smsVehicleDao.getByLicensePlate(result.plate)
                 if (vehicle != null) {
-                    navController.navigate(R.id.action_global_vehicleDetailFragment,
-                        Bundle().apply { putLong("vehicleId", vehicle.vehicle_id) })
+                    showScanRegisteredDialog(getString(R.string.scan_result_vehicle_registered, vehicle.license_plate))
                 } else {
-                    Toast.makeText(this, getString(R.string.qr_scanner_result_vehicle_not_found), Toast.LENGTH_SHORT).show()
+                    showScanNotRegisteredDialog(getString(R.string.scan_result_vehicle_not_registered)) {
+                        navController.navigate(R.id.action_global_newVehicleFragment,
+                            Bundle().apply { putString("prefillPlate", result.plate) })
+                    }
                 }
             }
             is QrResult.VehicleBadge, is QrResult.Unknown -> { /* ignore on non-scanner screens */ }
         }
+    }
+
+    private fun showScanRegisteredDialog(message: String) {
+        com.google.android.material.snackbar.Snackbar
+            .make(findViewById(android.R.id.content), message, com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+            .show()
+    }
+
+    private fun showScanNotRegisteredDialog(message: String, onCreate: () -> Unit) {
+        AlertDialog.Builder(this)
+            .setMessage(message)
+            .setPositiveButton(getString(R.string.scan_action_create)) { _, _ -> onCreate() }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     /** Called from SettingsFragment after a profile change. */
@@ -855,22 +921,24 @@ class MainActivity : AppCompatActivity() {
         val profile = ProfileManager.currentProfile()
         val currentDest = navController.currentDestination?.id
 
-        // If USER and currently on a hidden fragment, navigate to scanner
+        // If USER and currently on a hidden fragment, navigate to home
         if (profile == ProfileManager.Profile.USER) {
-            val allowedInUser = setOf(R.id.homeFragment, R.id.qrScannerFragment, R.id.scannerFragment, R.id.syncFragment, R.id.settingsFragment)
+            val allowedInUser = setOf(R.id.homeFragment, R.id.qrScannerFragment, R.id.syncFragment, R.id.settingsFragment)
             if (currentDest != null && currentDest !in allowedInUser) {
-                navController.navigate(R.id.scannerFragment)
+                navController.navigate(R.id.homeFragment)
             }
         }
-        // If HSE and currently on an ADMIN-only fragment, navigate to scanner
+        // If HSE and currently on an ADMIN-only fragment, navigate to home
         if (profile == ProfileManager.Profile.HSE) {
             val allowedInHse = setOf(
-                R.id.homeFragment, R.id.qrScannerFragment, R.id.scannerFragment, R.id.syncFragment, R.id.settingsFragment,
-                R.id.passportFragment, R.id.packingListsFragment, R.id.observationsGeneralFragment, R.id.inspectionsFragment,
+                R.id.homeFragment, R.id.qrScannerFragment, R.id.syncFragment, R.id.settingsFragment,
+                R.id.inventarioFragment, R.id.packingListsFragment, R.id.vehiclesFragment,
+                R.id.scannerFragment, R.id.newPackingListFragment, R.id.newSpoolFragment,
+                R.id.newVehicleFragment, R.id.packingListDetailFragment, R.id.vehicleDetailFragment,
                 R.id.observationFragment
             )
             if (currentDest != null && currentDest !in allowedInHse) {
-                navController.navigate(R.id.scannerFragment)
+                navController.navigate(R.id.homeFragment)
             }
         }
     }

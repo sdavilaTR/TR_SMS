@@ -64,11 +64,11 @@ class VehiclesFragment : Fragment() {
         rv.adapter = adapter
 
         fabNewVehicle.setOnClickListener {
-            findNavController().navigate(R.id.action_vehiclesFragment_to_newVehicleFragment)
+            findNavController().navigate(R.id.action_global_newVehicleFragment)
         }
 
         fabLoadSpools.setOnClickListener {
-            findNavController().navigate(R.id.action_vehiclesFragment_to_loadSpoolsFragment)
+            findNavController().navigate(R.id.action_global_loadSpoolsFragment)
         }
 
         swipe.setOnRefreshListener { load(forceRefresh = true) }
@@ -242,6 +242,6 @@ class VehiclesFragment : Fragment() {
 
     private fun navigateToVehicleDetail(item: VehicleItem) {
         val args = Bundle().apply { putLong("vehicleId", item.vehicle.vehicle_id) }
-        findNavController().navigate(R.id.action_vehiclesFragment_to_vehicleDetailFragment, args)
+        findNavController().navigate(R.id.action_global_vehicleDetailFragment, args)
     }
 }

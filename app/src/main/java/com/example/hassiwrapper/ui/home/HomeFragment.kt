@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -22,7 +23,6 @@ import com.example.hassiwrapper.network.dto.SpoolDto
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 class HomeFragment : Fragment() {
 
@@ -33,20 +33,35 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        view.findViewById<View>(R.id.btnGoScanner).setOnClickListener {
-            findNavController().navigate(R.id.scannerFragment)
-        }
-        view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
+view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
             findNavController().navigate(R.id.syncFragment)
         }
         view.findViewById<View>(R.id.cardSpools).setOnClickListener {
-            findNavController().navigate(R.id.action_homeFragment_to_scannerFragment)
+            findNavController().navigate(R.id.action_homeFragment_to_inventarioFragment, bundleOf("initialTab" to 0))
         }
         view.findViewById<View>(R.id.cardVehicles).setOnClickListener {
-            findNavController().navigate(R.id.action_homeFragment_to_vehiclesFragment)
+            findNavController().navigate(R.id.action_homeFragment_to_inventarioFragment, bundleOf("initialTab" to 2))
         }
         view.findViewById<View>(R.id.cardPackingLists).setOnClickListener {
-            findNavController().navigate(R.id.action_homeFragment_to_packingListsFragment)
+            findNavController().navigate(R.id.action_homeFragment_to_inventarioFragment, bundleOf("initialTab" to 1))
+        }
+        view.findViewById<View>(R.id.cardQuickNewPl).setOnClickListener {
+            findNavController().navigate(R.id.newPackingListFragment)
+        }
+        view.findViewById<View>(R.id.cardQuickLoadSpools).setOnClickListener {
+            findNavController().navigate(R.id.loadSpoolsFragment)
+        }
+        view.findViewById<View>(R.id.cardQuickSend).setOnClickListener {
+            findNavController().navigate(R.id.sendPackingListFragment)
+        }
+        view.findViewById<View>(R.id.cardQuickReceive).setOnClickListener {
+            findNavController().navigate(R.id.receivePackingListFragment)
+        }
+        view.findViewById<View>(R.id.cardQuickNewSpool).setOnClickListener {
+            findNavController().navigate(R.id.newSpoolFragment)
+        }
+        view.findViewById<View>(R.id.cardQuickNewVehicle).setOnClickListener {
+            findNavController().navigate(R.id.newVehicleFragment)
         }
         // DEBUG BUTTON — remove btnChangeProject from layout + this block before production
         view.findViewById<View>(R.id.btnChangeProject).setOnClickListener {
@@ -150,10 +165,6 @@ class HomeFragment : Fragment() {
     private fun loadStats() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val todayStr = LocalDate.now().toString() + "T00:00:00Z"
-                val scansToday = ServiceLocator.accessLogDao.getTodayCount(todayStr)
-                val pending = ServiceLocator.syncService.getPendingCounts()
-                val incidents = ServiceLocator.incidentDao.getUnresolvedCount()
                 val lastSync = ServiceLocator.configRepo.get("last_sync")
 
                 val projectId = getSelectedProjectId()
@@ -167,9 +178,7 @@ class HomeFragment : Fragment() {
 
                 Log.d("HomeDebug", "=== KPIs ===")
                 Log.d("HomeDebug", "project id=$projectId → code=${project?.project_code} name=${project?.project_name}")
-                Log.d("HomeDebug", "spools=$spoolCount packingLists=$packingListCount")
-                Log.d("HomeDebug", "vehicles=$vehicleCount scansToday=$scansToday incidents=$incidents")
-                Log.d("HomeDebug", "pending logs=${pending.logs} incidents=${pending.incidents} sessions=${pending.sessions}")
+                Log.d("HomeDebug", "spools=$spoolCount packingLists=$packingListCount vehicles=$vehicleCount")
                 Log.d("HomeDebug", "lastSync=$lastSync")
 
                 view?.let { v ->
@@ -182,9 +191,6 @@ class HomeFragment : Fragment() {
                         txtLoc.visibility = View.GONE
                     }
                     v.findViewById<TextView>(R.id.txtVehicleCount).text = vehicleCount.toString()
-                    v.findViewById<TextView>(R.id.txtScansToday).text = scansToday.toString()
-                    v.findViewById<TextView>(R.id.txtPendingCount).text = (pending.logs + pending.incidents + pending.sessions).toString()
-                    v.findViewById<TextView>(R.id.txtIncidentCount).text = incidents.toString()
                     v.findViewById<TextView>(R.id.txtSpoolCount).text = spoolCount.toString()
                     v.findViewById<TextView>(R.id.txtPackingListCount).text = packingListCount.toString()
                     v.findViewById<TextView>(R.id.txtLastSync).text = if (lastSync != null) {

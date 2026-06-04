@@ -19,6 +19,13 @@
     <string name="qr_scanner_result_badge_unsupported">Badge UUID no está asociado a un vehículo SMS. Use el QR del vehículo en el sistema ATLAS.</string>
     <string name="qr_scanner_result_unknown">Código QR no reconocido</string>
     <string name="qr_scanner_result_id_detail">ID: %1$s</string>
+    <string name="scan_result_spool_registered">Spool registrado: %1$s</string>
+    <string name="scan_result_spool_not_registered">Spool no registrado en la base de datos</string>
+    <string name="scan_result_vehicle_registered">Vehículo registrado: %1$s</string>
+    <string name="scan_result_vehicle_not_registered">Vehículo no registrado en la base de datos</string>
+    <string name="scan_create_question">¿Desea crear un nuevo registro?</string>
+    <string name="scan_action_create">Crear</string>
+    <string name="scan_action_close">Cerrar</string>
 
     <!-- Navigation -->
     <string name="nav_header_title">Smart Material System</string>
@@ -124,17 +131,18 @@
     <string name="sync_retrying">Reintentando (%1$d)… espera %2$ds</string>
 
     <!-- Sync KPIs -->
-    <string name="sync_kpi_records">Registros</string>
-    <string name="sync_kpi_photos">Fotos</string>
-    <string name="sync_kpi_observations">Observaciones</string>
-    <string name="sync_kpi_workers">Trabajadores</string>
+    <string name="sync_kpi_records">Spools</string>
+    <string name="sync_kpi_photos">Packing Lists</string>
+    <string name="sync_kpi_observations">Vehículos</string>
+    <string name="sync_kpi_workers">En Tránsito</string>
     <string name="sync_kpi_synced">Sincronizado</string>
     <string name="sync_kpi_pending">Pendiente</string>
     <string name="sync_kpi_workers_synced">Actualizados</string>
 
     <!-- Sync KPI vehicles -->
-    <string name="sync_kpi_vehicles">Vehículos</string>
+    <string name="sync_kpi_vehicles">Pendientes Sync</string>
     <string name="sync_kpi_vehicles_synced">Actualizados</string>
+    <string name="sync_kpi_in_transit_active">activos</string>
 
     <!-- Sync result structured -->
     <string name="sync_result_title_ok">Sincronización completada</string>
@@ -430,6 +438,21 @@
     <string name="sync_auto_relogin_ok">Sesión renovada, reintentando sincronización</string>
     <string name="sync_auto_relogin_fail">No se pudo renovar la sesión automáticamente</string>
 
+    <!-- Inventario -->
+    <string name="menu_inventario">Inventario</string>
+    <string name="inventario_tab_spools">Spools</string>
+    <string name="inventario_tab_pls">Packing Lists</string>
+    <string name="inventario_tab_vehicles">Vehículos</string>
+
+    <!-- Quick Actions -->
+    <string name="home_quick_actions_title">Acciones Rápidas</string>
+    <string name="home_qa_new_pl">Crear Packing List</string>
+    <string name="home_qa_load_spools">Cargar Spools</string>
+    <string name="home_qa_send">Hacer Envío</string>
+    <string name="home_qa_receive">Recibir Envío</string>
+    <string name="home_qa_new_spool">Nuevo Spool</string>
+    <string name="home_qa_new_vehicle">Nuevo Vehículo</string>
+
     <!-- Debug: Project Switcher -->
     <string name="home_btn_change_project">[DEBUG] Cambiar Proyecto</string>
     <string name="home_dialog_select_project">Seleccionar proyecto</string>
@@ -700,6 +723,9 @@
     <string name="transfer_receive_at">Vas a recibir los siguientes PLs en %s</string>
     <string name="transfer_pl_label">PL: %1$s</string>
     <string name="transfer_vehicle_label">Vehículo: %1$s</string>
+
+    <!-- Auto-sync notifications -->
+    <string name="auto_sync_completed">Sincronización automática completada</string>
 
     <!-- Settings: location config -->
     <string name="settings_location_config_title">Configuración de Ubicaciones</string>

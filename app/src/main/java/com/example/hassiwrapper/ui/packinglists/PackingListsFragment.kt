@@ -48,7 +48,7 @@ class PackingListsFragment : Fragment() {
         txtCount = view.findViewById(R.id.txtCount)
         fab      = view.findViewById(R.id.fabNewPackingList)
         fab.setOnClickListener {
-            findNavController().navigate(R.id.action_packingListsFragment_to_newPackingListFragment)
+            findNavController().navigate(R.id.action_global_newPackingListFragment)
         }
 
         adapter = PLAdapter()
@@ -205,7 +205,7 @@ class PackingListsFragment : Fragment() {
             h.sub.visibility = View.VISIBLE
             h.itemView.setOnClickListener {
                 val bundle = Bundle().apply { putLong("packingListId", pl.packing_list_id) }
-                findNavController().navigate(R.id.action_packingListsFragment_to_packingListDetailFragment, bundle)
+                findNavController().navigate(R.id.action_global_packingListDetailFragment, bundle)
             }
         }
     }

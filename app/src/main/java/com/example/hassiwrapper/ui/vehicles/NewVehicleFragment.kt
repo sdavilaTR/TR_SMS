@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
@@ -43,6 +44,9 @@ class NewVehicleFragment : Fragment() {
         etCapacityKg    = view.findViewById(R.id.etCapacityKg)
         btnSave         = view.findViewById(R.id.btnSaveVehicle)
         btnSave.setOnClickListener { saveVehicle() }
+        arguments?.getString("prefillPlate")?.takeIf { it.isNotBlank() }?.let {
+            etLicensePlate.setText(it.uppercase())
+        }
     }
 
     private fun saveVehicle() {
@@ -106,10 +110,12 @@ class NewVehicleFragment : Fragment() {
                     }
                 } catch (_: Exception) {}
 
+                (requireActivity() as? MainActivity)?.playSuccess()
                 Toast.makeText(requireContext(), getString(R.string.new_vehicle_success), Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()
             } catch (e: Exception) {
                 btnSave.isEnabled = true
+                (requireActivity() as? MainActivity)?.playError()
                 Toast.makeText(requireContext(), getString(R.string.new_vehicle_error_save, e.message), Toast.LENGTH_LONG).show()
             }
         }

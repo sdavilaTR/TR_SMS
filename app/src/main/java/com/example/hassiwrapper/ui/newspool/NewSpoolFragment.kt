@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsBoreSizeEntity
@@ -71,12 +72,14 @@ class NewSpoolFragment : Fragment() {
     private var selectedPositionId: Int? = null
     private var selectedIncompleteStatusId: Int? = null
     private var selectedBoreSizeId: Int? = null
+    private var prefillSpoolCode: String? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_new_spool, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        prefillSpoolCode = arguments?.getString("prefillSpoolCode")
         tilUnit             = view.findViewById(R.id.tilUnit)
         tilLine             = view.findViewById(R.id.tilLine)
         tilCode             = view.findViewById(R.id.tilCode)
@@ -130,6 +133,7 @@ class NewSpoolFragment : Fragment() {
             val boreSizes         = ServiceLocator.smsBoreSizeDao.getAll()
 
             setupUnitDropdown(units)
+            applySpoolCodePrefill(units)
             setupDropdown(actvIsoType, isoTypes, { it.name.ifBlank { it.code } }) { selectedIsoTypeId = it?.iso_type_id }
             setupDropdown(actvStatus, statuses, { it.name.ifBlank { it.code } }) { selectedStatusId = it?.status_id }
             setupDropdown(actvPosition, positions, { it.name.ifBlank { it.code } }) { selectedPositionId = it?.position_id }
@@ -298,13 +302,37 @@ class NewSpoolFragment : Fragment() {
                 )
                 ServiceLocator.smsSpoolStatusFlagsDao.insertAll(listOf(statusFlags))
 
+                (requireActivity() as? MainActivity)?.playSuccess()
                 Toast.makeText(requireContext(), getString(R.string.new_spool_success), Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()
             } catch (e: Exception) {
                 btnSave.isEnabled = true
+                (requireActivity() as? MainActivity)?.playError()
                 Toast.makeText(requireContext(), getString(R.string.new_spool_error_save, e.message), Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    private fun applySpoolCodePrefill(units: List<SmsUnitEntity>) {
+        val raw = prefillSpoolCode ?: return
+        val parts = raw.split("-")
+        val matchedUnit = units.find { it.code.equals(parts[0], ignoreCase = true) }
+            ?: units.find { it.name.equals(parts[0], ignoreCase = true) }
+        if (matchedUnit != null) {
+            selectedUnitId   = matchedUnit.unit_id
+            selectedUnitCode = matchedUnit.code
+            tilUnit.error    = null
+            actvUnit.setText(matchedUnit.name.ifBlank { matchedUnit.code }, false)
+            if (parts.size >= 2) etLine.setText(parts[1])
+            if (parts.size >= 3) etCode.setText(parts[2])
+            if (parts.size >= 4) etTrain.setText(parts.drop(3).joinToString("-"))
+        } else {
+            if (parts.size >= 2) etLine.setText(parts[0])
+            if (parts.size >= 3) etCode.setText(parts[1])
+            if (parts.size >= 4) etTrain.setText(parts[2])
+            if (parts.size == 1) etCode.setText(raw)
+        }
+        updatePreview()
     }
 
     private fun parseCreatedSpoolId(raw: String): Long? {

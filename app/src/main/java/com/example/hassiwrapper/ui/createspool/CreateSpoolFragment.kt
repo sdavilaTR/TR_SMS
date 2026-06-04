@@ -55,7 +55,7 @@ class CreateSpoolFragment : Fragment() {
         toggleFilter = view.findViewById(R.id.toggleFilter)
         fabNewSpool  = view.findViewById(R.id.fabNewSpool)
         fabNewSpool.setOnClickListener {
-            findNavController().navigate(R.id.action_scannerFragment_to_newSpoolFragment)
+            findNavController().navigate(R.id.action_global_newSpoolFragment)
         }
 
         adapter = SpoolAdapter()

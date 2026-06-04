@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.view.WindowManager
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -52,6 +53,7 @@ class LoginActivity : AppCompatActivity() {
 
     private fun setupLoginUI() {
         setContentView(R.layout.activity_login)
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
 
         val inputTerminalCode = findViewById<EditText>(R.id.inputTerminalCode)
         val btnLogin = findViewById<Button>(R.id.btnLogin)

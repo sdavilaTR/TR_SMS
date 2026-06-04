@@ -238,7 +238,14 @@ class ReceivePackingListFragment : Fragment() {
 
     private fun loadPackingListsForVehicle(vehicle: SmsVehicleEntity) {
         viewLifecycleOwner.lifecycleScope.launch {
-            val pls = ServiceLocator.smsPackingListDao.getWithInTransitSpoolsByVehicle(vehicle.vehicle_id)
+            android.util.Log.d("ReceiveDebug", "loadPackingListsForVehicle: vehicle_id=${vehicle.vehicle_id} plate=${vehicle.license_plate} on_route=${vehicle.on_route} destination=${vehicle.destination}")
+
+            // Same-device: PLs with in_transit spools (set by local Send confirmation)
+            // Cross-device: PLs with ready_to_send=true (server signal, no local Send transfer)
+            val byInTransit = ServiceLocator.smsPackingListDao.getWithInTransitSpoolsByVehicle(vehicle.vehicle_id)
+            val byReadyToSend = ServiceLocator.smsPackingListDao.getByVehicle(vehicle.vehicle_id)
+                .filter { it.ready_to_send }
+            val pls = (byInTransit + byReadyToSend).distinctBy { it.packing_list_id }
 
             panelScanVehicle.visibility = View.GONE
             panelSelectPl.visibility = View.VISIBLE
@@ -265,8 +272,11 @@ class ReceivePackingListFragment : Fragment() {
         panelConfirmSpools.visibility = View.VISIBLE
 
         viewLifecycleOwner.lifecycleScope.launch {
-            val spools = ServiceLocator.smsSpoolDao.getByPackingList(pl.packing_list_id)
+            val inTransit = ServiceLocator.smsSpoolDao.getByPackingList(pl.packing_list_id)
                 .filter { it.in_transit }
+            val spools = inTransit.ifEmpty {
+                ServiceLocator.smsSpoolDao.getByPackingList(pl.packing_list_id)
+            }
             spoolReceives.clear()
             spoolReceives.addAll(spools.map { SpoolReceive(it) })
             spoolAdapter.notifyDataSetChanged()
@@ -404,7 +414,16 @@ class ReceivePackingListFragment : Fragment() {
 
             ServiceLocator.smsVehicleDao.setOffRoute(vehicle.vehicle_id)
 
+            try {
+                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+                if (!projectCode.isNullOrBlank()) {
+                    ServiceLocator.apiClient.getService()
+                        .setVehicleOffRoute(projectCode, vehicle.vehicle_id)
+                }
+            } catch (_: Exception) { }
+
             if (!isAdded) return@launch
+            (requireActivity() as? MainActivity)?.playSuccess()
             Toast.makeText(requireContext(), getString(R.string.transfer_receive_success), Toast.LENGTH_LONG).show()
             findNavController().navigateUp()
         }

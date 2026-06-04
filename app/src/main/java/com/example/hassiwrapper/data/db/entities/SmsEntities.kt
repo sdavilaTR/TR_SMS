@@ -241,5 +241,6 @@ data class SmsVehicleEntity(
     val updated_at: String? = null,
     val synced: Boolean = false,
     val on_route: Boolean = false,
-    val destination: Int? = null
+    val destination: Int? = null,
+    val route_synced: Boolean = true
 )

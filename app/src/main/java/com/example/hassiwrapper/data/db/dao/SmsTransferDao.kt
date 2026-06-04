@@ -28,6 +28,18 @@ interface SmsTransferDao {
     @Query("SELECT DISTINCT s.spool_id FROM sms_transfer_spool s INNER JOIN sms_transfer t ON t.transfer_id = s.transfer_id WHERE t.synced = 0")
     suspend fun getSpoolIdsInUnsyncedTransfers(): List<Long>
 
+    @Query("""
+        SELECT DISTINCT ts.spool_id FROM sms_transfer_spool ts
+        INNER JOIN sms_transfer t ON t.transfer_id = ts.transfer_id
+        WHERE t.transfer_type = 'SEND'
+        AND ts.spool_id NOT IN (
+            SELECT ts2.spool_id FROM sms_transfer_spool ts2
+            INNER JOIN sms_transfer t2 ON t2.transfer_id = ts2.transfer_id
+            WHERE t2.transfer_type = 'RECEIVE'
+        )
+    """)
+    suspend fun getSpoolIdsInSentNotReceived(): List<Long>
+
     @Query("DELETE FROM sms_transfer")
     suspend fun deleteAll()
 

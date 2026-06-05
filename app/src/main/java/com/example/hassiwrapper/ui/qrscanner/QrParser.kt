@@ -12,18 +12,19 @@ internal sealed class QrResult {
 private val STOP_WORDS = """Suffix:|Desc:|Diameter:|Lenght:|Length:|Priority:"""
 
 internal fun parseQr(text: String): QrResult {
-    val upper = text.uppercase()
+    val clean = text.trimStart('﻿').trim()
+    val upper = clean.uppercase()
     if (upper.startsWith("JAFURAH PACKING LIST") || upper.startsWith("RIYAS PACKING LIST")) {
-        val spoolCode = Regex("""(?i)ID:\s*(.+?)(?=\s*(?:$STOP_WORDS)|\z)""").find(text)
+        val spoolCode = Regex("""(?i)ID:\s*(.+?)(?=\s*(?:$STOP_WORDS)|\z)""").find(clean)
             ?.groupValues?.get(1)?.trim()
-        val spoolSuffix = Regex("""(?i)Suffix:\s*(.+?)(?=\s*(?:Desc:|Diameter:|Lenght:|Length:|Priority:)|\z)""").find(text)
+        val spoolSuffix = Regex("""(?i)Suffix:\s*(.+?)(?=\s*(?:Desc:|Diameter:|Lenght:|Length:|Priority:)|\z)""").find(clean)
             ?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
         android.util.Log.d("QrParser", "spool block: spoolCode=$spoolCode spoolSuffix=$spoolSuffix")
-        return if (!spoolCode.isNullOrBlank()) QrResult.Spool(spoolCode, spoolSuffix) else QrResult.Unknown(text)
+        return if (!spoolCode.isNullOrBlank()) QrResult.Spool(spoolCode, spoolSuffix) else QrResult.Unknown(clean)
     }
-    if (text.startsWith("VEH:")) return QrResult.VehicleBadge(text.removePrefix("VEH:"))
-    val urlVehicleId = Regex("""/vehicles?/(\d+)""").find(text)
+    if (clean.startsWith("VEH:")) return QrResult.VehicleBadge(clean.removePrefix("VEH:"))
+    val urlVehicleId = Regex("""/vehicles?/(\d+)""").find(clean)
         ?.groupValues?.getOrNull(1)?.toLongOrNull()
     if (urlVehicleId != null) return QrResult.VehicleId(urlVehicleId)
-    return QrResult.VehiclePlate(text)
+    return QrResult.VehiclePlate(clean)
 }

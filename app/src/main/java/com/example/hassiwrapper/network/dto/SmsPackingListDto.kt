@@ -59,6 +59,7 @@ data class SmsPackingListDto(
         created_at = createdAt.orEmpty(),
         created_by = createdBy,
         updated_at = updatedAt,
-        ready_to_send = readyToSend ?: false
+        ready_to_send = readyToSend ?: false,
+        synced = true
     )
 }

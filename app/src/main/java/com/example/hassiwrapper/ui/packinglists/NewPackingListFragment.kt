@@ -1,19 +1,37 @@
 package com.example.hassiwrapper.ui.packinglists
 
+import android.Manifest
+import android.app.Activity
 import android.app.AlertDialog
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.text.Editable
+import android.text.InputFilter
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
+import com.example.hassiwrapper.ui.qrscanner.QrResult
+import com.example.hassiwrapper.ui.qrscanner.parseQr
+import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
 import com.example.hassiwrapper.data.db.entities.SmsPackingListSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsPositionEntity
@@ -36,9 +54,35 @@ class NewPackingListFragment : Fragment() {
     private lateinit var tilVehicle: TextInputLayout
     private lateinit var actvPosition: AutoCompleteTextView
     private lateinit var actvVehicle: AutoCompleteTextView
+    private lateinit var etWedge: EditText
     private lateinit var etNotes: TextInputEditText
     private lateinit var btnAddSpools: MaterialButton
+    private lateinit var btnScanCamera: MaterialButton
     private lateinit var btnSave: MaterialButton
+
+    private val wedgeHandler = Handler(Looper.getMainLooper())
+    private val wedgeTrigger = Runnable {
+        val text = etWedge.text?.toString()?.trim().orEmpty()
+        etWedge.setText("")
+        if (!etNotes.hasFocus()) etWedge.requestFocus()
+        if (text.isNotBlank()) handleScanForNewPL(text)
+    }
+
+    private val cameraLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val code = result.data?.getStringExtra(CustomScannerActivity.EXTRA_RESULT)
+            code?.let { handleScanForNewPL(it.trim()) }
+        }
+    }
+
+    private val requestCameraPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) launchCamera()
+        else Toast.makeText(requireContext(), getString(R.string.scanner_error_camera_permission), Toast.LENGTH_SHORT).show()
+    }
 
     private var projectId: Int = 6
     private var projectName: String = ""
@@ -55,11 +99,28 @@ class NewPackingListFragment : Fragment() {
     private var availableSpools: List<SmsSpoolEntity> = emptyList()
     private val selectedSpoolIds = mutableSetOf<Long>()
 
+    private val notesHandler = Handler(Looper.getMainLooper())
+    private var suppressNotesTrigger = false
+    private var scanIntercepted = false
+    private val clearScanIntercepted = Runnable { scanIntercepted = false }
+    private val notesScanTrigger = Runnable {
+        val current = etNotes.text?.toString().orEmpty()
+        val (scanText, cleaned) = extractSpoolQr(current)
+        if (scanText != null) {
+            suppressNotesTrigger = true
+            etNotes.setText(cleaned)
+            if (cleaned.isNotEmpty()) etNotes.setSelection(cleaned.length)
+            suppressNotesTrigger = false
+            handleScanForNewPL(scanText)
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_new_packing_list, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        etWedge        = view.findViewById(R.id.etNewPLWedge)
         txtNamePreview = view.findViewById(R.id.txtPLNamePreview)
         tilPosition    = view.findViewById(R.id.tilPLPosition)
         tilVehicle     = view.findViewById(R.id.tilPLVehicle)
@@ -67,15 +128,146 @@ class NewPackingListFragment : Fragment() {
         actvVehicle    = view.findViewById(R.id.actvPLVehicle)
         etNotes        = view.findViewById(R.id.etPLNotes)
         btnAddSpools   = view.findViewById(R.id.btnAddSpools)
+        btnScanCamera  = view.findViewById(R.id.btnScanCameraPL)
         btnSave        = view.findViewById(R.id.btnSavePL)
+
+        etWedge.showSoftInputOnFocus = false
+        etWedge.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if ((s?.length ?: 0) > 0) {
+                    wedgeHandler.removeCallbacks(wedgeTrigger)
+                    wedgeHandler.postDelayed(wedgeTrigger, 300)
+                }
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+        etWedge.requestFocus()
+
+        etNotes.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) wedgeHandler.post { etWedge.requestFocus() }
+        }
 
         preselectedVehicleId    = arguments?.getLong("vehicleId", 0L) ?: 0L
         preselectedVehiclePlate = arguments?.getString("vehiclePlate")
 
+        // InputFilter intercepts QR delivery to etNotes (DataWedge IME mode or dual mode).
+        // scanIntercepted flag blocks subsequent chunks of the same scan from writing to Notes.
+        etNotes.filters = etNotes.filters + InputFilter { source, start, end, _, _, _ ->
+            val incoming = source.subSequence(start, end).toString()
+            val stripped = incoming.trimStart { it == '﻿' || it.isWhitespace() }
+            val upper = stripped.uppercase()
+            when {
+                upper.startsWith("JAFURAH PACKING LIST") || upper.startsWith("RIYAS PACKING LIST") -> {
+                    scanIntercepted = true
+                    notesHandler.removeCallbacks(clearScanIntercepted)
+                    notesHandler.postDelayed(clearScanIntercepted, 500)
+                    notesHandler.post { if (isAdded) handleScanForNewPL(stripped) }
+                    "" // reject first chunk
+                }
+                scanIntercepted -> "" // reject all subsequent chunks of same scan
+                else -> null // accept normal user typing
+            }
+        }
+
+        etNotes.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (!suppressNotesTrigger) {
+                    notesHandler.removeCallbacks(notesScanTrigger)
+                    notesHandler.postDelayed(notesScanTrigger, 300)
+                }
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
         btnAddSpools.setOnClickListener { showSpoolPickerDialog() }
+        btnScanCamera.setOnClickListener {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED
+            ) launchCamera()
+            else requestCameraPermission.launch(Manifest.permission.CAMERA)
+        }
         btnSave.setOnClickListener { savePackingList() }
 
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                val activity = requireActivity() as? MainActivity ?: return@repeatOnLifecycle
+                activity.dataWedgeManager.scanFlow.collect { raw ->
+                    handleScanForNewPL(raw.trim())
+                }
+            }
+        }
+
         loadData()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!etNotes.hasFocus()) etWedge.requestFocus()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        notesHandler.removeCallbacks(notesScanTrigger)
+        wedgeHandler.removeCallbacks(wedgeTrigger)
+    }
+
+    private fun extractSpoolQr(text: String): Pair<String?, String> {
+        val upper = text.uppercase()
+        for (prefix in listOf("JAFURAH PACKING LIST", "RIYAS PACKING LIST")) {
+            val idx = upper.indexOf(prefix)
+            if (idx >= 0) {
+                val before = text.substring(0, idx).trimEnd()
+                val scan   = text.substring(idx).trim()
+                return Pair(scan, before)
+            }
+        }
+        return Pair(null, text)
+    }
+
+    private fun showInfoDialog(message: String) {
+        val dialog = AlertDialog.Builder(requireContext())
+            .setMessage(message)
+            .create()
+        dialog.show()
+        requireView().postDelayed({ if (isAdded && dialog.isShowing) dialog.dismiss() }, 2600)
+    }
+
+    private fun handleScanForNewPL(raw: String) {
+        val result = parseQr(raw)
+        if (result !is QrResult.Spool) return
+        viewLifecycleOwner.lifecycleScope.launch {
+            val pid = ServiceLocator.configRepo.getInt("selected_project_id") ?: projectId
+            val spool = if (result.spoolSuffix != null)
+                ServiceLocator.smsSpoolDao.findByCodeAndSuffix(pid, result.spoolCode, result.spoolSuffix)
+            else
+                ServiceLocator.smsSpoolDao.findByCode(pid, result.spoolCode)
+            if (spool == null) {
+                Toast.makeText(requireContext(), getString(R.string.pl_scan_spool_not_found), Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            if (spool.packing_list_id != null) {
+                val pl = ServiceLocator.smsPackingListDao.getById(spool.packing_list_id)
+                val plName = pl?.packing_list_name?.ifBlank { "PL ${spool.packing_list_id}" } ?: "PL ${spool.packing_list_id}"
+                showInfoDialog(getString(R.string.pl_scan_spool_already_in_pl, spool.displayCode, plName))
+                return@launch
+            }
+            if (spool.spool_id in selectedSpoolIds) {
+                Toast.makeText(requireContext(), getString(R.string.new_pl_scan_spool_already_selected, spool.displayCode), Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            selectedSpoolIds.add(spool.spool_id)
+            updateSpoolsButton()
+            Toast.makeText(requireContext(), getString(R.string.new_pl_scan_spool_added, spool.displayCode), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun launchCamera() {
+        cameraLauncher.launch(
+            Intent(requireContext(), CustomScannerActivity::class.java)
+                .putExtra(CustomScannerActivity.EXTRA_FRONT_CAMERA, false)
+        )
     }
 
     private fun loadData() {
@@ -105,6 +297,7 @@ class NewPackingListFragment : Fragment() {
             selectedPositionCode = p.code.ifBlank { p.name }
             tilPosition.error    = null
             updateNamePreview()
+            etWedge.requestFocus()
         }
     }
 
@@ -131,6 +324,7 @@ class NewPackingListFragment : Fragment() {
             selectedVehicleId    = v.vehicle_id
             selectedVehiclePlate = v.license_plate
             updateNamePreview()
+            etWedge.requestFocus()
         }
         actvVehicle.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus && actvVehicle.text.isNullOrBlank()) {

@@ -52,7 +52,10 @@ object ServiceLocator {
             db.documentComplianceDao(),
             db.smsSpoolDao(),
             db.smsPackingListDao(),
-            db.smsPositionDao()
+            db.smsPositionDao(),
+            db.smsVehicleDao(),
+            db.smsVehicleLoadingDao(),
+            db.smsTransferDao()
         )
     }
 

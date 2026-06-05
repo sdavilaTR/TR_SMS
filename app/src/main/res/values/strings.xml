@@ -518,6 +518,11 @@
     <string name="pl_detail_no_available_spools">No hay spools disponibles sin Packing List</string>
     <string name="pl_detail_spool_added">Spool añadido al Packing List</string>
     <string name="pl_detail_spool_removed">Spool eliminado del Packing List</string>
+    <string name="pl_scan_hint">📷 Escanee el QR de un spool para añadirlo directamente</string>
+    <string name="pl_scan_spool_already_in_pl">El spool %1$s ya pertenece al Packing List %2$s</string>
+    <string name="pl_scan_spool_not_found">Spool no encontrado en el sistema</string>
+    <string name="new_pl_scan_spool_added">Spool %1$s añadido a la selección</string>
+    <string name="new_pl_scan_spool_already_selected">El spool %1$s ya está seleccionado</string>
     <string name="pl_detail_remove_spool_title">Quitar Spool</string>
     <string name="pl_detail_remove_spool_msg">¿Quitar %1$s de este Packing List?</string>
 

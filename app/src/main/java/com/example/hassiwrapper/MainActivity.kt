@@ -74,7 +74,9 @@ class MainActivity : AppCompatActivity() {
             dest == R.id.qrScannerFragment -> { /* handled by QrScannerFragment */ }
             dest == R.id.loadSpoolsFragment ||
             dest == R.id.sendPackingListFragment ||
-            dest == R.id.receivePackingListFragment -> dataWedgeManager.emitScan(text)
+            dest == R.id.receivePackingListFragment ||
+            dest == R.id.packingListDetailFragment ||
+            dest == R.id.newPackingListFragment -> dataWedgeManager.emitScan(text)
             else -> {
                 Log.d(TAG, "Global keyboard-wedge scan (${text.length} chars): ${text.take(80)}")
                 lifecycleScope.launch { handleGlobalScan(text) }
@@ -98,7 +100,9 @@ class MainActivity : AppCompatActivity() {
                 val dest = navController.currentDestination?.id
                 if (dest == R.id.loadSpoolsFragment ||
                     dest == R.id.sendPackingListFragment ||
-                    dest == R.id.receivePackingListFragment) {
+                    dest == R.id.receivePackingListFragment ||
+                    dest == R.id.packingListDetailFragment ||
+                    dest == R.id.newPackingListFragment) {
                     dataWedgeManager.emitScan(scanned)
                 } else {
                     lifecycleScope.launch { handleGlobalScan(scanned) }
@@ -171,7 +175,8 @@ class MainActivity : AppCompatActivity() {
 
         navController.addOnDestinationChangedListener { _, dest, _ ->
             toolbar.title = dest.label
-            if (dest.id != R.id.qrScannerFragment) {
+            // newPackingListFragment manages its own wedge focus internally
+            if (dest.id != R.id.qrScannerFragment && dest.id != R.id.newPackingListFragment) {
                 etGlobalWedge.post {
                     etGlobalWedge.requestFocus()
                     (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
@@ -201,7 +206,9 @@ class MainActivity : AppCompatActivity() {
                     if (dest != R.id.qrScannerFragment &&
                         dest != R.id.loadSpoolsFragment &&
                         dest != R.id.sendPackingListFragment &&
-                        dest != R.id.receivePackingListFragment) {
+                        dest != R.id.receivePackingListFragment &&
+                        dest != R.id.packingListDetailFragment &&
+                        dest != R.id.newPackingListFragment) {
                         handleGlobalScan(code)
                     }
                 }
@@ -443,105 +450,6 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "syncSmsData: fetching SMS data for $projectCode")
         try {
             val service = ServiceLocator.apiClient.getService()
-
-            // ── Upload: vehicle loadings ──────────────────────────────────────
-            try {
-                val unsyncedLoadings = ServiceLocator.smsVehicleLoadingDao.getUnsynced()
-                if (unsyncedLoadings.isNotEmpty()) {
-                    val uploaded = mutableListOf<Long>()
-                    val plIdsToMarkReady = mutableSetOf<Long>()
-                    for (loading in unsyncedLoadings) {
-                        val loadingSpools = ServiceLocator.smsVehicleLoadingDao.getSpoolsByLoading(loading.loading_id)
-                        val dto = com.example.hassiwrapper.network.dto.VehicleLoadingUploadDto(
-                            vehicleLoadingId = loading.loading_id,
-                            vehicleId        = loading.vehicle_id,
-                            vehiclePlate     = loading.vehicle_plate,
-                            projectId        = loading.project_id,
-                            createdAt        = loading.created_at,
-                            createdBy        = null,
-                            spools           = loadingSpools.map { s ->
-                                com.example.hassiwrapper.network.dto.VehicleLoadingSpoolUploadDto(
-                                    spoolId       = s.spool_id,
-                                    packingListId = s.packing_list_id
-                                )
-                            }
-                        )
-                        val resp = service.uploadVehicleLoading(projectCode, dto)
-                        if (resp.isSuccessful) {
-                            uploaded += loading.loading_id
-                            loadingSpools.mapNotNull { it.packing_list_id }.forEach { plIdsToMarkReady += it }
-                        } else {
-                            Log.w(TAG, "uploadVehicleLoading ${loading.loading_id}: HTTP ${resp.code()}")
-                        }
-                    }
-                    if (uploaded.isNotEmpty()) ServiceLocator.smsVehicleLoadingDao.markSynced(uploaded)
-                    plIdsToMarkReady.forEach { plId ->
-                        try { service.setPackingListReadyToSend(projectCode, plId, true) } catch (_: Exception) { }
-                    }
-                    Log.d(TAG, "syncSmsData: uploaded ${uploaded.size}/${unsyncedLoadings.size} vehicle loadings")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "syncSmsData: vehicle loading upload failed", e)
-            }
-
-            // ── Upload: transfers ─────────────────────────────────────────────
-            try {
-                val unsyncedTransfers = ServiceLocator.smsTransferDao.getUnsynced()
-                if (unsyncedTransfers.isNotEmpty()) {
-                    val uploaded = mutableListOf<Long>()
-                    for (transfer in unsyncedTransfers) {
-                        val transferSpools = ServiceLocator.smsTransferDao.getSpoolsByTransfer(transfer.transfer_id)
-                        val dto = com.example.hassiwrapper.network.dto.TransferUploadDto(
-                            transferId      = transfer.transfer_id,
-                            type            = transfer.transfer_type,
-                            projectId       = transfer.project_id,
-                            signatureBase64 = transfer.signature_data,
-                            createdAt       = transfer.created_at,
-                            createdBy       = null,
-                            spools          = transferSpools.map { s ->
-                                com.example.hassiwrapper.network.dto.TransferSpoolUploadDto(
-                                    spoolId       = s.spool_id,
-                                    packingListId = null
-                                )
-                            }
-                        )
-                        val resp = service.uploadTransfer(projectCode, dto)
-                        if (resp.isSuccessful) {
-                            uploaded += transfer.transfer_id
-                        } else {
-                            Log.w(TAG, "uploadTransfer ${transfer.transfer_id}: HTTP ${resp.code()}")
-                        }
-                    }
-                    if (uploaded.isNotEmpty()) ServiceLocator.smsTransferDao.markSynced(uploaded)
-                    Log.d(TAG, "syncSmsData: uploaded ${uploaded.size}/${unsyncedTransfers.size} transfers")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "syncSmsData: transfer upload failed", e)
-            }
-
-            // ── Upload: vehicle on/off-route state ───────────────────────────────────
-            try {
-                val unsyncedRoute = ServiceLocator.smsVehicleDao.getUnsyncedRouteState()
-                if (unsyncedRoute.isNotEmpty()) {
-                    val uploaded = mutableListOf<Long>()
-                    for (vehicle in unsyncedRoute) {
-                        val resp = if (vehicle.on_route) {
-                            service.setVehicleOnRoute(projectCode, vehicle.vehicle_id, vehicle.destination)
-                        } else {
-                            service.setVehicleOffRoute(projectCode, vehicle.vehicle_id)
-                        }
-                        if (resp.isSuccessful) {
-                            uploaded += vehicle.vehicle_id
-                        } else {
-                            Log.w(TAG, "syncSmsData: vehicleRoute ${vehicle.vehicle_id}: HTTP ${resp.code()}")
-                        }
-                    }
-                    if (uploaded.isNotEmpty()) ServiceLocator.smsVehicleDao.markRouteStateSynced(uploaded)
-                    Log.d(TAG, "syncSmsData: synced ${uploaded.size}/${unsyncedRoute.size} vehicle route states")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "syncSmsData: vehicle route state upload failed", e)
-            }
 
             val spoolResp = service.getSpools(projectCode)
             if (spoolResp.isSuccessful) {

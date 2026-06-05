@@ -10,6 +10,16 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!-- Hidden wedge captures hardware scanner IME input when etNotes doesn't have focus -->
+        <EditText
+            android:id="@+id/etNewPLWedge"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:alpha="0"
+            android:importantForAutofill="no"
+            android:inputType="textMultiLine"
+            android:imeOptions="flagNoExtractUi" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -107,6 +117,24 @@
             android:layout_height="wrap_content"
             android:text="@string/new_packing_list_btn_add_spools"
             android:textAllCaps="false"
+            android:layout_marginBottom="4dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnScanCameraPL"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/qr_scanner_btn_camera"
+            android:textAllCaps="false"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/pl_scan_hint"
+            android:textColor="@color/on_surface_variant"
+            android:textSize="12sp"
+            android:gravity="center"
             android:layout_marginBottom="24dp" />
 
         <com.google.android.material.button.MaterialButton

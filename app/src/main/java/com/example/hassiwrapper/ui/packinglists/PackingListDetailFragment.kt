@@ -13,9 +13,14 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
+import com.example.hassiwrapper.ui.qrscanner.QrResult
+import com.example.hassiwrapper.ui.qrscanner.parseQr
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
 import com.example.hassiwrapper.data.db.entities.SmsPackingListSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
@@ -82,6 +87,15 @@ class PackingListDetailFragment : Fragment() {
         }
         btnDelete.setOnClickListener { confirmDelete() }
         btnAddSpool.setOnClickListener { showAddSpoolDialog() }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                val activity = requireActivity() as? MainActivity ?: return@repeatOnLifecycle
+                activity.dataWedgeManager.scanFlow.collect { raw ->
+                    handleScanForPL(raw.trim())
+                }
+            }
+        }
     }
 
     override fun onResume() {
@@ -182,6 +196,37 @@ class PackingListDetailFragment : Fragment() {
         row.addView(txt)
         row.addView(btn)
         layoutSpools.addView(row)
+    }
+
+    private fun handleScanForPL(raw: String) {
+        val result = parseQr(raw)
+        if (result !is QrResult.Spool) return
+        viewLifecycleOwner.lifecycleScope.launch {
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+            val spool = if (result.spoolSuffix != null)
+                ServiceLocator.smsSpoolDao.findByCodeAndSuffix(projectId, result.spoolCode, result.spoolSuffix)
+            else
+                ServiceLocator.smsSpoolDao.findByCode(projectId, result.spoolCode)
+            if (spool == null) {
+                Toast.makeText(requireContext(), getString(R.string.pl_scan_spool_not_found), Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            if (spool.packing_list_id != null) {
+                val pl = ServiceLocator.smsPackingListDao.getById(spool.packing_list_id)
+                val plName = pl?.packing_list_name?.ifBlank { "PL ${spool.packing_list_id}" } ?: "PL ${spool.packing_list_id}"
+                showInfoDialog(getString(R.string.pl_scan_spool_already_in_pl, spool.displayCode, plName))
+                return@launch
+            }
+            doAddSpool(spool.spool_id)
+        }
+    }
+
+    private fun showInfoDialog(message: String) {
+        val dialog = AlertDialog.Builder(requireContext())
+            .setMessage(message)
+            .create()
+        dialog.show()
+        requireView().postDelayed({ if (isAdded && dialog.isShowing) dialog.dismiss() }, 2600)
     }
 
     private fun showAddSpoolDialog() {

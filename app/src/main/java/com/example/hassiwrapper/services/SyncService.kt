@@ -9,6 +9,8 @@ import com.example.hassiwrapper.network.AuthRepository
 import com.example.hassiwrapper.network.AtlasApiService
 import com.example.hassiwrapper.network.dto.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -45,7 +47,10 @@ class SyncService(
     private val documentComplianceDao: com.example.hassiwrapper.data.db.dao.DocumentComplianceDao? = null,
     private val smsSpoolDao: SmsSpoolDao? = null,
     private val smsPackingListDao: SmsPackingListDao? = null,
-    private val smsPositionDao: SmsPositionDao? = null
+    private val smsPositionDao: SmsPositionDao? = null,
+    private val smsVehicleDao: SmsVehicleDao? = null,
+    private val smsVehicleLoadingDao: SmsVehicleLoadingDao? = null,
+    private val smsTransferDao: SmsTransferDao? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -55,6 +60,8 @@ class SyncService(
         private const val RETRY_INITIAL_MS =  5_000L   // first wait: 5 s
         private const val RETRY_MAX_MS     = 30_000L   // cap per wait: 30 s
     }
+
+    private val syncMutex = Mutex()
 
     /** Thrown for errors that are worth retrying (network issues, server 5xx). */
     private class TransientException(msg: String, cause: Throwable? = null) : Exception(msg, cause)
@@ -107,6 +114,18 @@ class SyncService(
      * is about to be scheduled, with the attempt number and wait in seconds.
      */
     suspend fun fullSync(onRetry: ((RetryState) -> Unit)? = null): SyncResult {
+        if (!syncMutex.tryLock()) {
+            Log.i(TAG, "Sync already in progress, skipping concurrent call")
+            return SyncResult(success = true)
+        }
+        try {
+        return fullSyncLocked(onRetry)
+        } finally {
+            syncMutex.unlock()
+        }
+    }
+
+    private suspend fun fullSyncLocked(onRetry: ((RetryState) -> Unit)? = null): SyncResult {
         val deadline = System.currentTimeMillis() + RETRY_BUDGET_MS
         var attempt = 0
         var waitMs = RETRY_INITIAL_MS
@@ -224,9 +243,13 @@ class SyncService(
         val (sessionsUploaded, sessionsError)  = uploadSessions(api)
         val (observationsUploaded, observationsError) = uploadObservations(api)
 
-        // 4b. Upload locally-created spools and packing lists (best-effort)
+        // 4b. Upload locally-created entities (best-effort)
         uploadNewPackingLists(api)
         uploadNewSpools(api)
+        uploadNewVehicles(api)
+        uploadVehicleLoadings(api)
+        uploadTransfers(api)
+        uploadVehicleRouteState(api)
 
         // 5. Upload pending photos (non-fatal)
         val photoResult = uploadPendingPhotos(api)
@@ -756,6 +779,192 @@ class SyncService(
         }
 
         if (synced.isNotEmpty()) dao.markSynced(synced)
+    }
+
+    // ── New vehicle upload ────────────────────────────────────────────────────
+
+    private suspend fun uploadNewVehicles(api: AtlasApiService) {
+        val dao = smsVehicleDao ?: return
+        val unsynced = dao.getUnsynced()
+        if (unsynced.isEmpty()) return
+
+        Log.i(TAG, "Uploading ${unsynced.size} new vehicle(s)")
+        val synced = mutableListOf<Long>()
+
+        for (vehicle in unsynced) {
+            val project = projectDao.getById(vehicle.project_id)
+            val projectCode = project?.project_code
+            if (projectCode.isNullOrBlank()) {
+                Log.w(TAG, "No project code for vehicle ${vehicle.vehicle_id}, skipping")
+                continue
+            }
+            try {
+                val body = CreateVehicleRequest(
+                    licensePlate     = vehicle.license_plate,
+                    company          = vehicle.company,
+                    vehicleName      = vehicle.vehicle_name,
+                    vehicleType      = vehicle.vehicle_type,
+                    capacityWeightKg = vehicle.capacity_weight_kg,
+                    createdBy        = vehicle.created_by ?: "API",
+                    projectCode      = projectCode,
+                    isActive         = vehicle.is_active
+                )
+                val response = api.createVehicle(projectCode, body)
+                if (response.isSuccessful) {
+                    synced.add(vehicle.vehicle_id)
+                    Log.i(TAG, "Vehicle ${vehicle.vehicle_id} uploaded")
+                } else {
+                    Log.e(TAG, "Vehicle ${vehicle.vehicle_id} upload failed: HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Vehicle ${vehicle.vehicle_id} upload error: ${e.message}")
+            }
+        }
+
+        if (synced.isNotEmpty()) dao.markSynced(synced)
+    }
+
+    // ── Vehicle loading upload ────────────────────────────────────────────────
+
+    private suspend fun uploadVehicleLoadings(api: AtlasApiService) {
+        val dao = smsVehicleLoadingDao ?: return
+        val unsynced = dao.getUnsynced()
+        if (unsynced.isEmpty()) return
+
+        Log.i(TAG, "Uploading ${unsynced.size} vehicle loading(s)")
+        val synced = mutableListOf<Long>()
+        val plIdsToMarkReady = mutableSetOf<Long>()
+
+        val project = projectDao.getById(
+            unsynced.first().project_id
+        )
+        val projectCode = project?.project_code
+        if (projectCode.isNullOrBlank()) {
+            Log.w(TAG, "uploadVehicleLoadings: no project code, skipping")
+            return
+        }
+
+        for (loading in unsynced) {
+            try {
+                val loadingSpools = dao.getSpoolsByLoading(loading.loading_id)
+                val body = VehicleLoadingUploadDto(
+                    vehicleLoadingId = loading.loading_id,
+                    vehicleId        = loading.vehicle_id,
+                    vehiclePlate     = loading.vehicle_plate,
+                    projectId        = loading.project_id,
+                    createdAt        = loading.created_at,
+                    createdBy        = null,
+                    spools           = loadingSpools.map { s ->
+                        VehicleLoadingSpoolUploadDto(
+                            spoolId       = s.spool_id,
+                            packingListId = s.packing_list_id
+                        )
+                    }
+                )
+                val response = api.uploadVehicleLoading(projectCode, body)
+                if (response.isSuccessful) {
+                    synced.add(loading.loading_id)
+                    loadingSpools.mapNotNull { it.packing_list_id }.forEach { plIdsToMarkReady += it }
+                    Log.i(TAG, "VehicleLoading ${loading.loading_id} uploaded")
+                } else {
+                    Log.e(TAG, "VehicleLoading ${loading.loading_id} upload failed: HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "VehicleLoading ${loading.loading_id} upload error: ${e.message}")
+            }
+        }
+
+        if (synced.isNotEmpty()) dao.markSynced(synced)
+        plIdsToMarkReady.forEach { plId ->
+            try { api.setPackingListReadyToSend(projectCode, plId, true) } catch (_: Exception) { }
+        }
+    }
+
+    // ── Transfer upload ───────────────────────────────────────────────────────
+
+    private suspend fun uploadTransfers(api: AtlasApiService) {
+        val dao = smsTransferDao ?: return
+        val unsynced = dao.getUnsynced()
+        if (unsynced.isEmpty()) return
+
+        Log.i(TAG, "Uploading ${unsynced.size} transfer(s)")
+        val synced = mutableListOf<Long>()
+
+        val project = projectDao.getById(unsynced.first().project_id)
+        val projectCode = project?.project_code
+        if (projectCode.isNullOrBlank()) {
+            Log.w(TAG, "uploadTransfers: no project code, skipping")
+            return
+        }
+
+        for (transfer in unsynced) {
+            try {
+                val transferSpools = dao.getSpoolsByTransfer(transfer.transfer_id)
+                val body = TransferUploadDto(
+                    transferId      = transfer.transfer_id,
+                    type            = transfer.transfer_type,
+                    projectId       = transfer.project_id,
+                    signatureBase64 = transfer.signature_data,
+                    createdAt       = transfer.created_at,
+                    createdBy       = null,
+                    spools          = transferSpools.map { s ->
+                        TransferSpoolUploadDto(
+                            spoolId       = s.spool_id,
+                            packingListId = null
+                        )
+                    }
+                )
+                val response = api.uploadTransfer(projectCode, body)
+                if (response.isSuccessful) {
+                    synced.add(transfer.transfer_id)
+                    Log.i(TAG, "Transfer ${transfer.transfer_id} uploaded")
+                } else {
+                    Log.e(TAG, "Transfer ${transfer.transfer_id} upload failed: HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Transfer ${transfer.transfer_id} upload error: ${e.message}")
+            }
+        }
+
+        if (synced.isNotEmpty()) dao.markSynced(synced)
+    }
+
+    // ── Vehicle route state upload ────────────────────────────────────────────
+
+    private suspend fun uploadVehicleRouteState(api: AtlasApiService) {
+        val dao = smsVehicleDao ?: return
+        val unsynced = dao.getUnsyncedRouteState()
+        if (unsynced.isEmpty()) return
+
+        Log.i(TAG, "Syncing ${unsynced.size} vehicle route state(s)")
+        val synced = mutableListOf<Long>()
+
+        val project = projectDao.getById(unsynced.first().project_id)
+        val projectCode = project?.project_code
+        if (projectCode.isNullOrBlank()) {
+            Log.w(TAG, "uploadVehicleRouteState: no project code, skipping")
+            return
+        }
+
+        for (vehicle in unsynced) {
+            try {
+                val response = if (vehicle.on_route) {
+                    api.setVehicleOnRoute(projectCode, vehicle.vehicle_id, vehicle.destination)
+                } else {
+                    api.setVehicleOffRoute(projectCode, vehicle.vehicle_id)
+                }
+                if (response.isSuccessful) {
+                    synced.add(vehicle.vehicle_id)
+                    Log.i(TAG, "Vehicle ${vehicle.vehicle_id} route state synced (on_route=${vehicle.on_route})")
+                } else {
+                    Log.e(TAG, "Vehicle ${vehicle.vehicle_id} route state failed: HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Vehicle ${vehicle.vehicle_id} route state error: ${e.message}")
+            }
+        }
+
+        if (synced.isNotEmpty()) dao.markRouteStateSynced(synced)
     }
 
     // ── Pending photo uploads ─────────────────────────────────────────────────

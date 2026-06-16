@@ -12,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
@@ -97,23 +98,35 @@ class CreateSpoolFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             showLoading(true)
             txtError.visibility = View.GONE
+            val isPrivileged = ProfileManager.currentUserRole() != ProfileManager.UserRole.GUEST
+            val filterZone: String? = if (isPrivileged) ServiceLocator.configRepo.get("device_location")?.takeIf { it.isNotBlank() } else null
+            Log.d("SpoolsFilter", "role=${ProfileManager.currentUserRole()} isPrivileged=$isPrivileged filterZone='$filterZone'")
             try {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
 
                 val totalInDb      = ServiceLocator.smsSpoolDao.countAll()
                 val projectIds     = ServiceLocator.smsSpoolDao.distinctProjectIds()
                 val countForProj   = ServiceLocator.smsSpoolDao.countByProject(projectId)
-                val countActive    = ServiceLocator.smsSpoolDao.countActiveByProject(projectId)
-                val allInDb        = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
-                Log.d("SpoolsDebug", "projectId=$projectId | totalInDb=$totalInDb | projectIds=$projectIds | countForProj=$countForProj | countActive=$countActive | forceRefresh=$forceRefresh")
-                Log.d("SpoolsDebug", "getByProjectIgnoreActive($projectId) = ${allInDb.size} items")
-                allInDb.forEach { s -> Log.d("SpoolsDebug", "  spool_id=${s.spool_id} code=${s.spool_code} pid=${s.project_id} active=${s.is_active} pl=${s.packing_list_id}") }
+                val countActive    = if (filterZone != null)
+                    ServiceLocator.smsSpoolDao.countActiveByProjectAndZone(projectId, filterZone)
+                else
+                    ServiceLocator.smsSpoolDao.countActiveByProject(projectId)
+                val allInDb        = if (filterZone != null)
+                    ServiceLocator.smsSpoolDao.getByProjectIgnoreActiveAndZone(projectId, filterZone)
+                else
+                    ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
+                Log.d("SpoolsDebug", "projectId=$projectId | totalInDb=$totalInDb | projectIds=$projectIds | countForProj=$countForProj | countActive=$countActive | filterZone=$filterZone | forceRefresh=$forceRefresh")
+                Log.d("SpoolsDebug", "getByProjectIgnoreActive($projectId, zone=$filterZone) = ${allInDb.size} items")
+                allInDb.forEach { s -> Log.d("SpoolsDebug", "  spool_id=${s.spool_id} code=${s.spool_code} pid=${s.project_id} active=${s.is_active} pl=${s.packing_list_id} position_id=${s.position_id}") }
                 txtCount.text = "DBG pid=$projectId total=$totalInDb pids=$projectIds proj=$countForProj active=$countActive ignoreActive=${allInDb.size}"
 
                 refreshPackingListMap(projectId)
-                val cached = ServiceLocator.smsSpoolDao.getByProject(projectId)
+                val cached = if (filterZone != null)
+                    ServiceLocator.smsSpoolDao.getByProjectAndZone(projectId, filterZone)
+                else
+                    ServiceLocator.smsSpoolDao.getByProject(projectId)
                 if (cached.isNotEmpty() && !forceRefresh) {
-                    Log.d("SpoolsDebug", "Using cache: ${cached.size} spools")
+                    Log.d("SpoolsDebug", "Using cache: ${cached.size} spools (zone=$filterZone)")
                     allItems.clear()
                     allItems += cached
                     applyFilter()
@@ -151,15 +164,21 @@ class CreateSpoolFragment : Fragment() {
                         Log.d("SpoolsDebug", "No active spools to insert — cleared synced, kept unsynced")
                     }
                     allItems.clear()
-                    allItems += ServiceLocator.smsSpoolDao.getByProject(projectId)
-                    Log.d("SpoolsDebug", "After insert, getByProject($projectId) = ${allItems.size}")
+                    allItems += if (filterZone != null)
+                        ServiceLocator.smsSpoolDao.getByProjectAndZone(projectId, filterZone)
+                    else
+                        ServiceLocator.smsSpoolDao.getByProject(projectId)
+                    Log.d("SpoolsDebug", "After insert, getByProject($projectId, zone=$filterZone) = ${allItems.size}")
                     applyFilter()
                 } else {
                     val err = response.errorBody()?.string().orEmpty()
                     Log.e("SpoolsDebug", "HTTP ${response.code()}: $err")
                     showError(getString(R.string.spools_list_error_http, response.code()))
                     if (allItems.isEmpty()) {
-                        allItems += ServiceLocator.smsSpoolDao.getByProject(projectId)
+                        allItems += if (filterZone != null)
+                            ServiceLocator.smsSpoolDao.getByProjectAndZone(projectId, filterZone)
+                        else
+                            ServiceLocator.smsSpoolDao.getByProject(projectId)
                         applyFilter()
                     }
                 }
@@ -169,7 +188,10 @@ class CreateSpoolFragment : Fragment() {
                 if (allItems.isEmpty()) {
                     try {
                         val fallbackId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                        allItems += ServiceLocator.smsSpoolDao.getByProject(fallbackId)
+                        allItems += if (filterZone != null)
+                            ServiceLocator.smsSpoolDao.getByProjectAndZone(fallbackId, filterZone)
+                        else
+                            ServiceLocator.smsSpoolDao.getByProject(fallbackId)
                         applyFilter()
                     } catch (_: Exception) {}
                 }

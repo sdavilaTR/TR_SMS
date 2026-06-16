@@ -17,6 +17,19 @@
         <item name="android:textColorPrimary">@color/on_surface</item>
         <item name="android:textColorSecondary">@color/on_surface_variant</item>
         <item name="spinnerStyle">@style/Widget.Atlas.Spinner</item>
+
+        <!-- Unified shape system: rounds buttons, text fields, dialogs, sheets,
+             menus app-wide without touching every layout. -->
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.Atlas.SmallComponent</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Atlas.MediumComponent</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.Atlas.LargeComponent</item>
+
+        <!-- Default card look: soft elevation, rounded, no harsh outline -->
+        <item name="materialCardViewStyle">@style/Widget.Atlas.CardView</item>
+        <item name="cardViewStyle">@style/Widget.Atlas.CardView.Plain</item>
+
+        <!-- Press feedback -->
+        <item name="colorControlHighlight">@color/ripple</item>
     </style>
 
     <style name="Theme.Atlas.FullScreen" parent="Theme.Atlas">
@@ -29,5 +42,33 @@
     <style name="Widget.Atlas.Spinner" parent="Widget.AppCompat.Spinner">
         <item name="android:background">@color/surface_variant</item>
         <item name="android:padding">8dp</item>
+    </style>
+
+    <!-- Shape tokens: 12dp buttons/inputs, 14dp medium surfaces, 20dp sheets/dialogs -->
+    <style name="ShapeAppearance.Atlas.SmallComponent" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+
+    <style name="ShapeAppearance.Atlas.MediumComponent" parent="ShapeAppearance.MaterialComponents.MediumComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">14dp</item>
+    </style>
+
+    <style name="ShapeAppearance.Atlas.LargeComponent" parent="ShapeAppearance.MaterialComponents.LargeComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">20dp</item>
+    </style>
+
+    <style name="Widget.Atlas.CardView" parent="Widget.MaterialComponents.CardView">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">2dp</item>
+        <item name="rippleColor">@color/ripple</item>
+        <item name="strokeWidth">0dp</item>
+    </style>
+
+    <style name="Widget.Atlas.CardView.Plain" parent="CardView">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">2dp</item>
     </style>
 </resources>

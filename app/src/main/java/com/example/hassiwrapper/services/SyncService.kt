@@ -50,7 +50,9 @@ class SyncService(
     private val smsPositionDao: SmsPositionDao? = null,
     private val smsVehicleDao: SmsVehicleDao? = null,
     private val smsVehicleLoadingDao: SmsVehicleLoadingDao? = null,
-    private val smsTransferDao: SmsTransferDao? = null
+    private val smsTransferDao: SmsTransferDao? = null,
+    private val smsIncidentDao: SmsIncidentDao? = null,
+    private val outboxService: OutboxService? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -243,13 +245,24 @@ class SyncService(
         val (sessionsUploaded, sessionsError)  = uploadSessions(api)
         val (observationsUploaded, observationsError) = uploadObservations(api)
 
-        // 4b. Upload locally-created entities (best-effort)
+        // 4b. Upload entities still on their own queues (not the outbox):
+        //  - Send-flow packing lists (positive ids) created in SendPackingListFragment
+        //  - vehicle loadings / transfers / route-state (separate synced/route_synced flags)
+        //  - SMS incidents (smsIncidentDao synced flag, idempotent upsert by uuid)
+        // Spool/vehicle/PL creates from the standard CRUD screens now go through the outbox
+        // drain below; uploadNewSpools/uploadNewVehicles were removed because re-POSTing as a
+        // field-incomplete CREATE raced the outbox op (server dedup kept the incomplete row).
         uploadNewPackingLists(api)
-        uploadNewSpools(api)
-        uploadNewVehicles(api)
         uploadVehicleLoadings(api)
         uploadTransfers(api)
         uploadVehicleRouteState(api)
+        uploadSmsIncidents(api)
+
+        // 4c. Drain the SMS mutation outbox in order (create/update/delete/assign).
+        // A transient failure stops the drain and surfaces here so the retry budget re-runs.
+        outboxService?.drain(api)?.let { r ->
+            if (r.transient) throw TransientException("Cola de cambios: sin conexión, reintentando")
+        }
 
         // 5. Upload pending photos (non-fatal)
         val photoResult = uploadPendingPhotos(api)
@@ -695,7 +708,10 @@ class SyncService(
 
     private suspend fun uploadNewPackingLists(api: AtlasApiService) {
         val dao = smsPackingListDao ?: return
-        val unsynced = dao.getUnsynced()
+        // Only Send-flow PLs (positive ids). PLs from the standard CRUD screens use negative
+        // temp ids and upload via the outbox drain — skip them here to avoid a duplicate server
+        // PL (the packing-list create endpoint does not dedup).
+        val unsynced = dao.getUnsynced().filter { it.packing_list_id > 0 }
         if (unsynced.isEmpty()) return
 
         Log.i(TAG, "Uploading ${unsynced.size} new packing list(s)")
@@ -733,91 +749,6 @@ class SyncService(
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "PL ${pl.packing_list_id} upload error: ${e.message}")
-            }
-        }
-
-        if (synced.isNotEmpty()) dao.markSynced(synced)
-    }
-
-    // ── New spool upload ──────────────────────────────────────────────────────
-
-    private suspend fun uploadNewSpools(api: AtlasApiService) {
-        val dao = smsSpoolDao ?: return
-        val unsynced = dao.getUnsynced()
-        if (unsynced.isEmpty()) return
-
-        Log.i(TAG, "Uploading ${unsynced.size} new spool(s)")
-        val synced = mutableListOf<Long>()
-
-        for (spool in unsynced) {
-            val projectId = spool.project_id
-            val project = projectDao.getById(projectId)
-            val projectCode = project?.project_code
-            if (projectCode.isNullOrBlank()) {
-                Log.w(TAG, "No project code for spool ${spool.spool_id}, skipping")
-                continue
-            }
-            try {
-                val body = CreateSpoolRequest(
-                    spoolCode   = spool.spool_code,
-                    spoolSuffix = spool.spool_suffix,
-                    lineCode    = spool.line_code,
-                    projectId   = projectId,
-                    createdAt   = spool.created_at,
-                    createdBy   = spool.created_by
-                )
-                val response = api.createSpool(projectCode, body)
-                if (response.isSuccessful) {
-                    synced.add(spool.spool_id)
-                    Log.i(TAG, "Spool ${spool.spool_id} uploaded")
-                } else {
-                    Log.e(TAG, "Spool ${spool.spool_id} upload failed: HTTP ${response.code()}")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Spool ${spool.spool_id} upload error: ${e.message}")
-            }
-        }
-
-        if (synced.isNotEmpty()) dao.markSynced(synced)
-    }
-
-    // ── New vehicle upload ────────────────────────────────────────────────────
-
-    private suspend fun uploadNewVehicles(api: AtlasApiService) {
-        val dao = smsVehicleDao ?: return
-        val unsynced = dao.getUnsynced()
-        if (unsynced.isEmpty()) return
-
-        Log.i(TAG, "Uploading ${unsynced.size} new vehicle(s)")
-        val synced = mutableListOf<Long>()
-
-        for (vehicle in unsynced) {
-            val project = projectDao.getById(vehicle.project_id)
-            val projectCode = project?.project_code
-            if (projectCode.isNullOrBlank()) {
-                Log.w(TAG, "No project code for vehicle ${vehicle.vehicle_id}, skipping")
-                continue
-            }
-            try {
-                val body = CreateVehicleRequest(
-                    licensePlate     = vehicle.license_plate,
-                    company          = vehicle.company,
-                    vehicleName      = vehicle.vehicle_name,
-                    vehicleType      = vehicle.vehicle_type,
-                    capacityWeightKg = vehicle.capacity_weight_kg,
-                    createdBy        = vehicle.created_by ?: "API",
-                    projectCode      = projectCode,
-                    isActive         = vehicle.is_active
-                )
-                val response = api.createVehicle(projectCode, body)
-                if (response.isSuccessful) {
-                    synced.add(vehicle.vehicle_id)
-                    Log.i(TAG, "Vehicle ${vehicle.vehicle_id} uploaded")
-                } else {
-                    Log.e(TAG, "Vehicle ${vehicle.vehicle_id} upload failed: HTTP ${response.code()}")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Vehicle ${vehicle.vehicle_id} upload error: ${e.message}")
             }
         }
 
@@ -923,6 +854,57 @@ class SyncService(
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Transfer ${transfer.transfer_id} upload error: ${e.message}")
+            }
+        }
+
+        if (synced.isNotEmpty()) dao.markSynced(synced)
+    }
+
+    // ── SMS incident upload ───────────────────────────────────────────────────
+
+    private suspend fun uploadSmsIncidents(api: AtlasApiService) {
+        val dao = smsIncidentDao ?: return
+        val unsynced = dao.getUnsynced()
+        if (unsynced.isEmpty()) return
+
+        Log.i(TAG, "Uploading ${unsynced.size} SMS incident(s)")
+        val synced = mutableListOf<Long>()
+
+        for (inc in unsynced) {
+            val project = projectDao.getById(inc.project_id)
+            val projectCode = project?.project_code
+            if (projectCode.isNullOrBlank()) {
+                Log.w(TAG, "No project code for SMS incident ${inc.id}, skipping")
+                continue
+            }
+            try {
+                val body = CreateSmsIncidentRequest(
+                    uuid           = inc.uuid,
+                    projectCode    = projectCode,
+                    spoolCode      = inc.spool_code,
+                    spoolSuffix    = inc.spool_suffix,
+                    description    = inc.description,
+                    vehiclePlate   = inc.vehicle_plate,
+                    locationType   = inc.location_type,
+                    locationDetail = inc.location_detail,
+                    severity       = inc.severity,
+                    positionId     = inc.position_id,
+                    positionCode   = inc.position_code,
+                    authorName     = inc.author_name,
+                    eventDate      = inc.event_date,
+                    status         = inc.status,
+                    closedBy       = inc.closed_by,
+                    closedAt       = inc.closed_at
+                )
+                val response = api.createSmsIncident(projectCode, body)
+                if (response.isSuccessful) {
+                    synced.add(inc.id)
+                    Log.i(TAG, "SMS incident ${inc.id} uploaded")
+                } else {
+                    Log.e(TAG, "SMS incident ${inc.id} upload failed: HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "SMS incident ${inc.id} upload error: ${e.message}")
             }
         }
 

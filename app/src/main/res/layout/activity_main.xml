@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.drawerlayout.widget.DrawerLayout
+<com.example.hassiwrapper.ui.common.WideEdgeDrawerLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/drawerLayout"
@@ -24,6 +24,7 @@
                 android:layout_height="?attr/actionBarSize"
                 android:background="@color/primary"
                 android:elevation="4dp"
+                android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar"
                 app:title="Smart Material System"
                 app:titleTextColor="@color/on_primary"
                 app:navigationIconTint="@color/on_primary"
@@ -78,4 +79,4 @@
         app:itemIconTint="@color/primary"
         app:itemRippleColor="@color/surface_variant" />
 
-</androidx.drawerlayout.widget.DrawerLayout>
+</com.example.hassiwrapper.ui.common.WideEdgeDrawerLayout>

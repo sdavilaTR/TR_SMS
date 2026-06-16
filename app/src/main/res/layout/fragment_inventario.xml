@@ -29,7 +29,7 @@
 
     </com.google.android.material.tabs.TabLayout>
 
-    <FrameLayout
+    <com.example.hassiwrapper.ui.common.SwipeTabContainer
         android:id="@+id/inventarioContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"

@@ -4,13 +4,13 @@ import com.google.gson.annotations.SerializedName
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 
 data class SmsVehicleDto(
-    @SerializedName(value = "vehicle_id",          alternate = ["vehicleId"])          val vehicleId: String? = null,
+    @SerializedName(value = "asset_id",            alternate = ["assetId"])            val vehicleId: String? = null,
     @SerializedName(value = "project_id",          alternate = ["projectId"])          val projectId: String? = null,
-    @SerializedName(value = "company")                                                  val company: String? = null,
+    @SerializedName(value = "contractor_name",     alternate = ["contractorName"])     val company: String? = null,
     @SerializedName(value = "license_plate",       alternate = ["licensePlate"])       val licensePlate: String? = null,
-    @SerializedName(value = "vehicle_name",        alternate = ["vehicleName"])        val vehicleName: String? = null,
-    @SerializedName(value = "vehicle_type",        alternate = ["vehicleType"])        val vehicleType: String? = null,
-    @SerializedName(value = "capacity_weight_kg",  alternate = ["capacityWeightKg"])   val capacityWeightKg: String? = null,
+    @SerializedName(value = "asset_name",          alternate = ["assetName"])          val vehicleName: String? = null,
+    @SerializedName(value = "type_name",           alternate = ["typeName"])           val vehicleType: String? = null,
+    @SerializedName(value = "max_load_kg",         alternate = ["maxLoadKg"])          val capacityWeightKg: String? = null,
     @SerializedName(value = "is_active",           alternate = ["isActive"])           val isActive: Boolean? = null,
     @SerializedName(value = "created_at",          alternate = ["createdAt"])          val createdAt: String? = null,
     @SerializedName(value = "created_by",          alternate = ["createdBy"])          val createdBy: String? = null,

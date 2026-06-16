@@ -9,7 +9,7 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.hassiwrapper"
+        applicationId "com.tr.atlas.trac"
         minSdk 26
         targetSdk 34
         versionCode 2

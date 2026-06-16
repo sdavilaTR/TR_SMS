@@ -90,9 +90,9 @@
     <string name="sync_syncing">Synchronisation…</string>
     <string name="sync_success">✓ Sync terminé : %1$d logs, %2$d ajoutés, %3$d mis à jour</string>
     <string name="sync_error">✕ Erreur : %s</string>
-    <string name="sync_photos_ok">📷 %d photo(s) téléchargée(s)</string>
-    <string name="sync_photos_fail">📷 %d photo(s) échouée(s)</string>
-    <string name="sync_photos_fail_detail">📷 %1$d photo(s) échouée(s) :\n%2$s</string>
+    <string name="sync_photos_ok">%d photo(s) téléchargée(s)</string>
+    <string name="sync_photos_fail">%d photo(s) échouée(s)</string>
+    <string name="sync_photos_fail_detail">%1$d photo(s) échouée(s) :\n%2$s</string>
     <string name="sync_status_checking">Vérification…</string>
     <string name="sync_network_online">Réseau : Connecté</string>
     <string name="sync_network_offline">Réseau : Sans connexion</string>
@@ -164,6 +164,8 @@
 
     <!-- Settings -->
     <string name="settings_title">Paramètres</string>
+    <string name="settings_tab_basic">Basiques</string>
+    <string name="settings_tab_dev">DEV</string>
     <string name="settings_api_url_label">URL de l\'API</string>
     <string name="settings_save">Enregistrer</string>
     <string name="settings_device_label">Appareil</string>
@@ -386,4 +388,70 @@
     <string name="spools_list_empty">Aucun spool dans ATLAS pour ce projet</string>
     <string name="spools_list_error_prefix">Erreur : %1$s</string>
     <string name="spools_list_error_http">HTTP %1$d</string>
+
+    <!-- Settings: assigned operator -->
+    <string name="settings_assigned_operator_title">Opérateur assigné</string>
+    <string name="settings_assigned_operator_label">Nom de l\'opérateur</string>
+    <string name="settings_assigned_operator_hint">Ex : Jean Dupont</string>
+    <string name="settings_assigned_operator_save">Enregistrer</string>
+    <string name="settings_assigned_operator_saved">Opérateur assigné enregistré</string>
+
+    <!-- Incidents -->
+    <string name="menu_incidencias">Incidents</string>
+    <string name="incidents_title">Incidents</string>
+    <string name="incidents_empty">Aucun incident enregistré</string>
+    <string name="incidents_btn_new">Nouvel incident</string>
+    <string name="incidents_tab_open">Ouvertes</string>
+    <string name="incidents_tab_closed">Fermées</string>
+    <string name="incident_filter_all">Toutes</string>
+    <string name="incident_card_no_description">Sans description</string>
+    <string name="new_incident_title">Nouvel incident</string>
+    <string name="incident_label_photo">Photo du dommage</string>
+    <string name="incident_btn_take_photo">Prendre une photo</string>
+    <string name="incident_btn_retake_photo">Reprendre la photo</string>
+    <string name="incident_btn_scan">Scanner le code</string>
+    <string name="incident_scan_spool_filled">Spool %s ajouté</string>
+    <string name="incident_scan_vehicle_filled">Véhicule %s ajouté</string>
+    <string name="incident_scan_vehicle_not_found">Véhicule introuvable</string>
+    <string name="incident_scan_not_recognized">Code non reconnu</string>
+    <string name="incident_label_spool_code">Code du spool</string>
+    <string name="incident_hint_spool_code">Ex : SP-1234</string>
+    <string name="incident_label_spool_suffix">Suffixe</string>
+    <string name="incident_hint_spool_suffix">Ex : A</string>
+    <string name="incident_label_description">Description de l\'incident</string>
+    <string name="incident_hint_description">Décrivez le dommage observé…</string>
+    <string name="incident_label_vehicle_plate">Plaque du véhicule concerné</string>
+    <string name="incident_hint_vehicle_plate">Ex : 1234-ABC</string>
+    <string name="incident_label_location">Lieu de l\'incident</string>
+    <string name="incident_label_location_detail">Détail du lieu</string>
+    <string name="incident_hint_location_detail">Ex : zone, unité, étagère…</string>
+    <string name="incident_label_severity">Gravité</string>
+    <string name="incident_label_position">Position (terminal)</string>
+    <string name="incident_label_author">Auteur</string>
+    <string name="incident_label_date">Date</string>
+    <string name="incident_label_status">Statut</string>
+    <string name="incident_detail_title">Détail de l\'incident</string>
+    <string name="incident_value_unknown">—</string>
+    <string name="incident_status_open">Ouverte</string>
+    <string name="incident_status_closed">Fermée</string>
+    <string name="incident_btn_close">Fermer l\'incident</string>
+    <string name="incident_close_confirm_title">Fermer l\'incident</string>
+    <string name="incident_close_confirm_msg">Confirmez-vous la fermeture de cet incident ? La personne et la date de fermeture seront enregistrées.</string>
+    <string name="incident_close_confirm_yes">Fermer</string>
+    <string name="incident_close_confirm_no">Annuler</string>
+    <string name="incident_closed_ok">Incident fermé</string>
+    <string name="incident_label_closed_by">Fermé par</string>
+    <string name="incident_label_closed_at">Date de fermeture</string>
+    <string name="incident_btn_save">Enregistrer l\'incident</string>
+    <string name="incident_saved_ok">Incident enregistré</string>
+    <string name="incident_error_missing_spool_code">Indiquez le code du spool</string>
+    <string name="incident_error_missing_description">Décrivez l\'incident</string>
+    <string name="incident_location_laydown">Laydown</string>
+    <string name="incident_location_site">Site</string>
+    <string name="incident_location_workshop">Atelier</string>
+    <string name="incident_severity_low">Faible</string>
+    <string name="incident_severity_medium">Moyenne</string>
+    <string name="incident_severity_high">Élevée</string>
+    <string name="incident_severity_critical">Critique</string>
+    <string name="home_label_critical_incidents">Incidents critiques</string>
 </resources>

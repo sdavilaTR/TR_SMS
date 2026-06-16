@@ -101,6 +101,12 @@ interface AtlasApiService {
         @Body body: CreateSpoolRequest
     ): Response<okhttp3.ResponseBody>
 
+    @PUT("/api/atlas/projects/{projectCode}/spools")
+    suspend fun updateSpool(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @Body body: com.example.hassiwrapper.network.dto.UpdateSpoolRequest
+    ): Response<okhttp3.ResponseBody>
+
     @DELETE("/api/atlas/projects/{projectCode}/spools/{spoolId}")
     suspend fun deleteSpool(
         @retrofit2.http.Path("projectCode") projectCode: String,
@@ -244,6 +250,14 @@ interface AtlasApiService {
         @retrofit2.http.Path("projectCode") projectCode: String,
         @retrofit2.http.Path("spoolId") spoolId: Long,
         @Body body: CreateSpoolStatusFlagsRequest
+    ): Response<okhttp3.ResponseBody>
+
+    // ── SMS Incidents ─────────────────────────────────
+    // Upsert on body.uuid so best-effort retries don't duplicate.
+    @POST("/api/atlas/projects/{projectCode}/incidents")
+    suspend fun createSmsIncident(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @Body body: com.example.hassiwrapper.network.dto.CreateSmsIncidentRequest
     ): Response<okhttp3.ResponseBody>
 
     @GET("/api/atlas/projects/{projectCode}/spools/{spoolId}/events")

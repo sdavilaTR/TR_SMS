@@ -27,6 +27,7 @@ import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.network.dto.AssignSpoolRequest
 import com.example.hassiwrapper.network.dto.SpoolDto
 import com.example.hassiwrapper.network.dto.UpdatePackingListRequest
+import com.example.hassiwrapper.services.OutboxService
 import com.google.android.material.button.MaterialButton
 import com.google.gson.Gson
 import com.google.gson.JsonParser
@@ -63,6 +64,9 @@ class PackingListDetailFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        (view as com.example.hassiwrapper.ui.common.SwipeBackScrollView).onSwipeBack = {
+            findNavController().popBackStack()
+        }
         txtName         = view.findViewById(R.id.txtDetailPLName)
         txtDate         = view.findViewById(R.id.txtDetailDate)
         txtPosition     = view.findViewById(R.id.txtDetailPosition)
@@ -76,7 +80,7 @@ class PackingListDetailFragment : Fragment() {
         btnHardDelete = view.findViewById(R.id.btnHardDeletePL)
         progress      = view.findViewById(R.id.progressDetail)
 
-        if (ProfileManager.currentProfile() == ProfileManager.Profile.DEV) {
+        if (ProfileManager.currentUserRole() == ProfileManager.UserRole.DEV) {
             btnHardDelete.visibility = View.VISIBLE
             btnHardDelete.setOnClickListener { confirmHardDelete() }
         }
@@ -251,6 +255,7 @@ class PackingListDetailFragment : Fragment() {
     private fun doAddSpool(spoolId: Long) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
                 ServiceLocator.smsSpoolDao.updatePackingList(spoolId, packingListId)
                 val nextSeq = ServiceLocator.smsSpoolDao.getByPackingList(packingListId).size
                 val tempId = spoolId xor packingListId
@@ -268,17 +273,12 @@ class PackingListDetailFragment : Fragment() {
                 ServiceLocator.smsPackingListDao.getById(packingListId)?.let { pl ->
                     ServiceLocator.smsPackingListDao.insertAll(listOf(pl.copy(total_spools_count = newCount, synced = false)))
                 }
-                try {
-                    val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                    if (!projectCode.isNullOrBlank()) {
-                        ServiceLocator.apiClient.getService().addSpoolToPackingList(
-                            projectCode, packingListId,
-                            AssignSpoolRequest(spoolId, "API", nextSeq)
-                        )
-                        syncSpoolCountWithServer(projectCode, newCount)
-                    }
-                } catch (_: Exception) { /* offline */ }
+                ServiceLocator.outboxService.enqueue(
+                    OutboxService.Entity.PL_ASSIGN, OutboxService.Op.ASSIGN, spoolId, projectId,
+                    refEntityId = packingListId,
+                    payload = AssignSpoolRequest(spoolId, "API", nextSeq)
+                )
+                enqueueCountUpdate(projectId, newCount)
 
                 Toast.makeText(requireContext(), getString(R.string.pl_detail_spool_added), Toast.LENGTH_SHORT).show()
                 loadData()
@@ -300,21 +300,18 @@ class PackingListDetailFragment : Fragment() {
     private fun doRemoveSpool(spoolId: Long) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
                 ServiceLocator.smsSpoolDao.updatePackingList(spoolId, null)
                 ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(spoolId)
                 val newCount = ServiceLocator.smsSpoolDao.getByPackingList(packingListId).size
                 ServiceLocator.smsPackingListDao.getById(packingListId)?.let { pl ->
                     ServiceLocator.smsPackingListDao.insertAll(listOf(pl.copy(total_spools_count = newCount, synced = false)))
                 }
-                try {
-                    val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                    if (!projectCode.isNullOrBlank()) {
-                        ServiceLocator.apiClient.getService()
-                            .removeSpoolFromPackingList(projectCode, packingListId, spoolId)
-                        syncSpoolCountWithServer(projectCode, newCount)
-                    }
-                } catch (_: Exception) { /* offline */ }
+                ServiceLocator.outboxService.enqueue(
+                    OutboxService.Entity.PL_ASSIGN, OutboxService.Op.UNASSIGN, spoolId, projectId,
+                    refEntityId = packingListId
+                )
+                enqueueCountUpdate(projectId, newCount)
 
                 Toast.makeText(requireContext(), getString(R.string.pl_detail_spool_removed), Toast.LENGTH_SHORT).show()
                 loadData()
@@ -324,28 +321,29 @@ class PackingListDetailFragment : Fragment() {
         }
     }
 
-    private suspend fun syncSpoolCountWithServer(projectCode: String, newCount: Int) {
+    /** Queue a PL UPDATE op carrying the new spool count so the server total stays in sync. */
+    private suspend fun enqueueCountUpdate(projectId: Int, newCount: Int) {
         val pl = ServiceLocator.smsPackingListDao.getById(packingListId) ?: return
+        val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code.orEmpty()
         val positionName = pl.position_id?.let { pid ->
             ServiceLocator.smsPositionDao.getAll().find { it.position_id == pid }?.name
         }
-        val body = UpdatePackingListRequest(
-            packingListId    = packingListId,
-            packingListName  = pl.packing_list_name,
-            vehicle          = pl.vehicle_plate,
-            position         = positionName,
-            positionId       = pl.position_id,
-            packingDate      = pl.packing_date.takeIf { it.isNotBlank() },
-            notes            = pl.notes,
-            createdBy        = pl.created_by,
-            updatedBy        = null,
-            projectCode      = projectCode,
-            totalSpoolsCount = newCount
+        ServiceLocator.outboxService.enqueue(
+            OutboxService.Entity.PACKING_LIST, OutboxService.Op.UPDATE, packingListId, projectId,
+            payload = UpdatePackingListRequest(
+                packingListId    = packingListId,
+                packingListName  = pl.packing_list_name,
+                vehicle          = pl.vehicle_plate,
+                position         = positionName,
+                positionId       = pl.position_id,
+                packingDate      = pl.packing_date.takeIf { it.isNotBlank() },
+                notes            = pl.notes,
+                createdBy        = pl.created_by,
+                updatedBy        = null,
+                projectCode      = projectCode,
+                totalSpoolsCount = newCount
+            )
         )
-        val resp = ServiceLocator.apiClient.getService().updatePackingList(projectCode, body)
-        if (resp.isSuccessful) {
-            ServiceLocator.smsPackingListDao.markSynced(listOf(packingListId))
-        }
     }
 
     private fun confirmHardDelete() {
@@ -361,23 +359,22 @@ class PackingListDetailFragment : Fragment() {
         btnHardDelete.isEnabled = false
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                val pl = ServiceLocator.smsPackingListDao.getById(packingListId)
+                val isSynced = pl?.synced == true
+                val projectId = pl?.project_id ?: (ServiceLocator.configRepo.getInt("selected_project_id") ?: 6)
+
                 locallyDeletedPLIds.add(packingListId)
                 val spools = ServiceLocator.smsSpoolDao.getByPackingList(packingListId)
                 spools.forEach { ServiceLocator.smsSpoolDao.updatePackingList(it.spool_id, null) }
                 ServiceLocator.smsPackingListSpoolDao.deleteByPackingList(packingListId)
                 ServiceLocator.smsPackingListDao.deleteById(packingListId)
 
-                try {
-                    val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                    if (!projectCode.isNullOrBlank()) {
-                        val r = ServiceLocator.apiClient.getService().hardDeletePackingList(projectCode, packingListId)
-                        if (!r.isSuccessful && isAdded) {
-                            Toast.makeText(requireContext(), "API hard delete: HTTP ${r.code()}", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                } catch (_: Exception) { /* offline */ }
-                ServiceLocator.smsPackingListDao.deleteById(packingListId)
+                // Queue the server hard-delete for synced PLs so it survives offline + restart.
+                if (isSynced) {
+                    ServiceLocator.outboxService.enqueue(
+                        OutboxService.Entity.PACKING_LIST, OutboxService.Op.HARD_DELETE, packingListId, projectId
+                    )
+                }
 
                 Toast.makeText(requireContext(), getString(R.string.pl_detail_hard_deleted), Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()
@@ -425,22 +422,28 @@ class PackingListDetailFragment : Fragment() {
         btnDelete.isEnabled = false
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                val pl = ServiceLocator.smsPackingListDao.getById(packingListId)
+                val isSynced = pl?.synced == true
+                val projectId = pl?.project_id ?: (ServiceLocator.configRepo.getInt("selected_project_id") ?: 6)
+
                 locallyDeletedPLIds.add(packingListId)
                 val spools = ServiceLocator.smsSpoolDao.getByPackingList(packingListId)
                 spools.forEach { ServiceLocator.smsSpoolDao.updatePackingList(it.spool_id, null) }
                 ServiceLocator.smsPackingListSpoolDao.deleteByPackingList(packingListId)
                 ServiceLocator.smsPackingListDao.deleteById(packingListId)
 
-                try {
-                    val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                    if (!projectCode.isNullOrBlank()) {
-                        ServiceLocator.apiClient.getService().deletePackingList(projectCode, packingListId)
-                    }
-                } catch (_: Exception) { /* offline */ }
-                // Re-delete locally in case auto-sync re-imported the record while the API call was in-flight
-                ServiceLocator.smsPackingListDao.deleteById(packingListId)
+                // Queue the server delete for synced PLs so it survives offline + restart.
+                if (isSynced) {
+                    ServiceLocator.outboxService.enqueue(
+                        OutboxService.Entity.PACKING_LIST, OutboxService.Op.DELETE, packingListId, projectId
+                    )
+                }
 
+                ServiceLocator.auditLogService.log(
+                    com.example.hassiwrapper.services.AuditLogService.PL_ELIMINADO,
+                    com.example.hassiwrapper.services.AuditLogService.ENTITY_PL,
+                    packingListId, pl?.packing_list_name ?: "PL $packingListId", projectId = projectId
+                )
                 Toast.makeText(requireContext(), getString(R.string.pl_detail_deleted), Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()
             } catch (e: Exception) {

@@ -29,12 +29,10 @@ import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
-import com.example.hassiwrapper.ui.common.SignatureView
 import com.example.hassiwrapper.ui.qrscanner.QrResult
 import com.example.hassiwrapper.ui.qrscanner.parseQr
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
@@ -50,7 +48,6 @@ class ReceivePackingListFragment : Fragment() {
     private lateinit var panelScanVehicle: View
     private lateinit var panelSelectPl: View
     private lateinit var panelConfirmSpools: View
-    private lateinit var panelSignature: View
 
     // Panel A
     private lateinit var txtScannedVehicle: TextView
@@ -65,21 +62,8 @@ class ReceivePackingListFragment : Fragment() {
     private lateinit var txtSpoolsProgress: TextView
     private lateinit var rvSpoolsToConfirm: RecyclerView
     private lateinit var btnScanSpool: MaterialButton
-    private lateinit var btnNextToSignature: MaterialButton
-    private lateinit var spoolAdapter: SpoolReceiveAdapter
-
-    // Panel D
-    private lateinit var signatureView: SignatureView
-    private lateinit var btnClearSignature: MaterialButton
     private lateinit var btnConfirmReceive: MaterialButton
-
-    // Manual fallback inputs
-    private lateinit var etManualVehicle: TextInputEditText
-    private lateinit var btnManualVehicle: MaterialButton
-    private lateinit var etManualSpool: TextInputEditText
-    private lateinit var btnManualSpool: MaterialButton
-
-    private lateinit var txtReceiveDestination: TextView
+    private lateinit var spoolAdapter: SpoolReceiveAdapter
 
     private var selectedVehicle: SmsVehicleEntity? = null
     private var selectedPl: SmsPackingListEntity? = null
@@ -105,11 +89,11 @@ class ReceivePackingListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        (view as com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView).onSwipeBack = { findNavController().navigateUp() }
 
         panelScanVehicle   = view.findViewById(R.id.panelScanVehicle)
         panelSelectPl      = view.findViewById(R.id.panelSelectPl)
         panelConfirmSpools = view.findViewById(R.id.panelConfirmSpools)
-        panelSignature     = view.findViewById(R.id.panelSignature)
 
         txtScannedVehicle  = view.findViewById(R.id.txtScannedVehicle)
         btnScanVehicle     = view.findViewById(R.id.btnScanVehicle)
@@ -120,17 +104,7 @@ class ReceivePackingListFragment : Fragment() {
         txtSpoolsProgress  = view.findViewById(R.id.txtSpoolsProgress)
         rvSpoolsToConfirm  = view.findViewById(R.id.rvSpoolsToConfirm)
         btnScanSpool       = view.findViewById(R.id.btnScanSpool)
-        btnNextToSignature = view.findViewById(R.id.btnNextToSignature)
-
-        signatureView          = view.findViewById(R.id.signatureView)
-        btnClearSignature      = view.findViewById(R.id.btnClearSignature)
-        btnConfirmReceive      = view.findViewById(R.id.btnConfirmReceive)
-        txtReceiveDestination  = view.findViewById(R.id.txtReceiveDestination)
-
-        etManualVehicle    = view.findViewById(R.id.etManualVehicle)
-        btnManualVehicle   = view.findViewById(R.id.btnManualVehicle)
-        etManualSpool      = view.findViewById(R.id.etManualSpool)
-        btnManualSpool     = view.findViewById(R.id.btnManualSpool)
+        btnConfirmReceive  = view.findViewById(R.id.btnConfirmReceive)
 
         plAdapter = PlAdapter()
         rvPackingLists.layoutManager = LinearLayoutManager(requireContext())
@@ -147,20 +121,10 @@ class ReceivePackingListFragment : Fragment() {
         btnScanVehicle.setOnClickListener {
             vehicleScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java))
         }
-        btnManualVehicle.setOnClickListener {
-            val text = etManualVehicle.text?.toString()?.trim().orEmpty()
-            if (text.isNotBlank()) { etManualVehicle.setText(""); handleVehicleScan(text) }
-        }
         btnScanSpool.setOnClickListener {
             spoolScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java))
         }
-        btnManualSpool.setOnClickListener {
-            val text = etManualSpool.text?.toString()?.trim().orEmpty()
-            if (text.isNotBlank()) { etManualSpool.setText(""); handleSpoolScan(text) }
-        }
-        btnNextToSignature.setOnClickListener { onNextToSignature() }
-        btnClearSignature.setOnClickListener { signatureView.clear() }
-        btnConfirmReceive.setOnClickListener { onConfirmReceive() }
+        btnConfirmReceive.setOnClickListener { onNextToConfirmReceive() }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -221,6 +185,7 @@ class ReceivePackingListFragment : Fragment() {
                 Toast.makeText(requireContext(), getString(R.string.transfer_vehicle_wrong_project), Toast.LENGTH_LONG).show()
                 return@launch
             }
+            android.util.Log.d("ReceiveDebug", "handleVehicleScan: location='$location' currentPosition=${currentPosition?.position_id} '${currentPosition?.code}' vehicle.on_route=${vehicle.on_route} vehicle.destination=${vehicle.destination}")
             if (!vehicle.on_route) {
                 Toast.makeText(requireContext(), getString(R.string.transfer_vehicle_not_on_route), Toast.LENGTH_LONG).show()
                 return@launch
@@ -334,36 +299,21 @@ class ReceivePackingListFragment : Fragment() {
         txtSpoolsProgress.text = getString(R.string.transfer_spools_progress, confirmed, total)
     }
 
-    private fun onNextToSignature() {
+    private fun onNextToConfirmReceive() {
         val unconfirmed = spoolReceives.count { !it.confirmed }
-        val proceed: () -> Unit = { goToSignaturePanel() }
         if (unconfirmed > 0) {
             AlertDialog.Builder(requireContext())
                 .setTitle(getString(R.string.transfer_confirm_incomplete_title))
                 .setMessage(getString(R.string.transfer_confirm_incomplete_msg, unconfirmed))
                 .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(getString(R.string.load_spools_btn_continue)) { _, _ -> proceed() }
+                .setPositiveButton(getString(R.string.load_spools_btn_continue)) { _, _ -> onConfirmReceive() }
                 .show()
         } else {
-            proceed()
-        }
-    }
-
-    private fun goToSignaturePanel() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            val location = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: ""
-            val pos = ServiceLocator.smsPositionDao.getByCode(location)
-            txtReceiveDestination.text = getString(R.string.transfer_receive_at, pos?.name ?: location)
-            panelConfirmSpools.visibility = View.GONE
-            panelSignature.visibility = View.VISIBLE
+            onConfirmReceive()
         }
     }
 
     private fun onConfirmReceive() {
-        if (signatureView.isEmpty()) {
-            Toast.makeText(requireContext(), getString(R.string.transfer_signature_empty), Toast.LENGTH_SHORT).show()
-            return
-        }
         val pl      = selectedPl ?: return
         val vehicle = selectedVehicle ?: return
 
@@ -371,7 +321,7 @@ class ReceivePackingListFragment : Fragment() {
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
             val location  = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: "UNKNOWN"
             val now       = LocalDateTime.now().toString()
-            val sigData   = signatureView.getBase64Png()
+            val sigData   = ""
 
             val transferId = ServiceLocator.smsTransferDao.insert(
                 SmsTransferEntity(
@@ -405,11 +355,18 @@ class ReceivePackingListFragment : Fragment() {
                 }
             )
 
+            val receivePosition = ServiceLocator.smsPositionDao.getByCode(location)
             confirmedSpools.forEach { sr ->
                 val assign = assignments[sr.spool.spool_id]
                 val zone   = if (location == "LAYDOWN") assign else sr.spool.zone
                 val unit   = if (location == "SITE") assign else sr.spool.assigned_unit
                 ServiceLocator.smsSpoolDao.updateZoneAndUnit(sr.spool.spool_id, zone, unit)
+                if (receivePosition != null) {
+                    ServiceLocator.smsSpoolDao.updatePosition(sr.spool.spool_id, receivePosition.position_id)
+                }
+            }
+            if (receivePosition != null) {
+                ServiceLocator.smsPackingListDao.updatePosition(pl.packing_list_id, receivePosition.position_id)
             }
 
             ServiceLocator.smsVehicleDao.setOffRoute(vehicle.vehicle_id)
@@ -422,8 +379,17 @@ class ReceivePackingListFragment : Fragment() {
                 }
             } catch (_: Exception) { }
 
+            activity?.lifecycleScope?.launch { ServiceLocator.syncService.fullSync() }
+
             if (!isAdded) return@launch
             (requireActivity() as? MainActivity)?.playSuccess()
+            ServiceLocator.auditLogService.log(
+                com.example.hassiwrapper.services.AuditLogService.TRANSFERENCIA_RECIBIDA,
+                com.example.hassiwrapper.services.AuditLogService.ENTITY_TRANSFERENCIA,
+                transferId, pl.packing_list_name,
+                detail = "${vehicle.license_plate} → $location",
+                projectId = projectId
+            )
             Toast.makeText(requireContext(), getString(R.string.transfer_receive_success), Toast.LENGTH_LONG).show()
             findNavController().navigateUp()
         }

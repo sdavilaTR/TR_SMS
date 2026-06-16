@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import com.example.hassiwrapper.R
+import com.example.hassiwrapper.ui.common.SwipeTabContainer
 import com.example.hassiwrapper.ui.createspool.CreateSpoolFragment
 import com.example.hassiwrapper.ui.packinglists.PackingListsFragment
 import com.example.hassiwrapper.ui.vehicles.VehiclesFragment
@@ -41,6 +42,17 @@ class InventarioFragment : Fragment() {
         if (initialTab != 0) {
             tabLayout.getTabAt(initialTab)?.select()
             showTab(initialTab)
+        }
+
+        view.findViewById<SwipeTabContainer>(R.id.inventarioContainer).apply {
+            onSwipeLeft = {
+                val next = tabLayout.selectedTabPosition + 1
+                if (next < tabLayout.tabCount) tabLayout.getTabAt(next)?.select()
+            }
+            onSwipeRight = {
+                val prev = tabLayout.selectedTabPosition - 1
+                if (prev >= 0) tabLayout.getTabAt(prev)?.select()
+            }
         }
     }
 

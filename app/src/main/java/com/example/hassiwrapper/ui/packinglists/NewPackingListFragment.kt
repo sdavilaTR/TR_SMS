@@ -39,7 +39,7 @@ import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.network.dto.AssignSpoolRequest
 import com.example.hassiwrapper.network.dto.CreatePackingListRequest
-import com.google.gson.JsonParser
+import com.example.hassiwrapper.services.OutboxService
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -120,6 +120,7 @@ class NewPackingListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        (view as com.example.hassiwrapper.ui.common.SwipeBackScrollView).onSwipeBack = { findNavController().navigateUp() }
         etWedge        = view.findViewById(R.id.etNewPLWedge)
         txtNamePreview = view.findViewById(R.id.txtPLNamePreview)
         tilPosition    = view.findViewById(R.id.tilPLPosition)
@@ -408,7 +409,7 @@ class NewPackingListFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val plId  = (ServiceLocator.smsPackingListDao.getMaxId() ?: 0L) + 1L
+                val plId  = ServiceLocator.outboxService.nextTempPackingListId()
                 val name  = buildName()
                 val now   = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
                 val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -431,56 +432,46 @@ class NewPackingListFragment : Fragment() {
                 )
                 ServiceLocator.smsPackingListDao.insertAll(listOf(pl))
 
-                var serverPlId = plId
-                try {
-                    if (projectCode.isNotBlank()) {
-                        val body = CreatePackingListRequest(
-                            packingListName  = name,
-                            vehicle          = selectedVehiclePlate,
-                            vehicleId        = selectedVehicleId,
-                            position         = selectedPositionCode.ifBlank { null },
-                            positionId       = selectedPositionId,
-                            packingDate      = now,
-                            notes            = notes,
-                            createdBy        = "API",
-                            projectCode      = projectCode,
-                            totalSpoolsCount = selectedSpoolIds.size
-                        )
-                        val resp = ServiceLocator.apiClient.getService().createPackingList(projectCode, body)
-                        val rawBody = resp.body()?.string().orEmpty()
-                        if (resp.isSuccessful) {
-                            val parsedId = parseCreatedPlId(rawBody)
-                            if (parsedId != null && parsedId > 0L && parsedId != plId) {
-                                ServiceLocator.smsPackingListDao.deleteById(plId)
-                                ServiceLocator.smsPackingListDao.insertAll(listOf(pl.copy(packing_list_id = parsedId, synced = true)))
-                                serverPlId = parsedId
-                            } else {
-                                ServiceLocator.smsPackingListDao.markSynced(listOf(plId))
-                            }
-                        }
-                    }
-                } catch (_: Exception) { /* offline — SyncService reintentará */ }
+                ServiceLocator.outboxService.enqueue(
+                    OutboxService.Entity.PACKING_LIST, OutboxService.Op.CREATE, plId, projectId,
+                    payload = CreatePackingListRequest(
+                        packingListName  = name,
+                        vehicle          = selectedVehiclePlate,
+                        vehicleId        = selectedVehicleId,
+                        position         = selectedPositionCode.ifBlank { null },
+                        positionId       = selectedPositionId,
+                        packingDate      = now,
+                        notes            = notes,
+                        createdBy        = "API",
+                        projectCode      = projectCode,
+                        totalSpoolsCount = selectedSpoolIds.size
+                    )
+                )
 
                 selectedSpoolIds.forEachIndexed { index, spoolId ->
-                    ServiceLocator.smsSpoolDao.updatePackingList(spoolId, serverPlId)
+                    ServiceLocator.smsSpoolDao.updatePackingList(spoolId, plId)
                     ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(spoolId)
                     ServiceLocator.smsPackingListSpoolDao.insert(
                         SmsPackingListSpoolEntity(
-                            packing_list_spool_id = spoolId xor serverPlId,
-                            packing_list_id       = serverPlId,
+                            packing_list_spool_id = spoolId xor plId,
+                            packing_list_id       = plId,
                             spool_id              = spoolId,
                             sequence_number       = index + 1,
                             added_at              = now
                         )
                     )
-                    try {
-                        if (projectCode.isNotBlank()) {
-                            ServiceLocator.apiClient.getService()
-                                .addSpoolToPackingList(projectCode, serverPlId, AssignSpoolRequest(spoolId, "API", index + 1))
-                        }
-                    } catch (_: Exception) { /* offline */ }
+                    ServiceLocator.outboxService.enqueue(
+                        OutboxService.Entity.PL_ASSIGN, OutboxService.Op.ASSIGN, spoolId, projectId,
+                        refEntityId = plId,
+                        payload = AssignSpoolRequest(spoolId, "API", index + 1)
+                    )
                 }
 
+                ServiceLocator.auditLogService.log(
+                    com.example.hassiwrapper.services.AuditLogService.PL_CREADO,
+                    com.example.hassiwrapper.services.AuditLogService.ENTITY_PL,
+                    plId, name, projectId = projectId
+                )
                 Toast.makeText(requireContext(), getString(R.string.new_packing_list_success), Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()
             } catch (e: Exception) {
@@ -488,20 +479,5 @@ class NewPackingListFragment : Fragment() {
                 Toast.makeText(requireContext(), getString(R.string.new_packing_list_error_save, e.message), Toast.LENGTH_LONG).show()
             }
         }
-    }
-
-    private fun parseCreatedPlId(raw: String): Long? {
-        return try {
-            val el = JsonParser.parseString(raw)
-            val obj = when {
-                el.isJsonObject && el.asJsonObject.has("data") && !el.asJsonObject.get("data").isJsonNull ->
-                    el.asJsonObject.getAsJsonObject("data")
-                el.isJsonObject -> el.asJsonObject
-                else -> return null
-            }
-            obj.get("packingListId")?.takeIf { !it.isJsonNull }?.asLong
-                ?: obj.get("packing_list_id")?.takeIf { !it.isJsonNull }?.asLong
-                ?: obj.get("id")?.takeIf { !it.isJsonNull }?.asLong
-        } catch (_: Exception) { null }
     }
 }

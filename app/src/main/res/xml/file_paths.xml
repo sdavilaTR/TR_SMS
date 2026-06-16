@@ -8,4 +8,6 @@
     <cache-path name="photos" path="photos/" />
     <!-- HSE observation photos (internal storage) -->
     <files-path name="observations" path="observations/" />
+    <!-- Incident damage photos (internal storage) -->
+    <files-path name="incidents" path="incidents/" />
 </paths>

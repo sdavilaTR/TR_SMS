@@ -26,6 +26,7 @@ import com.example.hassiwrapper.smsJsonArray
 import android.util.Log
 import com.example.hassiwrapper.data.db.entities.SmsPackingListSpoolEntity
 import com.example.hassiwrapper.network.dto.AssignSpoolRequest
+import com.example.hassiwrapper.services.OutboxService
 import com.google.gson.JsonParser
 import com.example.hassiwrapper.ProfileManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -70,7 +71,7 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
             confirmDeleteSpool(spoolId)
         }
         val btnHardDelete = view.findViewById<MaterialButton>(R.id.btnHardDeleteSpool)
-        if (ProfileManager.currentProfile() == ProfileManager.Profile.DEV) {
+        if (ProfileManager.currentUserRole() == ProfileManager.UserRole.DEV) {
             btnHardDelete.visibility = View.VISIBLE
             btnHardDelete.setOnClickListener { confirmHardDeleteSpool(spoolId) }
         }
@@ -89,36 +90,33 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
     private fun deleteSpool(spoolId: Long) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                // Read before deleting — needed for API unlink call
-                val plId = ServiceLocator.smsSpoolDao.getById(spoolId)?.packing_list_id
-                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+                val spool = ServiceLocator.smsSpoolDao.getById(spoolId)
+                val plId = spool?.packing_list_id
+                val isSynced = spool?.synced == true
+                val projectId = spool?.project_id ?: (ServiceLocator.configRepo.getInt("selected_project_id") ?: 6)
 
-                // Local deletion
+                // Delete locally now; if the spool exists on the server, queue the delete so
+                // it syncs (and survives an app restart) when the connection returns. No more
+                // blocking the user offline — the outbox drains in order on the next sync.
                 locallyDeletedSpoolIds.add(spoolId)
+                if (isSynced) {
+                    if (plId != null) {
+                        ServiceLocator.outboxService.enqueue(
+                            OutboxService.Entity.PL_ASSIGN, OutboxService.Op.UNASSIGN, spoolId, projectId, refEntityId = plId
+                        )
+                    }
+                    ServiceLocator.outboxService.enqueue(
+                        OutboxService.Entity.SPOOL, OutboxService.Op.DELETE, spoolId, projectId
+                    )
+                }
                 ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(spoolId)
                 ServiceLocator.smsSpoolDao.deleteById(spoolId)
                 if (plId != null) refreshPlSpoolCount(plId)
-
-                // API sync — before dismiss() so the coroutine scope stays alive
-                if (!projectCode.isNullOrBlank()) {
-                    if (plId != null) {
-                        try {
-                            val r = ServiceLocator.apiClient.getService().removeSpoolFromPackingList(projectCode, plId, spoolId)
-                            Log.d(TAG, "removeSpoolFromPL → HTTP ${r.code()}")
-                        } catch (e: Exception) { Log.w(TAG, "removeSpoolFromPackingList failed", e) }
-                    }
-                    try {
-                        val r = ServiceLocator.apiClient.getService().deleteSpool(projectCode, spoolId)
-                        Log.d(TAG, "deleteSpool → HTTP ${r.code()} body=${r.errorBody()?.string()?.take(200)}")
-                        if (!r.isSuccessful && isAdded) {
-                            android.widget.Toast.makeText(requireContext(), "API eliminar spool: HTTP ${r.code()}", android.widget.Toast.LENGTH_LONG).show()
-                        }
-                    } catch (e: Exception) { Log.w(TAG, "deleteSpool API failed", e) }
-                    // Re-delete locally in case auto-sync re-imported the record while the API call was in-flight
-                    ServiceLocator.smsSpoolDao.deleteById(spoolId)
-                }
-
+                ServiceLocator.auditLogService.log(
+                    com.example.hassiwrapper.services.AuditLogService.SPOOL_ELIMINADO,
+                    com.example.hassiwrapper.services.AuditLogService.ENTITY_SPOOL,
+                    spoolId, spool?.displayCode ?: "Spool $spoolId", projectId = projectId
+                )
                 // UI last — dismiss() cancels viewLifecycleOwner so it must be final
                 if (isAdded) android.widget.Toast.makeText(requireContext(), getString(R.string.spool_detail_deleted), android.widget.Toast.LENGTH_SHORT).show()
                 onSpoolUpdated?.invoke()
@@ -142,31 +140,32 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
     private fun hardDeleteSpool(spoolId: Long) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val plId = ServiceLocator.smsSpoolDao.getById(spoolId)?.packing_list_id
-                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+                val spool = ServiceLocator.smsSpoolDao.getById(spoolId)
+                val plId = spool?.packing_list_id
+                val isSynced = spool?.synced == true
+                val projectId = spool?.project_id ?: (ServiceLocator.configRepo.getInt("selected_project_id") ?: 6)
 
+                // Delete locally now; queue the hard-delete for synced spools so it survives
+                // offline + app restart and drains in order on the next sync.
                 locallyDeletedSpoolIds.add(spoolId)
+                if (isSynced) {
+                    if (plId != null) {
+                        ServiceLocator.outboxService.enqueue(
+                            OutboxService.Entity.PL_ASSIGN, OutboxService.Op.UNASSIGN, spoolId, projectId, refEntityId = plId
+                        )
+                    }
+                    ServiceLocator.outboxService.enqueue(
+                        OutboxService.Entity.SPOOL, OutboxService.Op.HARD_DELETE, spoolId, projectId
+                    )
+                }
                 ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(spoolId)
                 ServiceLocator.smsSpoolDao.deleteById(spoolId)
                 if (plId != null) refreshPlSpoolCount(plId)
-
-                if (!projectCode.isNullOrBlank()) {
-                    if (plId != null) {
-                        try {
-                            ServiceLocator.apiClient.getService().removeSpoolFromPackingList(projectCode, plId, spoolId)
-                        } catch (e: Exception) { Log.w(TAG, "hardDelete: removeSpoolFromPL failed", e) }
-                    }
-                    try {
-                        val r = ServiceLocator.apiClient.getService().hardDeleteSpool(projectCode, spoolId)
-                        Log.d(TAG, "hardDeleteSpool → HTTP ${r.code()} body=${r.errorBody()?.string()?.take(200)}")
-                        if (!r.isSuccessful && isAdded) {
-                            android.widget.Toast.makeText(requireContext(), "API hard delete: HTTP ${r.code()}", android.widget.Toast.LENGTH_LONG).show()
-                        }
-                    } catch (e: Exception) { Log.w(TAG, "hardDeleteSpool API failed", e) }
-                    ServiceLocator.smsSpoolDao.deleteById(spoolId)
-                }
-
+                ServiceLocator.auditLogService.log(
+                    com.example.hassiwrapper.services.AuditLogService.SPOOL_ELIMINADO_HARD,
+                    com.example.hassiwrapper.services.AuditLogService.ENTITY_SPOOL,
+                    spoolId, spool?.displayCode ?: "Spool $spoolId", projectId = projectId
+                )
                 if (isAdded) android.widget.Toast.makeText(requireContext(), getString(R.string.spool_detail_hard_deleted), android.widget.Toast.LENGTH_SHORT).show()
                 onSpoolUpdated?.invoke()
                 dismiss()
@@ -416,26 +415,19 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
             txtCurrentPl.text = plName ?: getString(R.string.spool_item_pl_none)
             btnRemove.visibility = if (newPlId != null) View.VISIBLE else View.GONE
 
-            // Remote API
-            try {
-                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                Log.d(TAG, "doAssign: API call → projectCode=$projectCode newPlId=$newPlId oldPlId=$oldPlId sequenceNumber=$nextSequence")
-                if (projectCode != null) {
-                    val service = ServiceLocator.apiClient.getService()
-                    val resp = when {
-                        newPlId != null -> service.addSpoolToPackingList(projectCode, newPlId, AssignSpoolRequest(spoolId, "API", nextSequence))
-                        oldPlId != null -> service.removeSpoolFromPackingList(projectCode, oldPlId, spoolId)
-                        else -> null
-                    }
-                    val respBody = resp?.body()?.string()
-                    Log.d(TAG, "doAssign: API response code=${resp?.code()} isSuccessful=${resp?.isSuccessful} body=${respBody?.take(300)}")
-                    if (resp != null && !resp.isSuccessful) {
-                        Log.e(TAG, "doAssign: API error body=${resp.errorBody()?.string()?.take(300)}")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "doAssign: API exception", e)
+            // Queue the assignment change so it syncs offline + survives an app restart.
+            // Drain resolves negative temp PL ids once their CREATE op lands.
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+            when {
+                newPlId != null -> ServiceLocator.outboxService.enqueue(
+                    OutboxService.Entity.PL_ASSIGN, OutboxService.Op.ASSIGN, spoolId, projectId,
+                    refEntityId = newPlId,
+                    payload = AssignSpoolRequest(spoolId, "API", nextSequence)
+                )
+                oldPlId != null -> ServiceLocator.outboxService.enqueue(
+                    OutboxService.Entity.PL_ASSIGN, OutboxService.Op.UNASSIGN, spoolId, projectId,
+                    refEntityId = oldPlId
+                )
             }
 
             Log.d(TAG, "doAssign END")

@@ -24,6 +24,16 @@ object ServiceLocator {
     val observationService: ObservationService by lazy {
         ObservationService(db.hseObservationDao(), configRepo, db.hseObservationPhotoDao())
     }
+    val smsIncidentService: SmsIncidentService by lazy {
+        SmsIncidentService(db.smsIncidentDao(), configRepo, db.smsPositionDao())
+    }
+
+    val outboxService: OutboxService by lazy {
+        OutboxService(
+            db.smsOutboxDao(), db.projectDao(),
+            db.smsSpoolDao(), db.smsPackingListDao(), db.smsVehicleDao(), db.smsIncidentDao()
+        )
+    }
 
     val clockingService: ClockingService by lazy {
         ClockingService(
@@ -55,7 +65,9 @@ object ServiceLocator {
             db.smsPositionDao(),
             db.smsVehicleDao(),
             db.smsVehicleLoadingDao(),
-            db.smsTransferDao()
+            db.smsTransferDao(),
+            db.smsIncidentDao(),
+            outboxService
         )
     }
 
@@ -93,4 +105,9 @@ object ServiceLocator {
     val smsVehicleDao get() = db.smsVehicleDao()
     val smsVehicleLoadingDao get() = db.smsVehicleLoadingDao()
     val smsTransferDao get() = db.smsTransferDao()
+    val smsIncidentDao get() = db.smsIncidentDao()
+    val smsOutboxDao get() = db.smsOutboxDao()
+    val smsAuditLogDao get() = db.smsAuditLogDao()
+
+    val auditLogService: AuditLogService by lazy { AuditLogService(configRepo, db.smsAuditLogDao()) }
 }

@@ -53,6 +53,7 @@ data class SmsPackingListEntity(
     val vehicle_id: Long? = null,
     val vehicle_plate: String? = null,
     val position_id: Int? = null,
+    val position: String? = null,
     val packing_date: String = "",
     val total_spools_count: Int? = null,
     val total_weight_kg: Double? = null,
@@ -128,7 +129,8 @@ data class SmsSpoolEntity(
     val zone: String? = null,
     val assigned_unit: String? = null,
     val packing_list_name: String? = null,
-    val in_transit: Boolean = false
+    val in_transit: Boolean = false,
+    val position_id: Int? = null
 ) {
     val displayCode: String
         get() = if (spool_suffix.isNullOrBlank()) spool_code else "$spool_code-$spool_suffix"
@@ -224,6 +226,42 @@ data class SmsVehicleLoadingSpoolEntity(
     val spool_suffix: String?,
     val packing_list_id: Long?,
     val packing_list_name: String?
+)
+
+@Entity(tableName = "sms_incident")
+data class SmsIncidentEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val uuid: String,
+    val project_id: Int,
+    val spool_code: String,
+    val spool_suffix: String? = null,
+    val description: String,
+    val vehicle_plate: String? = null,
+    val location_type: String,
+    val location_detail: String? = null,
+    val severity: String,
+    val position_id: Int? = null,
+    val position_code: String? = null,
+    val author_name: String? = null,
+    val photo_path: String? = null,
+    val event_date: String,
+    val status: String = "OPEN",
+    val closed_by: String? = null,
+    val closed_at: String? = null,
+    val synced: Boolean = false
+)
+
+@Entity(tableName = "sms_audit_log")
+data class SmsAuditLogEntity(
+    @PrimaryKey(autoGenerate = true) val log_id: Long = 0,
+    val project_id: Int,
+    val action_type: String,
+    val entity_type: String,
+    val entity_id: Long,
+    val entity_name: String,
+    val detail: String? = null,
+    val terminal_name: String,
+    val timestamp: Long
 )
 
 @Entity(tableName = "sms_vehicle")

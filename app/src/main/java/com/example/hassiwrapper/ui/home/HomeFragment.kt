@@ -12,6 +12,7 @@ import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
@@ -26,12 +27,21 @@ import kotlinx.coroutines.launch
 
 class HomeFragment : Fragment() {
 
+    private val isGuest get() = ProfileManager.currentUserRole() == ProfileManager.UserRole.GUEST
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        return inflater.inflate(R.layout.fragment_home, container, false)
+        val layoutRes = if (isGuest) R.layout.fragment_home_guest else R.layout.fragment_home
+        return inflater.inflate(layoutRes, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        if (isGuest) {
+            setupGuestView(view)
+            loadGuestHeader()
+            return
+        }
 
 view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
             findNavController().navigate(R.id.syncFragment)
@@ -42,20 +52,23 @@ view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
         view.findViewById<View>(R.id.cardVehicles).setOnClickListener {
             findNavController().navigate(R.id.action_homeFragment_to_inventarioFragment, bundleOf("initialTab" to 2))
         }
+        view.findViewById<View>(R.id.cardCriticalIncidents).setOnClickListener {
+            findNavController().navigate(R.id.action_global_incidentsFragment)
+        }
         view.findViewById<View>(R.id.cardPackingLists).setOnClickListener {
             findNavController().navigate(R.id.action_homeFragment_to_inventarioFragment, bundleOf("initialTab" to 1))
         }
         view.findViewById<View>(R.id.cardQuickNewPl).setOnClickListener {
             findNavController().navigate(R.id.newPackingListFragment)
         }
-        view.findViewById<View>(R.id.cardQuickLoadSpools).setOnClickListener {
-            findNavController().navigate(R.id.loadSpoolsFragment)
-        }
         view.findViewById<View>(R.id.cardQuickSend).setOnClickListener {
-            findNavController().navigate(R.id.sendPackingListFragment)
+            findNavController().navigate(R.id.action_global_sendPackingListFragment)
         }
-        view.findViewById<View>(R.id.cardQuickReceive).setOnClickListener {
-            findNavController().navigate(R.id.receivePackingListFragment)
+        view.findViewById<View>(R.id.cardQuickTransfers).setOnClickListener {
+            findNavController().navigate(R.id.action_global_receivePackingListFragment)
+        }
+        view.findViewById<View>(R.id.cardQuickNewIncident).setOnClickListener {
+            findNavController().navigate(R.id.newIncidentFragment)
         }
         view.findViewById<View>(R.id.cardQuickNewSpool).setOnClickListener {
             findNavController().navigate(R.id.newSpoolFragment)
@@ -73,7 +86,49 @@ view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
 
     override fun onResume() {
         super.onResume()
-        loadStats()
+        if (isGuest) loadGuestHeader() else loadStats()
+    }
+
+    private fun setupGuestView(view: View) {
+        view.findViewById<View>(R.id.cardGuestSend).setOnClickListener {
+            findNavController().navigate(R.id.action_global_sendPackingListFragment)
+        }
+        view.findViewById<View>(R.id.cardGuestReceive).setOnClickListener {
+            findNavController().navigate(R.id.action_global_receivePackingListFragment)
+        }
+        view.findViewById<View>(R.id.cardGuestNewIncident).setOnClickListener {
+            findNavController().navigate(R.id.newIncidentFragment)
+        }
+        view.findViewById<View>(R.id.btnGuestSync).setOnClickListener {
+            findNavController().navigate(R.id.syncFragment)
+        }
+        view.findViewById<View>(R.id.btnGuestSettings).setOnClickListener {
+            findNavController().navigate(R.id.settingsFragment)
+        }
+        view.findViewById<View>(R.id.btnGuestQr).setOnClickListener {
+            findNavController().navigate(R.id.qrScannerFragment)
+        }
+    }
+
+    private fun loadGuestHeader() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val terminalName     = ServiceLocator.configRepo.get("device_code")     ?: "—"
+                val terminalLocation = ServiceLocator.configRepo.get("device_location") ?: ""
+                view?.let { v ->
+                    v.findViewById<TextView>(R.id.txtGuestUserName).text = terminalName
+                    val txtLoc = v.findViewById<TextView>(R.id.txtGuestLocation)
+                    if (terminalLocation.isNotBlank()) {
+                        txtLoc.text = terminalLocation
+                        txtLoc.visibility = View.VISIBLE
+                    } else {
+                        txtLoc.visibility = View.GONE
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("HomeDebug", "loadGuestHeader failed", e)
+            }
+        }
     }
 
     private suspend fun getSelectedProjectId(): Int =
@@ -171,9 +226,10 @@ view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
                 val spoolCount = ServiceLocator.smsSpoolDao.countByProject(projectId)
                 val packingListCount = ServiceLocator.smsPackingListDao.countByProject(projectId)
                 val vehicleCount = ServiceLocator.smsVehicleDao.countByProject(projectId)
+                val criticalIncidentCount = ServiceLocator.smsIncidentService.getCriticalCount(projectId)
 
                 val project = ServiceLocator.projectDao.getById(projectId)
-                val terminalName     = ServiceLocator.configRepo.get("device_name")     ?: "—"
+                val terminalName     = ServiceLocator.configRepo.get("device_code")     ?: "—"
                 val terminalLocation = ServiceLocator.configRepo.get("device_location") ?: ""
 
                 Log.d("HomeDebug", "=== KPIs ===")
@@ -191,6 +247,7 @@ view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
                         txtLoc.visibility = View.GONE
                     }
                     v.findViewById<TextView>(R.id.txtVehicleCount).text = vehicleCount.toString()
+                    v.findViewById<TextView>(R.id.txtCriticalIncidentCount).text = criticalIncidentCount.toString()
                     v.findViewById<TextView>(R.id.txtSpoolCount).text = spoolCount.toString()
                     v.findViewById<TextView>(R.id.txtPackingListCount).text = packingListCount.toString()
                     v.findViewById<TextView>(R.id.txtLastSync).text = if (lastSync != null) {

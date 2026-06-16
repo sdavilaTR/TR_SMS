@@ -13,6 +13,7 @@ import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.network.dto.CreateVehicleRequest
+import com.example.hassiwrapper.services.OutboxService
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -36,6 +37,7 @@ class NewVehicleFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        (view as com.example.hassiwrapper.ui.common.SwipeBackScrollView).onSwipeBack = { findNavController().navigateUp() }
         tilLicensePlate = view.findViewById(R.id.tilLicensePlate)
         etLicensePlate  = view.findViewById(R.id.etLicensePlate)
         etVehicleName   = view.findViewById(R.id.etVehicleName)
@@ -61,7 +63,7 @@ class NewVehicleFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val projectId   = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                val vehicleId   = (ServiceLocator.smsVehicleDao.getMaxId() ?: 0L) + 1L
+                val vehicleId   = ServiceLocator.outboxService.nextTempVehicleId()
                 val now         = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
                 val company     = etCompany.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
                 val vehicleName = etVehicleName.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
@@ -83,33 +85,25 @@ class NewVehicleFragment : Fragment() {
                 )
                 ServiceLocator.smsVehicleDao.insertAll(listOf(entity))
 
-                try {
-                    val project = ServiceLocator.projectDao.getById(projectId)
-                    val projectCode = project?.project_code
-                    if (!projectCode.isNullOrBlank()) {
-                        val body = CreateVehicleRequest(
-                            licensePlate     = plate,
-                            company          = company,
-                            vehicleName      = vehicleName,
-                            vehicleType      = vehicleType,
-                            capacityWeightKg = capacityKg,
-                            createdBy        = "APP",
-                            projectCode      = projectCode
-                        )
-                        val resp = ServiceLocator.apiClient.getService().createVehicle(projectCode, body)
-                        if (resp.isSuccessful) {
-                            val raw = resp.body()?.string().orEmpty()
-                            val serverId = parseCreatedVehicleId(raw)
-                            if (serverId != null && serverId > 0L && serverId != vehicleId) {
-                                ServiceLocator.smsVehicleDao.deleteById(vehicleId)
-                                ServiceLocator.smsVehicleDao.insertAll(listOf(entity.copy(vehicle_id = serverId, synced = true)))
-                            } else {
-                                ServiceLocator.smsVehicleDao.markSynced(listOf(vehicleId))
-                            }
-                        }
-                    }
-                } catch (_: Exception) {}
+                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+                ServiceLocator.outboxService.enqueue(
+                    OutboxService.Entity.VEHICLE, OutboxService.Op.CREATE, vehicleId, projectId,
+                    payload = CreateVehicleRequest(
+                        licensePlate     = plate,
+                        company          = company,
+                        vehicleName      = vehicleName,
+                        vehicleType      = vehicleType,
+                        capacityWeightKg = capacityKg,
+                        createdBy        = "APP",
+                        projectCode      = projectCode ?: ""
+                    )
+                )
 
+                ServiceLocator.auditLogService.log(
+                    com.example.hassiwrapper.services.AuditLogService.VEHICULO_CREADO,
+                    com.example.hassiwrapper.services.AuditLogService.ENTITY_VEHICULO,
+                    vehicleId, plate, projectId = projectId
+                )
                 (requireActivity() as? MainActivity)?.playSuccess()
                 Toast.makeText(requireContext(), getString(R.string.new_vehicle_success), Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()

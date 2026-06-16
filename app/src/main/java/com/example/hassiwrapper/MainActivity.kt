@@ -4,6 +4,10 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.SoundPool
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -17,7 +21,6 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
@@ -25,6 +28,9 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.navigateUp
+import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -62,6 +68,7 @@ class MainActivity : AppCompatActivity() {
         private set
 
     private lateinit var navController: NavController
+    private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var etGlobalWedge: EditText
 
     private val globalWedgeHandler = Handler(Looper.getMainLooper())
@@ -72,11 +79,11 @@ class MainActivity : AppCompatActivity() {
         val dest = navController.currentDestination?.id
         when {
             dest == R.id.qrScannerFragment -> { /* handled by QrScannerFragment */ }
-            dest == R.id.loadSpoolsFragment ||
             dest == R.id.sendPackingListFragment ||
             dest == R.id.receivePackingListFragment ||
             dest == R.id.packingListDetailFragment ||
-            dest == R.id.newPackingListFragment -> dataWedgeManager.emitScan(text)
+            dest == R.id.newPackingListFragment ||
+            dest == R.id.newIncidentFragment -> dataWedgeManager.emitScan(text)
             else -> {
                 Log.d(TAG, "Global keyboard-wedge scan (${text.length} chars): ${text.take(80)}")
                 lifecycleScope.launch { handleGlobalScan(text) }
@@ -86,6 +93,9 @@ class MainActivity : AppCompatActivity() {
 
     private var pendingUpdate: UpdateInfo? = null
     private var autoSyncJob: Job? = null
+
+    private var connectivityManager: ConnectivityManager? = null
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     private var soundPool: SoundPool? = null
     private var soundSuccess = 0
@@ -98,11 +108,11 @@ class MainActivity : AppCompatActivity() {
             val code = result.data?.getStringExtra(CustomScannerActivity.EXTRA_RESULT)
             code?.let { scanned ->
                 val dest = navController.currentDestination?.id
-                if (dest == R.id.loadSpoolsFragment ||
-                    dest == R.id.sendPackingListFragment ||
+                if (dest == R.id.sendPackingListFragment ||
                     dest == R.id.receivePackingListFragment ||
                     dest == R.id.packingListDetailFragment ||
-                    dest == R.id.newPackingListFragment) {
+                    dest == R.id.newPackingListFragment ||
+                    dest == R.id.newIncidentFragment) {
                     dataWedgeManager.emitScan(scanned)
                 } else {
                     lifecycleScope.launch { handleGlobalScan(scanned) }
@@ -124,6 +134,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Fix Device Owner policies that may have been applied before this code existed
+        // (e.g. camera disabled, camera permission auto-denied).
+        com.example.hassiwrapper.admin.TracDeviceAdmin.applyOwnerDefaults(this)
+
         val audioAttrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_NOTIFICATION)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -138,17 +152,12 @@ class MainActivity : AppCompatActivity() {
 
         setSupportActionBar(toolbar)
 
-        val toggle = ActionBarDrawerToggle(
-            this, drawerLayout, toolbar,
-            R.string.app_name, R.string.app_name
-        )
-        drawerLayout.addDrawerListener(toggle)
-        toggle.syncState()
-
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.navHostFragment) as NavHostFragment
         navController = navHostFragment.navController
         navView.setupWithNavController(navController)
+
+        applyDrawerAccess()
 
         navView.setNavigationItemSelectedListener { item ->
             when (item.itemId) {
@@ -157,6 +166,8 @@ class MainActivity : AppCompatActivity() {
                 R.id.inventarioFragment,
                 R.id.syncFragment,
                 R.id.transfersFragment,
+                R.id.incidentsFragment,
+                R.id.eventHistoryFragment,
                 R.id.settingsFragment -> {
                     navController.navigate(item.itemId)
                 }
@@ -171,7 +182,13 @@ class MainActivity : AppCompatActivity() {
 
         etGlobalWedge = findViewById(R.id.etGlobalWedge)
         etGlobalWedge.showSoftInputOnFocus = false
-        etGlobalWedge.inputType = InputType.TYPE_NULL
+        // TYPE_NULL puts the field in single-line mode, so the keystroke-emulated
+        // newline between QR lines (e.g. "RIYAS PACKING LIST\nID: ...") fires the IME
+        // "Done" action instead of being appended — truncating multi-line scans at the
+        // first line. Multi-line text type lets embedded \n land as plain content.
+        etGlobalWedge.inputType = InputType.TYPE_CLASS_TEXT or
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
 
         navController.addOnDestinationChangedListener { _, dest, _ ->
             toolbar.title = dest.label
@@ -204,7 +221,6 @@ class MainActivity : AppCompatActivity() {
                 dataWedgeManager.scanFlow.collect { code ->
                     val dest = navController.currentDestination?.id
                     if (dest != R.id.qrScannerFragment &&
-                        dest != R.id.loadSpoolsFragment &&
                         dest != R.id.sendPackingListFragment &&
                         dest != R.id.receivePackingListFragment &&
                         dest != R.id.packingListDetailFragment &&
@@ -254,28 +270,7 @@ class MainActivity : AppCompatActivity() {
         autoSyncJob = lifecycleScope.launch {
             while (true) {
                 delay(AUTO_SYNC_INTERVAL_MS)
-                try {
-                    if (!ServiceLocator.authRepo.isAuthenticated()) {
-                        Log.d(TAG, "Auto-sync: session expired, attempting auto-re-login")
-                        val relogged = ServiceLocator.authRepo.reLoginWithStoredCode(
-                            ServiceLocator.apiClient.getService()
-                        )
-                        if (!relogged) {
-                            Log.d(TAG, "Auto-sync: re-login failed, skipping cycle")
-                            continue
-                        }
-                        Log.d(TAG, "Auto-sync: re-login succeeded")
-                    }
-                    val connectivity = ServiceLocator.apiClient.checkConnectivity()
-                    if (!connectivity.apiReachable) continue
-                    Log.d(TAG, "Auto-sync: starting")
-                    ServiceLocator.syncService.fullSync()
-                    syncSmsData()
-                    Log.d(TAG, "Auto-sync: completed")
-                    Toast.makeText(this@MainActivity, R.string.auto_sync_completed, Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) {
-                    Log.w(TAG, "Auto-sync: failed silently", e)
-                }
+                runSyncCycle("auto")
             }
         }
     }
@@ -285,10 +280,93 @@ class MainActivity : AppCompatActivity() {
         autoSyncJob = null
     }
 
+    /**
+     * One guarded sync pass: re-login if the session expired, skip if the API is
+     * unreachable, then upload pending local data and refresh SMS data.
+     * Shared by the 60 s polling loop and the connectivity-recovery callback.
+     * [SyncService.fullSync] holds a mutex, so overlapping calls are de-duplicated.
+     */
+    private suspend fun runSyncCycle(reason: String) {
+        try {
+            if (!ServiceLocator.authRepo.isAuthenticated()) {
+                Log.d(TAG, "Sync ($reason): session expired, attempting auto-re-login")
+                val relogged = ServiceLocator.authRepo.reLoginWithStoredCode(
+                    ServiceLocator.apiClient.getService()
+                )
+                if (!relogged) {
+                    Log.d(TAG, "Sync ($reason): re-login failed, skipping cycle")
+                    return
+                }
+                Log.d(TAG, "Sync ($reason): re-login succeeded")
+            }
+            val connectivity = ServiceLocator.apiClient.checkConnectivity()
+            if (!connectivity.apiReachable) return
+            Log.d(TAG, "Sync ($reason): starting")
+            ServiceLocator.syncService.fullSync()
+            syncSmsData()
+            Log.d(TAG, "Sync ($reason): completed")
+            Toast.makeText(this@MainActivity, R.string.auto_sync_completed, Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.w(TAG, "Sync ($reason): failed silently", e)
+        }
+    }
+
+    /**
+     * Registers a connectivity listener so pending local data is pushed to the
+     * server the moment the terminal regains a network — rather than waiting up
+     * to [AUTO_SYNC_INTERVAL_MS] for the next polling cycle.
+     */
+    private fun registerNetworkCallback() {
+        if (networkCallback != null) return
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+        connectivityManager = cm
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        val cb = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                Log.d(TAG, "Network available — triggering reconnect sync")
+                lifecycleScope.launch { runSyncCycle("reconnect") }
+            }
+        }
+        networkCallback = cb
+        try {
+            cm.registerNetworkCallback(request, cb)
+        } catch (e: Exception) {
+            Log.w(TAG, "registerNetworkCallback failed: ${e.message}")
+            networkCallback = null
+        }
+    }
+
+    private fun unregisterNetworkCallback() {
+        val cm = connectivityManager
+        val cb = networkCallback
+        if (cm != null && cb != null) {
+            try {
+                cm.unregisterNetworkCallback(cb)
+            } catch (e: Exception) {
+                Log.w(TAG, "unregisterNetworkCallback failed: ${e.message}")
+            }
+        }
+        networkCallback = null
+    }
+
     override fun onResume() {
         super.onResume()
         startAutoSync()
+        registerNetworkCallback()
         dataWedgeManager.register()
+        lifecycleScope.launch {
+            val kioskEnabled = ServiceLocator.configRepo.get("kiosk_mode") == "true"
+            val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            if (kioskEnabled) {
+                if (am.lockTaskModeState == android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
+                    startLockTask()
+                }
+            } else {
+                try { stopLockTask() } catch (_: Exception) {}
+            }
+        }
         if (navController.currentDestination?.id != R.id.qrScannerFragment) {
             etGlobalWedge.requestFocus()
             (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
@@ -312,6 +390,7 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         stopAutoSync()
+        unregisterNetworkCallback()
         dataWedgeManager.unregister()
     }
 
@@ -340,6 +419,9 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "onNewIntent: DataWedge activity-mode data='$data' action=${intent.action}")
         dataWedgeManager.emitScan(data)
     }
+
+    override fun onSupportNavigateUp(): Boolean =
+        navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
 
     override fun onBackPressed() {
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayout)
@@ -423,21 +505,42 @@ class MainActivity : AppCompatActivity() {
      * HSE:   USER items + Passport + Observations General + Inspections.
      * ADMIN / PRE / DEV: all items visible.
      */
+    /**
+     * GUEST profile gets no side drawer at all: lock it closed and drop the
+     * hamburger icon (only Home is "top-level"; other screens get a back arrow).
+     */
+    private fun applyDrawerAccess() {
+        val drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayout)
+        val isGuest = ProfileManager.currentUserRole() == ProfileManager.UserRole.GUEST
+        if (isGuest) {
+            drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+            appBarConfiguration = AppBarConfiguration(setOf(R.id.homeFragment))
+        } else {
+            drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+            appBarConfiguration = AppBarConfiguration(
+                setOf(
+                    R.id.homeFragment, R.id.qrScannerFragment, R.id.inventarioFragment,
+                    R.id.syncFragment, R.id.transfersFragment, R.id.incidentsFragment,
+                    R.id.eventHistoryFragment, R.id.settingsFragment
+                ),
+                drawerLayout
+            )
+        }
+        setupActionBarWithNavController(navController, appBarConfiguration)
+    }
+
     private fun applyProfileMenuVisibility(navView: NavigationView) {
         val menu = navView.menu
-        val profile = ProfileManager.currentProfile()
-        val isUser = profile == ProfileManager.Profile.USER
-        val isFull = profile == ProfileManager.Profile.ADMIN ||
-                     profile == ProfileManager.Profile.PRE   ||
-                     profile == ProfileManager.Profile.DEV
+        val role = ProfileManager.currentUserRole()
+        val isGuest = role == ProfileManager.UserRole.GUEST
+        val isFull  = role == ProfileManager.UserRole.ADMIN || role == ProfileManager.UserRole.DEV
 
-        // Inventario (Spools + PLs + Vehículos): HSE, ADMIN, PRE, DEV
-        menu.findItem(R.id.inventarioFragment)?.isVisible = !isUser
-
-        // Transfers: only full profiles (ADMIN, PRE, DEV)
-        menu.findItem(R.id.transfersFragment)?.isVisible = isFull
-
+        menu.findItem(R.id.inventarioFragment)?.isVisible = !isGuest
+        menu.findItem(R.id.transfersFragment)?.isVisible    = isFull
+        menu.findItem(R.id.eventHistoryFragment)?.isVisible = isFull
+        menu.findItem(R.id.incidentsFragment)?.isVisible  = !isGuest
         // Home + QR Scanner + Sync + Settings always visible
+        findViewById<FloatingActionButton>(R.id.fabQrScan)?.visibility = if (isGuest) android.view.View.GONE else android.view.View.VISIBLE
     }
 
     internal suspend fun syncSmsData() {
@@ -460,7 +563,8 @@ class MainActivity : AppCompatActivity() {
                     entities.take(2).forEach { e ->
                         Log.d(TAG, "spool entity: id=${e.spool_id} code=${e.spool_code} suf=${e.spool_suffix} line=${e.line_code} service=${e.service} train=${e.train} module=${e.module} area=${e.area_id} spec=${e.spec_id} unit=${e.unit_id} iso=${e.iso_type_id} sub=${e.subcontractor_id}")
                     }
-                    val deleted = com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet.locallyDeletedSpoolIds
+                    val deleted = com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet.locallyDeletedSpoolIds +
+                        ServiceLocator.outboxService.pendingDeleteIds(com.example.hassiwrapper.services.OutboxService.Entity.SPOOL).toSet()
                     val toInsert = entities.filter { it.is_active && it.spool_id !in deleted }
                     // Preserve locally-set fields that the /spools endpoint doesn't return
                     val localSpools = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
@@ -471,8 +575,13 @@ class MainActivity : AppCompatActivity() {
                     val merged = toInsert.map { s ->
                         val local = localSpools[s.spool_id] ?: return@map s
                         s.copy(
-                            in_transit = if (s.spool_id in sentNotReceivedIds) true else s.in_transit,
-                            packing_list_id = s.packing_list_id ?: local.packing_list_id
+                            in_transit = when {
+                                s.spool_id in sentNotReceivedIds -> true
+                                !local.synced -> local.in_transit
+                                else -> s.in_transit
+                            },
+                            packing_list_id = if (!local.synced) local.packing_list_id else (s.packing_list_id ?: local.packing_list_id),
+                            position_id = if (!local.synced) local.position_id else (s.position_id ?: local.position_id)
                         )
                     }
                     ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
@@ -486,7 +595,8 @@ class MainActivity : AppCompatActivity() {
             if (plResp.isSuccessful) {
                 val raw = plResp.body()?.string().orEmpty()
                 val entities = parsePackingListEntities(raw, projectId)
-                val deletedPLs = com.example.hassiwrapper.ui.packinglists.PackingListDetailFragment.locallyDeletedPLIds
+                val deletedPLs = com.example.hassiwrapper.ui.packinglists.PackingListDetailFragment.locallyDeletedPLIds +
+                    ServiceLocator.outboxService.pendingDeleteIds(com.example.hassiwrapper.services.OutboxService.Entity.PACKING_LIST).toSet()
                 val activePLs = entities.filter { it.is_active && it.packing_list_id !in deletedPLs }
                 // Preserve locally-set ready_to_send and vehicle assignment so API sync doesn't wipe them
                 val localPLs = ServiceLocator.smsPackingListDao.getByProject(projectId)
@@ -496,7 +606,8 @@ class MainActivity : AppCompatActivity() {
                     pl.copy(
                         ready_to_send = local.ready_to_send,
                         vehicle_id    = pl.vehicle_id ?: local.vehicle_id,
-                        vehicle_plate = pl.vehicle_plate ?: local.vehicle_plate
+                        vehicle_plate = pl.vehicle_plate ?: local.vehicle_plate,
+                        position_id   = if (!local.synced) local.position_id else (pl.position_id ?: local.position_id)
                     )
                 }
                 ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
@@ -507,7 +618,11 @@ class MainActivity : AppCompatActivity() {
 
             val vehicleResp = service.getVehicles(projectCode)
             if (vehicleResp.isSuccessful) {
-                val entities = parseVehicleEntities(vehicleResp.body()?.string().orEmpty(), projectId)
+                val parsed = parseVehicleEntities(vehicleResp.body()?.string().orEmpty(), projectId)
+                // Hide vehicles deleted offline (pending DELETE op) so the server copy doesn't resurrect them.
+                val deletedVehicles = com.example.hassiwrapper.ui.vehicles.VehicleDetailFragment.locallyDeletedVehicleIds +
+                    ServiceLocator.outboxService.pendingDeleteIds(com.example.hassiwrapper.services.OutboxService.Entity.VEHICLE).toSet()
+                val entities = parsed.filter { it.vehicle_id !in deletedVehicles }
                 if (entities.isNotEmpty()) {
                     // Preserve local route state for vehicles with pending upload (route_synced=false)
                     val localById = ServiceLocator.smsVehicleDao.getByProject(projectId).associateBy { it.vehicle_id }
@@ -701,8 +816,10 @@ class MainActivity : AppCompatActivity() {
     private fun parseSubcontractorEntities(raw: String, projectId: Int): List<SmsSubcontractorEntity> =
         smsJsonArray(raw).mapNotNull { el ->
             if (!el.isJsonObject) null else el.asJsonObject.let { o ->
-                val id = o.jLong("subcontractorId", "subcontractor_id", "id") ?: return@mapNotNull null
-                SmsSubcontractorEntity(id, projectId, o.jStr("code").orEmpty(), o.jStr("name").orEmpty(),
+                val id = o.jLong("contractorId", "contractor_id", "id") ?: return@mapNotNull null
+                val code = o.jStr("contractorCode", "contractor_code").orEmpty()
+                val name = o.jStr("contractorName", "contractor_name").orEmpty()
+                SmsSubcontractorEntity(id, projectId, code, name,
                     o.jBool("isActive", "is_active") ?: true, o.jStr("createdAt", "created_at").orEmpty(),
                     o.jStr("createdBy", "created_by").orEmpty(), o.jStr("updatedAt", "updated_at"),
                     o.jStr("updatedBy", "updated_by"))
@@ -821,31 +938,23 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    /** Called from SettingsFragment to activate/deactivate screen pinning (kiosk mode). */
+    fun setKioskMode(enabled: Boolean) {
+        if (enabled) startLockTask() else stopLockTask()
+    }
+
     /** Called from SettingsFragment after a profile change. */
     fun refreshProfileMenu() {
         val navView = findViewById<NavigationView>(R.id.navView)
         applyProfileMenuVisibility(navView)
+        applyDrawerAccess()
 
-        val profile = ProfileManager.currentProfile()
+        val role = ProfileManager.currentUserRole()
         val currentDest = navController.currentDestination?.id
 
-        // If USER and currently on a hidden fragment, navigate to home
-        if (profile == ProfileManager.Profile.USER) {
-            val allowedInUser = setOf(R.id.homeFragment, R.id.qrScannerFragment, R.id.syncFragment, R.id.settingsFragment)
-            if (currentDest != null && currentDest !in allowedInUser) {
-                navController.navigate(R.id.homeFragment)
-            }
-        }
-        // If HSE and currently on an ADMIN-only fragment, navigate to home
-        if (profile == ProfileManager.Profile.HSE) {
-            val allowedInHse = setOf(
-                R.id.homeFragment, R.id.qrScannerFragment, R.id.syncFragment, R.id.settingsFragment,
-                R.id.inventarioFragment, R.id.packingListsFragment, R.id.vehiclesFragment,
-                R.id.scannerFragment, R.id.newPackingListFragment, R.id.newSpoolFragment,
-                R.id.newVehicleFragment, R.id.packingListDetailFragment, R.id.vehicleDetailFragment,
-                R.id.observationFragment
-            )
-            if (currentDest != null && currentDest !in allowedInHse) {
+        if (role == ProfileManager.UserRole.GUEST) {
+            val allowedInGuest = setOf(R.id.homeFragment, R.id.qrScannerFragment, R.id.syncFragment, R.id.settingsFragment)
+            if (currentDest != null && currentDest !in allowedInGuest) {
                 navController.navigate(R.id.homeFragment)
             }
         }

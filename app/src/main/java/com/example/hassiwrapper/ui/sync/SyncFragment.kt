@@ -311,8 +311,7 @@ class SyncFragment : Fragment() {
             if (result.photosFailed > 0) {
                 if (sb.isNotEmpty()) sb.append("  |  ")
                 sb.append(getString(R.string.sync_result_photos_fail, result.photosFailed))
-                val profile = ProfileManager.currentProfile()
-                if (profile == ProfileManager.Profile.DEV || profile == ProfileManager.Profile.ADMIN || profile == ProfileManager.Profile.PRE) {
+                if (ProfileManager.currentUserRole() != ProfileManager.UserRole.GUEST) {
                     sb.append("\n").append(result.photoErrors.joinToString("\n"))
                 }
             }

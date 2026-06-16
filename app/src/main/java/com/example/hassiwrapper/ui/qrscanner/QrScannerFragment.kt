@@ -13,6 +13,8 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -40,6 +42,21 @@ class QrScannerFragment : Fragment() {
     private lateinit var txtResultType: TextView
     private lateinit var txtResultDetail: TextView
     private lateinit var etKeyboardWedge: EditText
+
+    private lateinit var btnRelocateMode: MaterialButton
+    private lateinit var layoutRelocate: LinearLayout
+    private lateinit var tilRelocateDest: com.google.android.material.textfield.TextInputLayout
+    private lateinit var actvRelocateDest: AutoCompleteTextView
+    private lateinit var txtRelocateCount: TextView
+    private lateinit var btnRelocateFinish: MaterialButton
+
+    // ── relocate mode state ──────────────────────────────────────────────────
+    private var relocateActive = false
+    private var relocateLocationType: String? = null // "LAYDOWN" or "SITE"
+    private var relocatePositionId: Int? = null
+    private var relocateDestinations: List<String> = emptyList()
+    private var relocateDestName: String? = null
+    private var relocateCount = 0
 
     // ── keyboard-wedge: timeout reassembles multi-line QR payloads ───────────
     private val wedgeHandler = Handler(Looper.getMainLooper())
@@ -88,6 +105,23 @@ class QrScannerFragment : Fragment() {
         txtResultDetail  = view.findViewById(R.id.txtResultDetail)
         etKeyboardWedge  = view.findViewById(R.id.etKeyboardWedge)
         etKeyboardWedge.showSoftInputOnFocus = false
+
+        btnRelocateMode   = view.findViewById(R.id.btnRelocateMode)
+        layoutRelocate    = view.findViewById(R.id.layoutRelocate)
+        tilRelocateDest   = view.findViewById(R.id.tilRelocateDest)
+        actvRelocateDest  = view.findViewById(R.id.actvRelocateDest)
+        txtRelocateCount  = view.findViewById(R.id.txtRelocateCount)
+        btnRelocateFinish = view.findViewById(R.id.btnRelocateFinish)
+
+        btnRelocateMode.setOnClickListener {
+            if (relocateActive) stopRelocateMode() else startRelocateMode()
+        }
+        btnRelocateFinish.setOnClickListener { stopRelocateMode() }
+        actvRelocateDest.setOnItemClickListener { _, _, position, _ ->
+            relocateDestName = relocateDestinations.getOrNull(position)
+            relocateCount = 0
+            updateRelocateCount()
+        }
 
         txtScanStatus.text = getString(R.string.qr_scanner_status_waiting)
 
@@ -156,7 +190,10 @@ class QrScannerFragment : Fragment() {
         layoutResult.visibility = View.GONE
 
         when (val result = parseQr(code)) {
-            is QrResult.Spool        -> lookupSpool(result.spoolCode, result.spoolSuffix)
+            is QrResult.Spool        -> {
+                if (relocateActive) relocateSpool(result.spoolCode, result.spoolSuffix)
+                else lookupSpool(result.spoolCode, result.spoolSuffix)
+            }
             is QrResult.VehicleId    -> lookupVehicleById(result.id)
             is QrResult.VehiclePlate -> lookupVehicleByPlate(result.plate)
             is QrResult.VehicleBadge -> showError(
@@ -189,6 +226,112 @@ class QrScannerFragment : Fragment() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "lookupSpool failed", e)
+                showError(getString(R.string.qr_scanner_result_spool_not_found), e.message ?: e.javaClass.simpleName)
+            }
+        }
+    }
+
+    // ── relocate mode ─────────────────────────────────────────────────────────
+
+    private fun startRelocateMode() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val location = ServiceLocator.configRepo.get("device_location")?.trim()?.uppercase()
+
+            when (location) {
+                "LAYDOWN" -> {
+                    relocateDestinations = (ServiceLocator.configRepo.get("laydown_sections") ?: "1A,2A,1B,2B,1C,2C,1D,2D")
+                        .split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                    tilRelocateDest.hint = getString(R.string.qr_scanner_relocate_label_area)
+                }
+                "SITE" -> {
+                    relocateDestinations = (ServiceLocator.configRepo.get("site_units") ?: "1,2,3,4")
+                        .split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                    tilRelocateDest.hint = getString(R.string.qr_scanner_relocate_label_unit)
+                }
+                else -> {
+                    Toast.makeText(requireContext(), R.string.qr_scanner_relocate_no_location, Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+            }
+
+            if (relocateDestinations.isEmpty()) {
+                Toast.makeText(requireContext(), R.string.qr_scanner_relocate_no_destinations, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            actvRelocateDest.setAdapter(
+                ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, relocateDestinations)
+            )
+
+            relocateLocationType = location
+            relocatePositionId = ServiceLocator.smsPositionDao.getByCode(location)?.position_id
+            relocateDestName = null
+            relocateCount = 0
+            actvRelocateDest.setText("", false)
+            relocateActive = true
+            layoutRelocate.visibility = View.VISIBLE
+            btnRelocateMode.setText(R.string.qr_scanner_btn_relocate_active)
+            updateRelocateCount()
+        }
+    }
+
+    private fun stopRelocateMode() {
+        relocateActive = false
+        relocateLocationType = null
+        relocatePositionId = null
+        relocateDestName = null
+        relocateCount = 0
+        layoutRelocate.visibility = View.GONE
+        btnRelocateMode.setText(R.string.qr_scanner_btn_relocate)
+    }
+
+    private fun updateRelocateCount() {
+        val dest = relocateDestName ?: return
+        txtRelocateCount.text = getString(R.string.qr_scanner_relocate_count, dest, relocateCount)
+    }
+
+    private fun relocateSpool(spoolCode: String, spoolSuffix: String?) {
+        if (relocateDestName == null) {
+            txtScanStatus.text = getString(R.string.qr_scanner_status_waiting)
+            Toast.makeText(requireContext(), R.string.qr_scanner_relocate_select_dest_first, Toast.LENGTH_SHORT).show()
+            return
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val spools = ServiceLocator.smsSpoolDao.getByCode(spoolCode)
+                val spool = if (spoolSuffix != null)
+                    spools.find { it.spool_suffix == spoolSuffix } ?: spools.firstOrNull()
+                else
+                    spools.firstOrNull()
+
+                if (spool == null) {
+                    showError(
+                        getString(R.string.qr_scanner_result_spool_not_found),
+                        getString(R.string.qr_scanner_result_id_detail, spoolCode)
+                    )
+                    return@launch
+                }
+
+                val destName = relocateDestName ?: return@launch
+                if (relocateLocationType == "LAYDOWN") {
+                    ServiceLocator.smsSpoolDao.updateArea(spool.spool_id, null, destName)
+                } else {
+                    ServiceLocator.smsSpoolDao.updateUnit(spool.spool_id, null, destName)
+                }
+                relocatePositionId?.let { posId ->
+                    ServiceLocator.smsSpoolDao.updatePosition(spool.spool_id, posId)
+                }
+
+                relocateCount++
+                updateRelocateCount()
+                txtScanStatus.text = getString(R.string.qr_scanner_status_waiting)
+                showResult(spool.displayCode, getString(R.string.qr_scanner_relocate_success, spool.displayCode, destName))
+                (requireActivity() as? MainActivity)?.playSuccess()
+            } catch (e: Exception) {
+                Log.e(TAG, "relocateSpool failed", e)
                 showError(getString(R.string.qr_scanner_result_spool_not_found), e.message ?: e.javaClass.simpleName)
             }
         }

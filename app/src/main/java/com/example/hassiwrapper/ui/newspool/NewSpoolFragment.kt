@@ -28,8 +28,9 @@ import com.example.hassiwrapper.data.db.entities.SmsUnitEntity
 import com.example.hassiwrapper.network.dto.CreateSpoolPropertyRequest
 import com.example.hassiwrapper.network.dto.CreateSpoolRequest
 import com.example.hassiwrapper.network.dto.CreateSpoolStatusFlagsRequest
+import com.example.hassiwrapper.network.dto.SpoolCreatePayload
+import com.example.hassiwrapper.services.OutboxService
 import com.google.android.material.button.MaterialButton
-import com.google.gson.JsonParser
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
@@ -49,9 +50,9 @@ class NewSpoolFragment : Fragment() {
     private lateinit var tilBoreSize: TextInputLayout
 
     private lateinit var actvUnit: AutoCompleteTextView
-    private lateinit var etLine: TextInputEditText
-    private lateinit var etCode: TextInputEditText
-    private lateinit var etTrain: TextInputEditText
+    private lateinit var actvLine: AutoCompleteTextView
+    private lateinit var actvCode: AutoCompleteTextView
+    private lateinit var actvTrain: AutoCompleteTextView
     private lateinit var actvIsoType: AutoCompleteTextView
     private lateinit var actvStatus: AutoCompleteTextView
     private lateinit var actvPosition: AutoCompleteTextView
@@ -79,6 +80,7 @@ class NewSpoolFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        (view as com.example.hassiwrapper.ui.common.SwipeBackScrollView).onSwipeBack = { findNavController().navigateUp() }
         prefillSpoolCode = arguments?.getString("prefillSpoolCode")
         tilUnit             = view.findViewById(R.id.tilUnit)
         tilLine             = view.findViewById(R.id.tilLine)
@@ -91,9 +93,9 @@ class NewSpoolFragment : Fragment() {
         tilBoreSize         = view.findViewById(R.id.tilBoreSize)
 
         actvUnit             = view.findViewById(R.id.actvUnit)
-        etLine               = view.findViewById(R.id.etLine)
-        etCode               = view.findViewById(R.id.etCode)
-        etTrain              = view.findViewById(R.id.etTrain)
+        actvLine             = view.findViewById(R.id.actvLine)
+        actvCode             = view.findViewById(R.id.actvCode)
+        actvTrain            = view.findViewById(R.id.actvTrain)
         actvIsoType          = view.findViewById(R.id.actvIsoType)
         actvStatus           = view.findViewById(R.id.actvStatus)
         actvPosition         = view.findViewById(R.id.actvPosition)
@@ -112,9 +114,9 @@ class NewSpoolFragment : Fragment() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
             override fun afterTextChanged(s: Editable?) { updatePreview() }
         }
-        etLine.addTextChangedListener(codeWatcher)
-        etCode.addTextChangedListener(codeWatcher)
-        etTrain.addTextChangedListener(codeWatcher)
+        actvLine.addTextChangedListener(codeWatcher)
+        actvCode.addTextChangedListener(codeWatcher)
+        actvTrain.addTextChangedListener(codeWatcher)
 
         txtSuffixPreview.setTextColor(requireContext().getColor(R.color.primary))
         updatePreview()
@@ -125,6 +127,7 @@ class NewSpoolFragment : Fragment() {
 
     private fun loadDropdownData() {
         viewLifecycleOwner.lifecycleScope.launch {
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
             val units             = ServiceLocator.smsUnitDao.getAll()
             val isoTypes          = ServiceLocator.smsIsoTypeDao.getAll()
             val statuses          = ServiceLocator.smsSpoolStatusDao.getAll()
@@ -133,6 +136,9 @@ class NewSpoolFragment : Fragment() {
             val boreSizes         = ServiceLocator.smsBoreSizeDao.getAll()
 
             setupUnitDropdown(units)
+            setupTextDropdown(actvLine, distinctSpoolCodeSegments(projectId, 1))
+            setupTextDropdown(actvCode, distinctSpoolCodeSegments(projectId, 2))
+            setupTextDropdown(actvTrain, ServiceLocator.smsSpoolDao.getDistinctTrains(projectId))
             applySpoolCodePrefill(units)
             setupDropdown(actvIsoType, isoTypes, { it.name.ifBlank { it.code } }) { selectedIsoTypeId = it?.iso_type_id }
             setupDropdown(actvStatus, statuses, { it.name.ifBlank { it.code } }) { selectedStatusId = it?.status_id }
@@ -155,6 +161,20 @@ class NewSpoolFragment : Fragment() {
         }
     }
 
+    private fun setupTextDropdown(actv: AutoCompleteTextView, values: List<String>) {
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, values)
+        actv.setAdapter(adapter)
+    }
+
+    /** Segmento `index` (0=unidad, 1=línea, 2=código, 3=tren) de los spool_code existentes del proyecto. */
+    private suspend fun distinctSpoolCodeSegments(projectId: Int, index: Int): List<String> {
+        return ServiceLocator.smsSpoolDao.getDistinctSpoolCodes(projectId)
+            .mapNotNull { it.split("-").getOrNull(index) }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
+    }
+
     private fun <T> setupDropdown(
         actv: AutoCompleteTextView,
         items: List<T>,
@@ -169,9 +189,9 @@ class NewSpoolFragment : Fragment() {
 
     private fun buildSpoolCode(): String {
         val unit  = selectedUnitCode
-        val line  = etLine.text?.toString()?.trim().orEmpty()
-        val code  = etCode.text?.toString()?.trim().orEmpty()
-        val train = etTrain.text?.toString()?.trim().orEmpty()
+        val line  = actvLine.text?.toString()?.trim().orEmpty()
+        val code  = actvCode.text?.toString()?.trim().orEmpty()
+        val train = actvTrain.text?.toString()?.trim().orEmpty()
         return listOf(unit, line, code, train).filter { it.isNotEmpty() }.joinToString("-")
     }
 
@@ -190,9 +210,9 @@ class NewSpoolFragment : Fragment() {
     }
 
     private fun saveSpool() {
-        val line  = etLine.text?.toString()?.trim().orEmpty()
-        val code  = etCode.text?.toString()?.trim().orEmpty()
-        val train = etTrain.text?.toString()?.trim().orEmpty()
+        val line  = actvLine.text?.toString()?.trim().orEmpty()
+        val code  = actvCode.text?.toString()?.trim().orEmpty()
+        val train = actvTrain.text?.toString()?.trim().orEmpty()
 
         tilUnit.error  = null
         tilLine.error  = null
@@ -214,7 +234,7 @@ class NewSpoolFragment : Fragment() {
                 val spoolCode = "$selectedUnitCode-$line-$code-$train"
                 val count     = ServiceLocator.smsSpoolDao.countByProjectAndCode(projectId, spoolCode)
                 val suffix    = "SP%02d".format(count + 1)
-                val spoolId   = (ServiceLocator.smsSpoolDao.getMaxId() ?: 0L) + 1L
+                val spoolId   = ServiceLocator.outboxService.nextTempSpoolId()
                 val now       = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
 
                 val spool = SmsSpoolEntity(
@@ -228,16 +248,40 @@ class NewSpoolFragment : Fragment() {
                     train        = train.takeIf { it.isNotBlank() },
                     is_active    = true,
                     created_at   = now,
-                    created_by   = ""
+                    created_by   = "",
+                    synced       = false
                 )
                 ServiceLocator.smsSpoolDao.insertAll(listOf(spool))
 
-                var serverSpoolId = spoolId
-                try {
-                    val project = ServiceLocator.projectDao.getById(projectId)
-                    val projectCode = project?.project_code
-                    if (!projectCode.isNullOrBlank()) {
-                        val body = CreateSpoolRequest(
+                val diamIn = etDiameterInches.text?.toString()?.trim()?.toDoubleOrNull()
+                val diam   = etDiameter.text?.toString()?.trim()?.toDoubleOrNull()
+                val wt     = etWeightKg.text?.toString()?.trim()?.toDoubleOrNull()
+
+                val property = SmsSpoolPropertyEntity(
+                    spool_id        = spoolId,
+                    diameter_inches = diamIn,
+                    diameter        = diam,
+                    bore_size_id    = selectedBoreSizeId,
+                    weight_kg       = wt,
+                    updated_at      = now
+                )
+                ServiceLocator.smsSpoolPropertyDao.insertAll(listOf(property))
+
+                val statusFlags = SmsSpoolStatusFlagsEntity(
+                    spool_id             = spoolId,
+                    status_id            = selectedStatusId,
+                    incomplete_status_id = selectedIncompleteStatusId,
+                    position_id          = selectedPositionId,
+                    updated_at           = now
+                )
+                ServiceLocator.smsSpoolStatusFlagsDao.insertAll(listOf(statusFlags))
+
+                val hasProperty = diamIn != null || diam != null || selectedBoreSizeId != null || wt != null
+                val hasFlags    = selectedStatusId != null || selectedIncompleteStatusId != null || selectedPositionId != null
+                ServiceLocator.outboxService.enqueue(
+                    OutboxService.Entity.SPOOL, OutboxService.Op.CREATE, spoolId, projectId,
+                    payload = SpoolCreatePayload(
+                        create = CreateSpoolRequest(
                             spoolCode   = spoolCode,
                             spoolSuffix = suffix,
                             lineCode    = line,
@@ -247,61 +291,19 @@ class NewSpoolFragment : Fragment() {
                             unitId      = selectedUnitId,
                             isoTypeId   = selectedIsoTypeId,
                             train       = train.takeIf { it.isNotBlank() }
-                        )
-                        val response = ServiceLocator.apiClient.getService().createSpool(projectCode, body)
-                        if (response.isSuccessful) {
-                            val raw = response.body()?.string().orEmpty()
-                            val parsedId = parseCreatedSpoolId(raw)
-                            if (parsedId != null && parsedId > 0L && parsedId != spoolId) {
-                                ServiceLocator.smsSpoolDao.deleteById(spoolId)
-                                ServiceLocator.smsSpoolDao.insertAll(listOf(spool.copy(spool_id = parsedId, synced = true)))
-                                serverSpoolId = parsedId
-                            } else {
-                                ServiceLocator.smsSpoolDao.markSynced(listOf(spoolId))
-                            }
-
-                            val diamIn = etDiameterInches.text?.toString()?.trim()?.toDoubleOrNull()
-                            val diam   = etDiameter.text?.toString()?.trim()?.toDoubleOrNull()
-                            val wt     = etWeightKg.text?.toString()?.trim()?.toDoubleOrNull()
-                            if (diamIn != null || diam != null || selectedBoreSizeId != null || wt != null) {
-                                try {
-                                    ServiceLocator.apiClient.getService().createSpoolProperty(
-                                        projectCode, serverSpoolId,
-                                        CreateSpoolPropertyRequest(serverSpoolId, diamIn, diam, selectedBoreSizeId, wt)
-                                    )
-                                } catch (_: Exception) {}
-                            }
-                            if (selectedStatusId != null || selectedIncompleteStatusId != null || selectedPositionId != null) {
-                                try {
-                                    ServiceLocator.apiClient.getService().createSpoolStatusFlags(
-                                        projectCode, serverSpoolId,
-                                        CreateSpoolStatusFlagsRequest(serverSpoolId, selectedStatusId, selectedIncompleteStatusId, selectedPositionId)
-                                    )
-                                } catch (_: Exception) {}
-                            }
-                        }
-                    }
-                } catch (_: Exception) {}
-
-                val property = SmsSpoolPropertyEntity(
-                    spool_id        = serverSpoolId,
-                    diameter_inches = etDiameterInches.text?.toString()?.trim()?.toDoubleOrNull(),
-                    diameter        = etDiameter.text?.toString()?.trim()?.toDoubleOrNull(),
-                    bore_size_id    = selectedBoreSizeId,
-                    weight_kg       = etWeightKg.text?.toString()?.trim()?.toDoubleOrNull(),
-                    updated_at      = now
+                        ),
+                        property = if (hasProperty)
+                            CreateSpoolPropertyRequest(spoolId, diamIn, diam, selectedBoreSizeId, wt) else null,
+                        flags = if (hasFlags)
+                            CreateSpoolStatusFlagsRequest(spoolId, selectedStatusId, selectedIncompleteStatusId, selectedPositionId) else null
+                    )
                 )
-                ServiceLocator.smsSpoolPropertyDao.insertAll(listOf(property))
 
-                val statusFlags = SmsSpoolStatusFlagsEntity(
-                    spool_id             = serverSpoolId,
-                    status_id            = selectedStatusId,
-                    incomplete_status_id = selectedIncompleteStatusId,
-                    position_id          = selectedPositionId,
-                    updated_at           = now
+                ServiceLocator.auditLogService.log(
+                    com.example.hassiwrapper.services.AuditLogService.SPOOL_CREADO,
+                    com.example.hassiwrapper.services.AuditLogService.ENTITY_SPOOL,
+                    spoolId, spool.displayCode, projectId = projectId
                 )
-                ServiceLocator.smsSpoolStatusFlagsDao.insertAll(listOf(statusFlags))
-
                 (requireActivity() as? MainActivity)?.playSuccess()
                 Toast.makeText(requireContext(), getString(R.string.new_spool_success), Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()
@@ -323,30 +325,19 @@ class NewSpoolFragment : Fragment() {
             selectedUnitCode = matchedUnit.code
             tilUnit.error    = null
             actvUnit.setText(matchedUnit.name.ifBlank { matchedUnit.code }, false)
-            if (parts.size >= 2) etLine.setText(parts[1])
-            if (parts.size >= 3) etCode.setText(parts[2])
-            if (parts.size >= 4) etTrain.setText(parts.drop(3).joinToString("-"))
+            if (parts.size >= 2) actvLine.setText(parts[1])
+            if (parts.size >= 3) actvCode.setText(parts[2])
+            if (parts.size >= 4) actvTrain.setText(parts.drop(3).joinToString("-"))
+        } else if (parts.size == 1) {
+            actvCode.setText(raw)
         } else {
-            if (parts.size >= 2) etLine.setText(parts[0])
-            if (parts.size >= 3) etCode.setText(parts[1])
-            if (parts.size >= 4) etTrain.setText(parts[2])
-            if (parts.size == 1) etCode.setText(raw)
+            // Unit code unrecognised: still show it so the user can pick the right unit
+            // from the dropdown, and map the remaining segments exactly as the matched branch.
+            actvUnit.setText(parts[0], false)
+            actvLine.setText(parts[1])
+            if (parts.size >= 3) actvCode.setText(parts[2])
+            if (parts.size >= 4) actvTrain.setText(parts.drop(3).joinToString("-"))
         }
         updatePreview()
-    }
-
-    private fun parseCreatedSpoolId(raw: String): Long? {
-        return try {
-            val el = JsonParser.parseString(raw)
-            val obj = when {
-                el.isJsonObject && el.asJsonObject.has("data") && !el.asJsonObject.get("data").isJsonNull ->
-                    el.asJsonObject.getAsJsonObject("data")
-                el.isJsonObject -> el.asJsonObject
-                else -> return null
-            }
-            obj.get("spoolId")?.takeIf { !it.isJsonNull }?.asLong
-                ?: obj.get("spool_id")?.takeIf { !it.isJsonNull }?.asLong
-                ?: obj.get("id")?.takeIf { !it.isJsonNull }?.asLong
-        } catch (_: Exception) { null }
     }
 }

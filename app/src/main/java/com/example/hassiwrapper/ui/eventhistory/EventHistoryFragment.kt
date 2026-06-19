@@ -86,7 +86,7 @@ class EventHistoryFragment : Fragment() {
 
             fun bind(item: SmsAuditLogEntity) {
                 viewStrip.setBackgroundColor(stripColor(item.entity_type, itemView.context))
-                txtAction.text = labelFor(item.action_type)
+                txtAction.text = labelFor(item.action_type, itemView.context)
                 txtAction.setTextColor(actionColor(item.action_type, itemView.context))
                 txtName.text = item.entity_name
                 if (item.detail.isNullOrBlank()) {
@@ -105,28 +105,33 @@ class EventHistoryFragment : Fragment() {
             "PL"            -> ContextCompat.getColor(ctx, R.color.green)
             "VEHICULO"      -> ContextCompat.getColor(ctx, R.color.warning)
             "TRANSFERENCIA" -> ContextCompat.getColor(ctx, R.color.purple)
+            "INCIDENCIA"    -> ContextCompat.getColor(ctx, R.color.error)
             else            -> ContextCompat.getColor(ctx, R.color.graphite)
         }
 
         private fun actionColor(actionType: String, ctx: Context): Int = when {
-            actionType.endsWith("_CREADO")                                              -> ContextCompat.getColor(ctx, R.color.green)
+            actionType.endsWith("_CREADO") || actionType == "INCIDENCIA_CREADA"          -> ContextCompat.getColor(ctx, R.color.green)
             actionType.endsWith("_ELIMINADO") || actionType.endsWith("_ELIMINADO_HARD") -> ContextCompat.getColor(ctx, R.color.error)
             actionType.startsWith("TRANSFERENCIA_")                                     -> ContextCompat.getColor(ctx, R.color.purple)
+            actionType == "INCIDENCIA_CERRADA"                                          -> ContextCompat.getColor(ctx, R.color.graphite)
             else                                                                        -> ContextCompat.getColor(ctx, R.color.primary)
         }
 
-        private fun labelFor(actionType: String): String = when (actionType) {
-            "SPOOL_CREADO"           -> "Spool creado"
-            "SPOOL_ELIMINADO"        -> "Spool eliminado"
-            "SPOOL_ELIMINADO_HARD"   -> "Spool eliminado (definitivo)"
-            "PL_CREADO"              -> "Packing List creado"
-            "PL_EDITADO"             -> "Packing List editado"
-            "PL_ELIMINADO"           -> "Packing List eliminado"
-            "VEHICULO_CREADO"        -> "Vehículo creado"
-            "VEHICULO_EDITADO"       -> "Vehículo editado"
-            "VEHICULO_ELIMINADO"     -> "Vehículo eliminado"
-            "TRANSFERENCIA_ENVIADA"  -> "Envío registrado"
-            "TRANSFERENCIA_RECIBIDA" -> "Recepción registrada"
+        private fun labelFor(actionType: String, ctx: Context): String = when (actionType) {
+            "SPOOL_CREADO"           -> ctx.getString(R.string.event_label_spool_created)
+            "SPOOL_ELIMINADO"        -> ctx.getString(R.string.event_label_spool_deleted)
+            "SPOOL_ELIMINADO_HARD"   -> ctx.getString(R.string.event_label_spool_deleted_hard)
+            "PL_CREADO"              -> ctx.getString(R.string.event_label_pl_created)
+            "PL_EDITADO"             -> ctx.getString(R.string.event_label_pl_edited)
+            "PL_ELIMINADO"           -> ctx.getString(R.string.event_label_pl_deleted)
+            "PL_ELIMINADO_HARD"      -> ctx.getString(R.string.event_label_pl_deleted_hard)
+            "VEHICULO_CREADO"        -> ctx.getString(R.string.event_label_vehicle_created)
+            "VEHICULO_EDITADO"       -> ctx.getString(R.string.event_label_vehicle_edited)
+            "VEHICULO_ELIMINADO"     -> ctx.getString(R.string.event_label_vehicle_deleted)
+            "TRANSFERENCIA_ENVIADA"  -> ctx.getString(R.string.event_label_transfer_sent)
+            "TRANSFERENCIA_RECIBIDA" -> ctx.getString(R.string.event_label_transfer_received)
+            "INCIDENCIA_CREADA"      -> ctx.getString(R.string.event_label_incident_created)
+            "INCIDENCIA_CERRADA"     -> ctx.getString(R.string.event_label_incident_closed)
             else -> actionType.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }
         }
     }

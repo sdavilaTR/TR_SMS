@@ -429,10 +429,9 @@ class MainActivity : AppCompatActivity() {
             drawerLayout.closeDrawer(GravityCompat.START)
         } else {
             if (navController.currentDestination?.id != R.id.homeFragment) {
-                navController.navigate(R.id.homeFragment)
-            } else {
-                super.onBackPressed()
+                navController.popBackStack(R.id.homeFragment, false)
             }
+            // Home: back does nothing (no exit)
         }
     }
 
@@ -543,17 +542,49 @@ class MainActivity : AppCompatActivity() {
         findViewById<FloatingActionButton>(R.id.fabQrScan)?.visibility = if (isGuest) android.view.View.GONE else android.view.View.VISIBLE
     }
 
+    /**
+     * Runs [block] in isolation: a failure (network, parsing, DB) is logged and
+     * swallowed instead of aborting the rest of [syncSmsData], so e.g. a vehicles
+     * fetch failure can't prevent the dropdown lookups (units, positions, etc.)
+     * further down from running.
+     */
+    private suspend fun syncSection(name: String, block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: Exception) {
+            Log.e(TAG, "syncSmsData: section '$name' failed", e)
+        }
+    }
+
     internal suspend fun syncSmsData() {
         val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-        val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+        // Cache the resolved code under its own config key so a later, unrelated full-sync
+        // failure (e.g. an unrelated 500 on /sync/download) can't wipe our ability to resolve
+        // it — the projects table only gets refreshed by that same endpoint.
+        val projectCodeCacheKey = "cached_project_code_$projectId"
+        val liveProjectCode = ServiceLocator.projectDao.getById(projectId)?.project_code?.takeIf { it.isNotBlank() }
+        val projectCode = if (liveProjectCode != null) {
+            ServiceLocator.configRepo.set(projectCodeCacheKey, liveProjectCode)
+            liveProjectCode
+        } else {
+            ServiceLocator.configRepo.get(projectCodeCacheKey)?.takeIf { it.isNotBlank() }?.also {
+                Log.w(TAG, "syncSmsData: projects table has no row for id=$projectId, using cached code '$it'")
+            }
+        }
         if (projectCode.isNullOrBlank()) {
             Log.w(TAG, "syncSmsData: no project code for id=$projectId")
             return
         }
-        Log.d(TAG, "syncSmsData: fetching SMS data for $projectCode")
-        try {
-            val service = ServiceLocator.apiClient.getService()
+        Log.d(TAG, "syncSmsData: fetching SMS data for '$projectCode' (len=${projectCode.length}, bytes=${projectCode.toByteArray().joinToString(",")})")
 
+        val service = try {
+            ServiceLocator.apiClient.getService()
+        } catch (e: Exception) {
+            Log.e(TAG, "syncSmsData: could not obtain API service", e)
+            return
+        }
+
+        syncSection("spools") {
             val spoolResp = service.getSpools(projectCode)
             if (spoolResp.isSuccessful) {
                 val spoolRaw = spoolResp.body()?.string().orEmpty()
@@ -590,7 +621,9 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             ServiceLocator.smsSpoolDao.deleteInactive()
+        }
 
+        syncSection("packing-lists") {
             val plResp = service.getPackingLists(projectCode)
             if (plResp.isSuccessful) {
                 val raw = plResp.body()?.string().orEmpty()
@@ -615,10 +648,14 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "syncSmsData: inserted ${mergedPLs.size} packing lists (${entities.size - mergedPLs.size} inactive/deleted skipped)")
             }
             ServiceLocator.smsPackingListDao.deleteInactive()
+        }
 
+        syncSection("vehicles") {
             val vehicleResp = service.getVehicles(projectCode)
             if (vehicleResp.isSuccessful) {
-                val parsed = parseVehicleEntities(vehicleResp.body()?.string().orEmpty(), projectId)
+                val rawVehicles = vehicleResp.body()?.string().orEmpty()
+                Log.d(TAG, "syncSMS vehicles raw(500): ${rawVehicles.take(500)}")
+                val parsed = parseVehicleEntities(rawVehicles, projectId)
                 // Hide vehicles deleted offline (pending DELETE op) so the server copy doesn't resurrect them.
                 val deletedVehicles = com.example.hassiwrapper.ui.vehicles.VehicleDetailFragment.locallyDeletedVehicleIds +
                     ServiceLocator.outboxService.pendingDeleteIds(com.example.hassiwrapper.services.OutboxService.Entity.VEHICLE).toSet()
@@ -639,12 +676,15 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "syncSmsData: inserted ${mergedVehicles.size} vehicles")
                 }
             }
+        }
 
-            // Project-specific lookups
-            fun logLookup(name: String, resp: retrofit2.Response<okhttp3.ResponseBody>, count: Int) {
-                Log.d(TAG, "syncSMS lookup $name: HTTP ${resp.code()} → parsed $count")
-                if (!resp.isSuccessful) Log.w(TAG, "syncSMS lookup $name error body: ${resp.errorBody()?.string()?.take(200)}")
-            }
+        // Project-specific lookups
+        fun logLookup(name: String, resp: retrofit2.Response<okhttp3.ResponseBody>, count: Int) {
+            Log.d(TAG, "syncSMS lookup $name: HTTP ${resp.code()} → parsed $count")
+            if (!resp.isSuccessful) Log.w(TAG, "syncSMS lookup $name error body: ${resp.errorBody()?.string()?.take(200)}")
+        }
+
+        syncSection("areas") {
             service.getAreas(projectCode).let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 Log.d(TAG, "syncSMS areas raw(200): ${raw.take(200)}")
@@ -653,6 +693,8 @@ class MainActivity : AppCompatActivity() {
                     if (list.isNotEmpty()) { ServiceLocator.smsAreaDao.deleteByProject(projectId); ServiceLocator.smsAreaDao.insertAll(list) }
                 }
             }
+        }
+        syncSection("specs") {
             service.getSpecs(projectCode).let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 Log.d(TAG, "syncSMS specs raw(200): ${raw.take(200)}")
@@ -661,6 +703,8 @@ class MainActivity : AppCompatActivity() {
                     if (list.isNotEmpty()) { ServiceLocator.smsSpecDao.deleteByProject(projectId); ServiceLocator.smsSpecDao.insertAll(list) }
                 }
             }
+        }
+        syncSection("subcontractors") {
             service.getSubcontractors(projectCode).let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 Log.d(TAG, "syncSMS subcontractors raw(200): ${raw.take(200)}")
@@ -669,8 +713,10 @@ class MainActivity : AppCompatActivity() {
                     if (list.isNotEmpty()) { ServiceLocator.smsSubcontractorDao.deleteByProject(projectId); ServiceLocator.smsSubcontractorDao.insertAll(list) }
                 }
             }
+        }
 
-            service.getBoreSizes().let { r ->
+        syncSection("bore-sizes") {
+            service.getBoreSizes(projectCode).let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 Log.d(TAG, "syncSMS bore-sizes raw(300): ${raw.take(300)}")
                 parseBoreSizes(raw).also { list ->
@@ -678,7 +724,9 @@ class MainActivity : AppCompatActivity() {
                     if (list.isNotEmpty()) { ServiceLocator.smsBoreSizeDao.deleteAll(); ServiceLocator.smsBoreSizeDao.insertAll(list) }
                 }
             }
-            service.getIsoTypes().let { r ->
+        }
+        syncSection("iso-types") {
+            service.getIsoTypes(projectCode).let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 Log.d(TAG, "syncSMS iso-types raw(300): ${raw.take(300)}")
                 parseIsoTypes(raw).also { list ->
@@ -686,14 +734,18 @@ class MainActivity : AppCompatActivity() {
                     if (list.isNotEmpty()) { ServiceLocator.smsIsoTypeDao.deleteAll(); ServiceLocator.smsIsoTypeDao.insertAll(list) }
                 }
             }
-            service.getPositions().let { r ->
+        }
+        syncSection("positions") {
+            service.getPositions(projectCode).let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 parsePositions(raw).also { list ->
                     logLookup("positions", r, list.size)
                     if (list.isNotEmpty()) { ServiceLocator.smsPositionDao.deleteAll(); ServiceLocator.smsPositionDao.insertAll(list) }
                 }
             }
-            service.getSpoolStatuses().let { r ->
+        }
+        syncSection("spool-statuses") {
+            service.getSpoolStatuses(projectCode).let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 Log.d(TAG, "syncSMS spool-statuses raw(300): ${raw.take(300)}")
                 parseSpoolStatuses(raw).also { list ->
@@ -701,23 +753,24 @@ class MainActivity : AppCompatActivity() {
                     if (list.isNotEmpty()) { ServiceLocator.smsSpoolStatusDao.deleteAll(); ServiceLocator.smsSpoolStatusDao.insertAll(list) }
                 }
             }
-            service.getUnits().let { r ->
+        }
+        syncSection("units") {
+            service.getUnits(projectCode).let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 parseUnits(raw).also { list ->
                     logLookup("units", r, list.size)
                     if (list.isNotEmpty()) { ServiceLocator.smsUnitDao.deleteAll(); ServiceLocator.smsUnitDao.insertAll(list) }
                 }
             }
-            service.getIncompleteStatuses().let { r ->
+        }
+        syncSection("incomplete-statuses") {
+            service.getIncompleteStatuses(projectCode).let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 parseIncompleteStatuses(raw).also { list ->
                     logLookup("incomplete-statuses", r, list.size)
                     if (list.isNotEmpty()) { ServiceLocator.smsIncompleteStatusDao.deleteAll(); ServiceLocator.smsIncompleteStatusDao.insertAll(list) }
                 }
             }
-
-        } catch (e: Exception) {
-            Log.e(TAG, "syncSmsData failed", e)
         }
     }
 
@@ -816,10 +869,8 @@ class MainActivity : AppCompatActivity() {
     private fun parseSubcontractorEntities(raw: String, projectId: Int): List<SmsSubcontractorEntity> =
         smsJsonArray(raw).mapNotNull { el ->
             if (!el.isJsonObject) null else el.asJsonObject.let { o ->
-                val id = o.jLong("contractorId", "contractor_id", "id") ?: return@mapNotNull null
-                val code = o.jStr("contractorCode", "contractor_code").orEmpty()
-                val name = o.jStr("contractorName", "contractor_name").orEmpty()
-                SmsSubcontractorEntity(id, projectId, code, name,
+                val id = o.jLong("subcontractorId", "subcontractor_id", "id") ?: return@mapNotNull null
+                SmsSubcontractorEntity(id, projectId, o.jStr("code").orEmpty(), o.jStr("name").orEmpty(),
                     o.jBool("isActive", "is_active") ?: true, o.jStr("createdAt", "created_at").orEmpty(),
                     o.jStr("createdBy", "created_by").orEmpty(), o.jStr("updatedAt", "updated_at"),
                     o.jStr("updatedBy", "updated_by"))

@@ -12,6 +12,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.example.hassiwrapper.BuildConfig
+import com.example.hassiwrapper.R
 import com.example.hassiwrapper.receiver.DownloadCompleteReceiver
 import com.example.hassiwrapper.receiver.InstallStatusReceiver
 import java.io.File
@@ -84,7 +85,7 @@ object UpdateInstaller {
 
         val request = DownloadManager.Request(Uri.parse(updateInfo.downloadUrl))
             .setTitle("Smart Material System")
-            .setDescription("Descargando versión ${updateInfo.version}…")
+            .setDescription(context.getString(R.string.update_downloading_version, updateInfo.version))
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, APK_FILENAME)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setAllowedNetworkTypes(
@@ -125,7 +126,7 @@ object UpdateInstaller {
             Log.e(TAG, "Downloaded file is not a valid APK. First 200 bytes: $preview")
             Toast.makeText(
                 context,
-                "La descarga no es un APK válido — revise el token de actualización",
+                context.getString(R.string.update_invalid_apk),
                 Toast.LENGTH_LONG
             ).show()
             apkFile.delete()
@@ -163,7 +164,7 @@ object UpdateInstaller {
         if (previous == null || !previous.exists() || previous.length() == 0L) {
             Toast.makeText(
                 context,
-                "No hay versión anterior disponible",
+                context.getString(R.string.update_no_previous_version),
                 Toast.LENGTH_SHORT
             ).show()
             return
@@ -172,7 +173,7 @@ object UpdateInstaller {
             Log.e(TAG, "Previous APK corrupt, refusing to install")
             Toast.makeText(
                 context,
-                "La versión anterior está corrupta",
+                context.getString(R.string.update_previous_corrupt),
                 Toast.LENGTH_LONG
             ).show()
             return

@@ -707,7 +707,7 @@ class SendPackingListFragment : Fragment() {
                 }
 
                 val activity = requireActivity() as? MainActivity
-                activity?.lifecycleScope?.launch { ServiceLocator.syncService.fullSync() }
+                activity?.lifecycleScope?.launch { ServiceLocator.syncService.syncSmsUploads() }
 
                 if (!isAdded) return@launch
                 activity?.playSuccess()
@@ -722,7 +722,7 @@ class SendPackingListFragment : Fragment() {
                 findNavController().navigateUp()
             } catch (e: Exception) {
                 Log.e("SendPL", "onConfirmSend FAILED", e)
-                if (isAdded) Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                if (isAdded) Toast.makeText(requireContext(), getString(R.string.transfer_send_error, e.message), Toast.LENGTH_LONG).show()
             }
         }
     }

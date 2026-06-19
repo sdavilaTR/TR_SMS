@@ -72,7 +72,15 @@ class IncidentDetailFragment : Fragment() {
                 .setMessage(R.string.incident_close_confirm_msg)
                 .setPositiveButton(R.string.incident_close_confirm_yes) { _, _ ->
                     viewLifecycleOwner.lifecycleScope.launch {
+                        val incident = ServiceLocator.smsIncidentDao.getById(incidentId)
                         ServiceLocator.smsIncidentService.closeIncident(incidentId)
+                        if (incident != null) {
+                            ServiceLocator.auditLogService.log(
+                                com.example.hassiwrapper.services.AuditLogService.INCIDENCIA_CERRADA,
+                                com.example.hassiwrapper.services.AuditLogService.ENTITY_INCIDENCIA,
+                                incident.id, incident.spool_code, projectId = incident.project_id
+                            )
+                        }
                         Toast.makeText(requireContext(), R.string.incident_closed_ok, Toast.LENGTH_SHORT).show()
                         reload()
                     }

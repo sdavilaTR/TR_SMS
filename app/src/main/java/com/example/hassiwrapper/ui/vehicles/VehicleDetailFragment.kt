@@ -99,7 +99,7 @@ class VehicleDetailFragment : Fragment() {
     }
 
     private fun bindVehicle(v: SmsVehicleEntity) {
-        txtPlate.text    = v.license_plate.ifBlank { "Vehículo ${v.vehicle_id}" }
+        txtPlate.text    = v.license_plate.ifBlank { getString(R.string.vehicles_label_fallback, v.vehicle_id) }
         val subtitle = listOfNotNull(v.vehicle_name, v.vehicle_type, v.company).joinToString(" · ")
         txtSubtitle.text = subtitle.ifBlank { "—" }
         txtInfoPlate.text    = v.license_plate.ifBlank { "—" }
@@ -306,6 +306,12 @@ class VehicleDetailFragment : Fragment() {
                         OutboxService.Entity.VEHICLE, OutboxService.Op.HARD_DELETE, vehicleId, projectId
                     )
                 }
+
+                ServiceLocator.auditLogService.log(
+                    com.example.hassiwrapper.services.AuditLogService.VEHICULO_ELIMINADO,
+                    com.example.hassiwrapper.services.AuditLogService.ENTITY_VEHICULO,
+                    vehicleId, vehicle?.license_plate ?: "", projectId = projectId
+                )
 
                 Toast.makeText(requireContext(), getString(R.string.vehicle_detail_hard_deleted), Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()

@@ -171,7 +171,7 @@ class NewIncidentFragment : Fragment() {
             btnSave.isEnabled = false
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
-                    ServiceLocator.smsIncidentService.createIncident(
+                    val incident = ServiceLocator.smsIncidentService.createIncident(
                         spoolCode = spoolCode,
                         spoolSuffix = spoolSuffix,
                         description = description,
@@ -181,11 +181,16 @@ class NewIncidentFragment : Fragment() {
                         severity = severity,
                         photoPath = photoPath
                     )
+                    ServiceLocator.auditLogService.log(
+                        com.example.hassiwrapper.services.AuditLogService.INCIDENCIA_CREADA,
+                        com.example.hassiwrapper.services.AuditLogService.ENTITY_INCIDENCIA,
+                        incident.id, incident.spool_code, projectId = incident.project_id
+                    )
                     Toast.makeText(requireContext(), R.string.incident_saved_ok, Toast.LENGTH_SHORT).show()
                     findNavController().popBackStack()
                 } catch (e: Exception) {
                     Log.e(TAG, "createIncident failed", e)
-                    Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), getString(R.string.incident_error_save, e.message), Toast.LENGTH_LONG).show()
                 } finally {
                     btnSave.isEnabled = true
                 }

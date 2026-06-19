@@ -100,7 +100,7 @@ class VehiclesFragment : Fragment() {
                 Log.d("VehiclesDebug", "Project lookup id=$projectId → $project")
                 val projectCode = project?.project_code
                 if (projectCode.isNullOrBlank()) {
-                    val msg = "projectCode nulo/vacío para project_id=$projectId. ¿Se hizo sync?"
+                    val msg = getString(R.string.vehicles_error_project_code, projectId)
                     Log.e("VehiclesDebug", msg)
                     showError(getString(R.string.vehicles_error_prefix, msg))
                     return@launch
@@ -239,7 +239,7 @@ class VehiclesFragment : Fragment() {
             val v = item.vehicle
             val pls = item.packingLists
 
-            h.title.text = v.license_plate.ifBlank { "Vehículo ${v.vehicle_id}" }
+            h.title.text = v.license_plate.ifBlank { getString(R.string.vehicles_label_fallback, v.vehicle_id) }
             val sub = listOfNotNull(v.vehicle_name, v.vehicle_type, v.company).joinToString(" · ")
             h.subtitle.text = sub.ifBlank { getString(R.string.vehicles_plate_format, v.license_plate) }
 

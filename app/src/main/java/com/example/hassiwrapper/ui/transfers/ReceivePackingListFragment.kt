@@ -379,7 +379,7 @@ class ReceivePackingListFragment : Fragment() {
                 }
             } catch (_: Exception) { }
 
-            activity?.lifecycleScope?.launch { ServiceLocator.syncService.fullSync() }
+            activity?.lifecycleScope?.launch { ServiceLocator.syncService.syncSmsUploads() }
 
             if (!isAdded) return@launch
             (requireActivity() as? MainActivity)?.playSuccess()

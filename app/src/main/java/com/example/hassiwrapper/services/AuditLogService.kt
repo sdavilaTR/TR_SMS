@@ -16,16 +16,20 @@ class AuditLogService(
         const val PL_CREADO              = "PL_CREADO"
         const val PL_EDITADO             = "PL_EDITADO"
         const val PL_ELIMINADO           = "PL_ELIMINADO"
+        const val PL_ELIMINADO_HARD      = "PL_ELIMINADO_HARD"
         const val VEHICULO_CREADO        = "VEHICULO_CREADO"
         const val VEHICULO_EDITADO       = "VEHICULO_EDITADO"
         const val VEHICULO_ELIMINADO     = "VEHICULO_ELIMINADO"
         const val TRANSFERENCIA_ENVIADA  = "TRANSFERENCIA_ENVIADA"
         const val TRANSFERENCIA_RECIBIDA = "TRANSFERENCIA_RECIBIDA"
+        const val INCIDENCIA_CREADA      = "INCIDENCIA_CREADA"
+        const val INCIDENCIA_CERRADA     = "INCIDENCIA_CERRADA"
 
         const val ENTITY_SPOOL         = "SPOOL"
         const val ENTITY_PL            = "PL"
         const val ENTITY_VEHICULO      = "VEHICULO"
         const val ENTITY_TRANSFERENCIA = "TRANSFERENCIA"
+        const val ENTITY_INCIDENCIA    = "INCIDENCIA"
     }
 
     suspend fun log(

@@ -10,6 +10,7 @@
     <string name="packing_lists_count">%1$d packing lists</string>
     <string name="packing_lists_error_prefix">Erreur : %s</string>
     <string name="packing_lists_error_http">Erreur HTTP %d</string>
+    <string name="packing_lists_error_project_code">projectCode nul/vide pour project_id=%d. Avez-vous synchronisé ?</string>
     <string name="home_label_packing_lists">Packing Lists</string>
     <string name="menu_attendance">Registres de Spools</string>
     <string name="menu_sync">Synchronisation</string>
@@ -157,6 +158,7 @@
     <string name="login_error_empty">Entrez l\'email et le mot de passe.</string>
     <string name="login_error_auth">Erreur d\'authentification.</string>
     <string name="login_error_format">Erreur : %s</string>
+    <string name="login_error_empty_code">Erreur : Saisissez le code du terminal.</string>
 
     <string name="settings_check_updates">Rechercher des mises à jour</string>
     <string name="settings_check_updates_searching">Recherche en cours…</string>
@@ -286,6 +288,11 @@
     <string name="sync_auto_relogin">Réauthentification automatique…</string>
     <string name="sync_auto_relogin_ok">Session renouvelée, nouvelle tentative de sync</string>
     <string name="sync_auto_relogin_fail">Impossible de renouveler la session automatiquement</string>
+    <string name="sync_error_session_expired">Session expirée, impossible de la renouveler automatiquement</string>
+    <string name="sync_error_no_connection">Aucune connexion au serveur</string>
+    <string name="sync_error_server_unavailable">Serveur indisponible (HTTP %d)</string>
+    <string name="sync_error_server_rejected">Le serveur a rejeté la connexion (HTTP %d)</string>
+    <string name="sync_error_outbox_retry">File des modifications : pas de connexion, nouvelle tentative</string>
 
     <!-- Bientôt disponible -->
     <string name="coming_soon_title">Bientôt disponible</string>
@@ -360,6 +367,16 @@
     <string name="update_btn_update">Mettre à jour</string>
     <string name="update_btn_later">Plus tard</string>
     <string name="update_downloading">Téléchargement de la mise à jour…</string>
+    <string name="update_downloading_version">Téléchargement de la version %s…</string>
+    <string name="update_invalid_apk">Le téléchargement n\'est pas un APK valide — vérifiez le jeton de mise à jour</string>
+    <string name="update_no_previous_version">Aucune version antérieure disponible</string>
+    <string name="update_previous_corrupt">La version précédente est corrompue</string>
+
+    <!-- Auth Repository -->
+    <string name="auth_error_invalid_credentials">Identifiants incorrects.</string>
+    <string name="auth_error_http">Erreur %d.</string>
+    <string name="auth_error_empty_response">Réponse vide du serveur.</string>
+    <string name="auth_error_connection">Impossible de se connecter au serveur : %s</string>
     <string name="update_permission_needed">Activez l\'installation d\'applications inconnues pour continuer la mise à jour</string>
 
     <!-- Retour arrière -->
@@ -446,6 +463,7 @@
     <string name="incident_saved_ok">Incident enregistré</string>
     <string name="incident_error_missing_spool_code">Indiquez le code du spool</string>
     <string name="incident_error_missing_description">Décrivez l\'incident</string>
+    <string name="incident_error_save">Erreur : %s</string>
     <string name="incident_location_laydown">Laydown</string>
     <string name="incident_location_site">Site</string>
     <string name="incident_location_workshop">Atelier</string>
@@ -454,4 +472,422 @@
     <string name="incident_severity_high">Élevée</string>
     <string name="incident_severity_critical">Critique</string>
     <string name="home_label_critical_incidents">Incidents critiques</string>
+
+    <!-- QR Scanner FAB -->
+    <string name="qr_scan_button">Scanner le code QR</string>
+    <string name="qr_result_title">Code QR détecté</string>
+
+    <!-- QR Scanner Fragment -->
+    <string name="menu_qr_scanner">Scanner QR</string>
+    <string name="qr_scanner_status_waiting">En attente de scan…\nUtilisez le scanner laser ou le bouton caméra</string>
+    <string name="qr_scanner_status_processing">Traitement du code…</string>
+    <string name="qr_scanner_status_spool_found">Spool trouvé : %1$s</string>
+    <string name="qr_scanner_status_vehicle_found">Véhicule trouvé : %1$s</string>
+    <string name="qr_scanner_btn_camera">Scanner avec la caméra</string>
+    <string name="qr_scanner_hint_laser">Appuyez sur le bouton latéral du terminal pour scanner au laser</string>
+    <string name="qr_scanner_result_spool_not_found">Spool introuvable dans la base locale — synchronisez d\'abord</string>
+    <string name="qr_scanner_result_vehicle_not_found">Véhicule introuvable dans la base locale — synchronisez d\'abord</string>
+    <string name="qr_scanner_result_vehicle_badge">Véhicule (badge UUID)</string>
+    <string name="qr_scanner_result_badge_unsupported">Le badge UUID n\'est pas associé à un véhicule SMS. Utilisez le QR du véhicule dans le système ATLAS.</string>
+    <string name="qr_scanner_result_unknown">Code QR non reconnu</string>
+    <string name="qr_scanner_result_id_detail">ID : %1$s</string>
+
+    <!-- QR Scanner: relocate mode -->
+    <string name="qr_scanner_btn_relocate">Relocaliser des spools</string>
+    <string name="qr_scanner_btn_relocate_active">Annuler la relocalisation</string>
+    <string name="qr_scanner_relocate_label_area">Section de destination (Laydown)</string>
+    <string name="qr_scanner_relocate_label_unit">Unité de destination (Site)</string>
+    <string name="qr_scanner_relocate_no_location">Configurez l\'emplacement du terminal (Laydown/Site) dans les Paramètres</string>
+    <string name="qr_scanner_relocate_no_destinations">Aucune section/unité enregistrée pour ce terminal. Configurez-les dans les Paramètres</string>
+    <string name="qr_scanner_relocate_select_dest_first">Sélectionnez la destination avant de scanner</string>
+    <string name="qr_scanner_relocate_count">Spools relocalisés vers %1$s : %2$d</string>
+    <string name="qr_scanner_relocate_success">%1$s → %2$s</string>
+    <string name="qr_scanner_relocate_only_spools">Seuls les spools peuvent être relocalisés</string>
+    <string name="qr_scanner_btn_finish_relocate">Terminer la relocalisation</string>
+    <string name="scan_result_spool_registered">Spool enregistré : %1$s</string>
+    <string name="scan_result_spool_not_registered">Spool non enregistré dans la base de données</string>
+    <string name="scan_result_vehicle_registered">Véhicule enregistré : %1$s</string>
+    <string name="scan_result_vehicle_not_registered">Véhicule non enregistré dans la base de données</string>
+    <string name="scan_create_question">Voulez-vous créer un nouvel enregistrement ?</string>
+    <string name="scan_action_create">Créer</string>
+    <string name="scan_action_close">Fermer</string>
+
+    <!-- Passport -->
+    <string name="passport_screen_title">Passeport</string>
+
+    <!-- Sync KPI vehicles -->
+    <string name="sync_kpi_in_transit_active">actifs</string>
+
+    <!-- Vehicles -->
+    <string name="menu_transfers">Envois et Réceptions</string>
+    <string name="menu_send_packing_list">Envois</string>
+    <string name="menu_receive_packing_list">Réceptions</string>
+    <string name="transfer_send_subtitle">Envoyer une packing list depuis ce terminal</string>
+    <string name="transfer_receive_subtitle">Recevoir une packing list sur ce terminal</string>
+    <string name="transfer_manual_vehicle_hint">Saisir la plaque manuellement</string>
+    <string name="transfer_manual_spool_hint">Saisir le code du spool manuellement</string>
+    <string name="transfer_btn_manual_confirm">Confirmer la saisie manuelle</string>
+    <string name="settings_debug_location_btn">[DEBUG] Changer la position du terminal</string>
+    <string name="settings_debug_location_changed">Position changée en : %s</string>
+    <string name="settings_kiosk_title">Mode Kiosque</string>
+    <string name="settings_kiosk_desc">Verrouille l\'application en plein écran (Screen Pinning). L\'appareil ne pourra pas quitter l\'application sans désactiver cette option.</string>
+    <string name="settings_kiosk_enabled">Mode Kiosque activé</string>
+    <string name="settings_kiosk_disabled">Mode Kiosque désactivé</string>
+    <string name="settings_close_app">Fermer l\'application</string>
+    <string name="settings_close_app_confirm">Voulez-vous fermer l\'application ?</string>
+    <string name="vehicles_empty">Aucun véhicule chargé.</string>
+    <string name="vehicles_error_prefix">Erreur : %s</string>
+    <string name="vehicles_error_http">HTTP %d</string>
+    <string name="vehicles_error_project_code">projectCode nul/vide pour project_id=%d. Avez-vous synchronisé ?</string>
+    <string name="vehicles_label_fallback">Véhicule %d</string>
+    <string name="vehicles_no_packing_lists">Aucune packing list assignée</string>
+    <string name="vehicles_packing_lists_label">Packing Lists</string>
+    <string name="vehicles_ready_to_send_badge">CHARGÉ · PRÊT À ENVOYER</string>
+    <string name="vehicles_origin_badge">Depuis : %s</string>
+
+    <!-- New Vehicle -->
+    <string name="new_vehicle_title">Nouveau Véhicule</string>
+    <string name="new_vehicle_section_details">Détails du Véhicule</string>
+    <string name="new_vehicle_field_plate">Plaque *</string>
+    <string name="new_vehicle_field_name">Nom du véhicule</string>
+    <string name="new_vehicle_field_company">Entreprise</string>
+    <string name="new_vehicle_field_type">Type de véhicule</string>
+    <string name="new_vehicle_field_capacity">Capacité (kg)</string>
+    <string name="new_vehicle_btn_save">Enregistrer le Véhicule</string>
+    <string name="new_vehicle_error_plate_required">La plaque est obligatoire</string>
+    <string name="new_vehicle_success">Véhicule créé avec succès</string>
+    <string name="new_vehicle_error_save">Erreur lors de l\'enregistrement : %s</string>
+
+    <!-- API environment -->
+    <string name="settings_api_section_title">Configuration API</string>
+    <string name="env_pro">PRO</string>
+    <string name="env_pre">PRE</string>
+    <string name="env_dev">DEV</string>
+    <string name="env_pro_desc">Production — atlas.tecnicasreunidas.es</string>
+    <string name="env_pre_desc">Pré-production — web-atlas-pre</string>
+    <string name="env_dev_desc">Développement — web-atlas-dev</string>
+    <string name="env_changed">Environnement API changé en %s</string>
+
+    <!-- User role -->
+    <string name="settings_role_section_title">Profil Utilisateur</string>
+    <string name="role_guest">GUEST</string>
+    <string name="role_admin">ADMIN</string>
+    <string name="role_dev">DEV</string>
+    <string name="role_guest_desc">Mode basique — Accueil, Scanner, Synchronisation</string>
+    <string name="role_admin_desc">Accès complet — Inventaire et Transferts</string>
+    <string name="role_dev_desc">Accès complet + outils de développement</string>
+    <string name="role_changed">Profil changé en %s</string>
+
+    <!-- Inventory -->
+    <string name="menu_inventario">Inventaire</string>
+    <string name="inventario_tab_spools">Spools</string>
+    <string name="inventario_tab_pls">Packing Lists</string>
+    <string name="inventario_tab_vehicles">Véhicules</string>
+
+    <!-- Quick Actions -->
+    <string name="home_quick_actions_title">Actions Rapides</string>
+    <string name="home_qa_new_pl">Créer une Packing List</string>
+    <string name="home_qa_send">Envoyer des Spools</string>
+    <string name="home_qa_transfers">Recevoir des Spools</string>
+    <string name="home_qa_new_incident">Nouvel Incident</string>
+    <string name="home_qa_new_spool">Nouveau Spool</string>
+    <string name="home_qa_new_vehicle">Nouveau Véhicule</string>
+
+    <!-- Debug: Project Switcher -->
+    <string name="home_btn_change_project">[DEBUG] Changer de Projet</string>
+    <string name="home_dialog_select_project">Sélectionner un projet</string>
+    <string name="home_syncing_project">Synchronisation…</string>
+    <string name="home_project_synced">Projet mis à jour : %s</string>
+    <string name="home_project_label">Projet : %s</string>
+
+    <!-- Spools List -->
+    <string name="spools_filter_all">Tous</string>
+    <string name="spools_filter_workshop">Workshop</string>
+    <string name="spools_filter_laydown">Laydown</string>
+    <string name="spools_filter_site">Site</string>
+
+    <!-- New Packing List -->
+    <string name="new_packing_list_title">Nouvelle Packing List</string>
+    <string name="new_packing_list_field_name">Nom *</string>
+    <string name="new_packing_list_field_vehicle">Véhicule</string>
+    <string name="new_packing_list_field_position">Position *</string>
+    <string name="new_packing_list_field_notes">Notes</string>
+    <string name="new_packing_list_btn_add_spools">Sélectionner des Spools sans PL</string>
+    <string name="new_packing_list_spools_selected">%d spool(s) sélectionné(s)</string>
+    <string name="new_packing_list_no_spools_available">Aucun spool sans PL pour ce projet</string>
+    <string name="new_packing_list_btn_save">Enregistrer la Packing List</string>
+    <string name="new_packing_list_btn_create">Créer une nouvelle packing list</string>
+    <string name="new_packing_list_success">Packing List créée</string>
+    <string name="new_packing_list_error_field_required">Requis</string>
+    <string name="new_packing_list_error_save">Erreur lors de l\'enregistrement : %1$s</string>
+    <string name="new_packing_list_preview_label">Nom :</string>
+    <string name="new_packing_list_section_details">Détails</string>
+    <string name="new_packing_list_section_spools">Spools</string>
+
+    <string name="pl_detail_title">Détail Packing List</string>
+    <string name="pl_detail_section_info">INFORMATIONS</string>
+    <string name="pl_detail_section_spools">SPOOLS ASSIGNÉS</string>
+    <string name="pl_detail_label_date">Date</string>
+    <string name="pl_detail_label_position">Position</string>
+    <string name="pl_detail_label_vehicle">Véhicule</string>
+    <string name="pl_detail_label_notes">Notes</string>
+    <string name="pl_detail_label_ready_to_send">Prêt à envoyer</string>
+    <string name="pl_detail_ready_yes">Oui</string>
+    <string name="pl_detail_ready_no">Non</string>
+    <string name="pl_detail_loading_spools">Chargement des spools…</string>
+    <string name="pl_detail_no_spools">Aucun spool assigné</string>
+    <string name="pl_detail_btn_edit">Modifier</string>
+    <string name="pl_detail_btn_delete">Supprimer</string>
+    <string name="pl_detail_confirm_delete_title">Supprimer la Packing List</string>
+    <string name="pl_detail_confirm_delete_msg">Voulez-vous vraiment supprimer cette Packing List ?</string>
+    <string name="pl_detail_deleted">Packing List supprimée</string>
+    <string name="pl_detail_error_delete">Erreur lors de la suppression : %1$s</string>
+    <string name="pl_edit_title">Modifier la Packing List</string>
+    <string name="pl_edit_current_name_label">Nom :</string>
+    <string name="pl_edit_btn_update">Mettre à jour la Packing List</string>
+    <string name="pl_edit_success">Packing List mise à jour</string>
+    <string name="pl_edit_error_save">Erreur lors de la mise à jour : %1$s</string>
+    <string name="pl_edit_btn_cancel">Annuler</string>
+    <string name="pl_detail_btn_add_spool">Ajouter un Spool</string>
+    <string name="pl_detail_btn_remove_spool">Retirer</string>
+    <string name="pl_detail_add_spool_title">Ajouter un Spool à la Packing List</string>
+    <string name="pl_detail_no_available_spools">Aucun spool disponible sans Packing List</string>
+    <string name="pl_detail_spool_added">Spool ajouté à la Packing List</string>
+    <string name="pl_detail_spool_removed">Spool retiré de la Packing List</string>
+    <string name="pl_scan_hint">Scannez le QR d\'un spool pour l\'ajouter directement</string>
+    <string name="pl_scan_spool_already_in_pl">Le spool %1$s appartient déjà à la Packing List %2$s</string>
+    <string name="pl_scan_spool_not_found">Spool introuvable dans le système</string>
+    <string name="new_pl_scan_spool_added">Spool %1$s ajouté à la sélection</string>
+    <string name="new_pl_scan_spool_already_selected">Le spool %1$s est déjà sélectionné</string>
+    <string name="pl_detail_remove_spool_title">Retirer le Spool</string>
+    <string name="pl_detail_remove_spool_msg">Retirer %1$s de cette Packing List ?</string>
+
+    <string name="new_spool_title">Nouveau Spool</string>
+    <string name="new_spool_section_id">Identification ({unité}-{ligne}-{code}-{train})</string>
+    <string name="new_spool_section_property">Propriétés</string>
+    <string name="new_spool_field_unit">Unité *</string>
+    <string name="new_spool_field_line">Ligne *</string>
+    <string name="new_spool_field_code">Code *</string>
+    <string name="new_spool_field_train">Train *</string>
+    <string name="new_spool_preview_label">Code :</string>
+    <string name="new_spool_field_diameter_inches">Diamètre (pouces)</string>
+    <string name="new_spool_field_diameter">Diamètre</string>
+    <string name="new_spool_field_bore_size_id">ID Bore Size</string>
+    <string name="new_spool_field_weight_kg">Poids (kg)</string>
+    <string name="new_spool_section_classification">Classification</string>
+    <string name="new_spool_field_iso_type">Type ISO</string>
+    <string name="new_spool_field_status">Statut</string>
+    <string name="new_spool_field_position">Position</string>
+    <string name="new_spool_field_incomplete_status">Statut incomplet</string>
+    <string name="new_spool_field_bore_size">Bore Size</string>
+    <string name="new_spool_btn_save">Enregistrer le Spool</string>
+    <string name="new_spool_btn_create">Créer un nouveau spool</string>
+    <string name="new_spool_success">Spool créé avec succès</string>
+    <string name="new_spool_error_field_required">Requis</string>
+    <string name="new_spool_error_save">Erreur lors de l\'enregistrement : %1$s</string>
+    <string name="spool_item_pl_assigned">Packing List : %1$s</string>
+    <string name="spool_item_pl_none">Aucune Packing List assignée</string>
+
+    <!-- Spool Detail Bottom Sheet -->
+    <string name="spool_detail_section_id">IDENTIFICATION</string>
+    <string name="spool_detail_section_properties">PROPRIÉTÉS PHYSIQUES</string>
+    <string name="spool_detail_section_status">STATUT</string>
+    <string name="spool_detail_section_packing_list">PACKING LIST</string>
+    <string name="spool_detail_section_events">HISTORIQUE DES ÉVÉNEMENTS</string>
+    <string name="spool_detail_field_code">Code</string>
+    <string name="spool_detail_field_description">Description</string>
+    <string name="spool_detail_field_priority">Priorité</string>
+    <string name="spool_detail_field_zone">Zone</string>
+    <string name="spool_detail_field_in_transit">En transit</string>
+    <string name="spool_detail_field_line">Ligne</string>
+    <string name="spool_detail_field_service">Service</string>
+    <string name="spool_detail_field_train">Train</string>
+    <string name="spool_detail_field_module">Module</string>
+    <string name="spool_detail_field_unit">Unité</string>
+    <string name="spool_detail_field_iso_type">Type ISO</string>
+    <string name="spool_detail_field_iso_date">Rév. ISO</string>
+    <string name="spool_detail_field_area">Secteur</string>
+    <string name="spool_detail_field_spec">Spécification</string>
+    <string name="spool_detail_field_subcontractor">Sous-traitant</string>
+    <string name="spool_detail_field_active">Actif</string>
+    <string name="spool_detail_field_created">Créé</string>
+    <string name="spool_detail_field_updated">Mis à jour</string>
+    <string name="spool_detail_field_diameter_in">Diamètre (in)</string>
+    <string name="spool_detail_field_diameter">Diamètre</string>
+    <string name="spool_detail_field_bore_size">Bore size</string>
+    <string name="spool_detail_field_weight">Poids</string>
+    <string name="spool_detail_field_status">Statut</string>
+    <string name="spool_detail_field_incomplete_status">Statut incomplet</string>
+    <string name="spool_detail_field_position">Position</string>
+    <string name="spool_detail_field_hold">En retenue</string>
+    <string name="spool_detail_field_damaged">Endommagé</string>
+    <string name="spool_detail_field_returned">Retourné à l\'usine</string>
+    <string name="spool_detail_field_pos_discrepancy">Écart de position</string>
+    <string name="spool_detail_field_review_discrepancy">Écart de révision</string>
+    <string name="spool_detail_field_last_event">Dernier événement</string>
+    <string name="spool_detail_field_pca_status">Date statut PCA</string>
+    <string name="spool_detail_field_pca_entry">Date d\'entrée PCA</string>
+    <string name="spool_detail_btn_assign_pl">Assigner à une PL</string>
+    <string name="spool_detail_btn_remove_pl">Retirer de la PL</string>
+    <string name="spool_detail_btn_delete">Supprimer le Spool</string>
+    <string name="spool_detail_confirm_delete_title">Supprimer le Spool</string>
+    <string name="spool_detail_confirm_delete_msg">Supprimer ce spool de la base de données locale ?</string>
+    <string name="spool_detail_deleted">Spool supprimé</string>
+    <string name="pl_detail_btn_hard_delete">[DEV] Supprimer la PL définitivement</string>
+    <string name="pl_detail_confirm_hard_delete_title">[DEV] Supprimer la PL définitivement</string>
+    <string name="pl_detail_confirm_hard_delete_msg">Suppression physique sur le serveur. Action irréversible. Continuer ?</string>
+    <string name="pl_detail_hard_deleted">Packing list supprimée définitivement du serveur</string>
+    <string name="spool_detail_btn_hard_delete">[DEV] Supprimer définitivement</string>
+    <string name="spool_detail_confirm_hard_delete_title">[DEV] Supprimer définitivement</string>
+    <string name="spool_detail_confirm_hard_delete_msg">Suppression physique sur le serveur. Action irréversible. Continuer ?</string>
+    <string name="spool_detail_hard_deleted">Spool supprimé définitivement du serveur</string>
+    <string name="spool_detail_events_empty">Aucun événement enregistré</string>
+    <string name="spool_detail_assign_pl_title">Sélectionner une Packing List</string>
+    <string name="spool_detail_assign_pl_remove">Retirer l\'assignation</string>
+    <string name="spool_detail_yes">Oui</string>
+    <string name="spool_detail_no">Non</string>
+    <string name="spool_detail_label_fallback">Spool %d</string>
+    <string name="spool_detail_error_delete">Erreur lors de la suppression : %s</string>
+    <string name="spool_detail_error_generic">Erreur : %s</string>
+
+    <!-- Vehicle Detail -->
+    <string name="vehicle_detail_title">Détail Véhicule</string>
+    <string name="vehicle_detail_section_info">INFORMATIONS</string>
+    <string name="vehicle_detail_section_packing_lists">PACKING LISTS ASSIGNÉES</string>
+    <string name="vehicle_detail_label_plate">Plaque</string>
+    <string name="vehicle_detail_label_name">Nom</string>
+    <string name="vehicle_detail_label_company">Entreprise</string>
+    <string name="vehicle_detail_label_type">Type</string>
+    <string name="vehicle_detail_label_capacity">Capacité</string>
+    <string name="vehicle_detail_loading_pls">Chargement des packing lists…</string>
+    <string name="vehicle_detail_no_pls">Aucune packing list assignée</string>
+    <string name="vehicle_detail_btn_add_pl">Ajouter une Packing List sans véhicule</string>
+    <string name="vehicle_detail_btn_edit">Modifier le Véhicule</string>
+    <string name="vehicle_detail_btn_hard_delete">Supprimer le Véhicule définitivement</string>
+    <string name="vehicle_detail_btn_remove_pl">Désassigner</string>
+    <string name="vehicle_detail_add_pl_title">Ajouter une Packing List au Véhicule</string>
+    <string name="vehicle_detail_no_unassigned_pls">Aucune packing list sans véhicule assigné</string>
+    <string name="vehicle_detail_pl_added">Packing List assignée au véhicule</string>
+    <string name="vehicle_detail_pl_removed">Packing List désassignée du véhicule</string>
+    <string name="vehicle_detail_remove_pl_title">Désassigner la Packing List</string>
+    <string name="vehicle_detail_remove_pl_msg">Désassigner %1$s de ce véhicule ?</string>
+    <string name="vehicle_detail_confirm_hard_delete_title">Supprimer le Véhicule définitivement</string>
+    <string name="vehicle_detail_confirm_hard_delete_msg">Suppression physique sur le serveur et dans la base de données locale. Action irréversible. Continuer ?</string>
+    <string name="vehicle_detail_hard_deleted">Véhicule supprimé définitivement</string>
+
+    <!-- Edit Vehicle -->
+    <string name="edit_vehicle_title">Modifier le Véhicule</string>
+    <string name="edit_vehicle_btn_update">Enregistrer les modifications</string>
+    <string name="edit_vehicle_btn_cancel">Annuler</string>
+    <string name="edit_vehicle_success">Véhicule mis à jour avec succès</string>
+    <string name="edit_vehicle_error_not_found">Véhicule introuvable</string>
+    <string name="edit_vehicle_error_save">Erreur lors de l\'enregistrement : %s</string>
+
+    <!-- Load Spools into Vehicle -->
+    <string name="load_spools_step1_title">Étape 1 : Sélectionner le Véhicule</string>
+    <string name="load_spools_step2_title">Étape 2 : Scanner les Spools</string>
+    <string name="load_spools_plate_hint">Plaque du véhicule</string>
+    <string name="load_spools_scan_vehicle">Scanner le QR du véhicule</string>
+    <string name="load_spools_confirm_vehicle">Confirmer le Véhicule</string>
+    <string name="load_spools_vehicle_not_found">Véhicule introuvable. Vérifiez la plaque ou synchronisez d\'abord.</string>
+    <string name="load_spools_vehicle_selected">Véhicule sélectionné : %s</string>
+    <string name="load_spools_spool_code_hint">Code du spool</string>
+    <string name="load_spools_spool_suffix_hint">Suffixe (optionnel)</string>
+    <string name="load_spools_scan_spool">Scanner le Spool</string>
+    <string name="load_spools_add_spool">Ajouter</string>
+    <string name="load_spools_save">Enregistrer le Chargement</string>
+    <string name="load_spools_spool_not_found">Spool introuvable dans la base locale. Il sera ajouté sans données de packing list.</string>
+    <string name="load_spools_spools_count">Spools ajoutés : %1$d</string>
+    <string name="load_spools_warning_multi_pl">⚠ Attention : les spools appartiennent à %1$d Packing Lists différentes.</string>
+    <string name="load_spools_error_incomplete">Packing Lists incomplètes :\n%1$s</string>
+    <string name="load_spools_confirm_incomplete_title">Packing Lists incomplètes</string>
+    <string name="load_spools_confirm_incomplete_msg">Certaines Packing Lists n\'ont pas tous leurs spools chargés :\n\n%1$s\n\nVoulez-vous continuer malgré tout ?</string>
+    <string name="load_spools_confirm_second_title">Confirmer l\'enregistrement</string>
+    <string name="load_spools_confirm_second_msg">Cette action enregistrera le chargement avec des Packing Lists incomplètes. Cette opération est irréversible. Confirmer ?</string>
+    <string name="load_spools_pl_created">Nouvelle Packing List créée : %1$s</string>
+    <string name="load_spools_saved">Chargement enregistré avec succès</string>
+    <string name="load_spools_spool_duplicate">Ce spool a déjà été ajouté.</string>
+    <string name="load_spools_enter_code">Saisissez un code de spool.</string>
+    <string name="load_spools_enter_plate">Saisissez ou scannez la plaque du véhicule.</string>
+    <string name="load_spools_spool_added">Spool %1$s ajouté.</string>
+    <string name="load_spools_no_pl">Sans Packing List</string>
+    <string name="load_spools_empty_error">Ajoutez au moins un spool avant d\'enregistrer.</string>
+    <string name="load_spools_btn_continue">Continuer</string>
+    <string name="load_spools_btn_save_anyway">Enregistrer malgré tout</string>
+    <string name="load_spools_qr_is_spool">Ce QR appartient à un spool, pas à un véhicule. Scannez le QR du véhicule.</string>
+    <string name="load_spools_weight_meter">Chargement : %1$s / %2$s kg (%3$d%%)</string>
+    <string name="load_spools_weight_no_capacity">Chargement : %1$s kg (capacité du véhicule non définie)</string>
+
+    <!-- Transfer: Send Packing List -->
+    <string name="transfer_send_title">Envoi de Packing List</string>
+    <string name="transfer_send_step3_title">Étape 3 : Destination</string>
+    <string name="transfer_send_destination_label">Destination de l\'envoi</string>
+    <string name="transfer_send_destination_required">Sélectionnez la destination avant de confirmer</string>
+    <string name="transfer_send_dest_laydown">Laydown</string>
+    <string name="transfer_send_dest_site">Site (urgent)</string>
+    <string name="transfer_send_btn_confirm">Confirmer l\'Envoi</string>
+    <string name="transfer_send_success">Envoi enregistré avec succès (en attente de synchronisation)</string>
+    <string name="transfer_send_error">Erreur : %s</string>
+    <string name="transfer_send_location_blocked">Impossible d\'envoyer depuis cet emplacement.</string>
+    <string name="transfer_select_destination">Sélectionner la destination de l\'envoi</string>
+    <string name="transfer_destination_laydown">Laydown</string>
+    <string name="transfer_destination_site">Site</string>
+
+    <!-- Transfer: Receive Packing List -->
+    <string name="transfer_receive_title">Réception de Packing List</string>
+    <string name="transfer_receive_step1_title">Étape 1 : Scanner le Véhicule</string>
+    <string name="transfer_receive_step2_title">Étape 2 : Sélectionner la Packing List</string>
+    <string name="transfer_receive_step3_title">Étape 3 : Confirmer les Spools</string>
+    <string name="transfer_receive_btn_confirm">Confirmer la Réception</string>
+    <string name="transfer_receive_success">Réception enregistrée avec succès (en attente de synchronisation)</string>
+    <string name="transfer_receive_no_pls">Aucune Packing List en transit pour ce véhicule.</string>
+
+    <!-- Transfer: Shared -->
+    <string name="transfer_spools_progress">%1$d / %2$d spools confirmés</string>
+    <string name="transfer_vehicle_confirmed">✓ Véhicule confirmé : %s</string>
+    <string name="transfer_spool_not_in_list">Ce spool n\'appartient pas à la Packing List sélectionnée.</string>
+    <string name="transfer_spool_already_confirmed">Ce spool a déjà été confirmé.</string>
+    <string name="transfer_spool_confirmed">✓ Spool %s confirmé.</string>
+    <string name="transfer_btn_scan_vehicle">Scanner le QR du véhicule</string>
+    <string name="transfer_btn_scan_spool">Scanner le Spool</string>
+    <string name="transfer_confirm_incomplete_title">Spools non confirmés</string>
+    <string name="transfer_confirm_incomplete_msg">Il y a %1$d spools non scannés. Voulez-vous continuer malgré tout ?</string>
+    <string name="transfer_assign_section">Section</string>
+    <string name="transfer_assign_unit">Unité</string>
+    <string name="transfer_assign_hint_laydown">Assignez une section de Laydown</string>
+    <string name="transfer_assign_hint_site">Assignez une unité de Site</string>
+    <string name="transfer_vehicle_not_found">Véhicule introuvable dans la base de données locale.</string>
+    <string name="transfer_vehicle_not_on_route">Le véhicule n\'est pas en route.</string>
+    <string name="transfer_vehicle_wrong_destination">Le véhicule n\'est pas dirigé vers cet emplacement.</string>
+    <string name="transfer_vehicle_wrong_project">Le véhicule n\'appartient pas au projet actuel.</string>
+    <string name="transfer_send_to">Vous allez envoyer vers %s</string>
+    <string name="transfer_pl_label">PL : %1$s</string>
+    <string name="transfer_vehicle_label">Véhicule : %1$s</string>
+
+    <!-- Auto-sync notifications -->
+    <string name="auto_sync_completed">Synchronisation automatique terminée</string>
+
+    <!-- Settings: location config -->
+    <string name="settings_location_config_title">Configuration des Emplacements</string>
+    <string name="settings_laydown_sections_label">Sections Laydown</string>
+    <string name="settings_laydown_sections_hint">Ex : 1A,2A,1B,2B,1C,2C,1D,2D</string>
+    <string name="settings_site_units_label">Unités Site</string>
+    <string name="settings_site_units_hint">Ex : 1,2,3,4</string>
+    <string name="settings_location_config_save">Enregistrer</string>
+    <string name="settings_location_config_saved">Configuration des emplacements enregistrée</string>
+
+    <!-- Event History -->
+    <string name="menu_event_history">Historique des Événements</string>
+    <string name="event_history_empty">Aucun événement enregistré pour ce projet</string>
+    <string name="event_label_spool_created">Spool créé</string>
+    <string name="event_label_spool_deleted">Spool supprimé</string>
+    <string name="event_label_spool_deleted_hard">Spool supprimé (définitif)</string>
+    <string name="event_label_pl_created">Packing List créée</string>
+    <string name="event_label_pl_edited">Packing List modifiée</string>
+    <string name="event_label_pl_deleted">Packing List supprimée</string>
+    <string name="event_label_vehicle_created">Véhicule créé</string>
+    <string name="event_label_vehicle_edited">Véhicule modifié</string>
+    <string name="event_label_vehicle_deleted">Véhicule supprimé</string>
+    <string name="event_label_transfer_sent">Envoi enregistré</string>
+    <string name="event_label_transfer_received">Réception enregistrée</string>
 </resources>

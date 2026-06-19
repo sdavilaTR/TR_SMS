@@ -376,6 +376,12 @@ class PackingListDetailFragment : Fragment() {
                     )
                 }
 
+                ServiceLocator.auditLogService.log(
+                    com.example.hassiwrapper.services.AuditLogService.PL_ELIMINADO_HARD,
+                    com.example.hassiwrapper.services.AuditLogService.ENTITY_PL,
+                    packingListId, pl?.packing_list_name ?: "PL $packingListId", projectId = projectId
+                )
+
                 Toast.makeText(requireContext(), getString(R.string.pl_detail_hard_deleted), Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()
             } catch (e: Exception) {

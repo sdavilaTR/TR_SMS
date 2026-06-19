@@ -46,6 +46,21 @@ class TracDeviceAdmin : DeviceAdminReceiver() {
             } catch (e: Exception) {
                 Log.w(TAG, "setPermissionGrantState(CAMERA) failed: ${e.message}")
             }
+            try {
+                // Without this allowlist, startLockTask() falls back to plain screen
+                // pinning (consent dialog, status bar fully forced off) instead of the
+                // silent Device Owner Lock Task mode that respects setLockTaskFeatures.
+                dpm.setLockTaskPackages(admin, arrayOf(context.packageName))
+            } catch (e: Exception) {
+                Log.w(TAG, "setLockTaskPackages failed: ${e.message}")
+            }
+            try {
+                // Allow status bar system info (clock, battery, connectivity) while
+                // in Lock Task (kiosk) mode; Device Owner hides it by default otherwise.
+                dpm.setLockTaskFeatures(admin, DevicePolicyManager.LOCK_TASK_FEATURE_SYSTEM_INFO)
+            } catch (e: Exception) {
+                Log.w(TAG, "setLockTaskFeatures failed: ${e.message}")
+            }
         }
     }
 }

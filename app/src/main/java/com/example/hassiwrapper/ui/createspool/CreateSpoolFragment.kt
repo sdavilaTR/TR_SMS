@@ -12,7 +12,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
@@ -26,11 +25,14 @@ import kotlinx.coroutines.launch
 
 class CreateSpoolFragment : Fragment() {
 
-    private enum class Filter { ALL, ASSIGNED, UNASSIGNED }
+    private enum class Filter(val positionCode: String?) {
+        ALL(null), WORKSHOP("WORKSHOP"), LAYDOWN("LAYDOWN"), SITE("SITE")
+    }
 
     private val allItems  = mutableListOf<SmsSpoolEntity>()
     private val items     = mutableListOf<SmsSpoolEntity>()
     private var filter    = Filter.ALL
+    private var plPositions: Map<Long, String?> = emptyMap()
     private lateinit var adapter: SpoolAdapter
 
     private lateinit var rv: RecyclerView
@@ -67,9 +69,10 @@ class CreateSpoolFragment : Fragment() {
         toggleFilter.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             filter = when (checkedId) {
-                R.id.btnFilterAssigned   -> Filter.ASSIGNED
-                R.id.btnFilterUnassigned -> Filter.UNASSIGNED
-                else                     -> Filter.ALL
+                R.id.btnFilterWorkshop -> Filter.WORKSHOP
+                R.id.btnFilterLaydown  -> Filter.LAYDOWN
+                R.id.btnFilterSite     -> Filter.SITE
+                else                   -> Filter.ALL
             }
             applyFilter()
         }
@@ -80,10 +83,14 @@ class CreateSpoolFragment : Fragment() {
 
     private fun applyFilter() {
         items.clear()
-        items += when (filter) {
-            Filter.ALL        -> allItems
-            Filter.ASSIGNED   -> allItems.filter { it.packing_list_id != null }
-            Filter.UNASSIGNED -> allItems.filter { it.packing_list_id == null }
+        val targetCode = filter.positionCode
+        items += if (targetCode == null) {
+            allItems
+        } else {
+            allItems.filter { spool ->
+                val plId = spool.packing_list_id ?: return@filter false
+                plPositions[plId]?.equals(targetCode, ignoreCase = true) == true
+            }
         }
         adapter.notifyDataSetChanged()
         refreshCounts()
@@ -92,41 +99,30 @@ class CreateSpoolFragment : Fragment() {
     private suspend fun refreshPackingListMap(projectId: Int) {
         val pls = ServiceLocator.smsPackingListDao.getByProject(projectId)
         adapter.packingLists = pls.associate { it.packing_list_id to it.packing_list_name }
+        plPositions = pls.associate { it.packing_list_id to it.position }
     }
 
     private fun loadSpools(forceRefresh: Boolean) {
         viewLifecycleOwner.lifecycleScope.launch {
             showLoading(true)
             txtError.visibility = View.GONE
-            val isPrivileged = ProfileManager.currentUserRole() != ProfileManager.UserRole.GUEST
-            val filterZone: String? = if (isPrivileged) ServiceLocator.configRepo.get("device_location")?.takeIf { it.isNotBlank() } else null
-            Log.d("SpoolsFilter", "role=${ProfileManager.currentUserRole()} isPrivileged=$isPrivileged filterZone='$filterZone'")
             try {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
 
                 val totalInDb      = ServiceLocator.smsSpoolDao.countAll()
                 val projectIds     = ServiceLocator.smsSpoolDao.distinctProjectIds()
                 val countForProj   = ServiceLocator.smsSpoolDao.countByProject(projectId)
-                val countActive    = if (filterZone != null)
-                    ServiceLocator.smsSpoolDao.countActiveByProjectAndZone(projectId, filterZone)
-                else
-                    ServiceLocator.smsSpoolDao.countActiveByProject(projectId)
-                val allInDb        = if (filterZone != null)
-                    ServiceLocator.smsSpoolDao.getByProjectIgnoreActiveAndZone(projectId, filterZone)
-                else
-                    ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
-                Log.d("SpoolsDebug", "projectId=$projectId | totalInDb=$totalInDb | projectIds=$projectIds | countForProj=$countForProj | countActive=$countActive | filterZone=$filterZone | forceRefresh=$forceRefresh")
-                Log.d("SpoolsDebug", "getByProjectIgnoreActive($projectId, zone=$filterZone) = ${allInDb.size} items")
+                val countActive    = ServiceLocator.smsSpoolDao.countActiveByProject(projectId)
+                val allInDb        = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
+                Log.d("SpoolsDebug", "projectId=$projectId | totalInDb=$totalInDb | projectIds=$projectIds | countForProj=$countForProj | countActive=$countActive | forceRefresh=$forceRefresh")
+                Log.d("SpoolsDebug", "getByProjectIgnoreActive($projectId) = ${allInDb.size} items")
                 allInDb.forEach { s -> Log.d("SpoolsDebug", "  spool_id=${s.spool_id} code=${s.spool_code} pid=${s.project_id} active=${s.is_active} pl=${s.packing_list_id} position_id=${s.position_id}") }
                 txtCount.text = "DBG pid=$projectId total=$totalInDb pids=$projectIds proj=$countForProj active=$countActive ignoreActive=${allInDb.size}"
 
                 refreshPackingListMap(projectId)
-                val cached = if (filterZone != null)
-                    ServiceLocator.smsSpoolDao.getByProjectAndZone(projectId, filterZone)
-                else
-                    ServiceLocator.smsSpoolDao.getByProject(projectId)
+                val cached = ServiceLocator.smsSpoolDao.getByProject(projectId)
                 if (cached.isNotEmpty() && !forceRefresh) {
-                    Log.d("SpoolsDebug", "Using cache: ${cached.size} spools (zone=$filterZone)")
+                    Log.d("SpoolsDebug", "Using cache: ${cached.size} spools")
                     allItems.clear()
                     allItems += cached
                     applyFilter()
@@ -164,21 +160,15 @@ class CreateSpoolFragment : Fragment() {
                         Log.d("SpoolsDebug", "No active spools to insert — cleared synced, kept unsynced")
                     }
                     allItems.clear()
-                    allItems += if (filterZone != null)
-                        ServiceLocator.smsSpoolDao.getByProjectAndZone(projectId, filterZone)
-                    else
-                        ServiceLocator.smsSpoolDao.getByProject(projectId)
-                    Log.d("SpoolsDebug", "After insert, getByProject($projectId, zone=$filterZone) = ${allItems.size}")
+                    allItems += ServiceLocator.smsSpoolDao.getByProject(projectId)
+                    Log.d("SpoolsDebug", "After insert, getByProject($projectId) = ${allItems.size}")
                     applyFilter()
                 } else {
                     val err = response.errorBody()?.string().orEmpty()
                     Log.e("SpoolsDebug", "HTTP ${response.code()}: $err")
                     showError(getString(R.string.spools_list_error_http, response.code()))
                     if (allItems.isEmpty()) {
-                        allItems += if (filterZone != null)
-                            ServiceLocator.smsSpoolDao.getByProjectAndZone(projectId, filterZone)
-                        else
-                            ServiceLocator.smsSpoolDao.getByProject(projectId)
+                        allItems += ServiceLocator.smsSpoolDao.getByProject(projectId)
                         applyFilter()
                     }
                 }
@@ -188,10 +178,7 @@ class CreateSpoolFragment : Fragment() {
                 if (allItems.isEmpty()) {
                     try {
                         val fallbackId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                        allItems += if (filterZone != null)
-                            ServiceLocator.smsSpoolDao.getByProjectAndZone(fallbackId, filterZone)
-                        else
-                            ServiceLocator.smsSpoolDao.getByProject(fallbackId)
+                        allItems += ServiceLocator.smsSpoolDao.getByProject(fallbackId)
                         applyFilter()
                     } catch (_: Exception) {}
                 }

@@ -201,7 +201,7 @@ class SettingsFragment : Fragment() {
 
     // ── Language selector ──────────────────────────────────────────────
 
-    private val languageFlags = mapOf("es" to "Español", "en" to "English", "fr" to "Français")
+    private val languageFlags = mapOf("es" to "Español", "en" to "English", "fr" to "Français", "zh" to "中文")
 
     private lateinit var langButtons: Map<String, MaterialButton>
 
@@ -210,8 +210,9 @@ class SettingsFragment : Fragment() {
         val btnEs = view.findViewById<MaterialButton>(R.id.btnLangEs)
         val btnEn = view.findViewById<MaterialButton>(R.id.btnLangEn)
         val btnFr = view.findViewById<MaterialButton>(R.id.btnLangFr)
+        val btnZh = view.findViewById<MaterialButton>(R.id.btnLangZh)
 
-        langButtons = mapOf("es" to btnEs, "en" to btnEn, "fr" to btnFr)
+        langButtons = mapOf("es" to btnEs, "en" to btnEn, "fr" to btnFr, "zh" to btnZh)
 
         val currentLang = LocaleHelper.getLanguage(requireContext())
         txtCurrent.text = languageFlags[currentLang] ?: languageFlags["es"]
@@ -220,6 +221,7 @@ class SettingsFragment : Fragment() {
         btnEs.setOnClickListener { changeLanguage("es") }
         btnEn.setOnClickListener { changeLanguage("en") }
         btnFr.setOnClickListener { changeLanguage("fr") }
+        btnZh.setOnClickListener { changeLanguage("zh") }
     }
 
     private fun highlightLanguageButton(code: String) {
@@ -456,27 +458,23 @@ class SettingsFragment : Fragment() {
             val enabled = ServiceLocator.configRepo.get("kiosk_mode") == "true"
             switch.isChecked = enabled
             btnClose.visibility = if (enabled) View.GONE else View.VISIBLE
-        }
 
-        switch.setOnCheckedChangeListener { _, isChecked ->
-            viewLifecycleOwner.lifecycleScope.launch {
-                ServiceLocator.configRepo.set("kiosk_mode", isChecked.toString())
-                (requireActivity() as? MainActivity)?.setKioskMode(isChecked)
-                val msg = if (isChecked) R.string.settings_kiosk_enabled else R.string.settings_kiosk_disabled
-                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
-                btnClose.visibility = if (isChecked) View.GONE else View.VISIBLE
+            // Attach listener only after initial state is set, so restoring the
+            // saved value above doesn't itself fire the listener (and re-show the toast).
+            switch.setOnCheckedChangeListener { _, isChecked ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    ServiceLocator.configRepo.set("kiosk_mode", isChecked.toString())
+                    (requireActivity() as? MainActivity)?.setKioskMode(isChecked)
+                    val msg = if (isChecked) R.string.settings_kiosk_enabled else R.string.settings_kiosk_disabled
+                    Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+                    btnClose.visibility = if (isChecked) View.GONE else View.VISIBLE
+                }
             }
         }
 
         btnClose.setOnClickListener {
-            androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setMessage(R.string.settings_close_app_confirm)
-                .setPositiveButton(android.R.string.ok) { _, _ ->
-                    requireActivity().finishAffinity()
-                    System.exit(0)
-                }
-                .setNegativeButton(android.R.string.cancel, null)
-                .show()
+            requireActivity().finishAffinity()
+            System.exit(0)
         }
     }
 

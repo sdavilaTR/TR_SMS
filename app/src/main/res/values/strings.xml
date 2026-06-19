@@ -50,6 +50,7 @@
     <string name="packing_lists_count">%1$d packing lists</string>
     <string name="packing_lists_error_prefix">Error: %s</string>
     <string name="packing_lists_error_http">Error HTTP %d</string>
+    <string name="packing_lists_error_project_code">projectCode nulo/vacío para project_id=%d. ¿Se hizo sync?</string>
     <string name="home_label_packing_lists">Packing Lists</string>
     <string name="menu_attendance">Registros de Spools</string>
     <string name="menu_sync">Sincronización</string>
@@ -216,6 +217,8 @@
     <string name="vehicles_empty">No hay vehículos cargados.</string>
     <string name="vehicles_error_prefix">Error: %s</string>
     <string name="vehicles_error_http">HTTP %d</string>
+    <string name="vehicles_error_project_code">projectCode nulo/vacío para project_id=%d. ¿Se hizo sync?</string>
+    <string name="vehicles_label_fallback">Vehículo %d</string>
     <string name="vehicles_no_packing_lists">Sin packing lists asignados</string>
     <string name="vehicles_packing_lists_label">Packing Lists</string>
     <string name="vehicles_ready_to_send_badge">CARGADO · LISTO PARA ENVIAR</string>
@@ -250,6 +253,7 @@
     <string name="login_error_empty">Introduce email y contraseña.</string>
     <string name="login_error_auth">Error de autenticación.</string>
     <string name="login_error_format">Error: %s</string>
+    <string name="login_error_empty_code">Error: Introduce el Código del Terminal.</string>
 
     <!-- Update (Settings button) -->
     <string name="settings_check_updates">Buscar actualizaciones</string>
@@ -263,6 +267,16 @@
     <string name="update_btn_later">Más tarde</string>
     <string name="update_permission_needed">Active la instalación de aplicaciones desconocidas para continuar con la actualización</string>
     <string name="update_downloading">Descargando actualización…</string>
+    <string name="update_downloading_version">Descargando versión %s…</string>
+    <string name="update_invalid_apk">La descarga no es un APK válido — revise el token de actualización</string>
+    <string name="update_no_previous_version">No hay versión anterior disponible</string>
+    <string name="update_previous_corrupt">La versión anterior está corrupta</string>
+
+    <!-- Auth Repository -->
+    <string name="auth_error_invalid_credentials">Credenciales incorrectas.</string>
+    <string name="auth_error_http">Error %d.</string>
+    <string name="auth_error_empty_response">Respuesta vacía del servidor.</string>
+    <string name="auth_error_connection">No se pudo conectar con el servidor: %s</string>
 
     <!-- Rollback -->
     <string name="settings_reinstall_previous">Reinstalar versión anterior</string>
@@ -480,6 +494,11 @@
     <string name="sync_auto_relogin">Reautenticando automáticamente…</string>
     <string name="sync_auto_relogin_ok">Sesión renovada, reintentando sincronización</string>
     <string name="sync_auto_relogin_fail">No se pudo renovar la sesión automáticamente</string>
+    <string name="sync_error_session_expired">Sesión expirada y no se pudo renovar automáticamente</string>
+    <string name="sync_error_no_connection">Sin conexión con el servidor</string>
+    <string name="sync_error_server_unavailable">Servidor no disponible (HTTP %d)</string>
+    <string name="sync_error_server_rejected">Servidor rechazó la conexión (HTTP %d)</string>
+    <string name="sync_error_outbox_retry">Cola de cambios: sin conexión, reintentando</string>
 
     <!-- Inventario -->
     <string name="menu_inventario">Inventario</string>
@@ -509,8 +528,9 @@
     <string name="spools_list_error_prefix">Error: %1$s</string>
     <string name="spools_list_error_http">HTTP %1$d</string>
     <string name="spools_filter_all">Todos</string>
-    <string name="spools_filter_assigned">Con PL</string>
-    <string name="spools_filter_unassigned">Sin PL</string>
+    <string name="spools_filter_workshop">Workshop</string>
+    <string name="spools_filter_laydown">Laydown</string>
+    <string name="spools_filter_site">Site</string>
 
     <!-- New Spool -->
     <!-- New Packing List -->
@@ -653,6 +673,9 @@
     <string name="spool_detail_assign_pl_remove">Quitar asignación</string>
     <string name="spool_detail_yes">Sí</string>
     <string name="spool_detail_no">No</string>
+    <string name="spool_detail_label_fallback">Spool %d</string>
+    <string name="spool_detail_error_delete">Error al eliminar: %s</string>
+    <string name="spool_detail_error_generic">Error: %s</string>
 
     <!-- Vehicle Detail -->
     <string name="vehicle_detail_title">Detalle Vehículo</string>
@@ -731,6 +754,7 @@
     <string name="transfer_send_dest_site">Site (urgente)</string>
     <string name="transfer_send_btn_confirm">Confirmar Envío</string>
     <string name="transfer_send_success">Envío registrado correctamente (pendiente de sincronización)</string>
+    <string name="transfer_send_error">Error: %s</string>
     <string name="transfer_send_location_blocked">No se puede enviar desde esta ubicación.</string>
     <string name="transfer_select_destination">Seleccionar destino del envío</string>
     <string name="transfer_destination_laydown">Laydown</string>
@@ -836,6 +860,7 @@
     <string name="incident_saved_ok">Incidencia registrada</string>
     <string name="incident_error_missing_spool_code">Indica el código del spool</string>
     <string name="incident_error_missing_description">Describe la incidencia</string>
+    <string name="incident_error_save">Error: %s</string>
     <string name="incident_location_laydown">Laydown</string>
     <string name="incident_location_site">Site</string>
     <string name="incident_location_workshop">Workshop</string>
@@ -848,5 +873,19 @@
     <!-- Event History -->
     <string name="menu_event_history">Historial de Eventos</string>
     <string name="event_history_empty">No hay eventos registrados para este proyecto</string>
+    <string name="event_label_spool_created">Spool creado</string>
+    <string name="event_label_spool_deleted">Spool eliminado</string>
+    <string name="event_label_spool_deleted_hard">Spool eliminado (definitivo)</string>
+    <string name="event_label_pl_created">Packing List creado</string>
+    <string name="event_label_pl_edited">Packing List editado</string>
+    <string name="event_label_pl_deleted">Packing List eliminado</string>
+    <string name="event_label_pl_deleted_hard">Packing List eliminado (definitivo)</string>
+    <string name="event_label_vehicle_created">Vehículo creado</string>
+    <string name="event_label_vehicle_edited">Vehículo editado</string>
+    <string name="event_label_vehicle_deleted">Vehículo eliminado</string>
+    <string name="event_label_transfer_sent">Envío registrado</string>
+    <string name="event_label_transfer_received">Recepción registrada</string>
+    <string name="event_label_incident_created">Incidencia creada</string>
+    <string name="event_label_incident_closed">Incidencia cerrada</string>
 
 </resources>

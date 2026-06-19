@@ -115,7 +115,7 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
                 ServiceLocator.auditLogService.log(
                     com.example.hassiwrapper.services.AuditLogService.SPOOL_ELIMINADO,
                     com.example.hassiwrapper.services.AuditLogService.ENTITY_SPOOL,
-                    spoolId, spool?.displayCode ?: "Spool $spoolId", projectId = projectId
+                    spoolId, spool?.displayCode ?: getString(R.string.spool_detail_label_fallback, spoolId), projectId = projectId
                 )
                 // UI last — dismiss() cancels viewLifecycleOwner so it must be final
                 if (isAdded) android.widget.Toast.makeText(requireContext(), getString(R.string.spool_detail_deleted), android.widget.Toast.LENGTH_SHORT).show()
@@ -123,7 +123,7 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
                 dismiss()
             } catch (e: Exception) {
                 Log.e(TAG, "deleteSpool error", e)
-                if (isAdded) android.widget.Toast.makeText(requireContext(), "Error al eliminar: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                if (isAdded) android.widget.Toast.makeText(requireContext(), getString(R.string.spool_detail_error_delete, e.message), android.widget.Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -164,14 +164,14 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
                 ServiceLocator.auditLogService.log(
                     com.example.hassiwrapper.services.AuditLogService.SPOOL_ELIMINADO_HARD,
                     com.example.hassiwrapper.services.AuditLogService.ENTITY_SPOOL,
-                    spoolId, spool?.displayCode ?: "Spool $spoolId", projectId = projectId
+                    spoolId, spool?.displayCode ?: getString(R.string.spool_detail_label_fallback, spoolId), projectId = projectId
                 )
                 if (isAdded) android.widget.Toast.makeText(requireContext(), getString(R.string.spool_detail_hard_deleted), android.widget.Toast.LENGTH_SHORT).show()
                 onSpoolUpdated?.invoke()
                 dismiss()
             } catch (e: Exception) {
                 Log.e(TAG, "hardDeleteSpool error", e)
-                if (isAdded) android.widget.Toast.makeText(requireContext(), "Error: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                if (isAdded) android.widget.Toast.makeText(requireContext(), getString(R.string.spool_detail_error_generic, e.message), android.widget.Toast.LENGTH_LONG).show()
             }
         }
     }

@@ -223,7 +223,12 @@ view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
                 val lastSync = ServiceLocator.configRepo.get("last_sync")
 
                 val projectId = getSelectedProjectId()
-                val spoolCount = ServiceLocator.smsSpoolDao.countByProject(projectId)
+                val isPrivileged = ProfileManager.currentUserRole() != ProfileManager.UserRole.GUEST
+                val filterZone = if (isPrivileged) ServiceLocator.configRepo.get("device_location")?.takeIf { it.isNotBlank() } else null
+                val spoolCount = if (filterZone != null)
+                    ServiceLocator.smsSpoolDao.countActiveByProjectAndZone(projectId, filterZone)
+                else
+                    ServiceLocator.smsSpoolDao.countActiveByProject(projectId)
                 val packingListCount = ServiceLocator.smsPackingListDao.countByProject(projectId)
                 val vehicleCount = ServiceLocator.smsVehicleDao.countByProject(projectId)
                 val criticalIncidentCount = ServiceLocator.smsIncidentService.getCriticalCount(projectId)

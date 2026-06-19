@@ -16,6 +16,8 @@ data class SmsPackingListDto(
     val vehiclePlate: String? = null,
     @SerializedName(value = "position_id", alternate = ["positionId"])
     val positionId: String? = null,
+    @SerializedName(value = "position")
+    val positionName: String? = null,
     @SerializedName(value = "packing_date", alternate = ["packingDate"])
     val packingDate: String? = null,
     @SerializedName(value = "total_spools_count", alternate = ["totalSpoolsCount"])
@@ -51,6 +53,7 @@ data class SmsPackingListDto(
         vehicle_id = vehicleId.toLongOrNullSafe(),
         vehicle_plate = vehiclePlate,
         position_id = positionId.toIntOrNullSafe(),
+        position = positionName?.takeIf { it.isNotBlank() },
         packing_date = packingDate.orEmpty(),
         total_spools_count = totalSpoolsCount.toIntOrNullSafe(),
         total_weight_kg = totalWeightKg.toDoubleOrNullSafe(),

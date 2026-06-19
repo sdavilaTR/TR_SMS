@@ -40,6 +40,7 @@
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rvVehicles"
+                    android:layoutAnimation="@anim/layout_animation_fall_down"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:clipToPadding="false"
@@ -76,14 +77,14 @@
         app:srcCompat="@android:drawable/ic_input_add" />
 
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/fabLoadSpools"
+        android:id="@+id/fabSend"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_margin="16dp"
-        android:text="@string/load_spools_fab"
+        android:text="@string/home_qa_send"
         android:textAllCaps="false"
-        android:contentDescription="@string/load_spools_title"
+        android:contentDescription="@string/transfer_send_title"
         app:icon="@drawable/ic_spool" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

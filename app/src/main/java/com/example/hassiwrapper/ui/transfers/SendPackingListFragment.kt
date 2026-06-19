@@ -2,13 +2,13 @@ package com.example.hassiwrapper.ui.transfers
 
 import android.util.Log
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
+import android.widget.ImageButton
+import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,78 +24,92 @@ import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
+import com.example.hassiwrapper.data.db.entities.SmsPackingListSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
+import com.example.hassiwrapper.data.db.entities.SmsSpoolPropertyEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferSpoolEntity
-import com.example.hassiwrapper.ui.common.SignatureView
+import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
+import com.example.hassiwrapper.data.db.entities.SmsVehicleLoadingEntity
+import com.example.hassiwrapper.data.db.entities.SmsVehicleLoadingSpoolEntity
+import com.example.hassiwrapper.jDbl
+import com.example.hassiwrapper.jInt
+import com.example.hassiwrapper.jStr
+import com.example.hassiwrapper.network.dto.AssignSpoolRequest
+import com.example.hassiwrapper.network.dto.CreatePackingListRequest
 import com.example.hassiwrapper.ui.qrscanner.QrResult
 import com.example.hassiwrapper.ui.qrscanner.parseQr
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
 class SendPackingListFragment : Fragment() {
 
-    private data class SpoolConfirmation(
-        val spool: SmsSpoolEntity,
-        var confirmed: Boolean = false
-    )
+    private data class ScannedSpool(
+        val spoolId: Long,
+        val spoolCode: String,
+        val spoolSuffix: String?,
+        val packingListId: Long?,
+        val packingListName: String?,
+        val weightKg: Double? = null
+    ) {
+        val displayCode: String
+            get() = if (spoolSuffix.isNullOrBlank()) spoolCode else "$spoolCode-$spoolSuffix"
+    }
 
-    // Panels
-    private lateinit var panelSelectPl: View
-    private lateinit var panelConfirmVehicle: View
-    private lateinit var panelConfirmSpools: View
-    private lateinit var panelSignature: View
-
-    // Panel A
-    private lateinit var rvPackingLists: RecyclerView
-    private lateinit var txtNoPls: TextView
-    private lateinit var plAdapter: PlAdapter
-
-    // Panel B
-    private lateinit var txtExpectedVehicle: TextView
-    private lateinit var txtVehicleStatus: TextView
-    private lateinit var btnScanVehicle: MaterialButton
-    private lateinit var btnNextToSpools: MaterialButton
-
-    // Panel C
-    private lateinit var txtSpoolsProgress: TextView
-    private lateinit var rvSpoolsToConfirm: RecyclerView
-    private lateinit var btnScanSpool: MaterialButton
-    private lateinit var btnNextToSignature: MaterialButton
-    private lateinit var spoolAdapter: SpoolConfirmAdapter
-
-    // Panel D
-    private lateinit var signatureView: SignatureView
-    private lateinit var btnClearSignature: MaterialButton
-    private lateinit var btnConfirmSend: MaterialButton
-
-    // Manual fallback inputs
-    private lateinit var etManualVehicle: TextInputEditText
-    private lateinit var btnManualVehicle: MaterialButton
-    private lateinit var etManualSpool: TextInputEditText
-    private lateinit var btnManualSpool: MaterialButton
-
-    private lateinit var txtSendDestination: TextView
-
-    private var selectedPl: SmsPackingListEntity? = null
-    private var vehicleConfirmed = false
-    private val spoolConfirmations = mutableListOf<SpoolConfirmation>()
+    private var selectedVehicle: SmsVehicleEntity? = null
+    private val scannedSpools = mutableListOf<ScannedSpool>()
+    private lateinit var adapter: ScannedSpoolAdapter
     private var destination = ""
 
-    private val vehicleScanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+    // Location-blocked message
+    private lateinit var txtLocationBlocked: TextView
+
+    // Step 1: vehicle
+    private lateinit var panelVehicle: View
+    private lateinit var etPlate: TextInputEditText
+    private lateinit var btnScanVehicle: MaterialButton
+    private lateinit var btnConfirmVehicle: MaterialButton
+
+    // Step 2: spools
+    private lateinit var panelSpools: View
+    private lateinit var txtSelectedVehicle: TextView
+    private lateinit var cardWeightMeter: MaterialCardView
+    private lateinit var txtWeightMeter: TextView
+    private lateinit var progressWeight: android.widget.ProgressBar
+    private lateinit var etSpoolCode: TextInputEditText
+    private lateinit var etSpoolSuffix: TextInputEditText
+    private lateinit var btnScanSpool: MaterialButton
+    private lateinit var btnAddSpool: MaterialButton
+    private lateinit var rvLoadedSpools: RecyclerView
+    private lateinit var txtSpoolsCount: TextView
+    private lateinit var btnContinueToSignature: MaterialButton
+
+    // Step 3: destination + signature
+    private lateinit var panelDestination: View
+    private lateinit var panelDestinationChoice: View
+    private lateinit var rgDestination: RadioGroup
+    private lateinit var txtSendDestination: TextView
+    private lateinit var btnConfirmSend: MaterialButton
+
+    private val vehicleScanLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val raw = result.data?.getStringExtra(CustomScannerActivity.EXTRA_RESULT)?.trim() ?: return@registerForActivityResult
-            handleVehicleScan(raw)
+            resolveAndSelectVehicle(raw)
         }
     }
 
-    private val spoolScanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+    private val spoolScanLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val raw = result.data?.getStringExtra(CustomScannerActivity.EXTRA_RESULT)?.trim() ?: return@registerForActivityResult
-            handleSpoolScan(raw)
+            parseAndAddSpoolFromQr(raw)
         }
     }
 
@@ -104,204 +118,142 @@ class SendPackingListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        (view as com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView).onSwipeBack = { findNavController().navigateUp() }
 
-        panelSelectPl        = view.findViewById(R.id.panelSelectPl)
-        panelConfirmVehicle  = view.findViewById(R.id.panelConfirmVehicle)
-        panelConfirmSpools   = view.findViewById(R.id.panelConfirmSpools)
-        panelSignature       = view.findViewById(R.id.panelSignature)
+        txtLocationBlocked = view.findViewById(R.id.txtLocationBlocked)
 
-        txtNoPls             = view.findViewById(R.id.txtNoPls)
-        rvPackingLists       = view.findViewById(R.id.rvPackingLists)
+        panelVehicle      = view.findViewById(R.id.panelVehicle)
+        etPlate           = view.findViewById(R.id.etPlate)
+        btnScanVehicle    = view.findViewById(R.id.btnScanVehicle)
+        btnConfirmVehicle = view.findViewById(R.id.btnConfirmVehicle)
 
-        txtExpectedVehicle   = view.findViewById(R.id.txtExpectedVehicle)
-        txtVehicleStatus     = view.findViewById(R.id.txtVehicleStatus)
-        btnScanVehicle       = view.findViewById(R.id.btnScanVehicle)
-        btnNextToSpools      = view.findViewById(R.id.btnNextToSpools)
+        panelSpools           = view.findViewById(R.id.panelSpools)
+        txtSelectedVehicle    = view.findViewById(R.id.txtSelectedVehicle)
+        cardWeightMeter       = view.findViewById(R.id.cardWeightMeter)
+        txtWeightMeter        = view.findViewById(R.id.txtWeightMeter)
+        progressWeight        = view.findViewById(R.id.progressWeight)
+        etSpoolCode           = view.findViewById(R.id.etSpoolCode)
+        etSpoolSuffix         = view.findViewById(R.id.etSpoolSuffix)
+        btnScanSpool          = view.findViewById(R.id.btnScanSpool)
+        btnAddSpool           = view.findViewById(R.id.btnAddSpool)
+        rvLoadedSpools        = view.findViewById(R.id.rvLoadedSpools)
+        txtSpoolsCount        = view.findViewById(R.id.txtSpoolsCount)
+        btnContinueToSignature = view.findViewById(R.id.btnContinueToSignature)
 
-        txtSpoolsProgress    = view.findViewById(R.id.txtSpoolsProgress)
-        rvSpoolsToConfirm    = view.findViewById(R.id.rvSpoolsToConfirm)
-        btnScanSpool         = view.findViewById(R.id.btnScanSpool)
-        btnNextToSignature   = view.findViewById(R.id.btnNextToSignature)
+        panelDestination         = view.findViewById(R.id.panelDestination)
+        panelDestinationChoice = view.findViewById(R.id.panelDestinationChoice)
+        rgDestination          = view.findViewById(R.id.rgDestination)
+        txtSendDestination     = view.findViewById(R.id.txtSendDestination)
+        btnConfirmSend         = view.findViewById(R.id.btnConfirmSend)
 
-        signatureView        = view.findViewById(R.id.signatureView)
-        btnClearSignature    = view.findViewById(R.id.btnClearSignature)
-        btnConfirmSend       = view.findViewById(R.id.btnConfirmSend)
-        txtSendDestination   = view.findViewById(R.id.txtSendDestination)
+        adapter = ScannedSpoolAdapter()
+        rvLoadedSpools.layoutManager = LinearLayoutManager(requireContext())
+        rvLoadedSpools.adapter = adapter
+        rvLoadedSpools.isNestedScrollingEnabled = false
+        rvLoadedSpools.addItemDecoration(DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
 
-        etManualVehicle      = view.findViewById(R.id.etManualVehicle)
-        btnManualVehicle     = view.findViewById(R.id.btnManualVehicle)
-        etManualSpool        = view.findViewById(R.id.etManualSpool)
-        btnManualSpool       = view.findViewById(R.id.btnManualSpool)
-
-        plAdapter = PlAdapter()
-        rvPackingLists.layoutManager = LinearLayoutManager(requireContext())
-        rvPackingLists.adapter = plAdapter
-        rvPackingLists.isNestedScrollingEnabled = false
-        rvPackingLists.addItemDecoration(DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
-
-        spoolAdapter = SpoolConfirmAdapter()
-        rvSpoolsToConfirm.layoutManager = LinearLayoutManager(requireContext())
-        rvSpoolsToConfirm.adapter = spoolAdapter
-        rvSpoolsToConfirm.isNestedScrollingEnabled = false
-        rvSpoolsToConfirm.addItemDecoration(DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
+        txtSpoolsCount.text = getString(R.string.load_spools_spools_count, 0)
 
         btnScanVehicle.setOnClickListener {
             vehicleScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java))
         }
-        btnManualVehicle.setOnClickListener {
-            val text = etManualVehicle.text?.toString()?.trim().orEmpty()
-            if (text.isNotBlank()) { etManualVehicle.setText(""); handleVehicleScan(text) }
-        }
-        btnNextToSpools.setOnClickListener { showSpoolPanel() }
+        btnConfirmVehicle.setOnClickListener { confirmVehicle() }
+
         btnScanSpool.setOnClickListener {
             spoolScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java))
         }
-        btnManualSpool.setOnClickListener {
-            val text = etManualSpool.text?.toString()?.trim().orEmpty()
-            if (text.isNotBlank()) { etManualSpool.setText(""); handleSpoolScan(text) }
-        }
-        btnNextToSignature.setOnClickListener { onNextToSignature() }
-        btnClearSignature.setOnClickListener { signatureView.clear() }
+        btnAddSpool.setOnClickListener { addSpoolManually() }
+
+        btnContinueToSignature.setOnClickListener { goToDestinationPanel() }
         btnConfirmSend.setOnClickListener { onConfirmSend() }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 val activity = requireActivity() as? MainActivity ?: return@repeatOnLifecycle
                 activity.dataWedgeManager.scanFlow.collect { raw ->
-                    when {
-                        panelConfirmVehicle.visibility == View.VISIBLE -> handleVehicleScan(raw.trim())
-                        panelConfirmSpools.visibility == View.VISIBLE  -> handleSpoolScan(raw.trim())
-                    }
+                    handleHardwareScan(raw.trim())
                 }
             }
         }
 
-        loadPackingLists()
+        checkLocationGate()
     }
 
-    private fun loadPackingLists() {
+    private fun checkLocationGate() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-            val location  = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: ""
-            Log.d("SendPL", "loadPackingLists: projectId=$projectId device_location='$location'")
+            val location = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: ""
+            if (location != "WORKSHOP" && location != "LAYDOWN") {
+                panelVehicle.visibility = View.GONE
+                txtLocationBlocked.visibility = View.VISIBLE
+            }
+        }
+    }
 
-            if (location == "SITE" || location.isBlank()) {
-                Log.d("SendPL", "loadPackingLists: early return — location is SITE or blank")
-                txtNoPls.visibility = View.VISIBLE
-                txtNoPls.text = getString(R.string.transfer_send_no_pls)
-                rvPackingLists.visibility = View.GONE
+    private fun handleHardwareScan(raw: String) {
+        when {
+            panelSpools.visibility == View.VISIBLE  -> parseAndAddSpoolFromQr(raw)
+            panelVehicle.visibility == View.VISIBLE -> resolveAndSelectVehicle(raw)
+        }
+    }
+
+    // ───────────────────────── Step 1: Vehicle ─────────────────────────
+
+    private fun resolveAndSelectVehicle(raw: String) {
+        if (parseQr(raw) is QrResult.Spool) {
+            Toast.makeText(requireContext(), getString(R.string.load_spools_qr_is_spool), Toast.LENGTH_LONG).show()
+            return
+        }
+        val urlVehicleId = Regex("""/vehicles?/(\d+)""").find(raw)?.groupValues?.getOrNull(1)?.toLongOrNull()
+        viewLifecycleOwner.lifecycleScope.launch {
+            if (urlVehicleId != null) {
+                val vehicle = ServiceLocator.smsVehicleDao.getById(urlVehicleId)
+                if (vehicle != null) {
+                    etPlate.setText(vehicle.license_plate)
+                    selectVehicle(vehicle)
+                } else Toast.makeText(requireContext(), getString(R.string.load_spools_vehicle_not_found), Toast.LENGTH_LONG).show()
+            } else {
+                val vehicle = ServiceLocator.smsVehicleDao.getByLicensePlate(raw)
+                if (vehicle != null) {
+                    etPlate.setText(vehicle.license_plate)
+                    selectVehicle(vehicle)
+                } else etPlate.setText(raw)
+            }
+        }
+    }
+
+    private fun selectVehicle(vehicle: SmsVehicleEntity) {
+        selectedVehicle = vehicle
+        txtSelectedVehicle.text = getString(R.string.load_spools_vehicle_selected, vehicle.license_plate)
+        panelVehicle.visibility = View.GONE
+        panelSpools.visibility = View.VISIBLE
+        updateWeightMeter()
+    }
+
+    private fun confirmVehicle() {
+        val plate = etPlate.text?.toString()?.trim().orEmpty()
+        if (plate.isBlank()) {
+            Toast.makeText(requireContext(), getString(R.string.load_spools_enter_plate), Toast.LENGTH_SHORT).show()
+            return
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            val vehicle = ServiceLocator.smsVehicleDao.getByLicensePlate(plate)
+            if (vehicle == null) {
+                Toast.makeText(requireContext(), getString(R.string.load_spools_vehicle_not_found), Toast.LENGTH_LONG).show()
                 return@launch
             }
-
-            val currentPosition = ServiceLocator.smsPositionDao.getByCode(location)
-            Log.d("SendPL", "loadPackingLists: currentPosition for '$location' = ${currentPosition?.position_id} '${currentPosition?.name}'")
-            if (currentPosition == null) {
-                Log.w("SendPL", "loadPackingLists: position not found for '$location' — positions table has ${ServiceLocator.smsPositionDao.getAll().size} rows")
-                txtNoPls.visibility = View.VISIBLE
-                txtNoPls.text = getString(R.string.transfer_send_no_pls)
-                rvPackingLists.visibility = View.GONE
-                return@launch
-            }
-
-            val candidates = ServiceLocator.smsPackingListDao
-                .getReadyToSendByPosition(projectId, currentPosition.position_id)
-            Log.d("SendPL", "loadPackingLists: candidates ready_to_send+position=${candidates.size}")
-            candidates.forEach { pl ->
-                Log.d("SendPL", "  candidate pl=${pl.packing_list_id} '${pl.packing_list_name}' vehicle_id=${pl.vehicle_id} ready=${pl.ready_to_send} position_id=${pl.position_id}")
-            }
-
-            val sendable = candidates.filter { pl ->
-                pl.vehicle_id != null && hasSendableSpools(pl.packing_list_id)
-            }
-            Log.d("SendPL", "loadPackingLists: sendable (vehicle!=null && has non-transit spools)=${sendable.size}")
-
-            // DEBUG: also show all ready_to_send PLs regardless of position
-            val allReady = ServiceLocator.smsPackingListDao.getReadyToSend(projectId)
-            Log.d("SendPL", "loadPackingLists: ALL ready_to_send PLs for project=$projectId → ${allReady.size}")
-            allReady.forEach { pl ->
-                Log.d("SendPL", "  ALL ready pl=${pl.packing_list_id} '${pl.packing_list_name}' position_id=${pl.position_id} vehicle_id=${pl.vehicle_id}")
-            }
-
-            if (sendable.isEmpty()) {
-                txtNoPls.visibility = View.VISIBLE
-                rvPackingLists.visibility = View.GONE
-            } else {
-                txtNoPls.visibility = View.GONE
-                rvPackingLists.visibility = View.VISIBLE
-                plAdapter.items = sendable
-                plAdapter.notifyDataSetChanged()
-            }
+            selectVehicle(vehicle)
         }
     }
 
-    private suspend fun hasSendableSpools(packingListId: Long): Boolean {
-        val spools = ServiceLocator.smsSpoolDao.getByPackingList(packingListId)
-        Log.d("SendPL", "hasSendableSpools(pl=$packingListId): ${spools.size} spools found, in_transit=${spools.map { it.in_transit }}")
-        return spools.any { !it.in_transit }
-    }
+    // ───────────────────────── Step 2: Spools ─────────────────────────
 
-    private fun onPlSelected(pl: SmsPackingListEntity) {
-        selectedPl = pl
-        showVehiclePanel(pl)
-    }
-
-    private fun showVehiclePanel(pl: SmsPackingListEntity) {
-        panelSelectPl.visibility = View.GONE
-        panelConfirmVehicle.visibility = View.VISIBLE
-        txtExpectedVehicle.text = getString(R.string.transfer_vehicle_expected, pl.vehicle_plate ?: "—")
-        txtVehicleStatus.text = ""
-        vehicleConfirmed = false
-        btnNextToSpools.isEnabled = false
-    }
-
-    private fun handleVehicleScan(raw: String) {
-        val pl = selectedPl ?: return
-        viewLifecycleOwner.lifecycleScope.launch {
-            val qr = parseQr(raw)
-            val scannedPlate = when (qr) {
-                is QrResult.VehicleBadge -> {
-                    Toast.makeText(requireContext(), getString(R.string.qr_scanner_result_badge_unsupported), Toast.LENGTH_LONG).show()
-                    return@launch
-                }
-                is QrResult.VehicleId -> ServiceLocator.smsVehicleDao.getById(qr.id)?.license_plate
-                is QrResult.VehiclePlate -> qr.plate
-                else -> raw
-            } ?: return@launch
-
-            val expectedPlate = pl.vehicle_plate ?: ""
-            if (scannedPlate.equals(expectedPlate, ignoreCase = true)) {
-                vehicleConfirmed = true
-                txtVehicleStatus.text = getString(R.string.transfer_vehicle_confirmed, scannedPlate)
-                btnNextToSpools.isEnabled = true
-            } else {
-                Toast.makeText(requireContext(), getString(R.string.transfer_vehicle_mismatch), Toast.LENGTH_LONG).show()
-                txtVehicleStatus.text = getString(R.string.transfer_vehicle_scanned, scannedPlate)
-            }
-        }
-    }
-
-    private fun showSpoolPanel() {
-        val pl = selectedPl ?: return
-        panelConfirmVehicle.visibility = View.GONE
-        panelConfirmSpools.visibility = View.VISIBLE
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            val spools = ServiceLocator.smsSpoolDao.getByPackingList(pl.packing_list_id)
-                .filter { !it.in_transit }
-            spoolConfirmations.clear()
-            spoolConfirmations.addAll(spools.map { SpoolConfirmation(it) })
-            spoolAdapter.notifyDataSetChanged()
-            updateProgress()
-        }
-    }
-
-    private fun handleSpoolScan(raw: String) {
-        val pl = selectedPl ?: return
+    private fun parseAndAddSpoolFromQr(raw: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-            val qr = parseQr(raw)
-            val (code, suffix) = when (qr) {
-                is QrResult.Spool -> qr.spoolCode to qr.spoolSuffix
+
+            val qrResult = parseQr(raw)
+            val (code, suffix) = when (qrResult) {
+                is QrResult.Spool -> qrResult.spoolCode to qrResult.spoolSuffix
                 else -> {
                     val lastDash = raw.lastIndexOf('-')
                     if (lastDash > 0) raw.substring(0, lastDash) to raw.substring(lastDash + 1)
@@ -316,173 +268,483 @@ class SendPackingListFragment : Fragment() {
                 ServiceLocator.smsSpoolDao.findByCode(projectId, code)
             }
 
-            if (spool == null || spool.packing_list_id != pl.packing_list_id) {
-                Toast.makeText(requireContext(), getString(R.string.transfer_spool_not_in_list), Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-
-            val entry = spoolConfirmations.find { it.spool.spool_id == spool.spool_id }
-            if (entry == null) {
-                Toast.makeText(requireContext(), getString(R.string.transfer_spool_not_in_list), Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-            if (entry.confirmed) {
-                Toast.makeText(requireContext(), getString(R.string.transfer_spool_already_confirmed), Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-
-            entry.confirmed = true
-            val idx = spoolConfirmations.indexOf(entry)
-            spoolAdapter.notifyItemChanged(idx)
-            updateProgress()
-            Toast.makeText(requireContext(), getString(R.string.transfer_spool_confirmed, spool.displayCode), Toast.LENGTH_SHORT).show()
+            val weight = resolveSpoolWeight(spool)
+            addSpool(spool, code, suffix, weight)
         }
     }
 
-    private fun updateProgress() {
-        val total     = spoolConfirmations.size
-        val confirmed = spoolConfirmations.count { it.confirmed }
-        txtSpoolsProgress.text = getString(R.string.transfer_spools_progress, confirmed, total)
-    }
-
-    private fun onNextToSignature() {
-        val unconfirmed = spoolConfirmations.count { !it.confirmed }
-        if (unconfirmed > 0) {
-            AlertDialog.Builder(requireContext())
-                .setTitle(getString(R.string.transfer_confirm_incomplete_title))
-                .setMessage(getString(R.string.transfer_confirm_incomplete_msg, unconfirmed))
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(getString(R.string.load_spools_btn_continue)) { _, _ -> goToSignaturePanel() }
-                .show()
-        } else {
-            goToSignaturePanel()
+    private fun addSpoolManually() {
+        val code   = etSpoolCode.text?.toString()?.trim().orEmpty()
+        val suffix = etSpoolSuffix.text?.toString()?.trim()?.ifBlank { null }
+        if (code.isBlank()) {
+            Toast.makeText(requireContext(), getString(R.string.load_spools_enter_code), Toast.LENGTH_SHORT).show()
+            return
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+            val spool = if (suffix != null) {
+                ServiceLocator.smsSpoolDao.findByCodeAndSuffix(projectId, code, suffix)
+                    ?: ServiceLocator.smsSpoolDao.findByCode(projectId, code)
+            } else {
+                ServiceLocator.smsSpoolDao.findByCode(projectId, code)
+            }
+            val weight = resolveSpoolWeight(spool)
+            addSpool(spool, code, suffix, weight)
+            etSpoolCode.text?.clear()
+            etSpoolSuffix.text?.clear()
         }
     }
 
-    private fun goToSignaturePanel() {
+    private fun addSpool(spool: SmsSpoolEntity?, fallbackCode: String, fallbackSuffix: String?, weightKg: Double? = null) {
+        val displayCode = spool?.displayCode
+            ?: if (fallbackSuffix.isNullOrBlank()) fallbackCode else "$fallbackCode-$fallbackSuffix"
+
+        if (scannedSpools.any { it.displayCode.equals(displayCode, ignoreCase = true) }) {
+            Toast.makeText(requireContext(), getString(R.string.load_spools_spool_duplicate), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (spool == null) {
+            Toast.makeText(requireContext(), getString(R.string.load_spools_spool_not_found), Toast.LENGTH_SHORT).show()
+        }
+
+        val item = ScannedSpool(
+            spoolId         = spool?.spool_id ?: 0L,
+            spoolCode       = spool?.spool_code ?: fallbackCode,
+            spoolSuffix     = spool?.spool_suffix ?: fallbackSuffix?.ifBlank { null },
+            packingListId   = spool?.packing_list_id,
+            packingListName = spool?.packing_list_name,
+            weightKg        = weightKg
+        )
+        scannedSpools.add(item)
+        adapter.notifyItemInserted(scannedSpools.size - 1)
+        txtSpoolsCount.text = getString(R.string.load_spools_spools_count, scannedSpools.size)
+        Toast.makeText(requireContext(), getString(R.string.load_spools_spool_added, displayCode), Toast.LENGTH_SHORT).show()
+        updateWeightMeter()
+    }
+
+    private fun removeSpoolAt(position: Int) {
+        if (position < 0 || position >= scannedSpools.size) return
+        scannedSpools.removeAt(position)
+        adapter.notifyItemRemoved(position)
+        adapter.notifyItemRangeChanged(position, scannedSpools.size - position)
+        txtSpoolsCount.text = getString(R.string.load_spools_spools_count, scannedSpools.size)
+        updateWeightMeter()
+    }
+
+    /** Local property table is rarely synced for normal spools, so fall back
+     *  to fetching+caching from the API (same pattern as SpoolDetailBottomSheet).
+     *  Silently returns null offline — that spool just won't count toward the meter. */
+    private suspend fun resolveSpoolWeight(spool: SmsSpoolEntity?): Double? {
+        if (spool == null) return null
+        ServiceLocator.smsSpoolPropertyDao.getBySpool(spool.spool_id)?.weight_kg?.let { return it }
+
+        return try {
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+            val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code ?: return null
+            val service = ServiceLocator.apiClient.getService()
+            val resp = service.getSpoolProperty(projectCode, spool.spool_id.toString())
+            if (!resp.isSuccessful) return null
+            val raw = resp.body()?.string().orEmpty()
+            val el = com.google.gson.JsonParser.parseString(raw)
+            if (!el.isJsonObject) return null
+            val obj = el.asJsonObject.let { o ->
+                if (o.has("data") && !o.get("data").isJsonNull && o.get("data").isJsonObject) o.getAsJsonObject("data") else o
+            }
+            val weight = obj.jDbl("weightKg", "weight_kg") ?: return null
+            ServiceLocator.smsSpoolPropertyDao.insertAll(listOf(
+                SmsSpoolPropertyEntity(
+                    spool_id        = spool.spool_id,
+                    diameter_inches = obj.jDbl("diameterInches", "diameter_inches"),
+                    diameter        = obj.jDbl("diameter"),
+                    bore_size_id    = obj.jInt("boreSizeId", "bore_size_id"),
+                    weight_kg       = weight,
+                    updated_at      = obj.jStr("updatedAt", "updated_at").orEmpty()
+                )
+            ))
+            weight
+        } catch (_: Exception) { null }
+    }
+
+    private fun updateWeightMeter() {
+        val vehicle = selectedVehicle
+        val totalKg = scannedSpools.sumOf { it.weightKg ?: 0.0 }
+
+        if (vehicle == null || scannedSpools.isEmpty()) {
+            cardWeightMeter.visibility = View.GONE
+            return
+        }
+
+        val capacityKg = vehicle.capacity_weight_kg
+        if (capacityKg == null || capacityKg <= 0.0) {
+            cardWeightMeter.visibility = View.VISIBLE
+            txtWeightMeter.text = getString(R.string.load_spools_weight_no_capacity, formatKg(totalKg))
+            txtWeightMeter.setTextColor(requireContext().getColor(R.color.on_surface))
+            progressWeight.progress = 0
+            progressWeight.progressTintList = android.content.res.ColorStateList.valueOf(requireContext().getColor(R.color.green))
+            return
+        }
+
+        val ratio = totalKg / capacityKg
+        val percent = (ratio * 100).toInt()
+        val colorRes = when {
+            ratio >= 1.0  -> R.color.error
+            ratio >= 0.8  -> R.color.warning
+            else          -> R.color.green
+        }
+        val color = requireContext().getColor(colorRes)
+
+        cardWeightMeter.visibility = View.VISIBLE
+        txtWeightMeter.text = getString(R.string.load_spools_weight_meter, formatKg(totalKg), formatKg(capacityKg), percent)
+        txtWeightMeter.setTextColor(color)
+        progressWeight.progress = percent.coerceIn(0, 100)
+        progressWeight.progressTintList = android.content.res.ColorStateList.valueOf(color)
+    }
+
+    private fun formatKg(value: Double): String =
+        if (value == value.toLong().toDouble()) value.toLong().toString() else String.format(java.util.Locale.getDefault(), "%.1f", value)
+
+    private fun parseCreatedPlId(raw: String): Long? {
+        return try {
+            val el = com.google.gson.JsonParser.parseString(raw)
+            val obj = when {
+                el.isJsonObject && el.asJsonObject.has("data") && !el.asJsonObject.get("data").isJsonNull ->
+                    el.asJsonObject.getAsJsonObject("data")
+                el.isJsonObject -> el.asJsonObject
+                else -> return null
+            }
+            obj.get("packingListId")?.takeIf { !it.isJsonNull }?.asLong
+                ?: obj.get("packing_list_id")?.takeIf { !it.isJsonNull }?.asLong
+                ?: obj.get("id")?.takeIf { !it.isJsonNull }?.asLong
+        } catch (_: Exception) { null }
+    }
+
+    // ───────────────────────── Step 3: Destination ─────────────────────────
+
+    private fun goToDestinationPanel() {
+        if (scannedSpools.isEmpty()) {
+            Toast.makeText(requireContext(), getString(R.string.load_spools_empty_error), Toast.LENGTH_SHORT).show()
+            return
+        }
         viewLifecycleOwner.lifecycleScope.launch {
             val location = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: ""
-            val destCode = when (location) {
-                "WORKSHOP" -> "LAYDOWN"
-                "LAYDOWN"  -> "SITE"
-                else       -> return@launch
+            if (location != "WORKSHOP" && location != "LAYDOWN") return@launch
+
+            panelSpools.visibility = View.GONE
+            panelDestination.visibility = View.VISIBLE
+
+            if (location == "WORKSHOP") {
+                panelDestinationChoice.visibility = View.VISIBLE
+                rgDestination.clearCheck()
+                txtSendDestination.visibility = View.GONE
+                destination = ""
+                rgDestination.setOnCheckedChangeListener { _, checkedId ->
+                    val destCode = if (checkedId == R.id.rbDestSite) "SITE" else "LAYDOWN"
+                    destination = destCode
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val pos = ServiceLocator.smsPositionDao.getByCode(destCode)
+                        txtSendDestination.text = getString(R.string.transfer_send_to, pos?.name ?: destCode)
+                        txtSendDestination.visibility = View.VISIBLE
+                    }
+                }
+            } else {
+                panelDestinationChoice.visibility = View.GONE
+                val destCode = "SITE"
+                val pos = ServiceLocator.smsPositionDao.getByCode(destCode)
+                destination = destCode
+                txtSendDestination.text = getString(R.string.transfer_send_to, pos?.name ?: destCode)
+                txtSendDestination.visibility = View.VISIBLE
             }
-            val destPosition = ServiceLocator.smsPositionDao.getByCode(destCode)
-            destination = destCode
-            txtSendDestination.text = getString(R.string.transfer_send_to, destPosition?.name ?: destCode)
-            panelConfirmSpools.visibility = View.GONE
-            panelSignature.visibility = View.VISIBLE
         }
     }
 
     private fun onConfirmSend() {
-        if (signatureView.isEmpty()) {
-            Toast.makeText(requireContext(), getString(R.string.transfer_signature_empty), Toast.LENGTH_SHORT).show()
+        if (panelDestinationChoice.visibility == View.VISIBLE && rgDestination.checkedRadioButtonId == -1) {
+            Toast.makeText(requireContext(), getString(R.string.transfer_send_destination_required), Toast.LENGTH_SHORT).show()
             return
         }
-        val pl = selectedPl ?: return
+        val vehicle = selectedVehicle ?: return
+        Log.d("SendPL", "onConfirmSend start: vehicle=${vehicle.license_plate} spools=${scannedSpools.size} destination=$destination")
         viewLifecycleOwner.lifecycleScope.launch {
-            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-            val location  = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: "UNKNOWN"
-            val now       = LocalDateTime.now().toString()
-            val sigData   = signatureView.getBase64Png()
-
-            val transferId = ServiceLocator.smsTransferDao.insert(
-                SmsTransferEntity(
-                    transfer_type        = "SEND",
-                    packing_list_id      = pl.packing_list_id,
-                    packing_list_name    = pl.packing_list_name,
-                    vehicle_id           = pl.vehicle_id ?: 0L,
-                    vehicle_plate        = pl.vehicle_plate ?: "",
-                    origin_location      = location,
-                    destination_location = destination,
-                    signature_data       = sigData,
-                    created_at           = now,
-                    project_id           = projectId
-                )
-            )
-
-            val confirmedSpools = spoolConfirmations.filter { it.confirmed }
-            ServiceLocator.smsTransferDao.insertSpools(
-                confirmedSpools.map { sc ->
-                    SmsTransferSpoolEntity(
-                        transfer_id  = transferId,
-                        spool_id     = sc.spool.spool_id,
-                        spool_code   = sc.spool.spool_code,
-                        spool_suffix = sc.spool.spool_suffix,
-                        assignment   = null
-                    )
-                }
-            )
-
-            confirmedSpools.forEach { sc ->
-                ServiceLocator.smsSpoolDao.updateInTransit(sc.spool.spool_id, true)
-            }
-
-            ServiceLocator.smsPackingListDao.setReadyToSend(pl.packing_list_id, false)
-
-            val destPosition = ServiceLocator.smsPositionDao.getByCode(destination)
-            ServiceLocator.smsVehicleDao.setOnRoute(pl.vehicle_id ?: 0L, destPosition?.position_id)
-
             try {
-                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                if (!projectCode.isNullOrBlank() && (pl.vehicle_id ?: 0L) != 0L) {
-                    ServiceLocator.apiClient.getService()
-                        .setVehicleOnRoute(projectCode, pl.vehicle_id!!, destPosition?.position_id)
+                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                val now = LocalDateTime.now()
+
+                // ───── Part 1: load spools onto vehicle → resolve/create the Packing List ─────
+                val distinctPlIds = scannedSpools.mapNotNull { it.packingListId }.distinct()
+                val sameSinglePl = distinctPlIds.size == 1 && scannedSpools.all { it.packingListId != null }
+                val scannedSpoolIds = scannedSpools.mapNotNull { it.spoolId.takeIf { id -> id > 0 } }.toSet()
+                val existingPlSpoolIds = if (sameSinglePl)
+                    ServiceLocator.smsPackingListSpoolDao.getSpoolIdsByPackingList(distinctPlIds[0]).toSet()
+                else emptySet()
+                val allSameSinglePl = sameSinglePl && scannedSpoolIds == existingPlSpoolIds
+
+                val effectivePlId: Long
+                val effectivePlName: String
+
+                if (allSameSinglePl) {
+                    effectivePlId = distinctPlIds[0]
+                    effectivePlName = scannedSpools.first().packingListName ?: "PL-$effectivePlId"
+                } else {
+                    val newPlId = (ServiceLocator.smsPackingListDao.getMaxId() ?: 0L) + 1L
+                    val project     = ServiceLocator.projectDao.getById(projectId)
+                    val proj        = project?.project_code?.uppercase()?.trim().orEmpty()
+                    val projectCode = project?.project_code.orEmpty()
+                    val location    = ServiceLocator.configRepo.get("device_location")?.trim().orEmpty()
+                    val position    = location.takeIf { it.isNotBlank() }?.let { ServiceLocator.smsPositionDao.getByCode(it) }
+                    val posCode     = position?.code?.uppercase()?.trim().orEmpty()
+                    val plate       = vehicle.license_plate.replace("-", "").replace(" ", "").uppercase()
+                    val count       = if (position != null)
+                        ServiceLocator.smsPackingListDao.countByProjectPositionVehicle(projectId, position.position_id, vehicle.vehicle_id)
+                    else
+                        ServiceLocator.smsPackingListDao.countByNamePrefix(projectId, listOfNotNull("PL", proj.ifBlank { null }, plate.ifBlank { null }).joinToString("-"))
+                    val n           = "%03d".format(count + 1)
+                    val plName      = if (posCode.isNotBlank()) "PL-$proj-$posCode-$plate-$n" else "PL-$proj-$plate-$n"
+                    val totalWeight = scannedSpools.sumOf { it.weightKg ?: 0.0 }.takeIf { it > 0.0 }
+                    val pl = SmsPackingListEntity(
+                        packing_list_id    = newPlId,
+                        project_id         = projectId,
+                        packing_list_name  = plName,
+                        vehicle_id         = vehicle.vehicle_id,
+                        vehicle_plate      = vehicle.license_plate,
+                        position_id        = position?.position_id,
+                        packing_date       = now.toString(),
+                        total_spools_count = scannedSpools.size,
+                        total_weight_kg    = totalWeight,
+                        synced             = false,
+                        ready_to_send      = true
+                    )
+                    ServiceLocator.smsPackingListDao.insertAll(listOf(pl))
+
+                    // Try to create the PL on the server right away so its spools can be
+                    // linked server-side too — the background SyncService upload only
+                    // creates the empty PL and never links spools.
+                    var finalPlId = newPlId
+                    var createdOnServer = false
+                    try {
+                        if (projectCode.isNotBlank()) {
+                            val service = ServiceLocator.apiClient.getService()
+                            val body = CreatePackingListRequest(
+                                packingListName  = plName,
+                                vehicle          = vehicle.license_plate,
+                                vehicleId        = vehicle.vehicle_id,
+                                position         = position?.name,
+                                positionId       = position?.position_id,
+                                packingDate      = now.toString(),
+                                notes            = null,
+                                createdBy        = "API",
+                                projectCode      = projectCode,
+                                totalSpoolsCount = scannedSpools.size
+                            )
+                            val resp = service.createPackingList(projectCode, body)
+                            if (resp.isSuccessful) {
+                                createdOnServer = true
+                                val rawBody = resp.body()?.string().orEmpty()
+                                val parsedId = parseCreatedPlId(rawBody)
+                                if (parsedId != null && parsedId > 0L && parsedId != newPlId) {
+                                    ServiceLocator.smsPackingListDao.deleteById(newPlId)
+                                    ServiceLocator.smsPackingListDao.insertAll(listOf(pl.copy(packing_list_id = parsedId, synced = true)))
+                                    finalPlId = parsedId
+                                } else {
+                                    ServiceLocator.smsPackingListDao.markSynced(listOf(newPlId))
+                                }
+                            } else {
+                                Log.w("SendPL", "PL server create failed: HTTP ${resp.code()}")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w("SendPL", "PL server create error (offline?): ${e.message}")
+                    }
+
+                    val maxPlSpoolId = ServiceLocator.smsPackingListSpoolDao.getMaxId() ?: 0L
+                    val plSpoolEntries = scannedSpools.filter { it.spoolId > 0 }.mapIndexed { idx, s ->
+                        SmsPackingListSpoolEntity(
+                            packing_list_spool_id = maxPlSpoolId + idx + 1,
+                            packing_list_id       = finalPlId,
+                            spool_id              = s.spoolId,
+                            sequence_number       = idx + 1,
+                            added_at              = now.toString()
+                        )
+                    }
+
+                    val vacatedPlIds = scannedSpools
+                        .mapNotNull { it.packingListId }
+                        .filter { it != finalPlId }
+                        .distinct()
+
+                    scannedSpools.filter { it.spoolId > 0 }.forEachIndexed { idx, s ->
+                        ServiceLocator.smsSpoolDao.updatePackingList(s.spoolId, finalPlId)
+                        ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(s.spoolId)
+                        if (createdOnServer) {
+                            try {
+                                ServiceLocator.apiClient.getService()
+                                    .addSpoolToPackingList(projectCode, finalPlId, AssignSpoolRequest(s.spoolId, "API", idx + 1))
+                            } catch (_: Exception) { /* offline – sync will retry PL upload, spools stay linked locally */ }
+                        }
+                    }
+                    if (plSpoolEntries.isNotEmpty()) {
+                        ServiceLocator.smsPackingListSpoolDao.insertAll(plSpoolEntries)
+                    }
+
+                    // The spools above just left their previous PL(s) — refresh those PLs'
+                    // total_spools_count so their detail screen header matches the actual
+                    // remaining spool list.
+                    vacatedPlIds.forEach { oldPlId ->
+                        val newCount = ServiceLocator.smsSpoolDao.getByPackingList(oldPlId).size
+                        ServiceLocator.smsPackingListDao.getById(oldPlId)?.let { oldPl ->
+                            ServiceLocator.smsPackingListDao.insertAll(listOf(oldPl.copy(total_spools_count = newCount, synced = false)))
+                        }
+                    }
+
+                    effectivePlId = finalPlId
+                    effectivePlName = plName
                 }
-            } catch (_: Exception) { }
 
-            if (!isAdded) return@launch
-            (requireActivity() as? MainActivity)?.playSuccess()
-            Toast.makeText(requireContext(), getString(R.string.transfer_send_success), Toast.LENGTH_LONG).show()
-            findNavController().navigateUp()
+                val prevLoadings = ServiceLocator.smsVehicleLoadingDao.getByVehicle(vehicle.vehicle_id, projectId)
+                prevLoadings.forEach { prev ->
+                    ServiceLocator.smsVehicleLoadingDao.deleteSpoolsByLoading(prev.loading_id)
+                    ServiceLocator.smsVehicleLoadingDao.deleteById(prev.loading_id)
+                }
+
+                val loadingId = ServiceLocator.smsVehicleLoadingDao.insert(
+                    SmsVehicleLoadingEntity(
+                        vehicle_id    = vehicle.vehicle_id,
+                        vehicle_plate = vehicle.license_plate,
+                        project_id    = projectId,
+                        created_at    = now.toString(),
+                        synced        = false
+                    )
+                )
+                ServiceLocator.smsVehicleLoadingDao.insertSpools(
+                    scannedSpools.map { s ->
+                        SmsVehicleLoadingSpoolEntity(
+                            loading_id        = loadingId,
+                            spool_id          = s.spoolId,
+                            spool_code        = s.spoolCode,
+                            spool_suffix      = s.spoolSuffix,
+                            packing_list_id   = effectivePlId,
+                            packing_list_name = effectivePlName
+                        )
+                    }
+                )
+
+                ServiceLocator.smsPackingListDao.setReadyToSend(effectivePlId, true)
+                ServiceLocator.smsPackingListDao.setVehicle(effectivePlId, vehicle.vehicle_id, vehicle.license_plate)
+
+                try {
+                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+                    if (!projectCode.isNullOrBlank()) {
+                        ServiceLocator.apiClient.getService().setPackingListReadyToSend(projectCode, effectivePlId, true)
+                    }
+                } catch (_: Exception) { /* offline – local flag preserved, sync will retry */ }
+
+                // ───── Part 2: send the loaded packing list (transfer record) ─────
+                val location  = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: "UNKNOWN"
+                val sigData   = ""
+
+                val prevTransfers = ServiceLocator.smsTransferDao.getSendByVehicle(vehicle.vehicle_id, projectId)
+                if (prevTransfers.isNotEmpty()) {
+                    val prevIds = prevTransfers.map { it.transfer_id }
+                    ServiceLocator.smsTransferDao.deleteSpoolsByTransferIds(prevIds)
+                    ServiceLocator.smsTransferDao.deleteByIds(prevIds)
+                }
+
+                val transferId = ServiceLocator.smsTransferDao.insert(
+                    SmsTransferEntity(
+                        transfer_type        = "SEND",
+                        packing_list_id      = effectivePlId,
+                        packing_list_name    = effectivePlName,
+                        vehicle_id           = vehicle.vehicle_id,
+                        vehicle_plate        = vehicle.license_plate,
+                        origin_location      = location,
+                        destination_location = destination,
+                        signature_data       = sigData,
+                        created_at           = now.toString(),
+                        project_id           = projectId
+                    )
+                )
+
+                val transferSpools = scannedSpools.filter { it.spoolId > 0 }
+                ServiceLocator.smsTransferDao.insertSpools(
+                    transferSpools.map { s ->
+                        SmsTransferSpoolEntity(
+                            transfer_id  = transferId,
+                            spool_id     = s.spoolId,
+                            spool_code   = s.spoolCode,
+                            spool_suffix = s.spoolSuffix,
+                            assignment   = null
+                        )
+                    }
+                )
+
+                transferSpools.forEach { s ->
+                    ServiceLocator.smsSpoolDao.updateInTransit(s.spoolId, true)
+                }
+
+                ServiceLocator.smsPackingListDao.setReadyToSend(effectivePlId, false)
+
+                val destPosition = ServiceLocator.smsPositionDao.getByCode(destination)
+                if (destPosition != null) {
+                    transferSpools.forEach { s ->
+                        ServiceLocator.smsSpoolDao.updatePosition(s.spoolId, destPosition.position_id)
+                    }
+                    ServiceLocator.smsPackingListDao.updatePosition(effectivePlId, destPosition.position_id)
+                } else {
+                    Log.w("SendPL", "onConfirmSend: no position found for code='$destination' — spool/PL position NOT updated")
+                }
+
+                ServiceLocator.smsVehicleDao.setOnRoute(vehicle.vehicle_id, destPosition?.position_id)
+
+                try {
+                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+                    if (!projectCode.isNullOrBlank()) {
+                        val resp = ServiceLocator.apiClient.getService()
+                            .setVehicleOnRoute(projectCode, vehicle.vehicle_id, destPosition?.position_id)
+                        Log.d("SendPL", "setVehicleOnRoute(vehicle=${vehicle.vehicle_id}, dest=${destPosition?.position_id}) → HTTP ${resp.code()} successful=${resp.isSuccessful}")
+                    }
+                } catch (e: Exception) {
+                    Log.e("SendPL", "setVehicleOnRoute failed", e)
+                }
+
+                val activity = requireActivity() as? MainActivity
+                activity?.lifecycleScope?.launch { ServiceLocator.syncService.syncSmsUploads() }
+
+                if (!isAdded) return@launch
+                activity?.playSuccess()
+                ServiceLocator.auditLogService.log(
+                    com.example.hassiwrapper.services.AuditLogService.TRANSFERENCIA_ENVIADA,
+                    com.example.hassiwrapper.services.AuditLogService.ENTITY_TRANSFERENCIA,
+                    transferId, effectivePlName,
+                    detail = "${vehicle.license_plate} → $destination",
+                    projectId = projectId
+                )
+                Toast.makeText(requireContext(), getString(R.string.transfer_send_success), Toast.LENGTH_LONG).show()
+                findNavController().navigateUp()
+            } catch (e: Exception) {
+                Log.e("SendPL", "onConfirmSend FAILED", e)
+                if (isAdded) Toast.makeText(requireContext(), getString(R.string.transfer_send_error, e.message), Toast.LENGTH_LONG).show()
+            }
         }
     }
 
-    private inner class PlAdapter : RecyclerView.Adapter<PlAdapter.VH>() {
-        var items: List<SmsPackingListEntity> = emptyList()
+    private inner class ScannedSpoolAdapter : RecyclerView.Adapter<ScannedSpoolAdapter.VH>() {
 
         inner class VH(view: View) : RecyclerView.ViewHolder(view) {
-            val txtName:       TextView = view.findViewById(R.id.txtPlName)
-            val txtVehicle:    TextView = view.findViewById(R.id.txtPlVehicle)
-            val txtSpoolCount: TextView = view.findViewById(R.id.txtPlSpoolCount)
+            val txtCode:   TextView    = view.findViewById(R.id.txtLoadSpoolCode)
+            val txtPl:     TextView    = view.findViewById(R.id.txtLoadPlName)
+            val btnRemove: ImageButton = view.findViewById(R.id.btnRemoveSpool)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
-            VH(LayoutInflater.from(parent.context).inflate(R.layout.item_transfer_pl, parent, false))
+            VH(LayoutInflater.from(parent.context).inflate(R.layout.item_load_spool, parent, false))
 
-        override fun getItemCount() = items.size
-
-        override fun onBindViewHolder(h: VH, position: Int) {
-            val pl = items[position]
-            h.txtName.text       = pl.packing_list_name
-            h.txtVehicle.text    = getString(R.string.transfer_vehicle_label, pl.vehicle_plate ?: "—")
-            h.txtSpoolCount.text = getString(R.string.spools_count_format, pl.total_spools_count ?: 0)
-            h.itemView.setOnClickListener { onPlSelected(pl) }
-        }
-    }
-
-    private inner class SpoolConfirmAdapter : RecyclerView.Adapter<SpoolConfirmAdapter.VH>() {
-
-        inner class VH(view: View) : RecyclerView.ViewHolder(view) {
-            val imgCheck:  ImageView = view.findViewById(R.id.imgCheckMark)
-            val txtCode:   TextView  = view.findViewById(R.id.txtSpoolCode)
-            val txtPl:     TextView  = view.findViewById(R.id.txtSpoolPl)
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
-            VH(LayoutInflater.from(parent.context).inflate(R.layout.item_transfer_spool, parent, false))
-
-        override fun getItemCount() = spoolConfirmations.size
+        override fun getItemCount() = scannedSpools.size
 
         override fun onBindViewHolder(h: VH, position: Int) {
-            val sc = spoolConfirmations[position]
-            h.txtCode.text  = sc.spool.displayCode
-            h.txtPl.text    = sc.spool.packing_list_name ?: ""
-            h.imgCheck.setImageResource(
-                if (sc.confirmed) android.R.drawable.checkbox_on_background
-                else android.R.drawable.checkbox_off_background
-            )
+            val item = scannedSpools[position]
+            h.txtCode.text = item.displayCode
+            h.txtPl.text   = item.packingListName ?: getString(R.string.load_spools_no_pl)
+            h.btnRemove.setOnClickListener { removeSpoolAt(h.adapterPosition) }
         }
     }
 }

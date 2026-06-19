@@ -19,6 +19,7 @@ import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.network.dto.UpdatePackingListRequest
+import com.example.hassiwrapper.services.OutboxService
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
 
@@ -54,6 +55,9 @@ class VehicleDetailFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        (view as com.example.hassiwrapper.ui.common.SwipeBackScrollView).onSwipeBack = {
+            findNavController().popBackStack()
+        }
         txtPlate           = view.findViewById(R.id.txtDetailVehiclePlate)
         txtSubtitle        = view.findViewById(R.id.txtDetailVehicleSubtitle)
         txtInfoPlate       = view.findViewById(R.id.txtInfoPlate)
@@ -95,7 +99,7 @@ class VehicleDetailFragment : Fragment() {
     }
 
     private fun bindVehicle(v: SmsVehicleEntity) {
-        txtPlate.text    = v.license_plate.ifBlank { "Vehículo ${v.vehicle_id}" }
+        txtPlate.text    = v.license_plate.ifBlank { getString(R.string.vehicles_label_fallback, v.vehicle_id) }
         val subtitle = listOfNotNull(v.vehicle_name, v.vehicle_type, v.company).joinToString(" · ")
         txtSubtitle.text = subtitle.ifBlank { "—" }
         txtInfoPlate.text    = v.license_plate.ifBlank { "—" }
@@ -284,6 +288,10 @@ class VehicleDetailFragment : Fragment() {
         btnHardDelete.isEnabled = false
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                val vehicle = ServiceLocator.smsVehicleDao.getById(vehicleId)
+                val isSynced = vehicle?.synced == true
+                val projectId = vehicle?.project_id ?: (ServiceLocator.configRepo.getInt("selected_project_id") ?: 6)
+
                 locallyDeletedVehicleIds.add(vehicleId)
 
                 val pls = ServiceLocator.smsPackingListDao.getByVehicle(vehicleId)
@@ -292,20 +300,18 @@ class VehicleDetailFragment : Fragment() {
                 }
                 ServiceLocator.smsVehicleDao.deleteById(vehicleId)
 
-                try {
-                    val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                    if (!projectCode.isNullOrBlank()) {
-                        val r = ServiceLocator.apiClient.getService().hardDeleteVehicle(projectCode, vehicleId)
-                        Log.d(TAG, "hardDeleteVehicle → HTTP ${r.code()}")
-                        if (!r.isSuccessful && isAdded) {
-                            Toast.makeText(requireContext(), "API hard delete: HTTP ${r.code()}", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "hardDeleteVehicle API failed", e)
+                // Queue the server hard-delete for synced vehicles so it survives offline + restart.
+                if (isSynced) {
+                    ServiceLocator.outboxService.enqueue(
+                        OutboxService.Entity.VEHICLE, OutboxService.Op.HARD_DELETE, vehicleId, projectId
+                    )
                 }
-                ServiceLocator.smsVehicleDao.deleteById(vehicleId)
+
+                ServiceLocator.auditLogService.log(
+                    com.example.hassiwrapper.services.AuditLogService.VEHICULO_ELIMINADO,
+                    com.example.hassiwrapper.services.AuditLogService.ENTITY_VEHICULO,
+                    vehicleId, vehicle?.license_plate ?: "", projectId = projectId
+                )
 
                 Toast.makeText(requireContext(), getString(R.string.vehicle_detail_hard_deleted), Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()

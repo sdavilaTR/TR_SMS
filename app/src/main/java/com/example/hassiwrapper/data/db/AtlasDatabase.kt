@@ -48,9 +48,13 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsVehicleLoadingEntity::class,
         SmsVehicleLoadingSpoolEntity::class,
         SmsTransferEntity::class,
-        SmsTransferSpoolEntity::class
+        SmsTransferSpoolEntity::class,
+        SmsIncidentEntity::class,
+        SmsOutboxEntity::class,
+        SmsIdMapEntity::class,
+        SmsAuditLogEntity::class
     ],
-    version = 18,
+    version = 24,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -90,6 +94,9 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun smsVehicleDao(): SmsVehicleDao
     abstract fun smsVehicleLoadingDao(): SmsVehicleLoadingDao
     abstract fun smsTransferDao(): SmsTransferDao
+    abstract fun smsIncidentDao(): SmsIncidentDao
+    abstract fun smsOutboxDao(): SmsOutboxDao
+    abstract fun smsAuditLogDao(): SmsAuditLogDao
 
     /** Clears all data from every table (used when switching to DEV profile). */
     suspend fun clearAllData() {
@@ -566,6 +573,104 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 18 → 19: create sms_incident table")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_incident` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `uuid` TEXT NOT NULL,
+                        `project_id` INTEGER NOT NULL,
+                        `spool_code` TEXT NOT NULL,
+                        `spool_suffix` TEXT,
+                        `description` TEXT NOT NULL,
+                        `vehicle_plate` TEXT,
+                        `location_type` TEXT NOT NULL,
+                        `location_detail` TEXT,
+                        `severity` TEXT NOT NULL,
+                        `position_id` INTEGER,
+                        `position_code` TEXT,
+                        `author_name` TEXT,
+                        `photo_path` TEXT,
+                        `event_date` TEXT NOT NULL,
+                        `status` TEXT NOT NULL DEFAULT 'OPEN',
+                        `synced` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+            }
+        }
+
+        private val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 19 → 20: add sms_incident close fields")
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `closed_by` TEXT")
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `closed_at` TEXT")
+            }
+        }
+
+        private val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 20 → 21: add position_id to sms_spool")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `position_id` INTEGER")
+            }
+        }
+
+        // v21 → v22: persisted mutation outbox + local→server id map
+        private val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 23 → 24: add position column to sms_packing_list")
+                db.execSQL("ALTER TABLE sms_packing_list ADD COLUMN position TEXT")
+            }
+        }
+
+        private val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 22 → 23: create sms_audit_log")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_audit_log` (
+                        `log_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `project_id` INTEGER NOT NULL,
+                        `action_type` TEXT NOT NULL,
+                        `entity_type` TEXT NOT NULL,
+                        `entity_id` INTEGER NOT NULL,
+                        `entity_name` TEXT NOT NULL,
+                        `detail` TEXT,
+                        `terminal_name` TEXT NOT NULL,
+                        `timestamp` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
+        private val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 21 → 22: create sms_outbox + sms_id_map")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_outbox` (
+                        `op_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `entity_type` TEXT NOT NULL,
+                        `op_type` TEXT NOT NULL,
+                        `local_entity_id` INTEGER NOT NULL,
+                        `ref_entity_id` INTEGER,
+                        `payload_json` TEXT,
+                        `project_id` INTEGER NOT NULL,
+                        `created_at` TEXT NOT NULL,
+                        `attempts` INTEGER NOT NULL DEFAULT 0,
+                        `last_error` TEXT,
+                        `status` TEXT NOT NULL DEFAULT 'PENDING'
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_id_map` (
+                        `entity_type` TEXT NOT NULL,
+                        `local_id` INTEGER NOT NULL,
+                        `server_id` INTEGER NOT NULL,
+                        PRIMARY KEY(`entity_type`, `local_id`)
+                    )
+                """.trimIndent())
+            }
+        }
+
         private val MIGRATION_14_15 = object : Migration(14, 15) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 Log.i(TAG, "Migration 14 → 15: create sms_transfer tables")
@@ -635,7 +740,13 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_14_15,
                         MIGRATION_15_16,
                         MIGRATION_16_17,
-                        MIGRATION_17_18
+                        MIGRATION_17_18,
+                        MIGRATION_18_19,
+                        MIGRATION_19_20,
+                        MIGRATION_20_21,
+                        MIGRATION_21_22,
+                        MIGRATION_22_23,
+                        MIGRATION_23_24
                     )
                     .build()
                 INSTANCE = instance

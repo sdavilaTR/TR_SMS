@@ -86,7 +86,7 @@ class PackingListsFragment : Fragment() {
                 Log.d("PackingListsDebug", "Project lookup id=$projectId → $project")
                 val projectCode = project?.project_code
                 if (projectCode.isNullOrBlank()) {
-                    val msg = "projectCode nulo/vacío para project_id=$projectId. ¿Se hizo sync?"
+                    val msg = getString(R.string.packing_lists_error_project_code, projectId)
                     Log.e("PackingListsDebug", msg)
                     showError(msg)
                     return@launch

@@ -16,6 +16,7 @@ import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPositionEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.network.dto.UpdatePackingListRequest
+import com.example.hassiwrapper.services.OutboxService
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -52,6 +53,7 @@ class EditPackingListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        (view as com.example.hassiwrapper.ui.common.SwipeBackScrollView).onSwipeBack = { findNavController().navigateUp() }
         txtCurrentName = view.findViewById(R.id.txtEditPLName)
         tilPosition    = view.findViewById(R.id.tilEditPosition)
         tilVehicle     = view.findViewById(R.id.tilEditVehicle)
@@ -168,31 +170,31 @@ class EditPackingListFragment : Fragment() {
                 )
                 ServiceLocator.smsPackingListDao.insertAll(listOf(updated))
 
-                try {
-                    if (projectCode.isNotBlank()) {
-                        val positionName = selectedPositionId?.let { pid ->
-                            ServiceLocator.smsPositionDao.getAll().find { it.position_id == pid }?.name
-                        }
-                        val updateBody = UpdatePackingListRequest(
-                            packingListId    = packingListId,
-                            packingListName  = newName,
-                            vehicle          = selectedVehiclePlate,
-                            position         = positionName,
-                            positionId       = selectedPositionId,
-                            packingDate      = pl.packing_date.takeIf { it.isNotBlank() },
-                            notes            = notes,
-                            createdBy        = pl.created_by,
-                            updatedBy        = null,
-                            projectCode      = projectCode,
-                            totalSpoolsCount = pl.total_spools_count ?: 0
-                        )
-                        val resp = ServiceLocator.apiClient.getService().updatePackingList(projectCode, updateBody)
-                        if (resp.isSuccessful) {
-                            ServiceLocator.smsPackingListDao.markSynced(listOf(packingListId))
-                        }
-                    }
-                } catch (_: Exception) { /* offline — SyncService reintentará */ }
+                val positionName = selectedPositionId?.let { pid ->
+                    ServiceLocator.smsPositionDao.getAll().find { it.position_id == pid }?.name
+                }
+                ServiceLocator.outboxService.enqueue(
+                    OutboxService.Entity.PACKING_LIST, OutboxService.Op.UPDATE, packingListId, projectId,
+                    payload = UpdatePackingListRequest(
+                        packingListId    = packingListId,
+                        packingListName  = newName,
+                        vehicle          = selectedVehiclePlate,
+                        position         = positionName,
+                        positionId       = selectedPositionId,
+                        packingDate      = pl.packing_date.takeIf { it.isNotBlank() },
+                        notes            = notes,
+                        createdBy        = pl.created_by,
+                        updatedBy        = null,
+                        projectCode      = projectCode,
+                        totalSpoolsCount = pl.total_spools_count ?: 0
+                    )
+                )
 
+                ServiceLocator.auditLogService.log(
+                    com.example.hassiwrapper.services.AuditLogService.PL_EDITADO,
+                    com.example.hassiwrapper.services.AuditLogService.ENTITY_PL,
+                    packingListId, newName, projectId = projectId
+                )
                 Toast.makeText(requireContext(), getString(R.string.pl_edit_success), Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()
             } catch (e: Exception) {

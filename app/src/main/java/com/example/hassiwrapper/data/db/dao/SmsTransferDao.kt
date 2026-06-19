@@ -16,6 +16,15 @@ interface SmsTransferDao {
     @Query("SELECT * FROM sms_transfer WHERE project_id = :projectId ORDER BY created_at DESC")
     suspend fun getByProject(projectId: Int): List<SmsTransferEntity>
 
+    @Query("SELECT * FROM sms_transfer WHERE vehicle_id = :vehicleId AND project_id = :projectId AND transfer_type = 'SEND'")
+    suspend fun getSendByVehicle(vehicleId: Long, projectId: Int): List<SmsTransferEntity>
+
+    @Query("DELETE FROM sms_transfer_spool WHERE transfer_id IN (:ids)")
+    suspend fun deleteSpoolsByTransferIds(ids: List<Long>)
+
+    @Query("DELETE FROM sms_transfer WHERE transfer_id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
     @Query("SELECT * FROM sms_transfer WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsTransferEntity>
 

@@ -25,11 +25,14 @@ import kotlinx.coroutines.launch
 
 class CreateSpoolFragment : Fragment() {
 
-    private enum class Filter { ALL, ASSIGNED, UNASSIGNED }
+    private enum class Filter(val positionCode: String?) {
+        ALL(null), WORKSHOP("WORKSHOP"), LAYDOWN("LAYDOWN"), SITE("SITE")
+    }
 
     private val allItems  = mutableListOf<SmsSpoolEntity>()
     private val items     = mutableListOf<SmsSpoolEntity>()
     private var filter    = Filter.ALL
+    private var plPositions: Map<Long, String?> = emptyMap()
     private lateinit var adapter: SpoolAdapter
 
     private lateinit var rv: RecyclerView
@@ -66,9 +69,10 @@ class CreateSpoolFragment : Fragment() {
         toggleFilter.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
             filter = when (checkedId) {
-                R.id.btnFilterAssigned   -> Filter.ASSIGNED
-                R.id.btnFilterUnassigned -> Filter.UNASSIGNED
-                else                     -> Filter.ALL
+                R.id.btnFilterWorkshop -> Filter.WORKSHOP
+                R.id.btnFilterLaydown  -> Filter.LAYDOWN
+                R.id.btnFilterSite     -> Filter.SITE
+                else                   -> Filter.ALL
             }
             applyFilter()
         }
@@ -79,10 +83,14 @@ class CreateSpoolFragment : Fragment() {
 
     private fun applyFilter() {
         items.clear()
-        items += when (filter) {
-            Filter.ALL        -> allItems
-            Filter.ASSIGNED   -> allItems.filter { it.packing_list_id != null }
-            Filter.UNASSIGNED -> allItems.filter { it.packing_list_id == null }
+        val targetCode = filter.positionCode
+        items += if (targetCode == null) {
+            allItems
+        } else {
+            allItems.filter { spool ->
+                val plId = spool.packing_list_id ?: return@filter false
+                plPositions[plId]?.equals(targetCode, ignoreCase = true) == true
+            }
         }
         adapter.notifyDataSetChanged()
         refreshCounts()
@@ -91,6 +99,7 @@ class CreateSpoolFragment : Fragment() {
     private suspend fun refreshPackingListMap(projectId: Int) {
         val pls = ServiceLocator.smsPackingListDao.getByProject(projectId)
         adapter.packingLists = pls.associate { it.packing_list_id to it.packing_list_name }
+        plPositions = pls.associate { it.packing_list_id to it.position }
     }
 
     private fun loadSpools(forceRefresh: Boolean) {
@@ -107,7 +116,7 @@ class CreateSpoolFragment : Fragment() {
                 val allInDb        = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
                 Log.d("SpoolsDebug", "projectId=$projectId | totalInDb=$totalInDb | projectIds=$projectIds | countForProj=$countForProj | countActive=$countActive | forceRefresh=$forceRefresh")
                 Log.d("SpoolsDebug", "getByProjectIgnoreActive($projectId) = ${allInDb.size} items")
-                allInDb.forEach { s -> Log.d("SpoolsDebug", "  spool_id=${s.spool_id} code=${s.spool_code} pid=${s.project_id} active=${s.is_active} pl=${s.packing_list_id}") }
+                allInDb.forEach { s -> Log.d("SpoolsDebug", "  spool_id=${s.spool_id} code=${s.spool_code} pid=${s.project_id} active=${s.is_active} pl=${s.packing_list_id} position_id=${s.position_id}") }
                 txtCount.text = "DBG pid=$projectId total=$totalInDb pids=$projectIds proj=$countForProj active=$countActive ignoreActive=${allInDb.size}"
 
                 refreshPackingListMap(projectId)

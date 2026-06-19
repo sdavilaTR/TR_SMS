@@ -13,7 +13,6 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.google.android.material.button.MaterialButton
@@ -249,14 +248,16 @@ class SyncFragment : Fragment() {
         val card = v.findViewById<View>(R.id.cardSyncResult)
         val txtIcon = v.findViewById<TextView>(R.id.txtResultIcon)
         val txtTitle = v.findViewById<TextView>(R.id.txtResultTitle)
-        val txtLogs = v.findViewById<TextView>(R.id.txtResultLogs)
-        val txtWorkers = v.findViewById<TextView>(R.id.txtResultWorkers)
-        val txtVehicles = v.findViewById<TextView>(R.id.txtResultVehicles)
-        val txtObservations = v.findViewById<TextView>(R.id.txtResultObservations)
-        val txtPhotos = v.findViewById<TextView>(R.id.txtResultPhotos)
         val txtError = v.findViewById<TextView>(R.id.txtResultError)
 
         card.visibility = View.VISIBLE
+        // Per-category counts (logs/workers/AC-vehicles/observations/photos) belonged to the
+        // old Access-Control SyncResult; syncSmsUploads only reports success/error.
+        v.findViewById<TextView>(R.id.txtResultLogs).visibility = View.GONE
+        v.findViewById<TextView>(R.id.txtResultWorkers).visibility = View.GONE
+        v.findViewById<TextView>(R.id.txtResultVehicles).visibility = View.GONE
+        v.findViewById<TextView>(R.id.txtResultObservations).visibility = View.GONE
+        v.findViewById<TextView>(R.id.txtResultPhotos).visibility = View.GONE
 
         if (result.success) {
             txtIcon.text = "✓"
@@ -270,61 +271,6 @@ class SyncFragment : Fragment() {
             txtTitle.setTextColor(ContextCompat.getColor(requireContext(), R.color.error))
         }
 
-        // Logs
-        if (result.logsUploaded > 0) {
-            txtLogs.text = getString(R.string.sync_result_logs, result.logsUploaded)
-            txtLogs.visibility = View.VISIBLE
-        } else {
-            txtLogs.visibility = View.GONE
-        }
-
-        // Workers
-        if (result.workersAdded > 0 || result.workersUpdated > 0) {
-            txtWorkers.text = getString(R.string.sync_result_workers, result.workersAdded, result.workersUpdated)
-            txtWorkers.visibility = View.VISIBLE
-        } else {
-            txtWorkers.visibility = View.GONE
-        }
-
-        // Vehicles
-        if (result.vehiclesAdded > 0 || result.vehiclesUpdated > 0) {
-            txtVehicles.text = getString(R.string.sync_result_vehicles, result.vehiclesAdded, result.vehiclesUpdated)
-            txtVehicles.visibility = View.VISIBLE
-        } else {
-            txtVehicles.visibility = View.GONE
-        }
-
-        // Observations
-        if (result.observationsUploaded > 0) {
-            txtObservations.text = getString(R.string.sync_result_observations, result.observationsUploaded)
-            txtObservations.visibility = View.VISIBLE
-        } else {
-            txtObservations.visibility = View.GONE
-        }
-
-        // Photos
-        if (result.photosUploaded > 0 || result.photosFailed > 0) {
-            val sb = StringBuilder()
-            if (result.photosUploaded > 0) {
-                sb.append(getString(R.string.sync_result_photos_ok, result.photosUploaded))
-            }
-            if (result.photosFailed > 0) {
-                if (sb.isNotEmpty()) sb.append("  |  ")
-                sb.append(getString(R.string.sync_result_photos_fail, result.photosFailed))
-                val profile = ProfileManager.currentProfile()
-                if (profile == ProfileManager.Profile.DEV || profile == ProfileManager.Profile.ADMIN || profile == ProfileManager.Profile.PRE) {
-                    sb.append("\n").append(result.photoErrors.joinToString("\n"))
-                }
-            }
-            txtPhotos.text = sb.toString()
-            txtPhotos.setTextColor(ContextCompat.getColor(requireContext(),
-                if (result.photosFailed > 0) R.color.warning else R.color.on_surface_variant))
-            txtPhotos.visibility = View.VISIBLE
-        } else {
-            txtPhotos.visibility = View.GONE
-        }
-
-        // Error
         if (!result.success && result.error != null) {
             txtError.text = result.error
             txtError.visibility = View.VISIBLE

@@ -79,7 +79,7 @@ class LoginActivity : AppCompatActivity() {
             val code = inputTerminalCode.text.toString().trim().uppercase()
 
             if (code.isEmpty()) {
-                txtError.text = "Error: Introduce el Código del Terminal."
+                txtError.text = getString(R.string.login_error_empty_code)
                 txtError.visibility = View.VISIBLE
                 return@setOnClickListener
             }

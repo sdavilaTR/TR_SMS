@@ -1,6 +1,8 @@
 package com.example.hassiwrapper.network
 
 import android.util.Base64
+import com.example.hassiwrapper.AtlasApp
+import com.example.hassiwrapper.R
 import com.example.hassiwrapper.data.ConfigRepository
 import com.example.hassiwrapper.network.dto.LoginRequest
 import kotlinx.coroutines.runBlocking
@@ -30,11 +32,11 @@ class AuthRepository(private val configRepo: ConfigRepository) {
         return try {
             val response = apiService.login(LoginRequest(email, password))
             if (!response.isSuccessful) {
-                val msg = if (response.code() == 400) "Credenciales incorrectas."
-                else "Error ${response.code()}."
+                val msg = if (response.code() == 400) AtlasApp.instance.getString(R.string.auth_error_invalid_credentials)
+                else AtlasApp.instance.getString(R.string.auth_error_http, response.code())
                 return Result.failure(Exception(msg))
             }
-            var token = response.body() ?: return Result.failure(Exception("Respuesta vacía del servidor."))
+            var token = response.body() ?: return Result.failure(Exception(AtlasApp.instance.getString(R.string.auth_error_empty_response)))
             // Trim quotes if server returned a JSON string
             token = token.trim('"')
 
@@ -61,7 +63,7 @@ class AuthRepository(private val configRepo: ConfigRepository) {
 
             Result.success(token)
         } catch (e: Exception) {
-            Result.failure(Exception("No se pudo conectar con el servidor: ${e.message}"))
+            Result.failure(Exception(AtlasApp.instance.getString(R.string.auth_error_connection, e.message)))
         }
     }
 

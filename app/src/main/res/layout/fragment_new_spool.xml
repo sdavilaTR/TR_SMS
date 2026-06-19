@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.example.hassiwrapper.ui.common.SwipeBackScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background">
@@ -44,46 +44,46 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilLine"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:hint="@string/new_spool_field_line"
                 android:layout_marginEnd="6dp">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etLine"
+                <AutoCompleteTextView
+                    android:id="@+id/actvLine"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textNoSuggestions" />
+                    android:inputType="textNoSuggestions|textCapCharacters" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilCode"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:hint="@string/new_spool_field_code"
                 android:layout_marginEnd="6dp">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etCode"
+                <AutoCompleteTextView
+                    android:id="@+id/actvCode"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textNoSuggestions" />
+                    android:inputType="textNoSuggestions|textCapCharacters" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilTrain"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:hint="@string/new_spool_field_train">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etTrain"
+                <AutoCompleteTextView
+                    android:id="@+id/actvTrain"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textNoSuggestions" />
+                    android:inputType="textNoSuggestions|textCapCharacters" />
             </com.google.android.material.textfield.TextInputLayout>
 
         </LinearLayout>
@@ -266,4 +266,4 @@
             android:textAllCaps="false" />
 
     </LinearLayout>
-</ScrollView>
+</com.example.hassiwrapper.ui.common.SwipeBackScrollView>

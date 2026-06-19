@@ -28,7 +28,8 @@ import kotlinx.coroutines.launch
 
 private data class VehicleItem(
     val vehicle: SmsVehicleEntity,
-    val packingLists: List<SmsPackingListEntity>
+    val packingLists: List<SmsPackingListEntity>,
+    val originName: String? = null
 )
 
 class VehiclesFragment : Fragment() {
@@ -43,7 +44,7 @@ class VehiclesFragment : Fragment() {
     private lateinit var txtError: TextView
     private lateinit var txtCount: TextView
     private lateinit var fabNewVehicle: FloatingActionButton
-    private lateinit var fabLoadSpools: ExtendedFloatingActionButton
+    private lateinit var fabSend: ExtendedFloatingActionButton
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_vehicles, container, false)
@@ -57,7 +58,7 @@ class VehiclesFragment : Fragment() {
         txtError      = view.findViewById(R.id.txtError)
         txtCount      = view.findViewById(R.id.txtCount)
         fabNewVehicle = view.findViewById(R.id.fabNewVehicle)
-        fabLoadSpools = view.findViewById(R.id.fabLoadSpools)
+        fabSend       = view.findViewById(R.id.fabSend)
 
         adapter = VehicleAdapter()
         rv.layoutManager = LinearLayoutManager(requireContext())
@@ -67,8 +68,8 @@ class VehiclesFragment : Fragment() {
             findNavController().navigate(R.id.action_global_newVehicleFragment)
         }
 
-        fabLoadSpools.setOnClickListener {
-            findNavController().navigate(R.id.action_global_loadSpoolsFragment)
+        fabSend.setOnClickListener {
+            findNavController().navigate(R.id.action_global_sendPackingListFragment)
         }
 
         swipe.setOnRefreshListener { load(forceRefresh = true) }
@@ -99,7 +100,7 @@ class VehiclesFragment : Fragment() {
                 Log.d("VehiclesDebug", "Project lookup id=$projectId → $project")
                 val projectCode = project?.project_code
                 if (projectCode.isNullOrBlank()) {
-                    val msg = "projectCode nulo/vacío para project_id=$projectId. ¿Se hizo sync?"
+                    val msg = getString(R.string.vehicles_error_project_code, projectId)
                     Log.e("VehiclesDebug", msg)
                     showError(getString(R.string.vehicles_error_prefix, msg))
                     return@launch
@@ -155,8 +156,22 @@ class VehiclesFragment : Fragment() {
     private suspend fun buildVehicleItems(vehicles: List<SmsVehicleEntity>): List<VehicleItem> =
         vehicles.map { v ->
             val pls = ServiceLocator.smsPackingListDao.getByVehiclePlate(v.license_plate)
-            VehicleItem(v, pls)
+            val originName = resolveOriginName(pls)
+            VehicleItem(v, pls, originName)
         }
+
+    private suspend fun resolveOriginName(pls: List<SmsPackingListEntity>): String? {
+        val positionIds = pls.mapNotNull { it.position_id }.distinct()
+        if (positionIds.isEmpty()) return null
+        val names = positionIds.mapNotNull { id ->
+            ServiceLocator.smsPositionDao.getById(id)?.name?.takeIf { it.isNotBlank() }
+        }
+        return when {
+            names.isEmpty() -> null
+            names.size == 1 -> names[0]
+            else -> names.joinToString(" / ")
+        }
+    }
 
     private fun parseVehicleEntities(raw: String, defaultProjectId: Int): List<SmsVehicleEntity> {
         val gson = Gson()
@@ -206,10 +221,12 @@ class VehiclesFragment : Fragment() {
 
     private inner class VehicleAdapter : RecyclerView.Adapter<VehicleAdapter.VH>() {
         inner class VH(view: View) : RecyclerView.ViewHolder(view) {
-            val card:     CardView = view.findViewById(R.id.cardVehicle)
-            val title:    TextView = view.findViewById(R.id.txtVehicleTitle)
-            val subtitle: TextView = view.findViewById(R.id.txtVehicleSubtitle)
-            val packetList: TextView = view.findViewById(R.id.txtPacketList)
+            val card:        CardView = view.findViewById(R.id.cardVehicle)
+            val title:       TextView = view.findViewById(R.id.txtVehicleTitle)
+            val subtitle:    TextView = view.findViewById(R.id.txtVehicleSubtitle)
+            val readyBadge:  TextView = view.findViewById(R.id.txtReadyBadge)
+            val originBadge: TextView = view.findViewById(R.id.txtOriginBadge)
+            val packetList:  TextView = view.findViewById(R.id.txtPacketList)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
@@ -222,18 +239,37 @@ class VehiclesFragment : Fragment() {
             val v = item.vehicle
             val pls = item.packingLists
 
-            h.title.text = v.license_plate.ifBlank { "Vehículo ${v.vehicle_id}" }
+            h.title.text = v.license_plate.ifBlank { getString(R.string.vehicles_label_fallback, v.vehicle_id) }
             val sub = listOfNotNull(v.vehicle_name, v.vehicle_type, v.company).joinToString(" · ")
             h.subtitle.text = sub.ifBlank { getString(R.string.vehicles_plate_format, v.license_plate) }
 
-            if (pls.isEmpty()) {
-                h.card.setCardBackgroundColor(ContextCompat.getColor(requireContext(), R.color.surface_warning))
-                h.packetList.setTextColor(ContextCompat.getColor(requireContext(), R.color.warning))
-                h.packetList.text = getString(R.string.vehicles_no_packing_lists)
+            val readyToSend = pls.isNotEmpty() && pls.all { it.ready_to_send }
+
+            when {
+                readyToSend -> {
+                    h.card.setCardBackgroundColor(ContextCompat.getColor(requireContext(), R.color.surface_ready))
+                    h.packetList.setTextColor(ContextCompat.getColor(requireContext(), R.color.granted))
+                    h.packetList.text = pls.joinToString("\n") { it.packing_list_name }
+                }
+                pls.isEmpty() -> {
+                    h.card.setCardBackgroundColor(ContextCompat.getColor(requireContext(), R.color.surface_warning))
+                    h.packetList.setTextColor(ContextCompat.getColor(requireContext(), R.color.warning))
+                    h.packetList.text = getString(R.string.vehicles_no_packing_lists)
+                }
+                else -> {
+                    h.card.setCardBackgroundColor(ContextCompat.getColor(requireContext(), R.color.surface))
+                    h.packetList.setTextColor(ContextCompat.getColor(requireContext(), R.color.on_surface))
+                    h.packetList.text = pls.joinToString("\n") { "• ${it.packing_list_name}" }
+                }
+            }
+
+            h.readyBadge.visibility = if (readyToSend) View.VISIBLE else View.GONE
+
+            if (item.originName != null) {
+                h.originBadge.text = getString(R.string.vehicles_origin_badge, item.originName)
+                h.originBadge.visibility = View.VISIBLE
             } else {
-                h.card.setCardBackgroundColor(ContextCompat.getColor(requireContext(), R.color.surface))
-                h.packetList.setTextColor(ContextCompat.getColor(requireContext(), R.color.on_surface))
-                h.packetList.text = pls.joinToString("\n") { "• ${it.packing_list_name}" }
+                h.originBadge.visibility = View.GONE
             }
 
             h.card.setOnClickListener { navigateToVehicleDetail(item) }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView
+<com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -12,137 +12,281 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Panel A: Select Packing List -->
-        <LinearLayout
-            android:id="@+id/panelSelectPl"
+        <!-- Location blocked message (shown when device_location is not WORKSHOP/LAYDOWN) -->
+        <TextView
+            android:id="@+id/txtLocationBlocked"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:text="@string/transfer_send_location_blocked"
+            android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+            android:gravity="center"
+            android:padding="24dp"
+            android:visibility="gone"/>
 
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                app:cardElevation="2dp"
-                app:cardCornerRadius="8dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/transfer_send_step1_title"
-                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                        android:layout_marginBottom="12dp"/>
-
-                    <TextView
-                        android:id="@+id/txtNoPls"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/transfer_send_no_pls"
-                        android:visibility="gone"
-                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"/>
-
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/rvPackingLists"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:nestedScrollingEnabled="false"/>
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-        </LinearLayout>
-
-        <!-- Panel B: Confirm Vehicle -->
+        <!-- ═══ Step 1: Vehicle Selection ═══ -->
         <LinearLayout
-            android:id="@+id/panelConfirmVehicle"
+            android:id="@+id/panelVehicle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:visibility="gone">
+            android:visibility="visible">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/load_spools_step1_title"
+                android:textColor="@color/on_surface"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="2dp"
-                app:cardCornerRadius="8dp">
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/transfer_send_step2_title"
-                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                        android:layout_marginBottom="8dp"/>
-
-                    <TextView
-                        android:id="@+id/txtExpectedVehicle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="12dp"
-                        android:textAppearance="@style/TextAppearance.Material3.BodyLarge"/>
-
-                    <TextView
-                        android:id="@+id/txtVehicleStatus"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="12dp"
-                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"/>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScanVehicle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/transfer_btn_scan_vehicle"/>
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:hint="@string/transfer_manual_vehicle_hint"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                        android:hint="@string/load_spools_plate_hint"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_marginBottom="12dp">
+
                         <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/etManualVehicle"
+                            android:id="@+id/etPlate"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="text|textCapCharacters"
+                            android:inputType="textCapCharacters"
                             android:imeOptions="actionDone" />
+
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnManualVehicle"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:id="@+id/btnScanVehicle"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:layout_marginBottom="8dp"
-                        android:text="@string/transfer_btn_manual_confirm"/>
+                        android:layout_height="48dp"
+                        android:text="@string/load_spools_scan_vehicle"
+                        android:textAllCaps="false"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        app:icon="@drawable/ic_qr_scan"
+                        app:iconGravity="textStart"
+                        app:cornerRadius="10dp"
+                        android:layout_marginBottom="8dp" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnNextToSpools"
+                        android:id="@+id/btnConfirmVehicle"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/load_spools_btn_continue"
-                        android:enabled="false"/>
+                        android:layout_height="52dp"
+                        android:text="@string/load_spools_confirm_vehicle"
+                        android:textAllCaps="false"
+                        app:cornerRadius="10dp" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
+
         </LinearLayout>
 
-        <!-- Panel C: Confirm Spools -->
+        <!-- ═══ Step 2: Spool Loading (initially hidden) ═══ -->
         <LinearLayout
-            android:id="@+id/panelConfirmSpools"
+            android:id="@+id/panelSpools"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <!-- Selected vehicle indicator -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="1dp"
+                app:strokeWidth="0dp"
+                android:layout_marginBottom="10dp">
+
+                <TextView
+                    android:id="@+id/txtSelectedVehicle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="12dp"
+                    android:textColor="@color/primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:gravity="center" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Weight meter: load vs vehicle capacity (visual only, color-coded) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardWeightMeter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="1dp"
+                app:strokeWidth="0dp"
+                android:layout_marginBottom="10dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:id="@+id/txtWeightMeter"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/on_surface"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="6dp" />
+
+                    <ProgressBar
+                        android:id="@+id/progressWeight"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="10dp"
+                        android:max="100"
+                        android:progress="0"
+                        android:progressTint="@color/green" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Spool input card -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/load_spools_step2_title"
+                android:textColor="@color/on_surface"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="10dp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/load_spools_spool_code_hint"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_marginBottom="8dp">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etSpoolCode"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapCharacters"
+                            android:imeOptions="actionNext" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/load_spools_spool_suffix_hint"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_marginBottom="12dp">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etSpoolSuffix"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapCharacters"
+                            android:imeOptions="actionDone" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnScanSpool"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="@string/load_spools_scan_spool"
+                            android:textAllCaps="false"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            app:icon="@drawable/ic_qr_scan"
+                            app:iconGravity="textStart"
+                            app:cornerRadius="10dp"
+                            android:layout_marginEnd="8dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnAddSpool"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="@string/load_spools_add_spool"
+                            android:textAllCaps="false"
+                            app:cornerRadius="10dp" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Scanned spools list -->
+            <TextView
+                android:id="@+id/txtSpoolsCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/load_spools_spools_count"
+                android:textColor="@color/on_surface_variant"
+                android:textSize="13sp"
+                android:layout_marginBottom="6dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvLoadedSpools"
+                android:layoutAnimation="@anim/layout_animation_fall_down"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Continue to destination/signature -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnContinueToSignature"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="@string/load_spools_btn_continue"
+                android:textAllCaps="false"
+                android:textSize="16sp"
+                app:cornerRadius="12dp"
+                android:layout_marginBottom="8dp" />
+
+        </LinearLayout>
+
+        <!-- ═══ Step 3: Destination ═══ -->
+        <LinearLayout
+            android:id="@+id/panelDestination"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -153,7 +297,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
                 app:cardElevation="2dp"
-                app:cardCornerRadius="8dp">
+                app:cardCornerRadius="14dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -166,89 +310,45 @@
                         android:layout_height="wrap_content"
                         android:text="@string/transfer_send_step3_title"
                         android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                        android:layout_marginBottom="8dp"/>
-
-                    <TextView
-                        android:id="@+id/txtSpoolsProgress"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="12dp"
-                        android:textAppearance="@style/TextAppearance.Material3.BodyLarge"/>
-
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/rvSpoolsToConfirm"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:nestedScrollingEnabled="false"
                         android:layout_marginBottom="12dp"/>
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScanSpool"
+                    <LinearLayout
+                        android:id="@+id/panelDestinationChoice"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/transfer_btn_scan_spool"/>
+                        android:orientation="vertical"
+                        android:layout_marginBottom="12dp"
+                        android:visibility="gone">
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:hint="@string/transfer_manual_spool_hint"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/etManualSpool"
+                        <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="text|textCapCharacters"
-                            android:imeOptions="actionDone" />
-                    </com.google.android.material.textfield.TextInputLayout>
+                            android:text="@string/transfer_send_destination_label"
+                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:layout_marginBottom="4dp"/>
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnManualSpool"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:layout_marginBottom="8dp"
-                        android:text="@string/transfer_btn_manual_confirm"/>
+                        <RadioGroup
+                            android:id="@+id/rgDestination"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnNextToSignature"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/load_spools_btn_continue"/>
+                            <com.google.android.material.radiobutton.MaterialRadioButton
+                                android:id="@+id/rbDestLaydown"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/transfer_send_dest_laydown"/>
 
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-        </LinearLayout>
+                            <com.google.android.material.radiobutton.MaterialRadioButton
+                                android:id="@+id/rbDestSite"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/transfer_send_dest_site"/>
 
-        <!-- Panel D: Signature -->
-        <LinearLayout
-            android:id="@+id/panelSignature"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                app:cardElevation="2dp"
-                app:cardCornerRadius="8dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/transfer_send_step4_title"
-                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                        android:layout_marginBottom="12dp"/>
+                        </RadioGroup>
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/txtSendDestination"
@@ -257,21 +357,6 @@
                         android:layout_marginBottom="12dp"
                         android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
                         android:textStyle="bold"/>
-
-                    <com.example.hassiwrapper.ui.common.SignatureView
-                        android:id="@+id/signatureView"
-                        android:layout_width="match_parent"
-                        android:layout_height="200dp"
-                        android:background="#F5F5F5"
-                        android:layout_marginBottom="12dp"/>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnClearSignature"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="8dp"
-                        android:text="@string/transfer_btn_clear_signature"/>
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnConfirmSend"
@@ -284,4 +369,4 @@
         </LinearLayout>
 
     </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+</com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView>

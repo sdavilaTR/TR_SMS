@@ -19,17 +19,14 @@ object ServiceLocator {
     val authRepo: AuthRepository by lazy { AuthRepository(configRepo) }
     val apiClient: ApiClient by lazy { ApiClient(configRepo, authRepo) }
 
-    val rulesService: RulesService by lazy { RulesService() }
-    val incidentService: IncidentService by lazy { IncidentService(db.incidentDao(), configRepo) }
-    val observationService: ObservationService by lazy {
-        ObservationService(db.hseObservationDao(), configRepo, db.hseObservationPhotoDao())
+    val smsIncidentService: SmsIncidentService by lazy {
+        SmsIncidentService(db.smsIncidentDao(), configRepo, db.smsPositionDao())
     }
 
-    val clockingService: ClockingService by lazy {
-        ClockingService(
-            db.personDao(), db.accessLogDao(), db.workSessionDao(),
-            incidentService, rulesService, configRepo,
-            db.vehicleDao()
+    val outboxService: OutboxService by lazy {
+        OutboxService(
+            db.smsOutboxDao(), db.projectDao(),
+            db.smsSpoolDao(), db.smsPackingListDao(), db.smsVehicleDao(), db.smsIncidentDao()
         )
     }
 
@@ -40,39 +37,27 @@ object ServiceLocator {
     val syncService: SyncService by lazy {
         SyncService(
             apiClient, configRepo,
-            db.projectDao(), db.zoneDao(), db.contractorDao(),
-            db.personDao(), db.accessPointDao(), db.cryptoKeyDao(),
-            db.accessLogDao(), db.incidentDao(), db.workSessionDao(),
-            db.pendingPhotoDao(), db.hseObservationDao(),
-            db.hseObservationPhotoDao(),
+            db.projectDao(), db.contractorDao(),
             heartbeatManager,
             db.vehicleDao(),
             authRepo,
-            db.trainingComplianceDao(),
-            db.documentComplianceDao(),
             db.smsSpoolDao(),
             db.smsPackingListDao(),
             db.smsPositionDao(),
             db.smsVehicleDao(),
             db.smsVehicleLoadingDao(),
-            db.smsTransferDao()
+            db.smsTransferDao(),
+            db.smsIncidentDao(),
+            outboxService
         )
     }
 
     fun dataWedgeManager(): DataWedgeManager = DataWedgeManager(AtlasApp.instance)
 
     // Expose DAOs for direct queries in UI
-    val accessLogDao get() = db.accessLogDao()
-    val personDao get() = db.personDao()
     val contractorDao get() = db.contractorDao()
     val projectDao get() = db.projectDao()
-    val incidentDao get() = db.incidentDao()
-    val pendingPhotoDao get() = db.pendingPhotoDao()
-    val hseObservationDao get() = db.hseObservationDao()
-    val hseObservationPhotoDao get() = db.hseObservationPhotoDao()
     val vehicleDao get() = db.vehicleDao()
-    val trainingComplianceDao get() = db.trainingComplianceDao()
-    val documentComplianceDao get() = db.documentComplianceDao()
 
     // SMS DAOs
     val smsSpoolDao get() = db.smsSpoolDao()
@@ -93,4 +78,9 @@ object ServiceLocator {
     val smsVehicleDao get() = db.smsVehicleDao()
     val smsVehicleLoadingDao get() = db.smsVehicleLoadingDao()
     val smsTransferDao get() = db.smsTransferDao()
+    val smsIncidentDao get() = db.smsIncidentDao()
+    val smsOutboxDao get() = db.smsOutboxDao()
+    val smsAuditLogDao get() = db.smsAuditLogDao()
+
+    val auditLogService: AuditLogService by lazy { AuditLogService(configRepo, db.smsAuditLogDao()) }
 }

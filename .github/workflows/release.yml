@@ -33,6 +33,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Remove local Java home override
+        run: sed -i '/^org.gradle.java.home/d' gradle.properties
+
       - name: Get current date
         id: date
         run: echo "date=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_OUTPUT

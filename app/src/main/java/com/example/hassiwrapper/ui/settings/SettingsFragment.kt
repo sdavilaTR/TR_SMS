@@ -9,6 +9,7 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -21,6 +22,7 @@ import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.update.UpdateInstaller
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.tabs.TabLayout
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.Dispatchers
@@ -41,12 +43,16 @@ class SettingsFragment : Fragment() {
         val btnCheckUpdates = view.findViewById<MaterialButton>(R.id.btnCheckUpdates)
         val btnReinstallPrevious = view.findViewById<MaterialButton>(R.id.btnReinstallPrevious)
 
+        setupTabs(view)
         populateAppInfo(view)
-        setupProfileSelector(view)
+        setupApiEnvSelector(view)
+        setupUserRoleSelector(view)
         setupLanguageSelector(view)
         setupDeviceCode(view)
         setupLocationConfig(view)
+        setupAssignedOperator(view)
         setupDebugLocationButton(view)
+        setupKioskMode(view)
 
         refreshAuthButtons()
 
@@ -54,13 +60,27 @@ class SettingsFragment : Fragment() {
             (requireActivity() as? MainActivity)?.launchLogin()
         }
 
-        // Load device info (read-only)
+        // Load device info (read-only) — auto-fill name/ID from the device itself if missing
         viewLifecycleOwner.lifecycleScope.launch {
-            val name     = ServiceLocator.configRepo.get("device_name")     ?: "—"
-            val id       = ServiceLocator.configRepo.get("device_id")       ?: "—"
+            var id = ServiceLocator.configRepo.get("device_id")
+            if (id.isNullOrBlank()) {
+                id = android.provider.Settings.Secure.getString(
+                    requireContext().contentResolver,
+                    android.provider.Settings.Secure.ANDROID_ID
+                )
+                ServiceLocator.configRepo.set("device_id", id)
+                ServiceLocator.authRepo.refreshDeviceId()
+            }
+
+            var name = ServiceLocator.configRepo.get("device_name")
+            if (name.isNullOrBlank()) {
+                name = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+                ServiceLocator.configRepo.set("device_name", name)
+            }
+
             val location = ServiceLocator.configRepo.get("device_location") ?: "—"
             view.findViewById<TextView>(R.id.txtDeviceName).text     = name
-            view.findViewById<TextView>(R.id.txtDeviceId).text       = id
+            view.findViewById<TextView>(R.id.txtDeviceId).text       = id ?: "—"
             view.findViewById<TextView>(R.id.txtDeviceLocation).text = location
         }
 
@@ -120,18 +140,14 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ── Device code (admin only) ────────────────────────────────────────
+    // ── Device code ────────────────────────────────────────────────────
 
     private fun setupDeviceCode(view: View) {
         val card = view.findViewById<View>(R.id.cardDeviceCode)
         val input = view.findViewById<TextInputEditText>(R.id.inputDeviceCode)
         val btnSave = view.findViewById<MaterialButton>(R.id.btnSaveDeviceCode)
 
-        // Only visible for non-USER profiles
-        val isAdmin = ProfileManager.currentProfile() != ProfileManager.Profile.USER
-        card.visibility = if (isAdmin) View.VISIBLE else View.GONE
-
-        if (!isAdmin) return
+        card.visibility = View.VISIBLE
 
         // Load stored device code
         viewLifecycleOwner.lifecycleScope.launch {
@@ -185,7 +201,7 @@ class SettingsFragment : Fragment() {
 
     // ── Language selector ──────────────────────────────────────────────
 
-    private val languageFlags = mapOf("es" to "🇪🇸 Español", "en" to "🇬🇧 English", "fr" to "🇫🇷 Français")
+    private val languageFlags = mapOf("es" to "Español", "en" to "English", "fr" to "Français", "zh" to "中文")
 
     private lateinit var langButtons: Map<String, MaterialButton>
 
@@ -194,8 +210,9 @@ class SettingsFragment : Fragment() {
         val btnEs = view.findViewById<MaterialButton>(R.id.btnLangEs)
         val btnEn = view.findViewById<MaterialButton>(R.id.btnLangEn)
         val btnFr = view.findViewById<MaterialButton>(R.id.btnLangFr)
+        val btnZh = view.findViewById<MaterialButton>(R.id.btnLangZh)
 
-        langButtons = mapOf("es" to btnEs, "en" to btnEn, "fr" to btnFr)
+        langButtons = mapOf("es" to btnEs, "en" to btnEn, "fr" to btnFr, "zh" to btnZh)
 
         val currentLang = LocaleHelper.getLanguage(requireContext())
         txtCurrent.text = languageFlags[currentLang] ?: languageFlags["es"]
@@ -204,6 +221,7 @@ class SettingsFragment : Fragment() {
         btnEs.setOnClickListener { changeLanguage("es") }
         btnEn.setOnClickListener { changeLanguage("en") }
         btnFr.setOnClickListener { changeLanguage("fr") }
+        btnZh.setOnClickListener { changeLanguage("zh") }
     }
 
     private fun highlightLanguageButton(code: String) {
@@ -219,62 +237,124 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ── Profile selector ───────────────────────────────────────────────
+    // ── API environment selector ───────────────────────────────────────
 
-    private lateinit var profileButtons: Map<ProfileManager.Profile, MaterialButton>
+    private lateinit var envButtons: Map<ProfileManager.ApiEnvironment, MaterialButton>
 
-    private fun setupProfileSelector(view: View) {
-        val txtCurrent = view.findViewById<TextView>(R.id.txtCurrentProfile)
-        val btnUser  = view.findViewById<MaterialButton>(R.id.btnProfileUser)
-        val btnHse   = view.findViewById<MaterialButton>(R.id.btnProfileHse)
-        val btnAdmin = view.findViewById<MaterialButton>(R.id.btnProfileAdmin)
-        val btnPre   = view.findViewById<MaterialButton>(R.id.btnProfilePre)
-        val btnDev   = view.findViewById<MaterialButton>(R.id.btnProfileDev)
+    private fun setupApiEnvSelector(view: View) {
+        val txtCurrent = view.findViewById<TextView>(R.id.txtCurrentApiEnv)
+        val btnPro = view.findViewById<MaterialButton>(R.id.btnEnvPro)
+        val btnPre = view.findViewById<MaterialButton>(R.id.btnEnvPre)
+        val btnDev = view.findViewById<MaterialButton>(R.id.btnEnvDev)
 
-        profileButtons = mapOf(
-            ProfileManager.Profile.USER  to btnUser,
-            ProfileManager.Profile.HSE   to btnHse,
-            ProfileManager.Profile.ADMIN to btnAdmin,
-            ProfileManager.Profile.PRE   to btnPre,
-            ProfileManager.Profile.DEV   to btnDev
+        envButtons = mapOf(
+            ProfileManager.ApiEnvironment.PRO to btnPro,
+            ProfileManager.ApiEnvironment.PRE to btnPre,
+            ProfileManager.ApiEnvironment.DEV to btnDev
         )
 
-        updateProfileLabel(txtCurrent)
-        highlightProfileButton(ProfileManager.currentProfile())
+        updateEnvLabel(txtCurrent)
+        highlightEnvButton(ProfileManager.currentApiEnvironment())
 
-        btnUser.setOnClickListener  { switchProfile(ProfileManager.Profile.USER, txtCurrent) }
-        btnHse.setOnClickListener   { requestCodeAndSwitch(ProfileManager.Profile.HSE, txtCurrent) }
-        btnAdmin.setOnClickListener { requestCodeAndSwitch(ProfileManager.Profile.ADMIN, txtCurrent) }
-        btnPre.setOnClickListener   { requestCodeAndSwitch(ProfileManager.Profile.PRE, txtCurrent) }
-        btnDev.setOnClickListener   { requestCodeAndSwitch(ProfileManager.Profile.DEV, txtCurrent) }
+        // PRO is the public environment — no code required. PRE/DEV require access code.
+        btnPro.setOnClickListener { switchApiEnv(ProfileManager.ApiEnvironment.PRO, txtCurrent) }
+        btnPre.setOnClickListener { requestCodeThen { switchApiEnv(ProfileManager.ApiEnvironment.PRE, txtCurrent) } }
+        btnDev.setOnClickListener { requestCodeThen { switchApiEnv(ProfileManager.ApiEnvironment.DEV, txtCurrent) } }
     }
 
-    private fun highlightProfileButton(profile: ProfileManager.Profile) {
-        val selected = profileButtons[profile] ?: return
-        val others = profileButtons.values.filter { it != selected }.toTypedArray()
+    private fun highlightEnvButton(env: ProfileManager.ApiEnvironment) {
+        val selected = envButtons[env] ?: return
+        val others = envButtons.values.filter { it != selected }.toTypedArray()
         highlightSelected(selected, *others)
     }
 
-    private fun updateProfileLabel(txt: TextView) {
-        val profile = ProfileManager.currentProfile()
-        val name = when (profile) {
-            ProfileManager.Profile.USER  -> getString(R.string.profile_user)
-            ProfileManager.Profile.HSE   -> getString(R.string.profile_hse)
-            ProfileManager.Profile.ADMIN -> getString(R.string.profile_admin)
-            ProfileManager.Profile.PRE   -> getString(R.string.profile_pre)
-            ProfileManager.Profile.DEV   -> getString(R.string.profile_dev)
+    private fun updateEnvLabel(txt: TextView) {
+        txt.text = when (ProfileManager.currentApiEnvironment()) {
+            ProfileManager.ApiEnvironment.PRO -> getString(R.string.env_pro_desc)
+            ProfileManager.ApiEnvironment.PRE -> getString(R.string.env_pre_desc)
+            ProfileManager.ApiEnvironment.DEV -> getString(R.string.env_dev_desc)
         }
-        val desc = when (profile) {
-            ProfileManager.Profile.USER  -> getString(R.string.profile_user_desc)
-            ProfileManager.Profile.HSE   -> getString(R.string.profile_hse_desc)
-            ProfileManager.Profile.ADMIN -> getString(R.string.profile_admin_desc)
-            ProfileManager.Profile.PRE   -> getString(R.string.profile_pre_desc)
-            ProfileManager.Profile.DEV   -> getString(R.string.profile_dev_desc)
-        }
-        txt.text = "$name — $desc"
     }
 
-    private fun requestCodeAndSwitch(target: ProfileManager.Profile, label: TextView) {
+    private fun switchApiEnv(target: ProfileManager.ApiEnvironment, label: TextView) {
+        val previous = ProfileManager.currentApiEnvironment()
+        if (target == previous) return
+
+        ProfileManager.setApiEnvironment(target)
+        updateEnvLabel(label)
+        highlightEnvButton(target)
+
+        // Different API environment — reset API cache, auth, and local DB.
+        ServiceLocator.apiClient.resetResolvedBase()
+        ServiceLocator.authRepo.clearCaches()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                AtlasApp.instance.database.clearAllData()
+            }
+            ServiceLocator.authRepo.logout()
+            refreshAuthButtons()
+            Toast.makeText(requireContext(), R.string.profile_dev_db_cleared, Toast.LENGTH_SHORT).show()
+        }
+
+        Toast.makeText(requireContext(), getString(R.string.env_changed, target.name), Toast.LENGTH_SHORT).show()
+    }
+
+    // ── User role selector ──────────────────────────────────────────────
+
+    private lateinit var roleButtons: Map<ProfileManager.UserRole, MaterialButton>
+
+    private fun setupUserRoleSelector(view: View) {
+        val txtCurrent = view.findViewById<TextView>(R.id.txtCurrentRole)
+        val btnGuest = view.findViewById<MaterialButton>(R.id.btnRoleGuest)
+        val btnAdmin = view.findViewById<MaterialButton>(R.id.btnRoleAdmin)
+        val btnDev   = view.findViewById<MaterialButton>(R.id.btnRoleDev)
+
+        roleButtons = mapOf(
+            ProfileManager.UserRole.GUEST to btnGuest,
+            ProfileManager.UserRole.ADMIN to btnAdmin,
+            ProfileManager.UserRole.DEV   to btnDev
+        )
+
+        updateRoleLabel(txtCurrent)
+        highlightRoleButton(ProfileManager.currentUserRole())
+
+        btnGuest.setOnClickListener { switchUserRole(ProfileManager.UserRole.GUEST, txtCurrent) }
+        btnAdmin.setOnClickListener { requestCodeThen { switchUserRole(ProfileManager.UserRole.ADMIN, txtCurrent) } }
+        btnDev.setOnClickListener   { requestCodeThen { switchUserRole(ProfileManager.UserRole.DEV, txtCurrent) } }
+    }
+
+    private fun highlightRoleButton(role: ProfileManager.UserRole) {
+        val selected = roleButtons[role] ?: return
+        val others = roleButtons.values.filter { it != selected }.toTypedArray()
+        highlightSelected(selected, *others)
+    }
+
+    private fun updateRoleLabel(txt: TextView) {
+        txt.text = when (ProfileManager.currentUserRole()) {
+            ProfileManager.UserRole.GUEST -> getString(R.string.role_guest_desc)
+            ProfileManager.UserRole.ADMIN -> getString(R.string.role_admin_desc)
+            ProfileManager.UserRole.DEV   -> getString(R.string.role_dev_desc)
+        }
+    }
+
+    private fun switchUserRole(target: ProfileManager.UserRole, label: TextView) {
+        if (target == ProfileManager.currentUserRole()) return
+
+        ProfileManager.setUserRole(target)
+        updateRoleLabel(label)
+        highlightRoleButton(target)
+
+        Toast.makeText(requireContext(), getString(R.string.role_changed, target.name), Toast.LENGTH_SHORT).show()
+
+        // Refresh navigation menu visibility and device code card
+        (requireActivity() as? MainActivity)?.refreshProfileMenu()
+        view?.let { setupDeviceCode(it) }
+    }
+
+    // ── Access code dialog (shared) ─────────────────────────────────────
+
+    private fun requestCodeThen(onValid: () -> Unit) {
         val input = EditText(requireContext()).apply {
             hint = getString(R.string.profile_access_code_hint)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
@@ -286,52 +366,13 @@ class SettingsFragment : Fragment() {
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val code = input.text.toString().trim().uppercase()
                 if (ProfileManager.validateAccessCode(code)) {
-                    switchProfile(target, label)
+                    onValid()
                 } else {
                     Toast.makeText(requireContext(), R.string.profile_access_code_error, Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
-    }
-
-    private fun switchProfile(target: ProfileManager.Profile, label: TextView) {
-        val previous = ProfileManager.currentProfile()
-        if (target == previous) return
-
-        val changingEnvironment =
-            ProfileManager.apiUrlFor(target) != ProfileManager.apiUrlFor(previous)
-
-        ProfileManager.setProfile(target)
-        updateProfileLabel(label)
-        highlightProfileButton(target)
-
-        if (changingEnvironment) {
-            // Different API environment — reset API cache, auth, and local DB
-            ServiceLocator.apiClient.resetResolvedBase()
-            ServiceLocator.authRepo.clearCaches()
-
-            viewLifecycleOwner.lifecycleScope.launch {
-                withContext(Dispatchers.IO) {
-                    AtlasApp.instance.database.clearAllData()
-                }
-                // Also clear the auth token from config (clearAllData wiped it from DB,
-                // but we need to ensure the in-memory cache is also gone)
-                ServiceLocator.authRepo.logout()
-                refreshAuthButtons()
-                Toast.makeText(requireContext(), R.string.profile_dev_db_cleared, Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        Toast.makeText(
-            requireContext(),
-            getString(R.string.profile_changed, target.name),
-            Toast.LENGTH_SHORT
-        ).show()
-
-        // Refresh navigation menu visibility and device code card
-        (requireActivity() as? MainActivity)?.refreshProfileMenu()
-        view?.let { setupDeviceCode(it) }
     }
 
     // ── Location config (Laydown sections / Site units) ────────────────
@@ -355,6 +396,23 @@ class SettingsFragment : Fragment() {
                 ServiceLocator.configRepo.set("laydown_sections", sections)
                 ServiceLocator.configRepo.set("site_units", units)
                 Toast.makeText(requireContext(), R.string.settings_location_config_saved, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun setupAssignedOperator(view: View) {
+        val input   = view.findViewById<TextInputEditText>(R.id.inputAssignedOperator)
+        val btnSave = view.findViewById<MaterialButton>(R.id.btnSaveAssignedOperator)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            input.setText(ServiceLocator.configRepo.get("assigned_operator_name") ?: "")
+        }
+
+        btnSave.setOnClickListener {
+            val name = input.text.toString().trim()
+            viewLifecycleOwner.lifecycleScope.launch {
+                ServiceLocator.configRepo.set("assigned_operator_name", name)
+                Toast.makeText(requireContext(), R.string.settings_assigned_operator_saved, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -388,6 +446,56 @@ class SettingsFragment : Fragment() {
                     .show()
             }
         }
+    }
+
+    // ── Kiosk mode ─────────────────────────────────────────────────────
+
+    private fun setupKioskMode(view: View) {
+        val switch = view.findViewById<SwitchCompat>(R.id.switchKioskMode)
+        val btnClose = view.findViewById<View>(R.id.btnCloseApp)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val enabled = ServiceLocator.configRepo.get("kiosk_mode") == "true"
+            switch.isChecked = enabled
+            btnClose.visibility = if (enabled) View.GONE else View.VISIBLE
+
+            // Attach listener only after initial state is set, so restoring the
+            // saved value above doesn't itself fire the listener (and re-show the toast).
+            switch.setOnCheckedChangeListener { _, isChecked ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    ServiceLocator.configRepo.set("kiosk_mode", isChecked.toString())
+                    (requireActivity() as? MainActivity)?.setKioskMode(isChecked)
+                    val msg = if (isChecked) R.string.settings_kiosk_enabled else R.string.settings_kiosk_disabled
+                    Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+                    btnClose.visibility = if (isChecked) View.GONE else View.VISIBLE
+                }
+            }
+        }
+
+        btnClose.setOnClickListener {
+            requireActivity().finishAffinity()
+            System.exit(0)
+        }
+    }
+
+    // ── Tab switching ───────────────────────────────────────────────────
+
+    private fun setupTabs(view: View) {
+        val tabLayout = view.findViewById<TabLayout>(R.id.settingsTabLayout)
+        val scrollBasic = view.findViewById<View>(R.id.scrollBasic)
+        val scrollDev = view.findViewById<View>(R.id.scrollDev)
+
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.settings_tab_basic))
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.settings_tab_dev))
+
+        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                scrollBasic.visibility = if (tab.position == 0) View.VISIBLE else View.GONE
+                scrollDev.visibility   = if (tab.position == 1) View.VISIBLE else View.GONE
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab) {}
+            override fun onTabReselected(tab: TabLayout.Tab) {}
+        })
     }
 
     private fun populateAppInfo(view: View) {

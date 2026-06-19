@@ -95,6 +95,12 @@ interface SmsPackingListDao {
     @Query("SELECT MAX(packing_list_id) FROM sms_packing_list")
     suspend fun getMaxId(): Long?
 
+    @Query("SELECT MIN(packing_list_id) FROM sms_packing_list")
+    suspend fun getMinId(): Long?
+
+    @Query("SELECT COUNT(*) FROM sms_packing_list WHERE project_id = :projectId AND packing_list_name LIKE :prefix || '%'")
+    suspend fun countByNamePrefix(projectId: Int, prefix: String): Int
+
     @Query("SELECT COUNT(*) FROM sms_packing_list WHERE project_id = :projectId AND position_id = :positionId AND vehicle_id = :vehicleId")
     suspend fun countByProjectPositionVehicle(projectId: Int, positionId: Int, vehicleId: Long): Int
 
@@ -109,6 +115,9 @@ interface SmsPackingListDao {
 
     @Query("UPDATE sms_packing_list SET ready_to_send = :value WHERE packing_list_id = :id")
     suspend fun setReadyToSend(id: Long, value: Boolean)
+
+    @Query("UPDATE sms_packing_list SET position_id = :positionId, synced = 0 WHERE packing_list_id = :id")
+    suspend fun updatePosition(id: Long, positionId: Int?)
 
     @Query("UPDATE sms_packing_list SET vehicle_id = :vehicleId, vehicle_plate = :vehiclePlate WHERE packing_list_id = :id")
     suspend fun setVehicle(id: Long, vehicleId: Long, vehiclePlate: String)
@@ -154,6 +163,9 @@ interface SmsPackingListSpoolDao {
 
     @Query("DELETE FROM sms_packing_list_spool WHERE packing_list_id = :packingListId")
     suspend fun deleteByPackingList(packingListId: Long)
+
+    @Query("SELECT MAX(packing_list_spool_id) FROM sms_packing_list_spool")
+    suspend fun getMaxId(): Long?
 
     @Query("DELETE FROM sms_packing_list_spool WHERE spool_id = :spoolId")
     suspend fun deleteBySpoolId(spoolId: Long)
@@ -205,6 +217,15 @@ interface SmsSpoolDao {
 
     @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND is_active = 1 ORDER BY spool_code ASC, spool_suffix ASC")
     suspend fun getByProject(projectId: Int): List<SmsSpoolEntity>
+
+    @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND is_active = 1 AND packing_list_id IN (SELECT packing_list_id FROM sms_packing_list WHERE UPPER(position) = UPPER(:location)) ORDER BY spool_code ASC, spool_suffix ASC")
+    suspend fun getByProjectAndZone(projectId: Int, location: String): List<SmsSpoolEntity>
+
+    @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND packing_list_id IN (SELECT packing_list_id FROM sms_packing_list WHERE UPPER(position) = UPPER(:location)) ORDER BY spool_code ASC, spool_suffix ASC")
+    suspend fun getByProjectIgnoreActiveAndZone(projectId: Int, location: String): List<SmsSpoolEntity>
+
+    @Query("SELECT COUNT(*) FROM sms_spool WHERE project_id = :projectId AND is_active = 1 AND packing_list_id IN (SELECT packing_list_id FROM sms_packing_list WHERE UPPER(position) = UPPER(:location))")
+    suspend fun countActiveByProjectAndZone(projectId: Int, location: String): Int
 
     @Query("SELECT * FROM sms_spool WHERE spool_id = :id")
     suspend fun getById(id: Long): SmsSpoolEntity?
@@ -258,8 +279,17 @@ interface SmsSpoolDao {
     @Query("SELECT MAX(spool_id) FROM sms_spool")
     suspend fun getMaxId(): Long?
 
+    @Query("SELECT MIN(spool_id) FROM sms_spool")
+    suspend fun getMinId(): Long?
+
     @Query("SELECT COUNT(*) FROM sms_spool WHERE project_id = :projectId AND spool_code = :spoolCode")
     suspend fun countByProjectAndCode(projectId: Int, spoolCode: String): Int
+
+    @Query("SELECT DISTINCT train FROM sms_spool WHERE project_id = :projectId AND train IS NOT NULL AND train != '' ORDER BY train ASC")
+    suspend fun getDistinctTrains(projectId: Int): List<String>
+
+    @Query("SELECT DISTINCT spool_code FROM sms_spool WHERE project_id = :projectId AND spool_code != ''")
+    suspend fun getDistinctSpoolCodes(projectId: Int): List<String>
 
     @Query("SELECT * FROM sms_spool WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsSpoolEntity>
@@ -284,6 +314,15 @@ interface SmsSpoolDao {
 
     @Query("UPDATE sms_spool SET zone = :zone, assigned_unit = :assignedUnit, in_transit = 0, synced = 0 WHERE spool_id = :spoolId")
     suspend fun updateZoneAndUnit(spoolId: Long, zone: String?, assignedUnit: String?)
+
+    @Query("UPDATE sms_spool SET position_id = :positionId, synced = 0 WHERE spool_id = :spoolId")
+    suspend fun updatePosition(spoolId: Long, positionId: Int?)
+
+    @Query("UPDATE sms_spool SET area_id = :areaId, zone = :zone, synced = 0 WHERE spool_id = :spoolId")
+    suspend fun updateArea(spoolId: Long, areaId: Long?, zone: String?)
+
+    @Query("UPDATE sms_spool SET unit_id = :unitId, assigned_unit = :assignedUnit, synced = 0 WHERE spool_id = :spoolId")
+    suspend fun updateUnit(spoolId: Long, unitId: Int?, assignedUnit: String?)
 
     @Query("SELECT * FROM sms_spool WHERE packing_list_id = :packingListId AND in_transit = 1")
     suspend fun getInTransitByPackingList(packingListId: Long): List<SmsSpoolEntity>
@@ -408,6 +447,9 @@ interface SmsVehicleDao {
     @Query("SELECT MAX(vehicle_id) FROM sms_vehicle")
     suspend fun getMaxId(): Long?
 
+    @Query("SELECT MIN(vehicle_id) FROM sms_vehicle")
+    suspend fun getMinId(): Long?
+
     @Query("SELECT * FROM sms_vehicle WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsVehicleEntity>
 
@@ -447,6 +489,9 @@ interface SmsVehicleLoadingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSpools(spools: List<SmsVehicleLoadingSpoolEntity>)
 
+    @Query("SELECT * FROM sms_vehicle_loading WHERE vehicle_id = :vehicleId AND project_id = :projectId")
+    suspend fun getByVehicle(vehicleId: Long, projectId: Int): List<SmsVehicleLoadingEntity>
+
     @Query("SELECT * FROM sms_vehicle_loading WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsVehicleLoadingEntity>
 
@@ -467,4 +512,46 @@ interface SmsVehicleLoadingDao {
 
     @Query("DELETE FROM sms_vehicle_loading_spool")
     suspend fun deleteAllSpools()
+}
+
+@Dao
+interface SmsAuditLogDao {
+    @Insert
+    suspend fun insert(log: SmsAuditLogEntity): Long
+
+    @Query("SELECT * FROM sms_audit_log WHERE project_id = :projectId ORDER BY timestamp DESC LIMIT 300")
+    suspend fun getByProject(projectId: Int): List<SmsAuditLogEntity>
+
+    @Query("DELETE FROM sms_audit_log WHERE timestamp < :cutoff")
+    suspend fun deleteOlderThan(cutoff: Long)
+
+    @Query("DELETE FROM sms_audit_log")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface SmsIncidentDao {
+    @Insert
+    suspend fun insert(item: SmsIncidentEntity): Long
+
+    @Query("SELECT * FROM sms_incident WHERE project_id = :projectId ORDER BY event_date DESC")
+    suspend fun getByProject(projectId: Int): List<SmsIncidentEntity>
+
+    @Query("SELECT * FROM sms_incident WHERE id = :id")
+    suspend fun getById(id: Long): SmsIncidentEntity?
+
+    @Query("SELECT COUNT(*) FROM sms_incident WHERE project_id = :projectId AND severity = 'CRITICAL'")
+    suspend fun getCriticalCount(projectId: Int): Int
+
+    @Query("SELECT * FROM sms_incident WHERE synced = 0")
+    suspend fun getUnsynced(): List<SmsIncidentEntity>
+
+    @Query("UPDATE sms_incident SET synced = 1 WHERE id IN (:ids)")
+    suspend fun markSynced(ids: List<Long>)
+
+    @Query("UPDATE sms_incident SET status = 'CLOSED', closed_by = :closedBy, closed_at = :closedAt WHERE id = :id")
+    suspend fun close(id: Long, closedBy: String?, closedAt: String)
+
+    @Query("DELETE FROM sms_incident WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }

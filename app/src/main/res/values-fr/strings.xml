@@ -293,6 +293,8 @@
     <string name="sync_error_server_unavailable">Serveur indisponible (HTTP %d)</string>
     <string name="sync_error_server_rejected">Le serveur a rejeté la connexion (HTTP %d)</string>
     <string name="sync_error_outbox_retry">File des modifications : pas de connexion, nouvelle tentative</string>
+    <string name="webview_login_error_network">Impossible de se connecter au serveur.\nVérifiez votre connexion réseau et réessayez.</string>
+    <string name="webview_login_retry">Réessayer</string>
 
     <!-- Bientôt disponible -->
     <string name="coming_soon_title">Bientôt disponible</string>
@@ -442,6 +444,8 @@
     <string name="incident_label_location">Lieu de l\'incident</string>
     <string name="incident_label_location_detail">Détail du lieu</string>
     <string name="incident_hint_location_detail">Ex : zone, unité, étagère…</string>
+    <string name="incident_label_subposition">Sous-section</string>
+    <string name="incident_subposition_none">Aucune sous-section</string>
     <string name="incident_label_severity">Gravité</string>
     <string name="incident_label_position">Position (terminal)</string>
     <string name="incident_label_author">Auteur</string>
@@ -605,6 +609,10 @@
     <string name="spools_filter_workshop">Workshop</string>
     <string name="spools_filter_laydown">Laydown</string>
     <string name="spools_filter_site">Site</string>
+    <string name="spools_chart_title">Spools par zone (%1$d)</string>
+    <string name="spools_chart_zone_unassigned">Sans zone</string>
+    <string name="spools_view_action_list">Voir la liste</string>
+    <string name="spools_view_action_chart">Voir le graphique</string>
 
     <!-- New Packing List -->
     <string name="new_packing_list_title">Nouvelle Packing List</string>
@@ -885,9 +893,12 @@
     <string name="event_label_pl_created">Packing List créée</string>
     <string name="event_label_pl_edited">Packing List modifiée</string>
     <string name="event_label_pl_deleted">Packing List supprimée</string>
+    <string name="event_label_pl_deleted_hard">Packing List supprimée (définitive)</string>
     <string name="event_label_vehicle_created">Véhicule créé</string>
     <string name="event_label_vehicle_edited">Véhicule modifié</string>
     <string name="event_label_vehicle_deleted">Véhicule supprimé</string>
     <string name="event_label_transfer_sent">Envoi enregistré</string>
     <string name="event_label_transfer_received">Réception enregistrée</string>
+    <string name="event_label_incident_created">Incident créé</string>
+    <string name="event_label_incident_closed">Incident fermé</string>
 </resources>

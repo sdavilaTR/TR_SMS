@@ -255,6 +255,12 @@
     <string name="login_error_format">Error: %s</string>
     <string name="login_error_empty_code">Error: Introduce el Código del Terminal.</string>
 
+    <string name="db_error_title">Error de base de datos</string>
+    <string name="db_error_message">No se pudo abrir la base de datos local (fallo de migración). La app no puede continuar así.\n\nDetalle: %s</string>
+    <string name="db_error_reset">Reiniciar datos del dispositivo</string>
+    <string name="db_error_reset_warning">Se borrarán todos los datos locales no sincronizados de este terminal. ¿Continuar?</string>
+    <string name="db_error_close">Cerrar app</string>
+
     <!-- Update (Settings button) -->
     <string name="settings_check_updates">Buscar actualizaciones</string>
     <string name="settings_check_updates_searching">Buscando…</string>
@@ -499,6 +505,8 @@
     <string name="sync_error_server_unavailable">Servidor no disponible (HTTP %d)</string>
     <string name="sync_error_server_rejected">Servidor rechazó la conexión (HTTP %d)</string>
     <string name="sync_error_outbox_retry">Cola de cambios: sin conexión, reintentando</string>
+    <string name="webview_login_error_network">No se pudo conectar con el servidor.\nComprueba tu conexión de red e inténtalo de nuevo.</string>
+    <string name="webview_login_retry">Reintentar</string>
 
     <!-- Inventario -->
     <string name="menu_inventario">Inventario</string>
@@ -531,6 +539,10 @@
     <string name="spools_filter_workshop">Workshop</string>
     <string name="spools_filter_laydown">Laydown</string>
     <string name="spools_filter_site">Site</string>
+    <string name="spools_chart_title">Spools por zona (%1$d)</string>
+    <string name="spools_chart_zone_unassigned">Sin zona</string>
+    <string name="spools_view_action_list">Ver lista</string>
+    <string name="spools_view_action_chart">Ver gráfico</string>
 
     <!-- New Spool -->
     <!-- New Packing List -->
@@ -839,6 +851,8 @@
     <string name="incident_label_location">Lugar de la incidencia</string>
     <string name="incident_label_location_detail">Detalle del lugar</string>
     <string name="incident_hint_location_detail">Ej: zona, unidad, estantería…</string>
+    <string name="incident_label_subposition">Subsección</string>
+    <string name="incident_subposition_none">Sin subsección</string>
     <string name="incident_label_severity">Gravedad</string>
     <string name="incident_label_position">Posición (terminal)</string>
     <string name="incident_label_author">Autor</string>

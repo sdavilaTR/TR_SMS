@@ -1,12 +1,15 @@
 package com.example.hassiwrapper.ui.createspool
 
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -15,12 +18,12 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
-import com.example.hassiwrapper.network.dto.SpoolDto
+import com.example.hassiwrapper.parseSpoolEntities
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.gson.Gson
-import com.google.gson.JsonParser
+import androidx.transition.TransitionManager
 import kotlinx.coroutines.launch
 
 class CreateSpoolFragment : Fragment() {
@@ -29,9 +32,14 @@ class CreateSpoolFragment : Fragment() {
         ALL(null), WORKSHOP("WORKSHOP"), LAYDOWN("LAYDOWN"), SITE("SITE")
     }
 
+    private enum class ViewMode { LIST, CHART }
+
     private val allItems  = mutableListOf<SmsSpoolEntity>()
     private val items     = mutableListOf<SmsSpoolEntity>()
     private var filter    = Filter.ALL
+    private var viewMode  = ViewMode.CHART
+    private var showZonePct = false
+    private val chartCountViews = mutableListOf<Triple<TextView, Int, Int>>()
     private var plPositions: Map<Long, String?> = emptyMap()
     private lateinit var adapter: SpoolAdapter
 
@@ -43,6 +51,11 @@ class CreateSpoolFragment : Fragment() {
     private lateinit var txtCount: TextView
     private lateinit var toggleFilter: MaterialButtonToggleGroup
     private lateinit var fabNewSpool: FloatingActionButton
+    private lateinit var cardZoneChart: View
+    private lateinit var txtChartTitle: TextView
+    private lateinit var chartZoneRows: LinearLayout
+    private lateinit var filterButtons: List<MaterialButton>
+    private lateinit var btnToggleView: MaterialButton
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_create_spool, container, false)
@@ -57,6 +70,16 @@ class CreateSpoolFragment : Fragment() {
         txtCount     = view.findViewById(R.id.txtCount)
         toggleFilter = view.findViewById(R.id.toggleFilter)
         fabNewSpool  = view.findViewById(R.id.fabNewSpool)
+        cardZoneChart = view.findViewById(R.id.cardZoneChart)
+        txtChartTitle = view.findViewById(R.id.txtChartTitle)
+        chartZoneRows = view.findViewById(R.id.chartZoneRows)
+        btnToggleView = view.findViewById(R.id.btnToggleView)
+        filterButtons = listOf(
+            view.findViewById(R.id.btnFilterAll),
+            view.findViewById(R.id.btnFilterWorkshop),
+            view.findViewById(R.id.btnFilterLaydown),
+            view.findViewById(R.id.btnFilterSite)
+        )
         fabNewSpool.setOnClickListener {
             findNavController().navigate(R.id.action_global_newSpoolFragment)
         }
@@ -74,11 +97,25 @@ class CreateSpoolFragment : Fragment() {
                 R.id.btnFilterSite     -> Filter.SITE
                 else                   -> Filter.ALL
             }
+            expandSelectedTab(checkedId)
             applyFilter()
+        }
+
+        btnToggleView.setOnClickListener {
+            viewMode = if (viewMode == ViewMode.CHART) ViewMode.LIST else ViewMode.CHART
+            refreshViewState()
         }
 
         swipe.setOnRefreshListener { loadSpools(forceRefresh = true) }
         loadSpools(forceRefresh = false)
+    }
+
+    private fun expandSelectedTab(selectedId: Int) {
+        TransitionManager.beginDelayedTransition(toggleFilter)
+        filterButtons.forEach { btn ->
+            (btn.layoutParams as LinearLayout.LayoutParams).weight = if (btn.id == selectedId) 1.6f else 1f
+            btn.requestLayout()
+        }
     }
 
     private fun applyFilter() {
@@ -94,6 +131,73 @@ class CreateSpoolFragment : Fragment() {
         }
         adapter.notifyDataSetChanged()
         refreshCounts()
+        refreshViewState()
+    }
+
+    private fun refreshViewState() {
+        btnToggleView.visibility = if (filter == Filter.ALL) View.VISIBLE else View.GONE
+        val showChart = filter == Filter.ALL && viewMode == ViewMode.CHART && allItems.isNotEmpty()
+        if (viewMode == ViewMode.CHART) {
+            btnToggleView.text = getString(R.string.spools_view_action_list)
+            btnToggleView.setIconResource(R.drawable.ic_view_list)
+        } else {
+            btnToggleView.text = getString(R.string.spools_view_action_chart)
+            btnToggleView.setIconResource(R.drawable.ic_view_chart)
+        }
+        if (showChart) updateZoneChart()
+        cardZoneChart.visibility = if (showChart) View.VISIBLE else View.GONE
+        swipe.visibility = if (showChart) View.GONE else View.VISIBLE
+    }
+
+    private data class ZoneStat(val label: String, val count: Int, val colorRes: Int)
+
+    private fun updateZoneChart() {
+        fun countFor(code: String) = allItems.count { spool ->
+            val plId = spool.packing_list_id ?: return@count false
+            plPositions[plId]?.equals(code, ignoreCase = true) == true
+        }
+
+        val workshop = countFor("WORKSHOP")
+        val laydown = countFor("LAYDOWN")
+        val site = countFor("SITE")
+        val unassigned = allItems.size - workshop - laydown - site
+        val total = allItems.size
+
+        val zones = listOf(
+            ZoneStat(getString(R.string.spools_filter_workshop), workshop, R.color.chart_zone_workshop),
+            ZoneStat(getString(R.string.spools_filter_laydown), laydown, R.color.chart_zone_laydown),
+            ZoneStat(getString(R.string.spools_filter_site), site, R.color.chart_zone_site),
+            ZoneStat(getString(R.string.spools_chart_zone_unassigned), unassigned, R.color.chart_zone_unassigned)
+        ).sortedByDescending { it.count }
+        val max = zones.maxOf { it.count }.coerceAtLeast(1)
+
+        txtChartTitle.text = getString(R.string.spools_chart_title, total)
+        chartZoneRows.removeAllViews()
+        chartCountViews.clear()
+        zones.forEach { zone ->
+            val row = LayoutInflater.from(requireContext()).inflate(R.layout.item_zone_chart_row, chartZoneRows, false)
+            val color = ContextCompat.getColor(requireContext(), zone.colorRes)
+            row.findViewById<View>(R.id.dotZone).backgroundTintList = ColorStateList.valueOf(color)
+            row.findViewById<TextView>(R.id.txtZoneLabel).text = zone.label
+            val pct = if (total > 0) (zone.count * 100 / total) else 0
+            val txtCount = row.findViewById<TextView>(R.id.txtZoneCount)
+            txtCount.text = if (showZonePct) "$pct%" else zone.count.toString()
+            txtCount.setOnClickListener { toggleZonePct() }
+            chartCountViews += Triple(txtCount, zone.count, pct)
+            val barFill = row.findViewById<View>(R.id.barFill)
+            val barSpacer = row.findViewById<View>(R.id.barSpacer)
+            barFill.backgroundTintList = ColorStateList.valueOf(color)
+            (barFill.layoutParams as LinearLayout.LayoutParams).weight = zone.count.toFloat()
+            (barSpacer.layoutParams as LinearLayout.LayoutParams).weight = (max - zone.count).toFloat()
+            chartZoneRows.addView(row)
+        }
+    }
+
+    private fun toggleZonePct() {
+        showZonePct = !showZonePct
+        chartCountViews.forEach { (txtCount, count, pct) ->
+            txtCount.text = if (showZonePct) "$pct%" else count.toString()
+        }
     }
 
     private suspend fun refreshPackingListMap(projectId: Int) {
@@ -185,48 +289,6 @@ class CreateSpoolFragment : Fragment() {
             } finally {
                 showLoading(false)
             }
-        }
-    }
-
-    private fun parseSpoolEntities(raw: String, defaultProjectId: Int): List<SmsSpoolEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> {
-                    val obj = el.asJsonObject
-                    listOf("data", "items", "results", "spools").asSequence()
-                        .mapNotNull { obj.get(it) }
-                        .firstOrNull { it.isJsonArray }?.asJsonArray
-                }
-                else -> null
-            } ?: return emptyList()
-            array.mapIndexedNotNull { idx, element ->
-                if (!element.isJsonObject) return@mapIndexedNotNull null
-                Log.d("SpoolsRAW", "element[$idx]: $element")
-                try {
-                    val dto = gson.fromJson(element, SpoolDto::class.java)
-                    Log.d("SpoolsDTO", "[$idx] spoolCode=${dto.spoolCode} spoolSuffix=${dto.spoolSuffix} resolvedId=${dto.toEntity().spool_id}")
-                    val entity = dto.toEntity()
-                    if (entity.spool_id == 0L) return@mapIndexedNotNull null
-                    // When spoolId is a non-numeric string (no true PK from API), mix in the
-                    // array index so identical-looking records get distinct primary keys.
-                    val finalId = if (dto.spoolId?.toDoubleOrNull() == null && !dto.spoolId.isNullOrEmpty()) {
-                        val key = "${dto.spoolId}-${dto.spoolSuffix.orEmpty()}-$idx"
-                        val crc = java.util.zip.CRC32()
-                        crc.update(key.toByteArray())
-                        crc.value.toLong().takeIf { it != 0L } ?: (idx + 1L)
-                    } else entity.spool_id
-                    entity.copy(spool_id = finalId, project_id = defaultProjectId)
-                } catch (e: Exception) {
-                    Log.w("SpoolsJSON", "Failed to parse spool element[$idx]", e)
-                    null
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("SpoolsJSON", "Parse error", e)
-            emptyList()
         }
     }
 

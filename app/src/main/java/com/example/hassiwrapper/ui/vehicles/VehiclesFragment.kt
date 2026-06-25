@@ -19,11 +19,9 @@ import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
-import com.example.hassiwrapper.network.dto.SmsVehicleDto
+import com.example.hassiwrapper.parseVehicleEntities
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.gson.Gson
-import com.google.gson.JsonParser
 import kotlinx.coroutines.launch
 
 private data class VehicleItem(
@@ -170,37 +168,6 @@ class VehiclesFragment : Fragment() {
             names.isEmpty() -> null
             names.size == 1 -> names[0]
             else -> names.joinToString(" / ")
-        }
-    }
-
-    private fun parseVehicleEntities(raw: String, defaultProjectId: Int): List<SmsVehicleEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> {
-                    val obj = el.asJsonObject
-                    listOf("data", "items", "results", "vehicles").asSequence()
-                        .mapNotNull { obj.get(it) }
-                        .firstOrNull { it.isJsonArray }?.asJsonArray
-                }
-                else -> null
-            } ?: return emptyList()
-            array.mapNotNull { element ->
-                if (!element.isJsonObject) return@mapNotNull null
-                try {
-                    val dto = gson.fromJson(element, SmsVehicleDto::class.java)
-                    val entity = dto.toEntity(defaultProjectId)
-                    if (entity.vehicle_id == 0L) null else entity
-                } catch (e: Exception) {
-                    Log.w("VehiclesJSON", "Failed to parse vehicle element", e)
-                    null
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("VehiclesJSON", "Parse error", e)
-            emptyList()
         }
     }
 

@@ -18,6 +18,7 @@ data class CreateSmsIncidentRequest(
     @SerializedName("locationDetail") val locationDetail: String?,
     @SerializedName("severity")       val severity: String,
     @SerializedName("positionId")     val positionId: Int?,
+    @SerializedName("subPositionId")  val subPositionId: Long?,
     @SerializedName("positionCode")   val positionCode: String?,
     @SerializedName("authorName")     val authorName: String?,
     @SerializedName("eventDate")      val eventDate: String,

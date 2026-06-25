@@ -423,12 +423,9 @@ class SettingsFragment : Fragment() {
         val txtLocation = view.findViewById<TextView>(R.id.txtDeviceLocation)
         btn.setOnClickListener {
             viewLifecycleOwner.lifecycleScope.launch {
-                val positions = ServiceLocator.smsPositionDao.getAll()
-                val options = if (positions.isNotEmpty()) {
-                    positions.map { it.code }.toTypedArray()
-                } else {
-                    arrayOf("WORKSHOP", "LAYDOWN", "SITE")
-                }
+                // Only the valid terminal locations — never offer free-form positions
+                // (e.g. UNRECOGNIZED_LOCATION) that would break the Send/Receive gates.
+                val options = com.example.hassiwrapper.VALID_DEVICE_LOCATIONS.toTypedArray()
                 AlertDialog.Builder(requireContext())
                     .setTitle(getString(R.string.settings_debug_location_btn))
                     .setItems(options) { _, which ->

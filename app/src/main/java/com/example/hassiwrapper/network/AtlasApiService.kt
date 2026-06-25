@@ -264,6 +264,16 @@ interface AtlasApiService {
         @Body body: com.example.hassiwrapper.network.dto.CreateSmsIncidentRequest
     ): Response<okhttp3.ResponseBody>
 
+    // Single photo only (server overwrites on re-upload), 8MB limit. {incidentId} is the
+    // server-assigned id returned by createSmsIncident, not the client uuid.
+    @Multipart
+    @POST("/api/atlas/projects/{projectCode}/incidents/{incidentId}/photo")
+    suspend fun uploadSmsIncidentPhoto(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("incidentId") incidentId: Long,
+        @Part file: MultipartBody.Part
+    ): Response<okhttp3.ResponseBody>
+
     @GET("/api/atlas/projects/{projectCode}/spools/{spoolId}/events")
     suspend fun getSpoolEvents(
         @retrofit2.http.Path("projectCode") projectCode: String,
@@ -291,6 +301,9 @@ interface AtlasApiService {
 
     @GET("/api/atlas/projects/{projectCode}/positions")
     suspend fun getPositions(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
+
+    @GET("/api/atlas/projects/{projectCode}/sub-positions")
+    suspend fun getSubPositions(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
 
     @GET("/api/atlas/projects/{projectCode}/spool-statuses")
     suspend fun getSpoolStatuses(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>

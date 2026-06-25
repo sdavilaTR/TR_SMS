@@ -20,7 +20,7 @@ object ServiceLocator {
     val apiClient: ApiClient by lazy { ApiClient(configRepo, authRepo) }
 
     val smsIncidentService: SmsIncidentService by lazy {
-        SmsIncidentService(db.smsIncidentDao(), configRepo, db.smsPositionDao())
+        SmsIncidentService(db.smsIncidentDao(), configRepo, db.smsPositionDao(), db.smsSubPositionDao())
     }
 
     val outboxService: OutboxService by lazy {
@@ -68,6 +68,7 @@ object ServiceLocator {
     val smsIncompleteStatusDao get() = db.smsIncompleteStatusDao()
     val smsIsoTypeDao get() = db.smsIsoTypeDao()
     val smsPositionDao get() = db.smsPositionDao()
+    val smsSubPositionDao get() = db.smsSubPositionDao()
     val smsSpecDao get() = db.smsSpecDao()
     val smsSpoolEventDao get() = db.smsSpoolEventDao()
     val smsSpoolPropertyDao get() = db.smsSpoolPropertyDao()

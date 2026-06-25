@@ -51,4 +51,10 @@
     <color name="ready_badge_bg">#FF00C853</color>
     <color name="ready_badge_text">#FFFFFFFF</color>
     <color name="surface_ready">#FFE6F9EF</color>
+
+    <!-- Spools-by-zone chart palette -->
+    <color name="chart_zone_workshop">#FF6366F1</color>
+    <color name="chart_zone_laydown">#FF0D9488</color>
+    <color name="chart_zone_site">#FFF59E0B</color>
+    <color name="chart_zone_unassigned">#FF94A3B8</color>
 </resources>

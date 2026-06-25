@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:layout_marginBottom="18dp">
+
+    <View
+        android:id="@+id/dotZone"
+        android:layout_width="14dp"
+        android:layout_height="14dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/bg_chart_dot" />
+
+    <TextView
+        android:id="@+id/txtZoneLabel"
+        android:layout_width="96dp"
+        android:layout_height="wrap_content"
+        android:textSize="15sp"
+        android:textColor="@color/on_surface_variant" />
+
+    <LinearLayout
+        android:id="@+id/barTrack"
+        android:layout_width="0dp"
+        android:layout_height="30dp"
+        android:layout_weight="1"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="10dp"
+        android:orientation="horizontal"
+        android:background="@drawable/bg_chart_track">
+
+        <View
+            android:id="@+id/barFill"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0"
+            android:background="@drawable/bg_chart_fill" />
+
+        <View
+            android:id="@+id/barSpacer"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/txtZoneCount"
+        android:layout_width="44dp"
+        android:layout_height="wrap_content"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:gravity="end"
+        android:textColor="@color/on_surface"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless" />
+
+</LinearLayout>

@@ -10,6 +10,7 @@ import com.example.hassiwrapper.network.ApiClient
 import com.example.hassiwrapper.network.AuthRepository
 import com.example.hassiwrapper.network.AtlasApiService
 import com.example.hassiwrapper.network.dto.*
+import com.google.gson.JsonParser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -17,6 +18,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.Response
 import java.io.File
 import java.time.Instant
 
@@ -354,7 +356,10 @@ class SyncService(
                     insurance_expiry = v.insuranceExpiry ?: v.insuranceExpirySnake,
                     inspection_expiry = v.inspectionExpiry ?: v.inspectionExpirySnake,
                     is_active = v.isActive ?: v.isActiveSnake ?: true,
-                    badge_printed = v.badgePrinted ?: v.badgePrintedSnake ?: false
+                    badge_printed = v.badgePrinted ?: v.badgePrintedSnake ?: false,
+                    is_compliant = v.isCompliant ?: true,
+                    inactive_reason_code = v.inactiveReasonCode,
+                    inactive_reason_detail = v.inactiveReasonDetail
                 )
             }
             if (entities.isNotEmpty() && vehicleDao != null) {
@@ -549,51 +554,109 @@ class SyncService(
     private suspend fun uploadSmsIncidents(api: AtlasApiService) {
         val dao = smsIncidentDao ?: return
         val unsynced = dao.getUnsynced()
-        if (unsynced.isEmpty()) return
 
-        Log.i(TAG, "Uploading ${unsynced.size} SMS incident(s)")
-        val synced = mutableListOf<Long>()
+        if (unsynced.isNotEmpty()) {
+            Log.i(TAG, "Uploading ${unsynced.size} SMS incident(s)")
+            val synced = mutableListOf<Long>()
 
-        for (inc in unsynced) {
-            val project = projectDao.getById(inc.project_id)
-            val projectCode = project?.project_code
-            if (projectCode.isNullOrBlank()) {
-                Log.w(TAG, "No project code for SMS incident ${inc.id}, skipping")
+            for (inc in unsynced) {
+                val project = projectDao.getById(inc.project_id)
+                val projectCode = project?.project_code
+                if (projectCode.isNullOrBlank()) {
+                    Log.w(TAG, "No project code for SMS incident ${inc.id}, skipping")
+                    continue
+                }
+                try {
+                    val body = CreateSmsIncidentRequest(
+                        uuid           = inc.uuid,
+                        projectCode    = projectCode,
+                        spoolCode      = inc.spool_code,
+                        spoolSuffix    = inc.spool_suffix,
+                        description    = inc.description,
+                        vehiclePlate   = inc.vehicle_plate,
+                        locationType   = inc.location_type,
+                        locationDetail = inc.location_detail,
+                        severity       = inc.severity,
+                        positionId     = inc.position_id,
+                        subPositionId  = inc.sub_position_id,
+                        positionCode   = inc.position_code,
+                        authorName     = inc.author_name,
+                        eventDate      = inc.event_date,
+                        status         = inc.status,
+                        closedBy       = inc.closed_by,
+                        closedAt       = inc.closed_at
+                    )
+                    val response = api.createSmsIncident(projectCode, body)
+                    if (response.isSuccessful) {
+                        synced.add(inc.id)
+                        parseIncidentServerId(response)?.let { dao.setServerId(inc.id, it) }
+                        Log.i(TAG, "SMS incident ${inc.id} uploaded")
+                    } else {
+                        Log.e(TAG, "SMS incident ${inc.id} upload failed: HTTP ${response.code()}")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "SMS incident ${inc.id} upload error: ${e.message}")
+                }
+            }
+
+            if (synced.isNotEmpty()) dao.markSynced(synced)
+        }
+
+        uploadSmsIncidentPhotos(api, dao)
+    }
+
+    /**
+     * Second pass, decoupled from [uploadSmsIncidents]: uploads the local damage photo for
+     * any incident that has a server id but hasn't had its photo accepted yet. Kept separate
+     * so a photo failure (or the endpoint not existing yet on this environment) never blocks
+     * the metadata upload above, and is retried on its own next cycle.
+     */
+    private suspend fun uploadSmsIncidentPhotos(api: AtlasApiService, dao: SmsIncidentDao) {
+        val pending = dao.getPendingPhotoUploads()
+        if (pending.isEmpty()) return
+
+        Log.i(TAG, "Uploading ${pending.size} SMS incident photo(s)")
+        for (inc in pending) {
+            val serverId = inc.server_id ?: continue
+            val photoPath = inc.photo_path ?: continue
+            val projectCode = projectDao.getById(inc.project_id)?.project_code
+            if (projectCode.isNullOrBlank()) continue
+
+            val file = File(photoPath)
+            if (!file.exists()) {
+                Log.w(TAG, "SMS incident ${inc.id} photo missing on disk ($photoPath) — giving up on it")
+                dao.markPhotoSynced(inc.id)
                 continue
             }
             try {
-                val body = CreateSmsIncidentRequest(
-                    uuid           = inc.uuid,
-                    projectCode    = projectCode,
-                    spoolCode      = inc.spool_code,
-                    spoolSuffix    = inc.spool_suffix,
-                    description    = inc.description,
-                    vehiclePlate   = inc.vehicle_plate,
-                    locationType   = inc.location_type,
-                    locationDetail = inc.location_detail,
-                    severity       = inc.severity,
-                    positionId     = inc.position_id,
-                    positionCode   = inc.position_code,
-                    authorName     = inc.author_name,
-                    eventDate      = inc.event_date,
-                    status         = inc.status,
-                    closedBy       = inc.closed_by,
-                    closedAt       = inc.closed_at
+                val part = MultipartBody.Part.createFormData(
+                    "file", file.name, file.asRequestBody("image/jpeg".toMediaType())
                 )
-                val response = api.createSmsIncident(projectCode, body)
+                val response = api.uploadSmsIncidentPhoto(projectCode, serverId, part)
                 if (response.isSuccessful) {
-                    synced.add(inc.id)
-                    Log.i(TAG, "SMS incident ${inc.id} uploaded")
+                    dao.markPhotoSynced(inc.id)
+                    Log.i(TAG, "SMS incident ${inc.id} photo uploaded")
                 } else {
-                    Log.e(TAG, "SMS incident ${inc.id} upload failed: HTTP ${response.code()}")
+                    Log.e(TAG, "SMS incident ${inc.id} photo upload failed: HTTP ${response.code()}")
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "SMS incident ${inc.id} upload error: ${e.message}")
+                Log.w(TAG, "SMS incident ${inc.id} photo upload error: ${e.message}")
             }
         }
-
-        if (synced.isNotEmpty()) dao.markSynced(synced)
     }
+
+    /** Pulls the server-assigned incident id out of createSmsIncident's raw JSON response body. */
+    private fun parseIncidentServerId(resp: Response<okhttp3.ResponseBody>): Long? = try {
+        val el = JsonParser.parseString(resp.body()?.string().orEmpty())
+        val obj = when {
+            el.isJsonObject && el.asJsonObject.has("data") && !el.asJsonObject.get("data").isJsonNull ->
+                el.asJsonObject.getAsJsonObject("data")
+            el.isJsonObject -> el.asJsonObject
+            else -> null
+        }
+        obj?.get("incidentId")?.takeIf { !it.isJsonNull }?.asLong
+            ?: obj?.get("id")?.takeIf { !it.isJsonNull }?.asLong
+    } catch (_: Exception) { null }
 
     // ── Vehicle route state upload ────────────────────────────────────────────
 

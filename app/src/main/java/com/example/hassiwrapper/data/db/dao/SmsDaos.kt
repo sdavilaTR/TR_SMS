@@ -193,6 +193,21 @@ interface SmsPositionDao {
 }
 
 @Dao
+interface SmsSubPositionDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<SmsSubPositionEntity>)
+
+    @Query("SELECT * FROM sms_sub_position WHERE project_id = :projectId AND position_id = :positionId AND is_active = 1 ORDER BY full_path ASC")
+    suspend fun getByPosition(projectId: Int, positionId: Int): List<SmsSubPositionEntity>
+
+    @Query("SELECT * FROM sms_sub_position WHERE sub_position_id = :id")
+    suspend fun getById(id: Long): SmsSubPositionEntity?
+
+    @Query("DELETE FROM sms_sub_position WHERE project_id = :projectId")
+    suspend fun deleteByProject(projectId: Int)
+}
+
+@Dao
 interface SmsSpecDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<SmsSpecEntity>)
@@ -549,7 +564,16 @@ interface SmsIncidentDao {
     @Query("UPDATE sms_incident SET synced = 1 WHERE id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
 
-    @Query("UPDATE sms_incident SET status = 'CLOSED', closed_by = :closedBy, closed_at = :closedAt WHERE id = :id")
+    @Query("UPDATE sms_incident SET server_id = :serverId WHERE id = :id")
+    suspend fun setServerId(id: Long, serverId: Long)
+
+    @Query("SELECT * FROM sms_incident WHERE photo_path IS NOT NULL AND photo_synced = 0 AND server_id IS NOT NULL")
+    suspend fun getPendingPhotoUploads(): List<SmsIncidentEntity>
+
+    @Query("UPDATE sms_incident SET photo_synced = 1 WHERE id = :id")
+    suspend fun markPhotoSynced(id: Long)
+
+    @Query("UPDATE sms_incident SET status = 'CLOSED', closed_by = :closedBy, closed_at = :closedAt, synced = 0 WHERE id = :id")
     suspend fun close(id: Long, closedBy: String?, closedAt: String)
 
     @Query("DELETE FROM sms_incident WHERE id = :id")

@@ -13,9 +13,9 @@ import android.webkit.*
 import android.widget.ProgressBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
-import com.example.hassiwrapper.network.ApiClient
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.launch
 
@@ -23,6 +23,9 @@ class WebViewLoginActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
+    private lateinit var errorLayout: View
+    private lateinit var retryButton: View
+    private var loginUrl: String? = null
 
     // Poll every second after each page load to grab the token as soon as it lands in storage
     private val tokenPoller = Handler(Looper.getMainLooper())
@@ -73,24 +76,39 @@ class WebViewLoginActivity : AppCompatActivity() {
 
         webView = findViewById(R.id.webViewLogin)
         progressBar = findViewById(R.id.progressWebView)
+        errorLayout = findViewById(R.id.layoutWebViewError)
+        retryButton = findViewById(R.id.buttonWebViewRetry)
+        retryButton.setOnClickListener { loadLoginUrl() }
 
         setupWebView()
 
         lifecycleScope.launch {
-            val apiBase = ApiClient.DEFAULT_PRIMARY
+            val apiBase = ProfileManager.getApiUrl()
 
             // Derive Web App URL:
             //   Old: https://web-atlas-api-pre.azurewebsites.net -> https://web-atlas-pre.azurewebsites.net
             //   New: https://atlas.tecnicasreunidas.es/api       -> https://atlas.tecnicasreunidas.es/
             val webBase = apiBase.replace("-api", "").removeSuffix("/api")
 
-            // Clear cookies to ensure a fresh Microsoft login
+            // Clear cookies AND DOM storage to ensure a fresh Microsoft login.
+            // MSAL caches its tokens in localStorage/sessionStorage (not cookies), so
+            // clearing only cookies leaves a stale token behind that JS_FIND_TOKEN grabs
+            // on the very first onPageFinished — instantly finishing this activity and
+            // bouncing the user back to the menu without ever showing the login page.
             CookieManager.getInstance().removeAllCookies(null)
             CookieManager.getInstance().flush()
+            WebStorage.getInstance().deleteAllData()
 
-            val loginUrl = if (webBase.endsWith("/")) "${webBase}login" else "$webBase/login"
-            webView.loadUrl(loginUrl)
+            loginUrl = if (webBase.endsWith("/")) "${webBase}login" else "$webBase/login"
+            loadLoginUrl()
         }
+    }
+
+    private fun loadLoginUrl() {
+        val url = loginUrl ?: return
+        errorLayout.visibility = View.GONE
+        webView.visibility = View.VISIBLE
+        webView.loadUrl(url)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -107,7 +125,12 @@ class WebViewLoginActivity : AppCompatActivity() {
             javaScriptCanOpenWindowsAutomatically = true
             loadWithOverviewMode = true
             useWideViewPort = true
+            // Force a live network fetch for the login page so a dead connection surfaces as
+            // onReceivedError (and our overlay) instead of silently serving a stale cached shell
+            // that hangs forever once its JS tries to reach the API.
+            cacheMode = WebSettings.LOAD_NO_CACHE
         }
+        webView.clearCache(true)
 
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
@@ -121,9 +144,19 @@ class WebViewLoginActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 progressBar.visibility = View.GONE
+                if (errorLayout.visibility == View.VISIBLE) return
                 // Check immediately and start polling
                 checkForToken()
                 startPolling()
+            }
+
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: WebResourceError?
+            ) {
+                super.onReceivedError(view, request, error)
+                if (request?.isForMainFrame == true) showNetworkError()
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -146,6 +179,13 @@ class WebViewLoginActivity : AppCompatActivity() {
                 if (newProgress == 100) progressBar.visibility = View.GONE
             }
         }
+    }
+
+    private fun showNetworkError() {
+        stopPolling()
+        progressBar.visibility = View.GONE
+        webView.visibility = View.GONE
+        errorLayout.visibility = View.VISIBLE
     }
 
     private fun startPolling() {

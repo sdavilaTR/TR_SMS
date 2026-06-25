@@ -18,6 +18,23 @@ data class SmsAreaEntity(
     val updated_by: String? = null
 )
 
+@Entity(tableName = "sms_sub_position")
+data class SmsSubPositionEntity(
+    @PrimaryKey val sub_position_id: Long,
+    val project_id: Int,
+    val position_id: Int,
+    val parent_sub_id: Long? = null,
+    val code: String = "",
+    val name: String = "",
+    val full_path: String = "",
+    val level: Int = 0,
+    val is_active: Boolean = true,
+    val created_at: String = "",
+    val created_by: String = "",
+    val updated_at: String? = null,
+    val updated_by: String? = null
+)
+
 @Entity(tableName = "sms_bore_size")
 data class SmsBoreSizeEntity(
     @PrimaryKey val bore_size_id: Int,
@@ -241,6 +258,7 @@ data class SmsIncidentEntity(
     val location_detail: String? = null,
     val severity: String,
     val position_id: Int? = null,
+    val sub_position_id: Long? = null,
     val position_code: String? = null,
     val author_name: String? = null,
     val photo_path: String? = null,
@@ -248,7 +266,11 @@ data class SmsIncidentEntity(
     val status: String = "OPEN",
     val closed_by: String? = null,
     val closed_at: String? = null,
-    val synced: Boolean = false
+    val synced: Boolean = false,
+    /** Server-assigned incident id, set once [synced]; required to address the photo-upload endpoint. */
+    val server_id: Long? = null,
+    /** Whether [photo_path] has been uploaded — tracked separately from [synced] since the photo upload is a second, independently-retried call. */
+    val photo_synced: Boolean = false
 )
 
 @Entity(tableName = "sms_audit_log")

@@ -158,7 +158,10 @@ data class VehicleDto(
     val isActive: Boolean? = null,
     @SerializedName("is_active") val isActiveSnake: Boolean? = null,
     val badgePrinted: Boolean? = null,
-    @SerializedName("badge_printed") val badgePrintedSnake: Boolean? = null
+    @SerializedName("badge_printed") val badgePrintedSnake: Boolean? = null,
+    @SerializedName("is_compliant") val isCompliant: Boolean? = null,
+    @SerializedName("inactive_reason_code") val inactiveReasonCode: String? = null,
+    @SerializedName("inactive_reason_detail") val inactiveReasonDetail: String? = null
 )
 
 // ── Upload Requests ──────────────────────────────────────────────────────────

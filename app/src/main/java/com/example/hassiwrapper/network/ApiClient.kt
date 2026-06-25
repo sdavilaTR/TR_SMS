@@ -81,8 +81,9 @@ class ApiClient(
                 .connectTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .readTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)
 
-            // TODO: DELETE FOR PRODUCTION — bypasses SSL cert validation in debug builds
-            if (BuildConfig.DEBUG) {
+            // Opt-in only via ALLOW_INSECURE_SSL env var at build time — never tied to
+            // BuildConfig.DEBUG, since debug-signed APKs do get installed on field devices.
+            if (BuildConfig.ALLOW_INSECURE_SSL) {
                 val trustAll = object : X509TrustManager {
                     override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
                     override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit
@@ -158,8 +159,9 @@ class ApiClient(
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
 
-        // TODO: DELETE FOR PRODUCTION — bypasses SSL cert validation in debug builds
-        if (BuildConfig.DEBUG) {
+        // Opt-in only via ALLOW_INSECURE_SSL env var at build time — never tied to
+        // BuildConfig.DEBUG, since debug-signed APKs do get installed on field devices.
+        if (BuildConfig.ALLOW_INSECURE_SSL) {
             val trustAll = object : X509TrustManager {
                 override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
                 override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit

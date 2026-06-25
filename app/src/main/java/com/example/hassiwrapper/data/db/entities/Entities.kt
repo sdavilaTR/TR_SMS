@@ -237,5 +237,8 @@ data class VehicleEntity(
     val insurance_expiry: String? = null,
     val inspection_expiry: String? = null,
     val is_active: Boolean = true,
-    val badge_printed: Boolean = false
+    val badge_printed: Boolean = false,
+    val is_compliant: Boolean = true,
+    val inactive_reason_code: String? = null,
+    val inactive_reason_detail: String? = null
 )

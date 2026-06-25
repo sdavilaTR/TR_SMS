@@ -23,8 +23,38 @@
         android:indeterminate="true"
         android:visibility="gone" />
 
-    <WebView
-        android:id="@+id/webViewLogin"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent">
+
+        <WebView
+            android:id="@+id/webViewLogin"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <LinearLayout
+            android:id="@+id/layoutWebViewError"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="32dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/textWebViewError"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textSize="16sp"
+                android:text="@string/webview_login_error_network" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonWebViewRetry"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/webview_login_retry" />
+        </LinearLayout>
+    </FrameLayout>
 </LinearLayout>

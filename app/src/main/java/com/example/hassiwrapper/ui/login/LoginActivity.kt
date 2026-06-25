@@ -7,8 +7,10 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.hassiwrapper.AtlasApp
 import com.example.hassiwrapper.BuildConfig
 import com.example.hassiwrapper.LocaleHelper
 import com.example.hassiwrapper.MainActivity
@@ -42,6 +44,12 @@ class LoginActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val dbError = AtlasApp.instance.databaseInitError
+        if (dbError != null) {
+            showDatabaseErrorDialog(dbError)
+            return
+        }
+
         lifecycleScope.launch {
             if (ServiceLocator.authRepo.isAuthenticated()) {
                 goToMain()
@@ -49,6 +57,37 @@ class LoginActivity : AppCompatActivity() {
             }
             setupLoginUI()
         }
+    }
+
+    /**
+     * Shown instead of the normal login UI when [AtlasApp.databaseInitError] is set — i.e. Room
+     * failed to open/migrate the local DB. Touches no DAO/ServiceLocator path (those would just
+     * rethrow the same failure); only offers a manual reset since there's no dev console on a
+     * kiosk device to fix the underlying schema mismatch.
+     */
+    private fun showDatabaseErrorDialog(error: Throwable) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.db_error_title)
+            .setMessage(getString(R.string.db_error_message, error.message))
+            .setCancelable(false)
+            .setPositiveButton(R.string.db_error_reset) { _, _ -> confirmReset() }
+            .setNegativeButton(R.string.db_error_close) { _, _ -> finishAffinity() }
+            .show()
+    }
+
+    private fun confirmReset() {
+        AlertDialog.Builder(this)
+            .setMessage(R.string.db_error_reset_warning)
+            .setCancelable(false)
+            .setPositiveButton(R.string.db_error_reset) { _, _ ->
+                applicationContext.deleteDatabase("atlas_trac_db")
+                val restart = packageManager.getLaunchIntentForPackage(packageName)
+                    ?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(restart)
+                Runtime.getRuntime().exit(0)
+            }
+            .setNegativeButton(R.string.db_error_close) { _, _ -> finishAffinity() }
+            .show()
     }
 
     private fun setupLoginUI() {

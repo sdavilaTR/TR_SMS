@@ -18,6 +18,10 @@ android {
         buildConfigField "String", "BUILD_TAG", "\"${project.findProperty('releaseTag') ?: 'dev'}\""
         // GH_RELEASE_TOKEN is injected by CI for private repo release checks; empty on local builds
         buildConfigField "String", "GH_RELEASE_TOKEN", "\"${System.getenv("GH_RELEASE_TOKEN") ?: ""}\""
+        // Deliberately NOT tied to debuggable/BuildConfig.DEBUG — a debug-signed APK installed on
+        // a field device must still validate TLS certs. Only set ALLOW_INSECURE_SSL=true in your
+        // own shell env when debugging a local cert issue; never set it in CI.
+        buildConfigField "boolean", "ALLOW_INSECURE_SSL", "${System.getenv("ALLOW_INSECURE_SSL") == "true"}"
     }
 
     signingConfigs {
@@ -54,6 +58,9 @@ android {
     buildFeatures {
         viewBinding true
         buildConfig true
+    }
+    testOptions {
+        unitTests.returnDefaultValues = true
     }
 }
 
@@ -105,4 +112,9 @@ dependencies {
 
     // ZXing camera QR/barcode scanner
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+
+    // Unit tests
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'io.mockk:mockk:1.13.9'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
 }

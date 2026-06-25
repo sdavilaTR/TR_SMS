@@ -70,6 +70,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var navController: NavController
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var etGlobalWedge: EditText
+    private var kioskModeEnabled = false
 
     private val globalWedgeHandler = Handler(Looper.getMainLooper())
     private val globalWedgeTrigger = Runnable {
@@ -231,6 +232,19 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Sanitize a legacy/invalid terminal location (e.g. "Test") to the default so the
+        // Send/Receive gates aren't permanently blocked by a value that's no longer accepted.
+        lifecycleScope.launch {
+            val current = ServiceLocator.configRepo.get("device_location")
+            val normalized = normalizeDeviceLocation(current)
+            if (normalized == null) {
+                ServiceLocator.configRepo.set("device_location", DEFAULT_DEVICE_LOCATION)
+                Log.i(TAG, "device_location '$current' invalid → reset to $DEFAULT_DEVICE_LOCATION")
+            } else if (normalized != current) {
+                ServiceLocator.configRepo.set("device_location", normalized)
+            }
+        }
+
         lifecycleScope.launch {
             try {
                 ServiceLocator.apiClient.seedDefaults()
@@ -358,6 +372,7 @@ class MainActivity : AppCompatActivity() {
         dataWedgeManager.register()
         lifecycleScope.launch {
             val kioskEnabled = ServiceLocator.configRepo.get("kiosk_mode") == "true"
+            kioskModeEnabled = kioskEnabled
             val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
             if (kioskEnabled) {
                 if (am.lockTaskModeState == android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
@@ -430,8 +445,10 @@ class MainActivity : AppCompatActivity() {
         } else {
             if (navController.currentDestination?.id != R.id.homeFragment) {
                 navController.popBackStack(R.id.homeFragment, false)
+            } else if (!kioskModeEnabled) {
+                moveTaskToBack(true)
             }
-            // Home: back does nothing (no exit)
+            // Home with kiosk mode on: back does nothing (no exit)
         }
     }
 
@@ -744,6 +761,16 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        syncSection("sub-positions") {
+            service.getSubPositions(projectCode).let { r ->
+                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                parseSubPositions(raw, projectId).also { list ->
+                    logLookup("sub-positions", r, list.size)
+                    ServiceLocator.smsSubPositionDao.deleteByProject(projectId)
+                    if (list.isNotEmpty()) ServiceLocator.smsSubPositionDao.insertAll(list)
+                }
+            }
+        }
         syncSection("spool-statuses") {
             service.getSpoolStatuses(projectCode).let { r ->
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
@@ -772,75 +799,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun parseSpoolEntities(raw: String, projectId: Int): List<SmsSpoolEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> listOf("data","items","results","spools").asSequence()
-                    .mapNotNull { el.asJsonObject.get(it) }.firstOrNull { it.isJsonArray }?.asJsonArray
-                else -> null
-            } ?: return emptyList()
-            array.mapIndexedNotNull { idx, element ->
-                if (!element.isJsonObject) return@mapIndexedNotNull null
-                try {
-                    val dto = gson.fromJson(element, SpoolDto::class.java)
-                    val entity = dto.toEntity()
-                    if (entity.spool_id == 0L) return@mapIndexedNotNull null
-                    val finalId = if (dto.spoolId?.toDoubleOrNull() == null && !dto.spoolId.isNullOrEmpty()) {
-                        val key = "${dto.spoolId}-${dto.spoolSuffix.orEmpty()}-$idx"
-                        val crc = CRC32(); crc.update(key.toByteArray())
-                        crc.value.toLong().takeIf { it != 0L } ?: (idx + 1L)
-                    } else entity.spool_id
-                    entity.copy(spool_id = finalId, project_id = projectId)
-                } catch (e: Exception) { null }
-            }
-        } catch (e: Exception) { emptyList() }
-    }
-
-    private fun parsePackingListEntities(raw: String, projectId: Int): List<SmsPackingListEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> listOf("data","items","results","packingLists","packing_lists").asSequence()
-                    .mapNotNull { el.asJsonObject.get(it) }.firstOrNull { it.isJsonArray }?.asJsonArray
-                else -> null
-            } ?: return emptyList()
-            array.mapNotNull { element ->
-                if (!element.isJsonObject) return@mapNotNull null
-                try {
-                    val dto = gson.fromJson(element, SmsPackingListDto::class.java)
-                    val entity = dto.toEntity(projectId)
-                    if (entity.packing_list_id == 0L) null else entity
-                } catch (e: Exception) { null }
-            }
-        } catch (e: Exception) { emptyList() }
-    }
-
-    private fun parseVehicleEntities(raw: String, projectId: Int): List<SmsVehicleEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> listOf("data","items","results","vehicles").asSequence()
-                    .mapNotNull { el.asJsonObject.get(it) }.firstOrNull { it.isJsonArray }?.asJsonArray
-                else -> null
-            } ?: return emptyList()
-            array.mapNotNull { element ->
-                if (!element.isJsonObject) return@mapNotNull null
-                try {
-                    val dto = gson.fromJson(element, SmsVehicleDto::class.java)
-                    val entity = dto.toEntity(projectId)
-                    if (entity.vehicle_id == 0L) null else entity
-                } catch (e: Exception) { null }
-            }
-        } catch (e: Exception) { emptyList() }
     }
 
     private fun parseAreaEntities(raw: String, projectId: Int): List<SmsAreaEntity> =
@@ -901,6 +859,21 @@ class MainActivity : AppCompatActivity() {
                 val id = o.jInt("positionId", "position_id", "id") ?: return@mapNotNull null
                 SmsPositionEntity(id, o.jStr("code").orEmpty(), o.jStr("name").orEmpty(),
                     o.jInt("sortOrder", "sort_order"), o.jBool("isActive", "is_active") ?: true)
+            }
+        }
+
+    private fun parseSubPositions(raw: String, projectId: Int): List<SmsSubPositionEntity> =
+        smsJsonArray(raw).mapNotNull { el ->
+            if (!el.isJsonObject) null else el.asJsonObject.let { o ->
+                val id = o.jLong("subPositionId", "sub_position_id", "id") ?: return@mapNotNull null
+                val positionId = o.jInt("positionId", "position_id") ?: return@mapNotNull null
+                SmsSubPositionEntity(id, projectId, positionId,
+                    o.jLong("parentSubId", "parent_sub_id"),
+                    o.jStr("code").orEmpty(), o.jStr("name").orEmpty(),
+                    o.jStr("fullPath", "full_path").orEmpty(), o.jInt("level") ?: 0,
+                    o.jBool("isActive", "is_active") ?: true,
+                    o.jStr("createdAt", "created_at").orEmpty(), o.jStr("createdBy", "created_by").orEmpty(),
+                    o.jStr("updatedAt", "updated_at"), o.jStr("updatedBy", "updated_by"))
             }
         }
 
@@ -991,7 +964,12 @@ class MainActivity : AppCompatActivity() {
 
     /** Called from SettingsFragment to activate/deactivate screen pinning (kiosk mode). */
     fun setKioskMode(enabled: Boolean) {
-        if (enabled) startLockTask() else stopLockTask()
+        kioskModeEnabled = enabled
+        if (enabled) {
+            try { startLockTask() } catch (e: Exception) { Log.w(TAG, "startLockTask failed: ${e.message}") }
+        } else {
+            try { stopLockTask() } catch (e: Exception) { Log.w(TAG, "stopLockTask failed: ${e.message}") }
+        }
     }
 
     /** Called from SettingsFragment after a profile change. */
@@ -1013,6 +991,81 @@ class MainActivity : AppCompatActivity() {
 }
 
 // ── SMS JSON parse helpers ────────────────────────────────────────────────────
+// Canonical entity parsers — single copy shared by MainActivity.syncSmsData(),
+// HomeFragment, CreateSpoolFragment, PackingListsFragment, PackingListDetailFragment
+// and VehiclesFragment. Used to be reimplemented in each of those (see CLAUDE.md);
+// a fix here now reaches every screen instead of just one.
+
+internal fun parseSpoolEntities(raw: String, projectId: Int, packingListId: Long? = null): List<SmsSpoolEntity> {
+    val gson = Gson()
+    return try {
+        val el = JsonParser.parseString(raw)
+        val array = when {
+            el.isJsonArray -> el.asJsonArray
+            el.isJsonObject -> listOf("data", "items", "results", "spools").asSequence()
+                .mapNotNull { el.asJsonObject.get(it) }.firstOrNull { it.isJsonArray }?.asJsonArray
+            else -> null
+        } ?: return emptyList()
+        array.mapIndexedNotNull { idx, element ->
+            if (!element.isJsonObject) return@mapIndexedNotNull null
+            try {
+                val dto = gson.fromJson(element, SpoolDto::class.java)
+                val entity = dto.toEntity(defaultPackingListId = packingListId)
+                if (entity.spool_id == 0L) return@mapIndexedNotNull null
+                // When spoolId is a non-numeric string (no true PK from API), mix in the
+                // array index so identical-looking records get distinct primary keys.
+                val finalId = if (dto.spoolId?.toDoubleOrNull() == null && !dto.spoolId.isNullOrEmpty()) {
+                    val key = "${dto.spoolId}-${dto.spoolSuffix.orEmpty()}-$idx"
+                    val crc = CRC32(); crc.update(key.toByteArray())
+                    crc.value.toLong().takeIf { it != 0L } ?: (idx + 1L)
+                } else entity.spool_id
+                entity.copy(spool_id = finalId, project_id = projectId)
+            } catch (e: Exception) { null }
+        }
+    } catch (e: Exception) { emptyList() }
+}
+
+internal fun parsePackingListEntities(raw: String, projectId: Int): List<SmsPackingListEntity> {
+    val gson = Gson()
+    return try {
+        val el = JsonParser.parseString(raw)
+        val array = when {
+            el.isJsonArray -> el.asJsonArray
+            el.isJsonObject -> listOf("data", "items", "results", "packingLists", "packing_lists").asSequence()
+                .mapNotNull { el.asJsonObject.get(it) }.firstOrNull { it.isJsonArray }?.asJsonArray
+            else -> null
+        } ?: return emptyList()
+        array.mapNotNull { element ->
+            if (!element.isJsonObject) return@mapNotNull null
+            try {
+                val dto = gson.fromJson(element, SmsPackingListDto::class.java)
+                val entity = dto.toEntity(projectId)
+                if (entity.packing_list_id == 0L) null else entity
+            } catch (e: Exception) { null }
+        }
+    } catch (e: Exception) { emptyList() }
+}
+
+internal fun parseVehicleEntities(raw: String, projectId: Int): List<SmsVehicleEntity> {
+    val gson = Gson()
+    return try {
+        val el = JsonParser.parseString(raw)
+        val array = when {
+            el.isJsonArray -> el.asJsonArray
+            el.isJsonObject -> listOf("data", "items", "results", "vehicles").asSequence()
+                .mapNotNull { el.asJsonObject.get(it) }.firstOrNull { it.isJsonArray }?.asJsonArray
+            else -> null
+        } ?: return emptyList()
+        array.mapNotNull { element ->
+            if (!element.isJsonObject) return@mapNotNull null
+            try {
+                val dto = gson.fromJson(element, SmsVehicleDto::class.java)
+                val entity = dto.toEntity(projectId)
+                if (entity.vehicle_id == 0L) null else entity
+            } catch (e: Exception) { null }
+        }
+    } catch (e: Exception) { emptyList() }
+}
 
 internal fun smsJsonArray(raw: String): List<JsonElement> = try {
     val el = JsonParser.parseString(raw)
@@ -1049,3 +1102,15 @@ internal fun JsonObject.jBool(vararg keys: String): Boolean? =
     keys.firstNotNullOfOrNull { k ->
         if (has(k) && !get(k).isJsonNull) try { get(k).asBoolean } catch (_: Exception) { null } else null
     }
+
+/**
+ * The only valid terminal locations. `device_location` must be one of these — it gates the
+ * Send/Receive flows and resolves the terminal's position. WORKSHOP is the default; legacy
+ * free-form values (e.g. "Test", or a JWT company claim like "TR") are rejected.
+ */
+val VALID_DEVICE_LOCATIONS = listOf("WORKSHOP", "LAYDOWN", "SITE")
+const val DEFAULT_DEVICE_LOCATION = "WORKSHOP"
+
+/** Upper-cases and validates a raw location; returns null if it isn't one of [VALID_DEVICE_LOCATIONS]. */
+fun normalizeDeviceLocation(raw: String?): String? =
+    raw?.trim()?.uppercase()?.takeIf { it in VALID_DEVICE_LOCATIONS }

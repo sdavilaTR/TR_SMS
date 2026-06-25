@@ -27,6 +27,7 @@ import androidx.navigation.fragment.findNavController
 import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
+import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
 import com.example.hassiwrapper.services.SmsIncidentService
 import com.example.hassiwrapper.ui.qrscanner.QrResult
 import com.example.hassiwrapper.ui.qrscanner.parseQr
@@ -57,11 +58,15 @@ class NewIncidentFragment : Fragment() {
     private lateinit var btnScanCode: MaterialButton
     private lateinit var actvLocation: AutoCompleteTextView
     private lateinit var actvSeverity: AutoCompleteTextView
+    private lateinit var tilSubPosition: com.google.android.material.textfield.TextInputLayout
+    private lateinit var actvSubPosition: AutoCompleteTextView
     private lateinit var txtAutoPosition: android.widget.TextView
     private lateinit var txtAutoAuthor: android.widget.TextView
     private lateinit var etSpoolCode: TextInputEditText
     private lateinit var etSpoolSuffix: TextInputEditText
     private lateinit var etVehiclePlate: TextInputEditText
+
+    private var subPositions: List<SmsSubPositionEntity> = emptyList()
 
     private val locationCodes = SmsIncidentService.LOCATION_TYPES
     private val severityCodes = SmsIncidentService.SEVERITIES
@@ -109,6 +114,8 @@ class NewIncidentFragment : Fragment() {
         btnScanCode = view.findViewById(R.id.btnScanIncidentCode)
         actvLocation = view.findViewById(R.id.actvIncidentLocation)
         actvSeverity = view.findViewById(R.id.actvIncidentSeverity)
+        tilSubPosition = view.findViewById(R.id.tilIncidentSubPosition)
+        actvSubPosition = view.findViewById(R.id.actvIncidentSubPosition)
         txtAutoPosition = view.findViewById(R.id.txtIncidentAutoPosition)
         txtAutoAuthor = view.findViewById(R.id.txtIncidentAutoAuthor)
         etSpoolCode = view.findViewById(R.id.etIncidentSpoolCode)
@@ -179,7 +186,8 @@ class NewIncidentFragment : Fragment() {
                         locationType = locationType,
                         locationDetail = locationDetail,
                         severity = severity,
-                        photoPath = photoPath
+                        photoPath = photoPath,
+                        subPositionId = selectedSubPositionId()
                     )
                     ServiceLocator.auditLogService.log(
                         com.example.hassiwrapper.services.AuditLogService.INCIDENCIA_CREADA,
@@ -249,7 +257,23 @@ class NewIncidentFragment : Fragment() {
             val author = service.getAssignedOperatorName()
             txtAutoPosition.text = position?.let { "${it.code} · ${it.name}".trim(' ', '·') } ?: getString(R.string.incident_value_unknown)
             txtAutoAuthor.text = author?.takeIf { it.isNotBlank() } ?: getString(R.string.incident_value_unknown)
+
+            subPositions = service.getSubPositionsForCurrentPosition()
+            if (subPositions.isEmpty()) {
+                tilSubPosition.visibility = View.GONE
+            } else {
+                tilSubPosition.visibility = View.VISIBLE
+                val labels = listOf(getString(R.string.incident_subposition_none)) + subPositions.map { it.full_path }
+                actvSubPosition.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, labels))
+                actvSubPosition.setText(labels.first(), false)
+                actvSubPosition.setOnItemClickListener { _, _, _, _ -> }
+            }
         }
+    }
+
+    private fun selectedSubPositionId(): Long? {
+        val current = actvSubPosition.text.toString()
+        return subPositions.firstOrNull { it.full_path == current }?.sub_position_id
     }
 
     private fun launchCamera() {

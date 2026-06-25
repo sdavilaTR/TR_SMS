@@ -3,6 +3,7 @@ package com.example.hassiwrapper.network
 import android.util.Base64
 import com.example.hassiwrapper.AtlasApp
 import com.example.hassiwrapper.R
+import com.example.hassiwrapper.normalizeDeviceLocation
 import com.example.hassiwrapper.data.ConfigRepository
 import com.example.hassiwrapper.network.dto.LoginRequest
 import kotlinx.coroutines.runBlocking
@@ -53,13 +54,12 @@ class AuthRepository(private val configRepo: ConfigRepository) {
             configRepo.set("user_token", token)
             cachedToken = token
 
-            // Extract company claim from JWT and persist as device_location.
-            // ASP.NET Identity exposes it as "company" or the full schema URI.
+            // Extract company claim from JWT and persist as device_location — but only when it is
+            // a valid terminal location (WORKSHOP/LAYDOWN/SITE). Free-form claims like "TR"/"Test"
+            // must never overwrite the configured location, since it gates Send/Receive.
             val company = extractJwtClaim(token, "company")
                 ?: extractJwtClaim(token, "http://schemas.xmlsoap.org/claims/Company")
-            if (!company.isNullOrBlank()) {
-                configRepo.set("device_location", company)
-            }
+            normalizeDeviceLocation(company)?.let { configRepo.set("device_location", it) }
 
             Result.success(token)
         } catch (e: Exception) {

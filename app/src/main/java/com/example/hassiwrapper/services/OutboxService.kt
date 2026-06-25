@@ -117,7 +117,10 @@ class OutboxService(
     /**
      * Sends every PENDING op in op_id order. Stops and returns `transient = true` on
      * the first network/5xx error (leaving that op PENDING) so [SyncService]'s retry
-     * budget re-runs the cycle. 4xx marks the op FAILED and continues.
+     * budget re-runs the cycle. 4xx marks the op FAILED and continues. Once an op's
+     * `attempts` reaches [MAX_ATTEMPTS] — whether stuck transient or perpetually
+     * SKIP'd waiting on a prerequisite that itself gave up — it is marked FAILED and
+     * drain moves past it instead of blocking every later queued op forever.
      */
     suspend fun drain(api: AtlasApiService): DrainResult {
         val pending = outboxDao.getPending()
@@ -133,17 +136,32 @@ class OutboxService(
                 Log.w(TAG, "op ${op.op_id} (${op.entity_type}/${op.op_type}): no project code, skipping")
                 continue
             }
+            val exhausted = op.attempts + 1 >= MAX_ATTEMPTS
             try {
                 when (dispatch(api, op, projectCode)) {
                     Outcome.DONE -> { outboxDao.markDone(op.op_id); done++ }
-                    Outcome.SKIP -> outboxDao.recordAttempt(op.op_id, "waiting for prerequisite create")
+                    Outcome.SKIP -> {
+                        if (exhausted) {
+                            outboxDao.markFailed(op.op_id, "gave up after $MAX_ATTEMPTS attempts: prerequisite never resolved")
+                            Log.e(TAG, "op ${op.op_id} giving up: prerequisite never resolved after $MAX_ATTEMPTS attempts")
+                            failed++
+                        } else {
+                            outboxDao.recordAttempt(op.op_id, "waiting for prerequisite create")
+                        }
+                    }
                     Outcome.FAILED -> failed++   // dispatch already called markFailed
                 }
             } catch (e: TransientFailure) {
-                outboxDao.recordAttempt(op.op_id, e.message)
-                Log.w(TAG, "op ${op.op_id} transient (${e.message}) — stopping drain for retry")
-                outboxDao.pruneDone()
-                return DrainResult(done, failed, transient = true)
+                if (exhausted) {
+                    outboxDao.markFailed(op.op_id, "gave up after $MAX_ATTEMPTS attempts: ${e.message}")
+                    Log.e(TAG, "op ${op.op_id} giving up after $MAX_ATTEMPTS attempts (${e.message}) — skipping, drain continues")
+                    failed++
+                } else {
+                    outboxDao.recordAttempt(op.op_id, e.message)
+                    Log.w(TAG, "op ${op.op_id} transient (${e.message}) — stopping drain for retry")
+                    outboxDao.pruneDone()
+                    return DrainResult(done, failed, transient = true)
+                }
             } catch (e: Exception) {
                 outboxDao.markFailed(op.op_id, "${e.javaClass.simpleName}: ${e.message}")
                 Log.e(TAG, "op ${op.op_id} unexpected error", e)
@@ -314,8 +332,8 @@ class OutboxService(
 
     /**
      * Classifies a response: 2xx runs [onSuccess] and returns DONE; 5xx throws
-     * [TransientFailure]; 4xx marks the op FAILED and returns FAILED. If the op has
-     * exhausted [MAX_ATTEMPTS] it is failed regardless.
+     * [TransientFailure] (caller in [drain] turns this into FAILED once
+     * [MAX_ATTEMPTS] is exhausted); 4xx marks the op FAILED and returns FAILED.
      */
     private suspend fun onResponse(
         op: SmsOutboxEntity,

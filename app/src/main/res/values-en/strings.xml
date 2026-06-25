@@ -293,6 +293,8 @@
     <string name="sync_error_server_unavailable">Server unavailable (HTTP %d)</string>
     <string name="sync_error_server_rejected">Server rejected the connection (HTTP %d)</string>
     <string name="sync_error_outbox_retry">Change queue: no connection, retrying</string>
+    <string name="webview_login_error_network">Could not connect to the server.\nCheck your network connection and try again.</string>
+    <string name="webview_login_retry">Retry</string>
 
     <!-- Coming soon -->
     <string name="coming_soon_title">Coming soon</string>
@@ -442,6 +444,8 @@
     <string name="incident_label_location">Incident location</string>
     <string name="incident_label_location_detail">Location detail</string>
     <string name="incident_hint_location_detail">E.g.: zone, unit, shelf…</string>
+    <string name="incident_label_subposition">Sub-section</string>
+    <string name="incident_subposition_none">No sub-section</string>
     <string name="incident_label_severity">Severity</string>
     <string name="incident_label_position">Position (terminal)</string>
     <string name="incident_label_author">Author</string>
@@ -605,6 +609,10 @@
     <string name="spools_filter_workshop">Workshop</string>
     <string name="spools_filter_laydown">Laydown</string>
     <string name="spools_filter_site">Site</string>
+    <string name="spools_chart_title">Spools by zone (%1$d)</string>
+    <string name="spools_chart_zone_unassigned">No zone</string>
+    <string name="spools_view_action_list">View list</string>
+    <string name="spools_view_action_chart">View chart</string>
 
     <!-- New Packing List -->
     <string name="new_packing_list_title">New Packing List</string>
@@ -885,9 +893,12 @@
     <string name="event_label_pl_created">Packing List created</string>
     <string name="event_label_pl_edited">Packing List edited</string>
     <string name="event_label_pl_deleted">Packing List deleted</string>
+    <string name="event_label_pl_deleted_hard">Packing List deleted (permanent)</string>
     <string name="event_label_vehicle_created">Vehicle created</string>
     <string name="event_label_vehicle_edited">Vehicle edited</string>
     <string name="event_label_vehicle_deleted">Vehicle deleted</string>
     <string name="event_label_transfer_sent">Shipment recorded</string>
     <string name="event_label_transfer_received">Receipt recorded</string>
+    <string name="event_label_incident_created">Incident created</string>
+    <string name="event_label_incident_closed">Incident closed</string>
 </resources>

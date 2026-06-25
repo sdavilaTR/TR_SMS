@@ -15,14 +15,9 @@ import androidx.navigation.fragment.findNavController
 import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
-import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
-import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
-import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
-import com.example.hassiwrapper.network.dto.SmsPackingListDto
-import com.example.hassiwrapper.network.dto.SmsVehicleDto
-import com.example.hassiwrapper.network.dto.SpoolDto
-import com.google.gson.Gson
-import com.google.gson.JsonParser
+import com.example.hassiwrapper.parsePackingListEntities
+import com.example.hassiwrapper.parseSpoolEntities
+import com.example.hassiwrapper.parseVehicleEntities
 import kotlinx.coroutines.launch
 
 class HomeFragment : Fragment() {
@@ -267,84 +262,4 @@ view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
         }
     }
 
-    private fun parseSpoolEntities(raw: String, defaultProjectId: Int): List<SmsSpoolEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> {
-                    val obj = el.asJsonObject
-                    listOf("data", "items", "results", "spools").asSequence()
-                        .mapNotNull { obj.get(it) }
-                        .firstOrNull { it.isJsonArray }?.asJsonArray
-                }
-                else -> null
-            } ?: return emptyList()
-            array.mapIndexedNotNull { idx, element ->
-                if (!element.isJsonObject) return@mapIndexedNotNull null
-                try {
-                    val dto = gson.fromJson(element, SpoolDto::class.java)
-                    val entity = dto.toEntity()
-                    if (entity.spool_id == 0L) return@mapIndexedNotNull null
-                    val finalId = if (dto.spoolId?.toDoubleOrNull() == null && !dto.spoolId.isNullOrEmpty()) {
-                        val key = "${dto.spoolId}-${dto.spoolSuffix.orEmpty()}-$idx"
-                        val crc = java.util.zip.CRC32(); crc.update(key.toByteArray())
-                        crc.value.toLong().takeIf { it != 0L } ?: (idx + 1L)
-                    } else entity.spool_id
-                    entity.copy(spool_id = finalId, project_id = defaultProjectId)
-                } catch (e: Exception) { null }
-            }
-        } catch (e: Exception) { emptyList() }
-    }
-
-    private fun parsePackingListEntities(raw: String, defaultProjectId: Int): List<SmsPackingListEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> {
-                    val obj = el.asJsonObject
-                    listOf("data", "items", "results", "packingLists", "packing_lists").asSequence()
-                        .mapNotNull { obj.get(it) }
-                        .firstOrNull { it.isJsonArray }?.asJsonArray
-                }
-                else -> null
-            } ?: return emptyList()
-            array.mapNotNull { element ->
-                if (!element.isJsonObject) return@mapNotNull null
-                try {
-                    val dto = gson.fromJson(element, SmsPackingListDto::class.java)
-                    val entity = dto.toEntity(defaultProjectId)  // toEntity already forces projectId
-                    if (entity.packing_list_id == 0L) null else entity
-                } catch (e: Exception) { null }
-            }
-        } catch (e: Exception) { emptyList() }
-    }
-
-    private fun parseVehicleEntities(raw: String, defaultProjectId: Int): List<SmsVehicleEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> {
-                    val obj = el.asJsonObject
-                    listOf("data", "items", "results", "vehicles").asSequence()
-                        .mapNotNull { obj.get(it) }
-                        .firstOrNull { it.isJsonArray }?.asJsonArray
-                }
-                else -> null
-            } ?: return emptyList()
-            array.mapNotNull { element ->
-                if (!element.isJsonObject) return@mapNotNull null
-                try {
-                    val dto = gson.fromJson(element, SmsVehicleDto::class.java)
-                    val entity = dto.toEntity(defaultProjectId)
-                    if (entity.vehicle_id == 0L) null else entity
-                } catch (e: Exception) { null }
-            }
-        } catch (e: Exception) { emptyList() }
-    }
 }

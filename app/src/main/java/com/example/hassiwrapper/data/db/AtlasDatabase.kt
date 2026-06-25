@@ -30,6 +30,7 @@ import com.example.hassiwrapper.data.db.entities.*
         TrainingComplianceEntity::class,
         DocumentComplianceEntity::class,
         SmsAreaEntity::class,
+        SmsSubPositionEntity::class,
         SmsBoreSizeEntity::class,
         SmsIncompleteStatusEntity::class,
         SmsIsoTypeEntity::class,
@@ -54,7 +55,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsIdMapEntity::class,
         SmsAuditLogEntity::class
     ],
-    version = 24,
+    version = 27,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -83,6 +84,7 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun smsPackingListDao(): SmsPackingListDao
     abstract fun smsPackingListSpoolDao(): SmsPackingListSpoolDao
     abstract fun smsPositionDao(): SmsPositionDao
+    abstract fun smsSubPositionDao(): SmsSubPositionDao
     abstract fun smsSpecDao(): SmsSpecDao
     abstract fun smsSpoolDao(): SmsSpoolDao
     abstract fun smsSpoolEventDao(): SmsSpoolEventDao
@@ -716,6 +718,49 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v24 → v25: create sms_sub_position (Laydown/Site sub-sections) + link from sms_incident
+        private val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 24 → 25: create sms_sub_position, add sub_position_id to sms_incident")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_sub_position` (
+                        `sub_position_id` INTEGER NOT NULL PRIMARY KEY,
+                        `project_id` INTEGER NOT NULL,
+                        `position_id` INTEGER NOT NULL,
+                        `parent_sub_id` INTEGER,
+                        `code` TEXT NOT NULL DEFAULT '',
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `full_path` TEXT NOT NULL DEFAULT '',
+                        `level` INTEGER NOT NULL DEFAULT 0,
+                        `is_active` INTEGER NOT NULL DEFAULT 1,
+                        `created_at` TEXT NOT NULL DEFAULT '',
+                        `created_by` TEXT NOT NULL DEFAULT '',
+                        `updated_at` TEXT,
+                        `updated_by` TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `sub_position_id` INTEGER")
+            }
+        }
+
+        // v25 → v26: track server-assigned incident id + photo upload state separately from `synced`
+        private val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 25 → 26: add server_id, photo_synced to sms_incident")
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `server_id` INTEGER")
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `photo_synced` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 26 → 27: add is_compliant, inactive_reason_code, inactive_reason_detail to vehicles")
+                db.execSQL("ALTER TABLE `vehicles` ADD COLUMN `is_compliant` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `vehicles` ADD COLUMN `inactive_reason_code` TEXT")
+                db.execSQL("ALTER TABLE `vehicles` ADD COLUMN `inactive_reason_detail` TEXT")
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -746,7 +791,10 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_20_21,
                         MIGRATION_21_22,
                         MIGRATION_22_23,
-                        MIGRATION_23_24
+                        MIGRATION_23_24,
+                        MIGRATION_24_25,
+                        MIGRATION_25_26,
+                        MIGRATION_26_27
                     )
                     .build()
                 INSTANCE = instance

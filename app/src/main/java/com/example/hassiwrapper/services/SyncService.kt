@@ -88,19 +88,19 @@ class SyncService(
      * [onRetry] is called (on the caller's coroutine dispatcher) each time a retry
      * is about to be scheduled, with the attempt number and wait in seconds.
      */
-    suspend fun fullSync(onRetry: ((RetryState) -> Unit)? = null): SyncResult {
+    suspend fun fullSync(onRetry: ((RetryState) -> Unit)? = null, onProgress: ((String) -> Unit)? = null): SyncResult {
         if (!syncMutex.tryLock()) {
             Log.i(TAG, "Sync already in progress, skipping concurrent call")
             return SyncResult(success = true)
         }
         try {
-        return fullSyncLocked(onRetry)
+        return fullSyncLocked(onRetry, onProgress)
         } finally {
             syncMutex.unlock()
         }
     }
 
-    private suspend fun fullSyncLocked(onRetry: ((RetryState) -> Unit)? = null): SyncResult {
+    private suspend fun fullSyncLocked(onRetry: ((RetryState) -> Unit)? = null, onProgress: ((String) -> Unit)? = null): SyncResult {
         val deadline = System.currentTimeMillis() + RETRY_BUDGET_MS
         var attempt = 0
         var waitMs = RETRY_INITIAL_MS
@@ -112,7 +112,7 @@ class SyncService(
         while (true) {
             attempt++
             try {
-                return doSync()
+                return doSync(onProgress = onProgress)
             } catch (e: TransientException) {
                 val remaining = deadline - System.currentTimeMillis()
                 if (remaining <= 0) {
@@ -549,6 +549,65 @@ class SyncService(
         if (synced.isNotEmpty()) dao.markSynced(synced)
     }
 
+    // ── Per-spool position / sub-position upload ──────────────────────────────
+
+    /** Pushes a spool's position + sub-position to the server via PUT status-flags.
+     *  GET-merge-PUT: reads the current flags row first so the overwrite doesn't wipe
+     *  hold/damaged/status/dates. Best-effort — returns false (and logs) on any failure,
+     *  including no existing flags row (PUT 404) which the backend can't create via API.
+     *  Called after a local RECEIVE or QR relocate; the local field is the source of truth. */
+    suspend fun uploadSpoolStatusFlags(
+        projectCode: String,
+        spoolId: Long,
+        positionId: Int?,
+        subPositionId: Long?
+    ): Boolean {
+        return try {
+            val api = apiClient.getService()
+            val getResp = api.getSpoolStatusFlags(projectCode, spoolId.toString())
+            if (!getResp.isSuccessful) {
+                Log.w(TAG, "status-flags GET $spoolId HTTP ${getResp.code()} — skipping upload")
+                return false
+            }
+            val json = getResp.body()?.string().orEmpty()
+            if (json.isBlank()) {
+                Log.w(TAG, "status-flags GET $spoolId empty body — skipping upload")
+                return false
+            }
+            val o = JsonParser.parseString(json).asJsonObject
+            fun optInt(k: String): Int? = o.get(k)?.takeIf { !it.isJsonNull }?.asInt
+            fun optLong(k: String): Long? = o.get(k)?.takeIf { !it.isJsonNull }?.asLong
+            fun optBool(k: String): Boolean = o.get(k)?.takeIf { !it.isJsonNull }?.asBoolean ?: false
+            fun optStr(k: String): String? = o.get(k)?.takeIf { !it.isJsonNull }?.asString
+            val body = SpoolStatusFlagsRequest(
+                spoolId                   = spoolId,
+                statusId                  = optInt("statusId"),
+                incompleteStatusId        = optInt("incompleteStatusId"),
+                positionId                = positionId ?: optInt("positionId"),
+                subPositionId             = subPositionId,
+                hold                      = optBool("hold"),
+                damaged                   = optBool("damaged"),
+                returnedToFactory         = optBool("returnedToFactory"),
+                positionStatusDiscrepancy = optBool("positionStatusDiscrepancy"),
+                reviewDiscrepancy         = optBool("reviewDiscrepancy"),
+                lastEventDate             = optStr("lastEventDate"),
+                pcaStatusDate             = optStr("pcaStatusDate"),
+                pcaEntryDate              = optStr("pcaEntryDate")
+            )
+            val putResp = api.updateSpoolStatusFlags(projectCode, spoolId, body)
+            if (putResp.isSuccessful) {
+                Log.i(TAG, "status-flags PUT $spoolId ok (pos=$positionId sub=$subPositionId)")
+                true
+            } else {
+                Log.w(TAG, "status-flags PUT $spoolId HTTP ${putResp.code()}: ${putResp.errorBody()?.string()}")
+                false
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "status-flags upload $spoolId error: ${e.message}")
+            false
+        }
+    }
+
     // ── SMS incident upload ───────────────────────────────────────────────────
 
     private suspend fun uploadSmsIncidents(api: AtlasApiService) {
@@ -683,7 +742,9 @@ class SyncService(
                     api.setVehicleOffRoute(projectCode, vehicle.vehicle_id)
                 }
                 if (response.isSuccessful) {
-                    synced.add(vehicle.vehicle_id)
+                    // Only mark route_synced=1 when going off-route: server doesn't persist on_route=true
+                    // in GET /vehicles, so trusting server after on-route upload would flip on_route=false.
+                    if (!vehicle.on_route) synced.add(vehicle.vehicle_id)
                     Log.i(TAG, "Vehicle ${vehicle.vehicle_id} route state synced (on_route=${vehicle.on_route})")
                 } else {
                     Log.e(TAG, "Vehicle ${vehicle.vehicle_id} route state failed: HTTP ${response.code()}")

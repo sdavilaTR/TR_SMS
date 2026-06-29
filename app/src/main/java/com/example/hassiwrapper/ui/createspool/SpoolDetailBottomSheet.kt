@@ -291,6 +291,11 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
                 val pos = ServiceLocator.smsPositionDao.getById(posId)
                 addRow(layout, R.string.spool_detail_field_position, pos?.run { name.ifBlank { code } } ?: posId.toString())
             }
+            flags.sub_position_id?.let { subId ->
+                val sub = ServiceLocator.smsSubPositionDao.getById(subId)
+                addRow(layout, R.string.spool_detail_field_sub_position,
+                    sub?.run { full_path.ifBlank { name.ifBlank { code } } } ?: subId.toString())
+            }
             if (flags.hold) addRow(layout, R.string.spool_detail_field_hold, getString(R.string.spool_detail_yes))
             if (flags.damaged) addRow(layout, R.string.spool_detail_field_damaged, getString(R.string.spool_detail_yes))
             if (flags.returned_to_factory) addRow(layout, R.string.spool_detail_field_returned, getString(R.string.spool_detail_yes))
@@ -417,14 +422,23 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
 
             // Queue the assignment change so it syncs offline + survives an app restart.
             // Drain resolves negative temp PL ids once their CREATE op lands.
+            // When switching PLs, enqueue UNASSIGN from old PL first so the server removes the
+            // spool from its previous PL before adding it to the new one (prevents duplicates).
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-            when {
-                newPlId != null -> ServiceLocator.outboxService.enqueue(
+            if (newPlId != null) {
+                if (oldPlId != null && oldPlId != newPlId) {
+                    ServiceLocator.outboxService.enqueue(
+                        OutboxService.Entity.PL_ASSIGN, OutboxService.Op.UNASSIGN, spoolId, projectId,
+                        refEntityId = oldPlId
+                    )
+                }
+                ServiceLocator.outboxService.enqueue(
                     OutboxService.Entity.PL_ASSIGN, OutboxService.Op.ASSIGN, spoolId, projectId,
                     refEntityId = newPlId,
                     payload = AssignSpoolRequest(spoolId, "API", nextSequence)
                 )
-                oldPlId != null -> ServiceLocator.outboxService.enqueue(
+            } else if (oldPlId != null) {
+                ServiceLocator.outboxService.enqueue(
                     OutboxService.Entity.PL_ASSIGN, OutboxService.Op.UNASSIGN, spoolId, projectId,
                     refEntityId = oldPlId
                 )
@@ -547,6 +561,7 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
                 status_id = o.jInt("statusId", "status_id"),
                 incomplete_status_id = o.jInt("incompleteStatusId", "incomplete_status_id"),
                 position_id = o.jInt("positionId", "position_id"),
+                sub_position_id = o.jLong("subPositionId", "sub_position_id"),
                 hold = o.jBool("hold") ?: false,
                 damaged = o.jBool("damaged") ?: false,
                 returned_to_factory = o.jBool("returnedToFactory", "returned_to_factory") ?: false,

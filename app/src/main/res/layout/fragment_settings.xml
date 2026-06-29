@@ -557,16 +557,32 @@
                         android:text="@string/settings_location_config_save"
                         android:textAllCaps="false"/>
 
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- DEBUG: terminal position -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardDebugLocation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                app:cardBackgroundColor="@color/card_bg"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="3dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnDebugChangeLocation"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="match_parent"
                         android:layout_height="48dp"
-                        android:layout_marginTop="8dp"
                         android:text="@string/settings_debug_location_btn"
                         android:textAllCaps="false"
                         android:backgroundTint="@android:color/transparent" />
-
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

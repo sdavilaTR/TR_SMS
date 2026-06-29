@@ -256,6 +256,14 @@ interface AtlasApiService {
         @Body body: CreateSpoolStatusFlagsRequest
     ): Response<okhttp3.ResponseBody>
 
+    // Authoritative per-spool position + sub-position write (validates sub belongs to position/project).
+    @PUT("/api/atlas/projects/{projectCode}/spools/{spoolId}/status-flags")
+    suspend fun updateSpoolStatusFlags(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("spoolId") spoolId: Long,
+        @Body body: SpoolStatusFlagsRequest
+    ): Response<okhttp3.ResponseBody>
+
     // ── SMS Incidents ─────────────────────────────────
     // Upsert on body.uuid so best-effort retries don't duplicate.
     @POST("/api/atlas/projects/{projectCode}/incidents")

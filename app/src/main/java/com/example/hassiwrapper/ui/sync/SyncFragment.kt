@@ -126,6 +126,7 @@ class SyncFragment : Fragment() {
     }
 
     private fun loadKpis() {
+        if (view == null) return
         viewLifecycleOwner.lifecycleScope.launch {
             val v = view ?: return@launch
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6

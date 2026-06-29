@@ -6,8 +6,12 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.ScrollView
+import android.widget.Spinner
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -18,6 +22,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
+import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
 import com.example.hassiwrapper.parseSpoolEntities
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
@@ -41,7 +46,14 @@ class CreateSpoolFragment : Fragment() {
     private var showZonePct = false
     private val chartCountViews = mutableListOf<Triple<TextView, Int, Int>>()
     private var plPositions: Map<Long, String?> = emptyMap()
+    private var positionCodes: Map<Int, String> = emptyMap()
+    private var subPositionLabels: Map<Long, String> = emptyMap()
+    private var subPositionPositionIds: Map<Long, Int> = emptyMap()
+    private val expandedZones = mutableSetOf<String>()
     private lateinit var adapter: SpoolAdapter
+    private lateinit var spinnerSubPos: Spinner
+    private var selectedSubPositionId: Long? = null
+    private var subPositionItems: List<SmsSubPositionEntity> = emptyList()
 
     private lateinit var rv: RecyclerView
     private lateinit var swipe: SwipeRefreshLayout
@@ -53,6 +65,7 @@ class CreateSpoolFragment : Fragment() {
     private lateinit var fabNewSpool: FloatingActionButton
     private lateinit var cardZoneChart: View
     private lateinit var txtChartTitle: TextView
+    private lateinit var chartScrollView: ScrollView
     private lateinit var chartZoneRows: LinearLayout
     private lateinit var filterButtons: List<MaterialButton>
     private lateinit var btnToggleView: MaterialButton
@@ -70,10 +83,12 @@ class CreateSpoolFragment : Fragment() {
         txtCount     = view.findViewById(R.id.txtCount)
         toggleFilter = view.findViewById(R.id.toggleFilter)
         fabNewSpool  = view.findViewById(R.id.fabNewSpool)
-        cardZoneChart = view.findViewById(R.id.cardZoneChart)
-        txtChartTitle = view.findViewById(R.id.txtChartTitle)
-        chartZoneRows = view.findViewById(R.id.chartZoneRows)
+        cardZoneChart  = view.findViewById(R.id.cardZoneChart)
+        txtChartTitle  = view.findViewById(R.id.txtChartTitle)
+        chartScrollView = view.findViewById(R.id.chartScrollView)
+        chartZoneRows  = view.findViewById(R.id.chartZoneRows)
         btnToggleView = view.findViewById(R.id.btnToggleView)
+        spinnerSubPos = view.findViewById(R.id.spinnerSubPos)
         filterButtons = listOf(
             view.findViewById(R.id.btnFilterAll),
             view.findViewById(R.id.btnFilterWorkshop),
@@ -97,8 +112,12 @@ class CreateSpoolFragment : Fragment() {
                 R.id.btnFilterSite     -> Filter.SITE
                 else                   -> Filter.ALL
             }
+            selectedSubPositionId = null
+            subPositionItems = emptyList()
+            spinnerSubPos.visibility = View.GONE
             expandSelectedTab(checkedId)
             applyFilter()
+            viewLifecycleOwner.lifecycleScope.launch { updateSubPositionSpinner() }
         }
 
         btnToggleView.setOnClickListener {
@@ -121,17 +140,54 @@ class CreateSpoolFragment : Fragment() {
     private fun applyFilter() {
         items.clear()
         val targetCode = filter.positionCode
-        items += if (targetCode == null) {
+        val posFiltered = if (targetCode == null) {
             allItems
         } else {
             allItems.filter { spool ->
-                val plId = spool.packing_list_id ?: return@filter false
-                plPositions[plId]?.equals(targetCode, ignoreCase = true) == true
+                spoolPositionCode(spool)?.equals(targetCode, ignoreCase = true) == true
             }
         }
+        val subId = selectedSubPositionId
+        items += if (subId == null) posFiltered else posFiltered.filter { it.sub_position_id == subId }
         adapter.notifyDataSetChanged()
         refreshCounts()
         refreshViewState()
+    }
+
+    private suspend fun updateSubPositionSpinner() {
+        val code = filter.positionCode
+        if (code == null) {
+            spinnerSubPos.visibility = View.GONE
+            return
+        }
+        val positionId = positionCodes.entries.firstOrNull { it.value.equals(code, ignoreCase = true) }?.key
+        if (positionId == null) {
+            spinnerSubPos.visibility = View.GONE
+            return
+        }
+        val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+        subPositionItems = ServiceLocator.smsSubPositionDao.getByPosition(projectId, positionId)
+        if (subPositionItems.isEmpty()) {
+            spinnerSubPos.visibility = View.GONE
+            return
+        }
+        val labels = mutableListOf(getString(R.string.spools_subpos_all))
+        subPositionItems.forEach { sp -> labels += sp.full_path.ifBlank { sp.name.ifBlank { sp.code } } }
+        val spinnerAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels)
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerSubPos.onItemSelectedListener = null
+        spinnerSubPos.adapter = spinnerAdapter
+        spinnerSubPos.setSelection(0)
+        spinnerSubPos.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val newSubId = if (position == 0) null else subPositionItems[position - 1].sub_position_id
+                if (newSubId == selectedSubPositionId) return
+                selectedSubPositionId = newSubId
+                applyFilter()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+        spinnerSubPos.visibility = View.VISIBLE
     }
 
     private fun refreshViewState() {
@@ -149,12 +205,12 @@ class CreateSpoolFragment : Fragment() {
         swipe.visibility = if (showChart) View.GONE else View.VISIBLE
     }
 
-    private data class ZoneStat(val label: String, val count: Int, val colorRes: Int)
+    // drillCode != null marks a position whose bar expands into per-sub-position sub-rows.
+    private data class ZoneStat(val label: String, val count: Int, val colorRes: Int, val drillCode: String? = null)
 
     private fun updateZoneChart() {
         fun countFor(code: String) = allItems.count { spool ->
-            val plId = spool.packing_list_id ?: return@count false
-            plPositions[plId]?.equals(code, ignoreCase = true) == true
+            spoolPositionCode(spool)?.equals(code, ignoreCase = true) == true
         }
 
         val workshop = countFor("WORKSHOP")
@@ -165,8 +221,8 @@ class CreateSpoolFragment : Fragment() {
 
         val zones = listOf(
             ZoneStat(getString(R.string.spools_filter_workshop), workshop, R.color.chart_zone_workshop),
-            ZoneStat(getString(R.string.spools_filter_laydown), laydown, R.color.chart_zone_laydown),
-            ZoneStat(getString(R.string.spools_filter_site), site, R.color.chart_zone_site),
+            ZoneStat(getString(R.string.spools_filter_laydown), laydown, R.color.chart_zone_laydown, "LAYDOWN"),
+            ZoneStat(getString(R.string.spools_filter_site), site, R.color.chart_zone_site, "SITE"),
             ZoneStat(getString(R.string.spools_chart_zone_unassigned), unassigned, R.color.chart_zone_unassigned)
         ).sortedByDescending { it.count }
         val max = zones.maxOf { it.count }.coerceAtLeast(1)
@@ -175,22 +231,98 @@ class CreateSpoolFragment : Fragment() {
         chartZoneRows.removeAllViews()
         chartCountViews.clear()
         zones.forEach { zone ->
-            val row = LayoutInflater.from(requireContext()).inflate(R.layout.item_zone_chart_row, chartZoneRows, false)
-            val color = ContextCompat.getColor(requireContext(), zone.colorRes)
-            row.findViewById<View>(R.id.dotZone).backgroundTintList = ColorStateList.valueOf(color)
-            row.findViewById<TextView>(R.id.txtZoneLabel).text = zone.label
-            val pct = if (total > 0) (zone.count * 100 / total) else 0
-            val txtCount = row.findViewById<TextView>(R.id.txtZoneCount)
-            txtCount.text = if (showZonePct) "$pct%" else zone.count.toString()
-            txtCount.setOnClickListener { toggleZonePct() }
-            chartCountViews += Triple(txtCount, zone.count, pct)
-            val barFill = row.findViewById<View>(R.id.barFill)
-            val barSpacer = row.findViewById<View>(R.id.barSpacer)
-            barFill.backgroundTintList = ColorStateList.valueOf(color)
-            (barFill.layoutParams as LinearLayout.LayoutParams).weight = zone.count.toFloat()
-            (barSpacer.layoutParams as LinearLayout.LayoutParams).weight = (max - zone.count).toFloat()
-            chartZoneRows.addView(row)
+            addChartRow(zone, max, total, parentCount = null)
+            val code = zone.drillCode
+            if (code != null && zone.count > 0 && expandedZones.contains(code)) {
+                val children = subStatsFor(code, zone.colorRes)
+                val childMax = children.maxOfOrNull { it.count }?.coerceAtLeast(1) ?: 1
+                children.forEach { child -> addChartRow(child, childMax, total, parentCount = zone.count) }
+            }
         }
+        capChartScrollHeight()
+    }
+
+    /** Renders one chart row. Parent rows are % of [total]; child sub-rows are % of [parentCount]
+     *  (i.e. share of that Laydown/Site bucket). Drillable parents toggle expansion on tap. */
+    private fun addChartRow(zone: ZoneStat, max: Int, total: Int, parentCount: Int?) {
+        val isChild = parentCount != null
+        val row = LayoutInflater.from(requireContext()).inflate(R.layout.item_zone_chart_row, chartZoneRows, false)
+        val color = ContextCompat.getColor(requireContext(), zone.colorRes)
+        row.findViewById<View>(R.id.dotZone).backgroundTintList = ColorStateList.valueOf(color)
+        val drillable = zone.drillCode != null && zone.count > 0
+        val expanded = drillable && expandedZones.contains(zone.drillCode)
+        row.findViewById<TextView>(R.id.txtZoneLabel).text = when {
+            expanded  -> "▾ ${zone.label}"
+            drillable -> "▸ ${zone.label}"
+            isChild   -> "↳ ${zone.label}"
+            else      -> zone.label
+        }
+        val denom = if (isChild) parentCount!! else total
+        val pct = if (denom > 0) (zone.count * 100 / denom) else 0
+        val txtCount = row.findViewById<TextView>(R.id.txtZoneCount)
+        txtCount.text = if (showZonePct) "$pct%" else zone.count.toString()
+        txtCount.setOnClickListener { toggleZonePct() }
+        chartCountViews += Triple(txtCount, zone.count, pct)
+        val barFill = row.findViewById<View>(R.id.barFill)
+        val barSpacer = row.findViewById<View>(R.id.barSpacer)
+        barFill.backgroundTintList = ColorStateList.valueOf(color)
+        (barFill.layoutParams as LinearLayout.LayoutParams).weight = zone.count.toFloat()
+        (barSpacer.layoutParams as LinearLayout.LayoutParams).weight = (max - zone.count).toFloat()
+        if (isChild) {
+            row.alpha = 0.85f
+            (row.layoutParams as? ViewGroup.MarginLayoutParams)?.marginStart = dp(20)
+        }
+        if (drillable) {
+            row.isClickable = true
+            row.setOnClickListener {
+                if (!expandedZones.add(zone.drillCode!!)) expandedZones.remove(zone.drillCode)
+                TransitionManager.beginDelayedTransition(chartZoneRows)
+                updateZoneChart()
+            }
+        }
+        chartZoneRows.addView(row)
+    }
+
+    private fun capChartScrollHeight() {
+        val maxPx = dp(280)
+        chartScrollView.post {
+            val lp = chartScrollView.layoutParams
+            lp.height = if (chartZoneRows.height > maxPx) maxPx else ViewGroup.LayoutParams.WRAP_CONTENT
+            chartScrollView.requestLayout()
+        }
+    }
+
+    /** Groups the spools of a Laydown/Site bucket by their per-spool sub_position_id.
+     *  Null sub_position_id, or a sub_position that belongs to a different zone, falls
+     *  into a "(sin sub)" bucket so cross-zone assignments don't bleed into this chart. */
+    private fun subStatsFor(code: String, colorRes: Int): List<ZoneStat> {
+        val zonePositionId = positionCodes.entries.firstOrNull { it.value.equals(code, ignoreCase = true) }?.key
+        val inZone = allItems.filter { s ->
+            spoolPositionCode(s)?.equals(code, ignoreCase = true) == true
+        }
+        return inZone.groupingBy { it.sub_position_id }.eachCount().entries
+            .map { (subId, c) ->
+                val validId = subId?.takeIf { zonePositionId != null && subPositionPositionIds[it] == zonePositionId }
+                val label = validId?.let { subPositionLabels[it] } ?: getString(R.string.spools_chart_subpos_none)
+                ZoneStat(label, c, colorRes)
+            }
+            .sortedByDescending { it.count }
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    /** Resolves the display label for every distinct sub_position_id currently loaded. */
+    private suspend fun refreshSubPositionLabels() {
+        val ids = allItems.mapNotNull { it.sub_position_id }.toSet()
+        if (ids.isEmpty()) {
+            subPositionLabels = emptyMap()
+            subPositionPositionIds = emptyMap()
+            return
+        }
+        val dao = ServiceLocator.smsSubPositionDao
+        val entities = ids.mapNotNull { id -> dao.getById(id) }
+        subPositionLabels      = entities.associate { sp -> sp.sub_position_id to sp.full_path.ifBlank { sp.name.ifBlank { sp.code } } }
+        subPositionPositionIds = entities.associate { sp -> sp.sub_position_id to sp.position_id }
     }
 
     private fun toggleZonePct() {
@@ -204,6 +336,23 @@ class CreateSpoolFragment : Fragment() {
         val pls = ServiceLocator.smsPackingListDao.getByProject(projectId)
         adapter.packingLists = pls.associate { it.packing_list_id to it.packing_list_name }
         plPositions = pls.associate { it.packing_list_id to it.position }
+        positionCodes = ServiceLocator.smsPositionDao.getAll().associate { it.position_id to it.code }
+    }
+
+    /** Resolves a position code for a spool with 3 levels of fallback:
+     *  1. PL's own position String (set on receive/send).
+     *  2. Spool zone prefix match (handles "LAYDOWN/SECTOR-1" → "LAYDOWN", or exact "LAYDOWN").
+     *  3. Spool position_id → code lookup (newly created spools with no PL). */
+    private fun spoolPositionCode(spool: com.example.hassiwrapper.data.db.entities.SmsSpoolEntity): String? {
+        val fromPl = spool.packing_list_id?.let { plPositions[it] }
+        if (!fromPl.isNullOrBlank()) return fromPl
+        val zone = spool.zone
+        if (!zone.isNullOrBlank()) {
+            val zUp = zone.uppercase()
+            positionCodes.values.firstOrNull { code -> zUp == code || zUp.startsWith("$code/") }
+                ?.let { return it }
+        }
+        return spool.position_id?.let { positionCodes[it] }
     }
 
     private fun loadSpools(forceRefresh: Boolean) {
@@ -229,6 +378,8 @@ class CreateSpoolFragment : Fragment() {
                     Log.d("SpoolsDebug", "Using cache: ${cached.size} spools")
                     allItems.clear()
                     allItems += cached
+                    refreshSubPositionLabels()
+                    updateSubPositionSpinner()
                     applyFilter()
                     showLoading(false)
                     return@launch
@@ -266,6 +417,8 @@ class CreateSpoolFragment : Fragment() {
                     allItems.clear()
                     allItems += ServiceLocator.smsSpoolDao.getByProject(projectId)
                     Log.d("SpoolsDebug", "After insert, getByProject($projectId) = ${allItems.size}")
+                    refreshSubPositionLabels()
+                    updateSubPositionSpinner()
                     applyFilter()
                 } else {
                     val err = response.errorBody()?.string().orEmpty()
@@ -273,6 +426,7 @@ class CreateSpoolFragment : Fragment() {
                     showError(getString(R.string.spools_list_error_http, response.code()))
                     if (allItems.isEmpty()) {
                         allItems += ServiceLocator.smsSpoolDao.getByProject(projectId)
+                        refreshSubPositionLabels()
                         applyFilter()
                     }
                 }

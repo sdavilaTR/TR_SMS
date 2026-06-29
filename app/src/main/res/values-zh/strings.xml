@@ -293,6 +293,22 @@
     <string name="sync_error_server_unavailable">服务器不可用 (HTTP %d)</string>
     <string name="sync_error_server_rejected">服务器拒绝连接 (HTTP %d)</string>
     <string name="sync_error_outbox_retry">变更队列：无连接，正在重试</string>
+    <!-- Sync progress step messages -->
+    <string name="sync_log_start">开始同步…</string>
+    <string name="sync_step_session">验证会话…</string>
+    <string name="sync_step_server">连接服务器…</string>
+    <string name="sync_step_register">注册设备…</string>
+    <string name="sync_step_download">下载主数据…</string>
+    <string name="sync_step_download_ok">✓ 新增 %1$d 辆，已更新 %2$d 辆车辆</string>
+    <string name="sync_step_upload_pl">上传装箱单…</string>
+    <string name="sync_step_upload_loadings">上传车辆装载…</string>
+    <string name="sync_step_upload_transfers">上传转移记录…</string>
+    <string name="sync_step_upload_route">更新车辆路线状态…</string>
+    <string name="sync_step_upload_incidents">上传SMS事件…</string>
+    <string name="sync_step_outbox">处理操作队列…</string>
+    <string name="sync_step_heartbeat">发送遥测数据…</string>
+    <string name="sync_step_sms">下载SMS数据…</string>
+    <string name="sync_step_done">✓ 基础数据已同步</string>
     <string name="webview_login_error_network">无法连接服务器。\n请检查网络连接后重试。</string>
     <string name="webview_login_retry">重试</string>
 
@@ -609,8 +625,10 @@
     <string name="spools_filter_workshop">Workshop</string>
     <string name="spools_filter_laydown">Laydown</string>
     <string name="spools_filter_site">Site</string>
+    <string name="spools_subpos_all">所有子位置</string>
     <string name="spools_chart_title">按区域统计管段（%1$d）</string>
     <string name="spools_chart_zone_unassigned">无区域</string>
+    <string name="spools_chart_subpos_none">（无子位置）</string>
     <string name="spools_view_action_list">查看列表</string>
     <string name="spools_view_action_chart">查看图表</string>
 
@@ -686,6 +704,7 @@
     <string name="new_spool_field_iso_type">ISO 类型</string>
     <string name="new_spool_field_status">状态</string>
     <string name="new_spool_field_position">位置</string>
+    <string name="new_spool_field_sub_position">子位置</string>
     <string name="new_spool_field_incomplete_status">未完成状态</string>
     <string name="new_spool_field_bore_size">管径</string>
     <string name="new_spool_btn_save">保存管段</string>
@@ -727,6 +746,7 @@
     <string name="spool_detail_field_status">状态</string>
     <string name="spool_detail_field_incomplete_status">未完成状态</string>
     <string name="spool_detail_field_position">位置</string>
+    <string name="spool_detail_field_sub_position">子位置</string>
     <string name="spool_detail_field_hold">暂缓</string>
     <string name="spool_detail_field_damaged">已损坏</string>
     <string name="spool_detail_field_returned">已退回工厂</string>
@@ -834,7 +854,9 @@
     <string name="transfer_send_dest_laydown">堆场</string>
     <string name="transfer_send_dest_site">工地（紧急）</string>
     <string name="transfer_send_btn_confirm">确认发货</string>
-    <string name="transfer_send_success">发货已记录成功（待同步）</string>
+    <string name="transfer_send_success">发货已记录并上传成功</string>
+    <string name="transfer_send_success_partial">发货已记录（数据待上传）</string>
+    <string name="transfer_send_uploading">正在上传数据到服务器…</string>
     <string name="transfer_send_error">错误：%s</string>
     <string name="transfer_send_location_blocked">无法从该位置发货。</string>
     <string name="transfer_select_destination">选择发货目的地</string>

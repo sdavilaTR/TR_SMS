@@ -6,6 +6,7 @@ import com.example.hassiwrapper.data.db.dao.SmsIncidentDao
 import com.example.hassiwrapper.data.db.dao.SmsOutboxDao
 import com.example.hassiwrapper.data.db.dao.SmsPackingListDao
 import com.example.hassiwrapper.data.db.dao.SmsSpoolDao
+import com.example.hassiwrapper.data.db.dao.SmsSpoolStatusFlagsDao
 import com.example.hassiwrapper.data.db.dao.SmsVehicleDao
 import com.example.hassiwrapper.data.db.entities.SmsIdMapEntity
 import com.example.hassiwrapper.data.db.entities.SmsOutboxEntity
@@ -35,6 +36,7 @@ class OutboxService(
     private val outboxDao: SmsOutboxDao,
     private val projectDao: ProjectDao,
     private val smsSpoolDao: SmsSpoolDao,
+    private val smsSpoolStatusFlagsDao: SmsSpoolStatusFlagsDao,
     private val smsPackingListDao: SmsPackingListDao,
     private val smsVehicleDao: SmsVehicleDao,
     private val smsIncidentDao: SmsIncidentDao
@@ -217,7 +219,10 @@ class OutboxService(
             val serverId = parseServerId(resp, "spoolId", "spool_id")
             if (serverId != null) {
                 outboxDao.putMapping(SmsIdMapEntity(Entity.SPOOL, op.local_entity_id, serverId))
-                smsSpoolDao.markSynced(listOf(op.local_entity_id))
+                // Remap local CRC-hash id → server id so the merge in syncSmsData can match by id
+                // and preserve locally-set zone/sub_position_id that the GET /spools response omits.
+                smsSpoolDao.remapAndSync(op.local_entity_id, serverId)
+                smsSpoolStatusFlagsDao.remapSpoolId(op.local_entity_id, serverId)
                 payload.property?.let { p ->
                     runCatching { api.createSpoolProperty(projectCode, serverId, p.copy(spoolId = serverId)) }
                 }

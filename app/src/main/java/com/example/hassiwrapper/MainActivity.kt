@@ -568,6 +568,8 @@ class MainActivity : AppCompatActivity() {
     private suspend fun syncSection(name: String, block: suspend () -> Unit) {
         try {
             block()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "syncSmsData: section '$name' failed", e)
         }
@@ -622,14 +624,21 @@ class MainActivity : AppCompatActivity() {
                     val sentNotReceivedIds = ServiceLocator.smsTransferDao.getSpoolIdsInSentNotReceived().toSet()
                     val merged = toInsert.map { s ->
                         val local = localSpools[s.spool_id] ?: return@map s
+                        val keepLocal = !local.synced
                         s.copy(
                             in_transit = when {
                                 s.spool_id in sentNotReceivedIds -> true
-                                !local.synced -> local.in_transit
+                                keepLocal -> local.in_transit
                                 else -> s.in_transit
                             },
-                            packing_list_id = if (!local.synced) local.packing_list_id else (s.packing_list_id ?: local.packing_list_id),
-                            position_id = if (!local.synced) local.position_id else (s.position_id ?: local.position_id)
+                            zone            = if (keepLocal) local.zone else (s.zone ?: local.zone),
+                            packing_list_id = if (keepLocal) local.packing_list_id else (s.packing_list_id ?: local.packing_list_id),
+                            position_id     = if (keepLocal) local.position_id else (s.position_id ?: local.position_id),
+                            sub_position_id = if (keepLocal) local.sub_position_id else (s.sub_position_id ?: local.sub_position_id),
+                            // Carry synced=false so the local override persists across multiple sync
+                            // cycles until the server returns the updated value (e.g. after status-flags
+                            // upload is processed server-side and reflected in GET /spools).
+                            synced          = if (keepLocal) false else s.synced
                         )
                     }
                     ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
@@ -653,11 +662,14 @@ class MainActivity : AppCompatActivity() {
                     .associateBy { it.packing_list_id }
                 val mergedPLs = activePLs.map { pl ->
                     val local = localPLs[pl.packing_list_id] ?: return@map pl
+                    val keepLocal = !local.synced
                     pl.copy(
                         ready_to_send = local.ready_to_send,
                         vehicle_id    = pl.vehicle_id ?: local.vehicle_id,
                         vehicle_plate = pl.vehicle_plate ?: local.vehicle_plate,
-                        position_id   = if (!local.synced) local.position_id else (pl.position_id ?: local.position_id)
+                        position_id   = if (keepLocal) local.position_id else (pl.position_id ?: local.position_id),
+                        position      = if (keepLocal) local.position else (pl.position ?: local.position),
+                        synced        = if (keepLocal) false else pl.synced
                     )
                 }
                 ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
@@ -766,8 +778,7 @@ class MainActivity : AppCompatActivity() {
                 val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
                 parseSubPositions(raw, projectId).also { list ->
                     logLookup("sub-positions", r, list.size)
-                    ServiceLocator.smsSubPositionDao.deleteByProject(projectId)
-                    if (list.isNotEmpty()) ServiceLocator.smsSubPositionDao.insertAll(list)
+                    if (list.isNotEmpty()) { ServiceLocator.smsSubPositionDao.deleteByProject(projectId); ServiceLocator.smsSubPositionDao.insertAll(list) }
                 }
             }
         }

@@ -11,8 +11,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
+import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.example.hassiwrapper.AtlasApp
 import com.example.hassiwrapper.BuildConfig
 import com.example.hassiwrapper.LocaleHelper
@@ -49,10 +51,22 @@ class SettingsFragment : Fragment() {
         setupUserRoleSelector(view)
         setupLanguageSelector(view)
         setupDeviceCode(view)
-        setupLocationConfig(view)
+        view.findViewById<View>(R.id.cardLocationConfig)?.visibility = View.GONE
         setupAssignedOperator(view)
         setupDebugLocationButton(view)
         setupKioskMode(view)
+
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    val nav = findNavController()
+                    if (!nav.popBackStack(R.id.homeFragment, false)) {
+                        nav.navigate(R.id.homeFragment)
+                    }
+                }
+            }
+        )
 
         refreshAuthButtons()
 

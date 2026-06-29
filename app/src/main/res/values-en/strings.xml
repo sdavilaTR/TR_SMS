@@ -293,6 +293,22 @@
     <string name="sync_error_server_unavailable">Server unavailable (HTTP %d)</string>
     <string name="sync_error_server_rejected">Server rejected the connection (HTTP %d)</string>
     <string name="sync_error_outbox_retry">Change queue: no connection, retrying</string>
+    <!-- Sync progress step messages -->
+    <string name="sync_log_start">Starting synchronisation…</string>
+    <string name="sync_step_session">Checking session…</string>
+    <string name="sync_step_server">Connecting to server…</string>
+    <string name="sync_step_register">Registering device…</string>
+    <string name="sync_step_download">Downloading master data…</string>
+    <string name="sync_step_download_ok">✓ %1$d vehicles added, %2$d updated</string>
+    <string name="sync_step_upload_pl">Uploading packing lists…</string>
+    <string name="sync_step_upload_loadings">Uploading vehicle loadings…</string>
+    <string name="sync_step_upload_transfers">Uploading transfers…</string>
+    <string name="sync_step_upload_route">Updating vehicle route state…</string>
+    <string name="sync_step_upload_incidents">Uploading SMS incidents…</string>
+    <string name="sync_step_outbox">Processing change queue…</string>
+    <string name="sync_step_heartbeat">Sending telemetry…</string>
+    <string name="sync_step_sms">Downloading SMS data…</string>
+    <string name="sync_step_done">✓ Base data synchronised</string>
     <string name="webview_login_error_network">Could not connect to the server.\nCheck your network connection and try again.</string>
     <string name="webview_login_retry">Retry</string>
 
@@ -609,8 +625,10 @@
     <string name="spools_filter_workshop">Workshop</string>
     <string name="spools_filter_laydown">Laydown</string>
     <string name="spools_filter_site">Site</string>
+    <string name="spools_subpos_all">All sub-positions</string>
     <string name="spools_chart_title">Spools by zone (%1$d)</string>
     <string name="spools_chart_zone_unassigned">No zone</string>
+    <string name="spools_chart_subpos_none">(no sub)</string>
     <string name="spools_view_action_list">View list</string>
     <string name="spools_view_action_chart">View chart</string>
 
@@ -686,6 +704,7 @@
     <string name="new_spool_field_iso_type">ISO Type</string>
     <string name="new_spool_field_status">Status</string>
     <string name="new_spool_field_position">Position</string>
+    <string name="new_spool_field_sub_position">Sub-position</string>
     <string name="new_spool_field_incomplete_status">Incomplete status</string>
     <string name="new_spool_field_bore_size">Bore Size</string>
     <string name="new_spool_btn_save">Save Spool</string>
@@ -727,6 +746,7 @@
     <string name="spool_detail_field_status">Status</string>
     <string name="spool_detail_field_incomplete_status">Incomplete status</string>
     <string name="spool_detail_field_position">Position</string>
+    <string name="spool_detail_field_sub_position">Sub-position</string>
     <string name="spool_detail_field_hold">On hold</string>
     <string name="spool_detail_field_damaged">Damaged</string>
     <string name="spool_detail_field_returned">Returned to factory</string>
@@ -834,7 +854,9 @@
     <string name="transfer_send_dest_laydown">Laydown</string>
     <string name="transfer_send_dest_site">Site (urgent)</string>
     <string name="transfer_send_btn_confirm">Confirm Shipment</string>
-    <string name="transfer_send_success">Shipment recorded successfully (pending sync)</string>
+    <string name="transfer_send_success">Shipment recorded and uploaded successfully</string>
+    <string name="transfer_send_success_partial">Shipment recorded (data pending upload)</string>
+    <string name="transfer_send_uploading">Uploading data to server…</string>
     <string name="transfer_send_error">Error: %s</string>
     <string name="transfer_send_location_blocked">Cannot send from this location.</string>
     <string name="transfer_select_destination">Select shipment destination</string>

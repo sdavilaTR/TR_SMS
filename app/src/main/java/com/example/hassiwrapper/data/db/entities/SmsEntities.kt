@@ -1,6 +1,7 @@
 package com.example.hassiwrapper.data.db.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "sms_area")
@@ -83,7 +84,7 @@ data class SmsPackingListEntity(
     val ready_to_send: Boolean = false
 )
 
-@Entity(tableName = "sms_packing_list_spool")
+@Entity(tableName = "sms_packing_list_spool", indices = [Index(value = ["spool_id"], unique = true)])
 data class SmsPackingListSpoolEntity(
     @PrimaryKey val packing_list_spool_id: Long,
     val packing_list_id: Long,
@@ -147,7 +148,8 @@ data class SmsSpoolEntity(
     val assigned_unit: String? = null,
     val packing_list_name: String? = null,
     val in_transit: Boolean = false,
-    val position_id: Int? = null
+    val position_id: Int? = null,
+    val sub_position_id: Long? = null
 ) {
     val displayCode: String
         get() = if (spool_suffix.isNullOrBlank()) spool_code else "$spool_code-$spool_suffix"
@@ -191,6 +193,7 @@ data class SmsSpoolStatusFlagsEntity(
     val status_id: Int? = null,
     val incomplete_status_id: Int? = null,
     val position_id: Int? = null,
+    val sub_position_id: Long? = null,
     val hold: Boolean = false,
     val damaged: Boolean = false,
     val returned_to_factory: Boolean = false,

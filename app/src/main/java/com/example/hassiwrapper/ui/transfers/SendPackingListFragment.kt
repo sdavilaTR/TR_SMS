@@ -94,6 +94,8 @@ class SendPackingListFragment : Fragment() {
     private lateinit var rgDestination: RadioGroup
     private lateinit var txtSendDestination: TextView
     private lateinit var btnConfirmSend: MaterialButton
+    private lateinit var panelUploadProgress: View
+    private lateinit var txtUploadStatus: TextView
 
     private val vehicleScanLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -141,10 +143,12 @@ class SendPackingListFragment : Fragment() {
         btnContinueToSignature = view.findViewById(R.id.btnContinueToSignature)
 
         panelDestination         = view.findViewById(R.id.panelDestination)
-        panelDestinationChoice = view.findViewById(R.id.panelDestinationChoice)
-        rgDestination          = view.findViewById(R.id.rgDestination)
-        txtSendDestination     = view.findViewById(R.id.txtSendDestination)
-        btnConfirmSend         = view.findViewById(R.id.btnConfirmSend)
+        panelDestinationChoice   = view.findViewById(R.id.panelDestinationChoice)
+        rgDestination            = view.findViewById(R.id.rgDestination)
+        txtSendDestination       = view.findViewById(R.id.txtSendDestination)
+        btnConfirmSend           = view.findViewById(R.id.btnConfirmSend)
+        panelUploadProgress      = view.findViewById(R.id.panelUploadProgress)
+        txtUploadStatus          = view.findViewById(R.id.txtUploadStatus)
 
         adapter = ScannedSpoolAdapter()
         rvLoadedSpools.layoutManager = LinearLayoutManager(requireContext())
@@ -688,7 +692,7 @@ class SendPackingListFragment : Fragment() {
                     transferSpools.forEach { s ->
                         ServiceLocator.smsSpoolDao.updatePosition(s.spoolId, destPosition.position_id)
                     }
-                    ServiceLocator.smsPackingListDao.updatePosition(effectivePlId, destPosition.position_id)
+                    ServiceLocator.smsPackingListDao.updatePosition(effectivePlId, destPosition.position_id, destPosition.code)
                 } else {
                     Log.w("SendPL", "onConfirmSend: no position found for code='$destination' — spool/PL position NOT updated")
                 }
@@ -707,7 +711,19 @@ class SendPackingListFragment : Fragment() {
                 }
 
                 val activity = requireActivity() as? MainActivity
-                activity?.lifecycleScope?.launch { ServiceLocator.syncService.syncSmsUploads() }
+
+                // Block and upload immediately before navigating — prevents sync from
+                // overwriting the just-recorded send state (vehicle on_route, spool positions).
+                if (isAdded) {
+                    btnConfirmSend.isEnabled = false
+                    panelUploadProgress.visibility = android.view.View.VISIBLE
+                    txtUploadStatus.text = getString(R.string.transfer_send_uploading)
+                }
+                val uploadResult = ServiceLocator.syncService.syncSmsUploads()
+                if (isAdded) {
+                    panelUploadProgress.visibility = android.view.View.GONE
+                    btnConfirmSend.isEnabled = true
+                }
 
                 if (!isAdded) return@launch
                 activity?.playSuccess()
@@ -718,7 +734,9 @@ class SendPackingListFragment : Fragment() {
                     detail = "${vehicle.license_plate} → $destination",
                     projectId = projectId
                 )
-                Toast.makeText(requireContext(), getString(R.string.transfer_send_success), Toast.LENGTH_LONG).show()
+                val msg = if (uploadResult.success) R.string.transfer_send_success
+                          else R.string.transfer_send_success_partial
+                Toast.makeText(requireContext(), getString(msg), Toast.LENGTH_LONG).show()
                 findNavController().navigateUp()
             } catch (e: Exception) {
                 Log.e("SendPL", "onConfirmSend FAILED", e)

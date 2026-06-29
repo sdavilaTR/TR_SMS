@@ -26,7 +26,8 @@ object ServiceLocator {
     val outboxService: OutboxService by lazy {
         OutboxService(
             db.smsOutboxDao(), db.projectDao(),
-            db.smsSpoolDao(), db.smsPackingListDao(), db.smsVehicleDao(), db.smsIncidentDao()
+            db.smsSpoolDao(), db.smsSpoolStatusFlagsDao(),
+            db.smsPackingListDao(), db.smsVehicleDao(), db.smsIncidentDao()
         )
     }
 

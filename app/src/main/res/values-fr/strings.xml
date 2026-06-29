@@ -293,6 +293,22 @@
     <string name="sync_error_server_unavailable">Serveur indisponible (HTTP %d)</string>
     <string name="sync_error_server_rejected">Le serveur a rejeté la connexion (HTTP %d)</string>
     <string name="sync_error_outbox_retry">File des modifications : pas de connexion, nouvelle tentative</string>
+    <!-- Sync progress step messages -->
+    <string name="sync_log_start">Démarrage de la synchronisation…</string>
+    <string name="sync_step_session">Vérification de la session…</string>
+    <string name="sync_step_server">Connexion au serveur…</string>
+    <string name="sync_step_register">Enregistrement de l\'appareil…</string>
+    <string name="sync_step_download">Téléchargement des données maîtres…</string>
+    <string name="sync_step_download_ok">✓ %1$d véhicules ajoutés, %2$d mis à jour</string>
+    <string name="sync_step_upload_pl">Envoi des packing lists…</string>
+    <string name="sync_step_upload_loadings">Envoi des chargements…</string>
+    <string name="sync_step_upload_transfers">Envoi des transferts…</string>
+    <string name="sync_step_upload_route">Mise à jour état véhicules…</string>
+    <string name="sync_step_upload_incidents">Envoi des incidents…</string>
+    <string name="sync_step_outbox">Traitement file de modifications…</string>
+    <string name="sync_step_heartbeat">Envoi télémétrie…</string>
+    <string name="sync_step_sms">Téléchargement données SMS…</string>
+    <string name="sync_step_done">✓ Données de base synchronisées</string>
     <string name="webview_login_error_network">Impossible de se connecter au serveur.\nVérifiez votre connexion réseau et réessayez.</string>
     <string name="webview_login_retry">Réessayer</string>
 
@@ -609,8 +625,10 @@
     <string name="spools_filter_workshop">Workshop</string>
     <string name="spools_filter_laydown">Laydown</string>
     <string name="spools_filter_site">Site</string>
+    <string name="spools_subpos_all">Toutes les sous-positions</string>
     <string name="spools_chart_title">Spools par zone (%1$d)</string>
     <string name="spools_chart_zone_unassigned">Sans zone</string>
+    <string name="spools_chart_subpos_none">(sans sous)</string>
     <string name="spools_view_action_list">Voir la liste</string>
     <string name="spools_view_action_chart">Voir le graphique</string>
 
@@ -686,6 +704,7 @@
     <string name="new_spool_field_iso_type">Type ISO</string>
     <string name="new_spool_field_status">Statut</string>
     <string name="new_spool_field_position">Position</string>
+    <string name="new_spool_field_sub_position">Sous-position</string>
     <string name="new_spool_field_incomplete_status">Statut incomplet</string>
     <string name="new_spool_field_bore_size">Bore Size</string>
     <string name="new_spool_btn_save">Enregistrer le Spool</string>
@@ -727,6 +746,7 @@
     <string name="spool_detail_field_status">Statut</string>
     <string name="spool_detail_field_incomplete_status">Statut incomplet</string>
     <string name="spool_detail_field_position">Position</string>
+    <string name="spool_detail_field_sub_position">Sous-position</string>
     <string name="spool_detail_field_hold">En retenue</string>
     <string name="spool_detail_field_damaged">Endommagé</string>
     <string name="spool_detail_field_returned">Retourné à l\'usine</string>
@@ -834,7 +854,9 @@
     <string name="transfer_send_dest_laydown">Laydown</string>
     <string name="transfer_send_dest_site">Site (urgent)</string>
     <string name="transfer_send_btn_confirm">Confirmer l\'Envoi</string>
-    <string name="transfer_send_success">Envoi enregistré avec succès (en attente de synchronisation)</string>
+    <string name="transfer_send_success">Envoi enregistré et téléchargé avec succès</string>
+    <string name="transfer_send_success_partial">Envoi enregistré (données en attente de téléchargement)</string>
+    <string name="transfer_send_uploading">Téléchargement des données vers le serveur…</string>
     <string name="transfer_send_error">Erreur : %s</string>
     <string name="transfer_send_location_blocked">Impossible d\'envoyer depuis cet emplacement.</string>
     <string name="transfer_select_destination">Sélectionner la destination de l\'envoi</string>

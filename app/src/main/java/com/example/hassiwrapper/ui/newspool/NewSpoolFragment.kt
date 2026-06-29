@@ -21,6 +21,7 @@ import com.example.hassiwrapper.data.db.entities.SmsIncompleteStatusEntity
 import com.example.hassiwrapper.data.db.entities.SmsIsoTypeEntity
 import com.example.hassiwrapper.data.db.entities.SmsPositionEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
+import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolPropertyEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolStatusEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolStatusFlagsEntity
@@ -46,6 +47,7 @@ class NewSpoolFragment : Fragment() {
     private lateinit var tilIsoType: TextInputLayout
     private lateinit var tilStatus: TextInputLayout
     private lateinit var tilPosition: TextInputLayout
+    private lateinit var tilSubPosition: TextInputLayout
     private lateinit var tilIncompleteStatus: TextInputLayout
     private lateinit var tilBoreSize: TextInputLayout
 
@@ -56,6 +58,7 @@ class NewSpoolFragment : Fragment() {
     private lateinit var actvIsoType: AutoCompleteTextView
     private lateinit var actvStatus: AutoCompleteTextView
     private lateinit var actvPosition: AutoCompleteTextView
+    private lateinit var actvSubPosition: AutoCompleteTextView
     private lateinit var actvIncompleteStatus: AutoCompleteTextView
     private lateinit var actvBoreSize: AutoCompleteTextView
 
@@ -71,6 +74,9 @@ class NewSpoolFragment : Fragment() {
     private var selectedIsoTypeId: Int? = null
     private var selectedStatusId: Int? = null
     private var selectedPositionId: Int? = null
+    private var selectedPositionCode: String? = null
+    private var selectedSubPositionId: Long? = null
+    private var subPositionItems: List<SmsSubPositionEntity> = emptyList()
     private var selectedIncompleteStatusId: Int? = null
     private var selectedBoreSizeId: Int? = null
     private var prefillSpoolCode: String? = null
@@ -89,6 +95,7 @@ class NewSpoolFragment : Fragment() {
         tilIsoType          = view.findViewById(R.id.tilIsoType)
         tilStatus           = view.findViewById(R.id.tilStatus)
         tilPosition         = view.findViewById(R.id.tilPosition)
+        tilSubPosition      = view.findViewById(R.id.tilSubPosition)
         tilIncompleteStatus = view.findViewById(R.id.tilIncompleteStatus)
         tilBoreSize         = view.findViewById(R.id.tilBoreSize)
 
@@ -99,6 +106,7 @@ class NewSpoolFragment : Fragment() {
         actvIsoType          = view.findViewById(R.id.actvIsoType)
         actvStatus           = view.findViewById(R.id.actvStatus)
         actvPosition         = view.findViewById(R.id.actvPosition)
+        actvSubPosition      = view.findViewById(R.id.actvSubPosition)
         actvIncompleteStatus = view.findViewById(R.id.actvIncompleteStatus)
         actvBoreSize         = view.findViewById(R.id.actvBoreSize)
 
@@ -142,7 +150,16 @@ class NewSpoolFragment : Fragment() {
             applySpoolCodePrefill(units)
             setupDropdown(actvIsoType, isoTypes, { it.name.ifBlank { it.code } }) { selectedIsoTypeId = it?.iso_type_id }
             setupDropdown(actvStatus, statuses, { it.name.ifBlank { it.code } }) { selectedStatusId = it?.status_id }
-            setupDropdown(actvPosition, positions, { it.name.ifBlank { it.code } }) { selectedPositionId = it?.position_id }
+            setupDropdown(actvPosition, positions, { it.name.ifBlank { it.code } }) { pos ->
+                selectedPositionId = pos?.position_id
+                selectedPositionCode = pos?.code
+                if (pos != null) loadSubPositionsForPosition(pos.position_id)
+                else {
+                    tilSubPosition.visibility = View.GONE
+                    selectedSubPositionId = null
+                    actvSubPosition.setText("", false)
+                }
+            }
             setupDropdown(actvIncompleteStatus, incompleteStatuses, { it.name.ifBlank { it.code } }) { selectedIncompleteStatusId = it?.incomplete_status_id }
             setupDropdown(actvBoreSize, boreSizes, { it.name.ifBlank { it.code } }) { selectedBoreSizeId = it?.bore_size_id }
         }
@@ -158,6 +175,23 @@ class NewSpoolFragment : Fragment() {
             selectedUnitCode = unit.code
             tilUnit.error    = null
             updatePreview()
+        }
+    }
+
+    private fun loadSubPositionsForPosition(positionId: Int) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+            subPositionItems = ServiceLocator.smsSubPositionDao.getByPosition(projectId, positionId)
+            selectedSubPositionId = null
+            actvSubPosition.setText("", false)
+            if (subPositionItems.isNotEmpty()) {
+                setupDropdown(actvSubPosition, subPositionItems,
+                    { it.full_path.ifBlank { it.name.ifBlank { it.code } } }
+                ) { sub -> selectedSubPositionId = sub?.sub_position_id }
+                tilSubPosition.visibility = View.VISIBLE
+            } else {
+                tilSubPosition.visibility = View.GONE
+            }
         }
     }
 
@@ -238,18 +272,21 @@ class NewSpoolFragment : Fragment() {
                 val now       = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
 
                 val spool = SmsSpoolEntity(
-                    spool_id     = spoolId,
-                    project_id   = projectId,
-                    spool_code   = spoolCode,
-                    spool_suffix = suffix,
-                    line_code    = line,
-                    unit_id      = selectedUnitId,
-                    iso_type_id  = selectedIsoTypeId,
-                    train        = train.takeIf { it.isNotBlank() },
-                    is_active    = true,
-                    created_at   = now,
-                    created_by   = "",
-                    synced       = false
+                    spool_id        = spoolId,
+                    project_id      = projectId,
+                    spool_code      = spoolCode,
+                    spool_suffix    = suffix,
+                    line_code       = line,
+                    unit_id         = selectedUnitId,
+                    iso_type_id     = selectedIsoTypeId,
+                    train           = train.takeIf { it.isNotBlank() },
+                    zone            = selectedPositionCode?.uppercase(),
+                    position_id     = selectedPositionId,
+                    sub_position_id = selectedSubPositionId,
+                    is_active       = true,
+                    created_at      = now,
+                    created_by      = "",
+                    synced          = false
                 )
                 ServiceLocator.smsSpoolDao.insertAll(listOf(spool))
 
@@ -272,12 +309,13 @@ class NewSpoolFragment : Fragment() {
                     status_id            = selectedStatusId,
                     incomplete_status_id = selectedIncompleteStatusId,
                     position_id          = selectedPositionId,
+                    sub_position_id      = selectedSubPositionId,
                     updated_at           = now
                 )
                 ServiceLocator.smsSpoolStatusFlagsDao.insertAll(listOf(statusFlags))
 
                 val hasProperty = diamIn != null || diam != null || selectedBoreSizeId != null || wt != null
-                val hasFlags    = selectedStatusId != null || selectedIncompleteStatusId != null || selectedPositionId != null
+                val hasFlags    = selectedStatusId != null || selectedIncompleteStatusId != null || selectedPositionId != null || selectedSubPositionId != null
                 ServiceLocator.outboxService.enqueue(
                     OutboxService.Entity.SPOOL, OutboxService.Op.CREATE, spoolId, projectId,
                     payload = SpoolCreatePayload(
@@ -290,12 +328,13 @@ class NewSpoolFragment : Fragment() {
                             createdBy   = "",
                             unitId      = selectedUnitId,
                             isoTypeId   = selectedIsoTypeId,
-                            train       = train.takeIf { it.isNotBlank() }
+                            train       = train.takeIf { it.isNotBlank() },
+                            zone        = selectedPositionCode?.uppercase()
                         ),
                         property = if (hasProperty)
                             CreateSpoolPropertyRequest(spoolId, diamIn, diam, selectedBoreSizeId, wt) else null,
                         flags = if (hasFlags)
-                            CreateSpoolStatusFlagsRequest(spoolId, selectedStatusId, selectedIncompleteStatusId, selectedPositionId) else null
+                            CreateSpoolStatusFlagsRequest(spoolId, selectedStatusId, selectedIncompleteStatusId, selectedPositionId, selectedSubPositionId) else null
                     )
                 )
 

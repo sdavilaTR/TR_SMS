@@ -116,8 +116,8 @@ interface SmsPackingListDao {
     @Query("UPDATE sms_packing_list SET ready_to_send = :value WHERE packing_list_id = :id")
     suspend fun setReadyToSend(id: Long, value: Boolean)
 
-    @Query("UPDATE sms_packing_list SET position_id = :positionId, synced = 0 WHERE packing_list_id = :id")
-    suspend fun updatePosition(id: Long, positionId: Int?)
+    @Query("UPDATE sms_packing_list SET position_id = :positionId, position = :positionCode, synced = 0 WHERE packing_list_id = :id")
+    suspend fun updatePosition(id: Long, positionId: Int?, positionCode: String?)
 
     @Query("UPDATE sms_packing_list SET vehicle_id = :vehicleId, vehicle_plate = :vehiclePlate WHERE packing_list_id = :id")
     suspend fun setVehicle(id: Long, vehicleId: Long, vehiclePlate: String)
@@ -312,6 +312,9 @@ interface SmsSpoolDao {
     @Query("UPDATE sms_spool SET synced = 1 WHERE spool_id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
 
+    @Query("UPDATE sms_spool SET spool_id = :serverId, synced = 1 WHERE spool_id = :localId")
+    suspend fun remapAndSync(localId: Long, serverId: Long)
+
     @Query("DELETE FROM sms_spool WHERE project_id = :projectId AND synced = 1")
     suspend fun deleteSyncedByProject(projectId: Int)
 
@@ -332,6 +335,9 @@ interface SmsSpoolDao {
 
     @Query("UPDATE sms_spool SET position_id = :positionId, synced = 0 WHERE spool_id = :spoolId")
     suspend fun updatePosition(spoolId: Long, positionId: Int?)
+
+    @Query("UPDATE sms_spool SET sub_position_id = :subPositionId, synced = 0 WHERE spool_id = :spoolId")
+    suspend fun updateSubPosition(spoolId: Long, subPositionId: Long?)
 
     @Query("UPDATE sms_spool SET area_id = :areaId, zone = :zone, synced = 0 WHERE spool_id = :spoolId")
     suspend fun updateArea(spoolId: Long, areaId: Long?, zone: String?)
@@ -404,6 +410,9 @@ interface SmsSpoolStatusFlagsDao {
 
     @Query("SELECT * FROM sms_spool_status_flags WHERE damaged = 1")
     suspend fun getDamaged(): List<SmsSpoolStatusFlagsEntity>
+
+    @Query("UPDATE sms_spool_status_flags SET spool_id = :serverId WHERE spool_id = :localId")
+    suspend fun remapSpoolId(localId: Long, serverId: Long)
 
     @Query("DELETE FROM sms_spool_status_flags")
     suspend fun deleteAll()
@@ -555,7 +564,7 @@ interface SmsIncidentDao {
     @Query("SELECT * FROM sms_incident WHERE id = :id")
     suspend fun getById(id: Long): SmsIncidentEntity?
 
-    @Query("SELECT COUNT(*) FROM sms_incident WHERE project_id = :projectId AND severity = 'CRITICAL'")
+    @Query("SELECT COUNT(*) FROM sms_incident WHERE project_id = :projectId AND severity = 'CRITICAL' AND (status IS NULL OR UPPER(status) != 'CLOSED')")
     suspend fun getCriticalCount(projectId: Int): Int
 
     @Query("SELECT * FROM sms_incident WHERE synced = 0")

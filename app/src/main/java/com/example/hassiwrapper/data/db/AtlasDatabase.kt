@@ -55,7 +55,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsIdMapEntity::class,
         SmsAuditLogEntity::class
     ],
-    version = 27,
+    version = 29,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -761,6 +761,48 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v28 → v29: enforce one-spool-one-PL rule at DB level.
+        // Deduplicates existing rows (keeps max packing_list_spool_id per spool_id = last assignment),
+        // then creates a UNIQUE index on spool_id so OnConflictStrategy.REPLACE auto-evicts the old
+        // PL link whenever a spool is reassigned — no manual deleteBySpoolId required from this point.
+        private val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 28 → 29: deduplicate sms_packing_list_spool + UNIQUE(spool_id) + sync sms_spool.packing_list_id")
+                db.execSQL("""
+                    DELETE FROM sms_packing_list_spool
+                    WHERE packing_list_spool_id NOT IN (
+                        SELECT MAX(packing_list_spool_id)
+                        FROM sms_packing_list_spool
+                        GROUP BY spool_id
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    UPDATE sms_spool
+                    SET packing_list_id = (
+                        SELECT packing_list_id
+                        FROM sms_packing_list_spool
+                        WHERE sms_packing_list_spool.spool_id = sms_spool.spool_id
+                    )
+                    WHERE spool_id IN (SELECT spool_id FROM sms_packing_list_spool)
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_sms_packing_list_spool_spool_id`
+                    ON `sms_packing_list_spool` (`spool_id`)
+                """.trimIndent())
+            }
+        }
+
+        // v27 → v28: link a spool to its sub-position (Laydown/Site sub-section).
+        // Mirrors position_id: lives on sms_spool (bulk, for the zone chart) and on
+        // sms_spool_status_flags (authoritative, read from GET status-flags in detail).
+        private val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 27 → 28: add sub_position_id to sms_spool and sms_spool_status_flags")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `sub_position_id` INTEGER")
+                db.execSQL("ALTER TABLE `sms_spool_status_flags` ADD COLUMN `sub_position_id` INTEGER")
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -794,7 +836,9 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_23_24,
                         MIGRATION_24_25,
                         MIGRATION_25_26,
-                        MIGRATION_26_27
+                        MIGRATION_26_27,
+                        MIGRATION_27_28,
+                        MIGRATION_28_29
                     )
                     .build()
                 INSTANCE = instance

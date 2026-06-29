@@ -505,6 +505,22 @@
     <string name="sync_error_server_unavailable">Servidor no disponible (HTTP %d)</string>
     <string name="sync_error_server_rejected">Servidor rechazó la conexión (HTTP %d)</string>
     <string name="sync_error_outbox_retry">Cola de cambios: sin conexión, reintentando</string>
+    <!-- Sync progress step messages -->
+    <string name="sync_log_start">Iniciando sincronización…</string>
+    <string name="sync_step_session">Verificando sesión…</string>
+    <string name="sync_step_server">Conectando con servidor…</string>
+    <string name="sync_step_register">Registrando dispositivo…</string>
+    <string name="sync_step_download">Descargando datos maestros…</string>
+    <string name="sync_step_download_ok">✓ %1$d vehículos añadidos, %2$d actualizados</string>
+    <string name="sync_step_upload_pl">Subiendo packing lists…</string>
+    <string name="sync_step_upload_loadings">Subiendo cargas de vehículos…</string>
+    <string name="sync_step_upload_transfers">Subiendo traslados…</string>
+    <string name="sync_step_upload_route">Actualizando estado de vehículos…</string>
+    <string name="sync_step_upload_incidents">Subiendo incidencias…</string>
+    <string name="sync_step_outbox">Procesando cola de cambios…</string>
+    <string name="sync_step_heartbeat">Enviando telemetría…</string>
+    <string name="sync_step_sms">Descargando datos SMS…</string>
+    <string name="sync_step_done">✓ Datos base sincronizados</string>
     <string name="webview_login_error_network">No se pudo conectar con el servidor.\nComprueba tu conexión de red e inténtalo de nuevo.</string>
     <string name="webview_login_retry">Reintentar</string>
 
@@ -539,8 +555,10 @@
     <string name="spools_filter_workshop">Workshop</string>
     <string name="spools_filter_laydown">Laydown</string>
     <string name="spools_filter_site">Site</string>
+    <string name="spools_subpos_all">Todas las sub-posiciones</string>
     <string name="spools_chart_title">Spools por zona (%1$d)</string>
     <string name="spools_chart_zone_unassigned">Sin zona</string>
+    <string name="spools_chart_subpos_none">(sin sub)</string>
     <string name="spools_view_action_list">Ver lista</string>
     <string name="spools_view_action_chart">Ver gráfico</string>
 
@@ -617,6 +635,7 @@
     <string name="new_spool_field_iso_type">Tipo ISO</string>
     <string name="new_spool_field_status">Estado</string>
     <string name="new_spool_field_position">Posición</string>
+    <string name="new_spool_field_sub_position">Sub-posición</string>
     <string name="new_spool_field_incomplete_status">Estado incompleto</string>
     <string name="new_spool_field_bore_size">Bore Size</string>
     <string name="new_spool_btn_save">Guardar Spool</string>
@@ -658,6 +677,7 @@
     <string name="spool_detail_field_status">Estado</string>
     <string name="spool_detail_field_incomplete_status">Estado incompleto</string>
     <string name="spool_detail_field_position">Posición</string>
+    <string name="spool_detail_field_sub_position">Sub-posición</string>
     <string name="spool_detail_field_hold">En retención</string>
     <string name="spool_detail_field_damaged">Dañado</string>
     <string name="spool_detail_field_returned">Dev. a fábrica</string>
@@ -765,7 +785,9 @@
     <string name="transfer_send_dest_laydown">Laydown</string>
     <string name="transfer_send_dest_site">Site (urgente)</string>
     <string name="transfer_send_btn_confirm">Confirmar Envío</string>
-    <string name="transfer_send_success">Envío registrado correctamente (pendiente de sincronización)</string>
+    <string name="transfer_send_success">Envío registrado y subido correctamente</string>
+    <string name="transfer_send_success_partial">Envío registrado (datos pendientes de subir)</string>
+    <string name="transfer_send_uploading">Subiendo datos al servidor…</string>
     <string name="transfer_send_error">Error: %s</string>
     <string name="transfer_send_location_blocked">No se puede enviar desde esta ubicación.</string>
     <string name="transfer_select_destination">Seleccionar destino del envío</string>

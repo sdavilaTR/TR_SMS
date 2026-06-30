@@ -29,7 +29,9 @@ import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
+import com.example.hassiwrapper.data.db.entities.SmsSpoolLocationEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
+import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
@@ -350,6 +352,23 @@ class QrScannerFragment : Fragment() {
                             projectCode, spool.spool_id, relocatePositionId, subId
                         )
                     }
+                }
+
+                // Capture GPS fix and persist offline; SyncService uploads on next sync
+                val gps = GpsHelper.getCurrentLocation(requireContext())
+                if (gps != null) {
+                    val (lat, lon, acc) = gps
+                    val loc = SmsSpoolLocationEntity(
+                        spool_id      = spool.spool_id,
+                        latitude      = lat,
+                        longitude     = lon,
+                        gps_accuracy_m = acc,
+                        captured_at   = java.time.Instant.now().toString(),
+                        captured_by   = ServiceLocator.configRepo.get("device_name")
+                    )
+                    ServiceLocator.smsSpoolLocationDao.insert(loc)
+                    ServiceLocator.smsSpoolLocationDao.pruneOldest(spool.spool_id)
+                    Log.d(TAG, "GPS saved for spool ${spool.spool_id}: lat=$lat lon=$lon acc=$acc")
                 }
 
                 relocateCount++

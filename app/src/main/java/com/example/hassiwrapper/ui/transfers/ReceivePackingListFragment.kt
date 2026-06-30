@@ -26,9 +26,11 @@ import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
+import com.example.hassiwrapper.data.db.entities.SmsSpoolLocationEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
+import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.ui.qrscanner.QrResult
 import com.example.hassiwrapper.ui.qrscanner.parseQr
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
@@ -386,6 +388,26 @@ class ReceivePackingListFragment : Fragment() {
                     ServiceLocator.syncService.uploadSpoolStatusFlags(
                         projectCode, sr.spool.spool_id, receivePosition?.position_id, option.subPositionId
                     )
+                }
+            }
+
+            // One GPS fix for the whole receive batch — captured at the moment of confirm
+            val gps = GpsHelper.getCurrentLocation(requireContext())
+            if (gps != null) {
+                val (lat, lon, acc) = gps
+                val capturedAt = java.time.Instant.now().toString()
+                val capturedBy = ServiceLocator.configRepo.get("device_name")
+                confirmedSpools.forEach { sr ->
+                    val loc = SmsSpoolLocationEntity(
+                        spool_id       = sr.spool.spool_id,
+                        latitude       = lat,
+                        longitude      = lon,
+                        gps_accuracy_m = acc,
+                        captured_at    = capturedAt,
+                        captured_by    = capturedBy
+                    )
+                    ServiceLocator.smsSpoolLocationDao.insert(loc)
+                    ServiceLocator.smsSpoolLocationDao.pruneOldest(sr.spool.spool_id)
                 }
             }
             if (receivePosition != null) {

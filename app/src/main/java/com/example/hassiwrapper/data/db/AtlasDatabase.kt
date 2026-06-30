@@ -53,9 +53,10 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsIncidentEntity::class,
         SmsOutboxEntity::class,
         SmsIdMapEntity::class,
-        SmsAuditLogEntity::class
+        SmsAuditLogEntity::class,
+        SmsSpoolLocationEntity::class
     ],
-    version = 29,
+    version = 30,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -99,6 +100,7 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun smsIncidentDao(): SmsIncidentDao
     abstract fun smsOutboxDao(): SmsOutboxDao
     abstract fun smsAuditLogDao(): SmsAuditLogDao
+    abstract fun smsSpoolLocationDao(): SmsSpoolLocationDao
 
     /** Clears all data from every table (used when switching to DEV profile). */
     suspend fun clearAllData() {
@@ -792,6 +794,29 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v29 → v30: create sms_spool_location (GPS coordinates, max 2 rows per spool)
+        private val MIGRATION_29_30 = object : Migration(29, 30) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 29 → 30: create sms_spool_location")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_spool_location` (
+                        `location_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `spool_id` INTEGER NOT NULL,
+                        `latitude` REAL NOT NULL,
+                        `longitude` REAL NOT NULL,
+                        `gps_accuracy_m` REAL,
+                        `captured_at` TEXT NOT NULL,
+                        `captured_by` TEXT,
+                        `synced` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS `index_sms_spool_location_spool_id`
+                    ON `sms_spool_location` (`spool_id`)
+                """.trimIndent())
+            }
+        }
+
         // v27 → v28: link a spool to its sub-position (Laydown/Site sub-section).
         // Mirrors position_id: lives on sms_spool (bulk, for the zone chart) and on
         // sms_spool_status_flags (authoritative, read from GET status-flags in detail).
@@ -838,7 +863,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_25_26,
                         MIGRATION_26_27,
                         MIGRATION_27_28,
-                        MIGRATION_28_29
+                        MIGRATION_28_29,
+                        MIGRATION_29_30
                     )
                     .build()
                 INSTANCE = instance

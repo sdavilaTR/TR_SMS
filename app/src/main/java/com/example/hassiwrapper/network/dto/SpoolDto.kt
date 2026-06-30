@@ -2,6 +2,7 @@ package com.example.hassiwrapper.network.dto
 
 import com.google.gson.annotations.SerializedName
  import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
+import com.example.hassiwrapper.data.db.entities.SmsSpoolLocationEntity
 import com.example.hassiwrapper.data.model.Spool
 import java.util.zip.CRC32
 
@@ -179,5 +180,34 @@ data class SpoolDto(
         assigned_unit   = assignedUnit?.takeIf { it.isNotBlank() },
         packing_list_name = packingListName?.takeIf { it.isNotBlank() },
         in_transit      = inTransit ?: false
+    )
+}
+
+data class SpoolLocationRequest(
+    @SerializedName("latitude")      val latitude: Double,
+    @SerializedName("longitude")     val longitude: Double,
+    @SerializedName("gpsAccuracyM") val gpsAccuracyM: Float?,
+    @SerializedName("capturedAt")   val capturedAt: String,
+    @SerializedName("capturedBy")   val capturedBy: String?
+)
+
+data class SpoolLocationResponse(
+    @SerializedName("locationId")   val locationId: Long,
+    @SerializedName("spoolId")      val spoolId: Long,
+    @SerializedName("latitude")     val latitude: Double,
+    @SerializedName("longitude")    val longitude: Double,
+    @SerializedName("gpsAccuracyM") val gpsAccuracyM: Float?,
+    @SerializedName("capturedAt")   val capturedAt: String,
+    @SerializedName("capturedBy")   val capturedBy: String?
+) {
+    fun toEntity(synced: Boolean = true) = SmsSpoolLocationEntity(
+        location_id   = locationId,
+        spool_id      = spoolId,
+        latitude      = latitude,
+        longitude     = longitude,
+        gps_accuracy_m = gpsAccuracyM,
+        captured_at   = capturedAt,
+        captured_by   = capturedBy,
+        synced        = synced
     )
 }

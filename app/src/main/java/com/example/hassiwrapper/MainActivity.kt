@@ -203,9 +203,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        navView.getHeaderView(0)
-            .findViewById<android.widget.TextView>(R.id.txtNavVersion)
+        val navHeader = navView.getHeaderView(0)
+        navHeader.findViewById<android.widget.TextView>(R.id.txtNavVersion)
             .text = "ATLAS Native ${BuildConfig.BUILD_TAG}"
+        val isDevOrAdmin = ProfileManager.currentUserRole().let {
+            it == ProfileManager.UserRole.ADMIN || it == ProfileManager.UserRole.DEV
+        }
+        navHeader.findViewById<android.view.View>(R.id.navTechOrb)
+            ?.visibility = if (isDevOrAdmin) android.view.View.VISIBLE else android.view.View.GONE
         etGlobalWedge.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {

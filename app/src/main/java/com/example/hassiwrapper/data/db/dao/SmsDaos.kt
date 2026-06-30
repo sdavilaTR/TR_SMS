@@ -588,3 +588,43 @@ interface SmsIncidentDao {
     @Query("DELETE FROM sms_incident WHERE id = :id")
     suspend fun deleteById(id: Long)
 }
+
+@Dao
+interface SmsSpoolLocationDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(entity: SmsSpoolLocationEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(entities: List<SmsSpoolLocationEntity>)
+
+    /** Returns locations for a spool, newest first, capped at 2. */
+    @Query("SELECT * FROM sms_spool_location WHERE spool_id = :spoolId ORDER BY captured_at DESC LIMIT 2")
+    suspend fun getBySpool(spoolId: Long): List<SmsSpoolLocationEntity>
+
+    @Query("SELECT * FROM sms_spool_location WHERE synced = 0")
+    suspend fun getUnsynced(): List<SmsSpoolLocationEntity>
+
+    @Query("UPDATE sms_spool_location SET synced = 1 WHERE location_id IN (:ids)")
+    suspend fun markSynced(ids: List<Long>)
+
+    @Query("UPDATE sms_spool_location SET location_id = :serverId, synced = 1 WHERE location_id = :localId")
+    suspend fun remapAndSync(localId: Long, serverId: Long)
+
+    /** Deletes the oldest location row for a spool when count exceeds 2. */
+    @Query("""
+        DELETE FROM sms_spool_location
+        WHERE location_id = (
+            SELECT location_id FROM sms_spool_location
+            WHERE spool_id = :spoolId
+            ORDER BY captured_at ASC
+            LIMIT 1
+        ) AND (SELECT COUNT(*) FROM sms_spool_location WHERE spool_id = :spoolId) > 2
+    """)
+    suspend fun pruneOldest(spoolId: Long)
+
+    @Query("DELETE FROM sms_spool_location WHERE spool_id = :spoolId")
+    suspend fun deleteBySpool(spoolId: Long)
+
+    @Query("DELETE FROM sms_spool_location")
+    suspend fun deleteAll()
+}

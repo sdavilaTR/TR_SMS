@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -23,7 +24,7 @@ class EventHistoryFragment : Fragment() {
 
     private lateinit var rv: RecyclerView
     private lateinit var swipe: SwipeRefreshLayout
-    private lateinit var txtEmpty: TextView
+    private lateinit var txtEmpty: View
     private lateinit var adapter: HistoryAdapter
 
     override fun onCreateView(

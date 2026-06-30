@@ -8,7 +8,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -200,34 +200,53 @@ class SyncFragment : Fragment() {
     private fun performSync() {
         val v = view ?: return
         val btn = v.findViewById<MaterialButton>(R.id.btnFullSync)
-        val progress = v.findViewById<ProgressBar>(R.id.progressSync)
-        val status = v.findViewById<TextView>(R.id.txtSyncStatus)
+        val progress = v.findViewById<View>(R.id.progressSync)
         val dotApi = v.findViewById<View>(R.id.dotApi)
         val txtApi = v.findViewById<TextView>(R.id.txtApiStatus)
         val cardResult = v.findViewById<View>(R.id.cardSyncResult)
+        val scrollLog = v.findViewById<ScrollView>(R.id.scrollSyncLog)
+        val txtLog = v.findViewById<TextView>(R.id.txtSyncLog)
 
         viewLifecycleOwner.lifecycleScope.launch {
             if (!ServiceLocator.authRepo.isAuthenticated()) {
-                status.text = getString(R.string.sync_auth_required)
-                status.setTextColor(resources.getColor(R.color.warning, null))
+                scrollLog.visibility = View.VISIBLE
+                txtLog.text = getString(R.string.sync_auth_required)
                 return@launch
             }
 
             btn.isEnabled = false
             progress.visibility = View.VISIBLE
             cardResult.visibility = View.GONE
-            status.text = getString(R.string.sync_syncing)
-            status.setTextColor(resources.getColor(R.color.on_surface_variant, null))
-            val result = ServiceLocator.syncService.fullSync { retry ->
-                status.text = getString(R.string.sync_retrying, retry.attempt, retry.waitSeconds)
-                status.setTextColor(resources.getColor(R.color.warning, null))
-                dotApi.setBackgroundResource(R.drawable.dot_grey)
-                txtApi.text = getString(R.string.sync_status_checking)
+            scrollLog.visibility = View.VISIBLE
+            txtLog.text = getString(R.string.sync_log_start)
+
+            val appendLog: (String) -> Unit = { msg ->
+                val current = txtLog.text.toString()
+                txtLog.text = if (current.isEmpty()) msg else "$current\n$msg"
+                scrollLog.post { scrollLog.fullScroll(View.FOCUS_DOWN) }
+            }
+
+            val result = ServiceLocator.syncService.fullSync(
+                onRetry = { retry ->
+                    appendLog(getString(R.string.sync_retrying, retry.attempt, retry.waitSeconds))
+                    dotApi.setBackgroundResource(R.drawable.dot_grey)
+                    txtApi.text = getString(R.string.sync_status_checking)
+                },
+                onProgress = appendLog
+            )
+
+            if (result.success) {
+                appendLog(getString(R.string.sync_step_sms))
+                try {
+                    (requireActivity() as? com.example.hassiwrapper.MainActivity)?.syncSmsData()
+                } catch (e: Exception) {
+                    Log.e("SyncSMS", "SMS sync failed", e)
+                    appendLog("✗ ${e.message}")
+                }
             }
 
             btn.isEnabled = true
             progress.visibility = View.GONE
-            status.text = ""
 
             showSyncResultCard(v, result)
 
@@ -239,7 +258,6 @@ class SyncFragment : Fragment() {
                 checkConnectivity()
             }
 
-            syncSmsData(status)
             loadKpis()
             loadLastSync()
         }
@@ -280,14 +298,4 @@ class SyncFragment : Fragment() {
         }
     }
 
-    private suspend fun syncSmsData(status: TextView) {
-        status.text = getString(R.string.home_syncing_project)
-        try {
-            (requireActivity() as? com.example.hassiwrapper.MainActivity)?.syncSmsData()
-        } catch (e: Exception) {
-            Log.e("SyncSMS", "SMS sync failed", e)
-        } finally {
-            status.text = ""
-        }
-    }
 }

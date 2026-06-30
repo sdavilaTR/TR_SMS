@@ -44,7 +44,8 @@ class SyncService(
     private val smsVehicleLoadingDao: SmsVehicleLoadingDao? = null,
     private val smsTransferDao: SmsTransferDao? = null,
     private val smsIncidentDao: SmsIncidentDao? = null,
-    private val outboxService: OutboxService? = null
+    private val outboxService: OutboxService? = null,
+    private val smsSpoolLocationDao: SmsSpoolLocationDao? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -179,6 +180,7 @@ class SyncService(
             uploadTransfers(api)
             uploadVehicleRouteState(api)
             uploadSmsIncidents(api)
+            uploadSpoolLocations(api)
             outboxService?.drain(api)?.let { r ->
                 if (r.transient) Log.w(TAG, "syncSmsUploads: outbox drain stopped (transient), will retry next sync")
             }
@@ -193,11 +195,12 @@ class SyncService(
      * One full sync attempt. Throws [TransientException] for retryable failures.
      * Returns a final [SyncResult] for non-retryable outcomes (including partial success).
      */
-    private suspend fun doSync(didReLogin: Boolean = false): SyncResult {
+    private suspend fun doSync(onProgress: ((String) -> Unit)? = null, didReLogin: Boolean = false): SyncResult {
         val api = apiClient.getService()
 
         // 0. Ensure token is still valid; auto-re-login if expired before hitting the API
         if (!didReLogin && authRepo != null && !authRepo.isAuthenticated()) {
+            onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_session))
             Log.i(TAG, "Token expired, attempting auto-re-login before sync")
             if (authRepo.reLoginWithStoredCode(api)) {
                 Log.i(TAG, "Auto-re-login succeeded after token expiry")
@@ -207,6 +210,7 @@ class SyncService(
         }
 
         // 1. Health check — network errors and 5xx are transient
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_server))
         val healthResp = try {
             api.health()
         } catch (e: Exception) {
@@ -221,7 +225,7 @@ class SyncService(
                 Log.i(TAG, "Auth failed (HTTP ${healthResp.code()}), attempting auto-re-login")
                 if (authRepo.reLoginWithStoredCode(api)) {
                     Log.i(TAG, "Auto-re-login succeeded, retrying sync")
-                    return doSync(didReLogin = true)
+                    return doSync(onProgress = onProgress, didReLogin = true)
                 }
                 Log.w(TAG, "Auto-re-login failed — no stored device code or credentials invalid")
             }
@@ -229,12 +233,11 @@ class SyncService(
         }
 
         // 2. Register device (non-fatal, no retry)
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_register))
         registerDevice(api)
 
         // 3. Download master data (projects/contractors/vehicles; best-effort, if it fails we still upload).
-        // The persons/zones/crypto-keys/compliance sections of this same payload are not parsed —
-        // nothing in the app reads them, and parsing them ties our SMS sync to legacy AC backend
-        // bugs (e.g. a SQL error in the persons query) that have nothing to do with this data.
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_download))
         var vehicleResult = VehicleResult()
         try {
             val projectId = configRepo.getInt("selected_project_id") ?: 6
@@ -243,6 +246,9 @@ class SyncService(
                 val data = downloadResp.body()
                 if (data != null) {
                     vehicleResult = applyMasterData(data)
+                    if (vehicleResult.added + vehicleResult.updated > 0) {
+                        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_download_ok, vehicleResult.added, vehicleResult.updated))
+                    }
                 } else {
                     Log.w(TAG, "downloadSync returned null body")
                 }
@@ -253,21 +259,26 @@ class SyncService(
             Log.w(TAG, "downloadSync exception (non-fatal): ${e.message}")
         }
 
-        // 4b. Upload entities still on their own queues (not the outbox):
-        //  - Send-flow packing lists (positive ids) created in SendPackingListFragment
-        //  - vehicle loadings / transfers / route-state (separate synced/route_synced flags)
-        //  - SMS incidents (smsIncidentDao synced flag, idempotent upsert by uuid)
-        // Spool/vehicle/PL creates from the standard CRUD screens now go through the outbox
-        // drain below; uploadNewSpools/uploadNewVehicles were removed because re-POSTing as a
-        // field-incomplete CREATE raced the outbox op (server dedup kept the incomplete row).
+        // 4b. Upload entities still on their own queues (not the outbox).
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_pl))
         uploadNewPackingLists(api)
+
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_loadings))
         uploadVehicleLoadings(api)
+
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_transfers))
         uploadTransfers(api)
+
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_route))
         uploadVehicleRouteState(api)
+
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_incidents))
         uploadSmsIncidents(api)
 
+        uploadSpoolLocations(api)
+
         // 4c. Drain the SMS mutation outbox in order (create/update/delete/assign).
-        // A transient failure stops the drain and surfaces here so the retry budget re-runs.
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_outbox))
         outboxService?.drain(api)?.let { r ->
             if (r.transient) throw TransientException(AtlasApp.instance.getString(R.string.sync_error_outbox_retry))
         }
@@ -275,7 +286,10 @@ class SyncService(
         configRepo.set("last_sync", Instant.now().toString())
 
         // 6. Heartbeat telemetry (best-effort, always at the end)
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_heartbeat))
         heartbeatManager?.sendHeartbeat()
+
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_done))
 
         return SyncResult(
             success = true,
@@ -755,6 +769,53 @@ class SyncService(
         }
 
         if (synced.isNotEmpty()) dao.markRouteStateSynced(synced)
+    }
+
+    // ── Spool GPS location upload ─────────────────────────────────────────────
+
+    private suspend fun uploadSpoolLocations(api: AtlasApiService) {
+        val dao = smsSpoolLocationDao ?: return
+        val unsynced = dao.getUnsynced()
+        if (unsynced.isEmpty()) return
+
+        Log.i(TAG, "Uploading ${unsynced.size} spool location(s)")
+        val projectId = configRepo.getInt("selected_project_id") ?: 6
+        val projectCode = projectDao.getById(projectId)?.project_code
+        if (projectCode.isNullOrBlank()) {
+            Log.w(TAG, "uploadSpoolLocations: no project code for id=$projectId, skipping")
+            return
+        }
+
+        val synced = mutableListOf<Long>()
+        for (loc in unsynced) {
+            try {
+                val body = SpoolLocationRequest(
+                    latitude     = loc.latitude,
+                    longitude    = loc.longitude,
+                    gpsAccuracyM = loc.gps_accuracy_m,
+                    capturedAt   = loc.captured_at,
+                    capturedBy   = loc.captured_by
+                )
+                val response = api.postSpoolLocation(projectCode, loc.spool_id, body)
+                if (response.isSuccessful) {
+                    val json = response.body()?.string().orEmpty()
+                    val serverIdRaw = runCatching {
+                        JsonParser.parseString(json).asJsonObject.get("locationId")?.asLong
+                    }.getOrNull()
+                    if (serverIdRaw != null && serverIdRaw != loc.location_id) {
+                        dao.remapAndSync(loc.location_id, serverIdRaw)
+                    } else {
+                        synced.add(loc.location_id)
+                    }
+                    Log.i(TAG, "Spool location ${loc.location_id} → spool ${loc.spool_id} uploaded")
+                } else {
+                    Log.w(TAG, "Spool location ${loc.location_id} upload HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Spool location ${loc.location_id} upload error: ${e.message}")
+            }
+        }
+        if (synced.isNotEmpty()) dao.markSynced(synced)
     }
 
 }

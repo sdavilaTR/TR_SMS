@@ -2,11 +2,11 @@
 <resources>
     <color name="ic_launcher_background">#FFFFFFFF</color>
 
-    <!-- Brand colours -->
-    <color name="primary">#FF1565C0</color>
-    <color name="primary_dark">#FF0D47A1</color>
-    <color name="primary_variant">#FF1976D2</color>
-    <color name="secondary">#FF0891B2</color>
+    <!-- Brand colours — Electric tech palette -->
+    <color name="primary">#FF2563EB</color>
+    <color name="primary_dark">#FF1E3A8A</color>
+    <color name="primary_variant">#FF3B82F6</color>
+    <color name="secondary">#FF0EA5E9</color>
 
     <!-- Semantic colours -->
     <color name="error">#FFDC2626</color>
@@ -15,7 +15,7 @@
     <!-- Surfaces — light palette -->
     <color name="background">#FFF1F5F9</color>
     <color name="surface">#FFFFFFFF</color>
-    <color name="surface_variant">#FFE8F0FE</color>
+    <color name="surface_variant">#FFEFF6FF</color>
 
     <!-- Text on surfaces -->
     <color name="on_primary">#FFFFFFFF</color>
@@ -35,7 +35,7 @@
     <color name="exit_text">#FF1D4ED8</color>
 
     <!-- QR Scanner FAB -->
-    <color name="green">#FF2E7D32</color>
+    <color name="green">#FF16A34A</color>
     <color name="purple">#FF7C3AED</color>
     <color name="graphite">#FF334155</color>
 
@@ -45,7 +45,7 @@
     <color name="surface_warning">#FFFFF8E1</color>
 
     <!-- Ripple / press feedback -->
-    <color name="ripple">#1F1565C0</color>
+    <color name="ripple">#1F2563EB</color>
 
     <!-- Vehicle "ready to send" badge -->
     <color name="ready_badge_bg">#FF00C853</color>
@@ -53,7 +53,7 @@
     <color name="surface_ready">#FFE6F9EF</color>
 
     <!-- Spools-by-zone chart palette -->
-    <color name="chart_zone_workshop">#FF6366F1</color>
+    <color name="chart_zone_workshop">#FF818CF8</color>
     <color name="chart_zone_laydown">#FF0D9488</color>
     <color name="chart_zone_site">#FFF59E0B</color>
     <color name="chart_zone_unassigned">#FF94A3B8</color>

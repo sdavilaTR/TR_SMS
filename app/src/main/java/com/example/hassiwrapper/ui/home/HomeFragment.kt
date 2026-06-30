@@ -1,11 +1,13 @@
 package com.example.hassiwrapper.ui.home
 
+import android.animation.ValueAnimator
 import android.app.AlertDialog
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.os.bundleOf
@@ -38,7 +40,23 @@ class HomeFragment : Fragment() {
             return
         }
 
-view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
+        val isDevOrAdmin = ProfileManager.currentUserRole().let {
+            it == ProfileManager.UserRole.ADMIN || it == ProfileManager.UserRole.DEV
+        }
+        view.findViewById<View>(R.id.techOrbView)?.visibility =
+            if (isDevOrAdmin) View.VISIBLE else View.GONE
+
+        val syncBtn = view.findViewById<View>(R.id.btnGoSync)
+        syncBtn.translationY = 60f
+        syncBtn.alpha = 0f
+        syncBtn.animate()
+            .translationY(0f)
+            .alpha(1f)
+            .setDuration(350)
+            .setStartDelay(150)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+        syncBtn.setOnClickListener {
             findNavController().navigate(R.id.syncFragment)
         }
         view.findViewById<View>(R.id.cardSpools).setOnClickListener {
@@ -212,6 +230,16 @@ view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
         }
     }
 
+    private fun animateCountUp(tv: TextView, target: Int) {
+        if (target == 0) { tv.text = "0"; return }
+        ValueAnimator.ofInt(0, target).apply {
+            duration = 600
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { tv.text = (animatedValue as Int).toString() }
+            start()
+        }
+    }
+
     private fun loadStats() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
@@ -246,10 +274,10 @@ view.findViewById<View>(R.id.btnGoSync).setOnClickListener {
                     } else {
                         txtLoc.visibility = View.GONE
                     }
-                    v.findViewById<TextView>(R.id.txtVehicleCount).text = vehicleCount.toString()
-                    v.findViewById<TextView>(R.id.txtCriticalIncidentCount).text = criticalIncidentCount.toString()
-                    v.findViewById<TextView>(R.id.txtSpoolCount).text = spoolCount.toString()
-                    v.findViewById<TextView>(R.id.txtPackingListCount).text = packingListCount.toString()
+                    animateCountUp(v.findViewById(R.id.txtSpoolCount), spoolCount)
+                    animateCountUp(v.findViewById(R.id.txtPackingListCount), packingListCount)
+                    animateCountUp(v.findViewById(R.id.txtVehicleCount), vehicleCount)
+                    animateCountUp(v.findViewById(R.id.txtCriticalIncidentCount), criticalIncidentCount)
                     v.findViewById<TextView>(R.id.txtLastSync).text = if (lastSync != null) {
                         getString(R.string.home_last_sync_format, lastSync.take(19).replace('T', ' '))
                     } else getString(R.string.home_last_sync_none)

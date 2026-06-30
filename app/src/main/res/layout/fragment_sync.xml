@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background">
+
+    <com.example.hassiwrapper.ui.home.ParticleNetworkView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+<ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -11,369 +19,275 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Header -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="16dp">
-            <ImageView
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:src="@drawable/ic_sync"
-                app:tint="@color/primary"
-                android:layout_marginEnd="10dp" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/sync_title"
-                android:textColor="@color/on_surface"
-                android:textSize="22sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- Connection status card -->
+        <!-- Connection status card (compact) -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="8dp"
             app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="3dp">
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:gravity="center_vertical">
 
+                <!-- Network -->
+                <View
+                    android:id="@+id/dotNetwork"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:background="@drawable/dot_grey"
+                    android:layout_marginEnd="6dp" />
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:id="@+id/txtNetworkStatus"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/sync_label_connection"
-                    android:textColor="@color/on_surface"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:textAllCaps="true"
-                    android:letterSpacing="0.06"
-                    android:layout_marginBottom="12dp" />
+                    android:layout_weight="1"
+                    android:text="@string/sync_status_checking"
+                    android:textColor="@color/on_surface_variant"
+                    android:textSize="13sp" />
 
-                <!-- Network row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <!-- API -->
+                <View
+                    android:id="@+id/dotApi"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:background="@drawable/dot_grey"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="6dp" />
+                <TextView
+                    android:id="@+id/txtApiStatus"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="8dp">
-                    <View
-                        android:id="@+id/dotNetwork"
-                        android:layout_width="12dp"
-                        android:layout_height="12dp"
-                        android:background="@drawable/dot_grey"
-                        android:layout_marginEnd="12dp" />
-                    <TextView
-                        android:id="@+id/txtNetworkStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_status_checking"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="14sp" />
-                </LinearLayout>
+                    android:layout_weight="1"
+                    android:text="@string/sync_status_checking"
+                    android:textColor="@color/on_surface_variant"
+                    android:textSize="13sp" />
 
-                <!-- API row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <!-- Auth -->
+                <View
+                    android:id="@+id/dotAuth"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:background="@drawable/dot_grey"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="6dp" />
+                <TextView
+                    android:id="@+id/txtAuthStatus"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="8dp">
-                    <View
-                        android:id="@+id/dotApi"
-                        android:layout_width="12dp"
-                        android:layout_height="12dp"
-                        android:background="@drawable/dot_grey"
-                        android:layout_marginEnd="12dp" />
-                    <TextView
-                        android:id="@+id/txtApiStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_status_checking"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="14sp" />
-                </LinearLayout>
-
-                <!-- Auth row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-                    <View
-                        android:id="@+id/dotAuth"
-                        android:layout_width="12dp"
-                        android:layout_height="12dp"
-                        android:background="@drawable/dot_grey"
-                        android:layout_marginEnd="12dp" />
-                    <TextView
-                        android:id="@+id/txtAuthStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_status_checking"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="14sp" />
-                </LinearLayout>
+                    android:layout_weight="1"
+                    android:text="@string/sync_status_checking"
+                    android:textColor="@color/on_surface_variant"
+                    android:textSize="13sp" />
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- KPI row 1: Spools + Packing Lists -->
-        <LinearLayout
+        <!-- KPI row: all 5 in a single horizontal card (compact) -->
+        <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <androidx.cardview.widget.CardView
-                android:layout_width="0dp"
+            android:layout_marginBottom="14dp"
+            app:cardBackgroundColor="@color/card_bg"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <!-- Spools -->
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:orientation="vertical"
-                    android:padding="14dp"
                     android:gravity="center_horizontal">
                     <View
-                        android:layout_width="32dp"
+                        android:layout_width="20dp"
                         android:layout_height="3dp"
                         android:background="@color/primary"
-                        android:layout_marginBottom="8dp" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_kpi_records"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:textAllCaps="true"
-                        android:letterSpacing="0.07"
                         android:layout_marginBottom="4dp" />
                     <TextView
                         android:id="@+id/txtKpiRecords"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="28sp"
+                        android:textSize="24sp"
                         android:textStyle="bold"
                         android:textColor="@color/primary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sync_kpi_records"
+                        android:textColor="@color/on_surface_variant"
+                        android:textSize="11sp" />
                     <TextView
                         android:id="@+id/txtKpiRecordsLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:layout_marginTop="2dp" />
+                        android:textSize="9sp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
 
-            <androidx.cardview.widget.CardView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                <!-- Divider -->
+                <View android:layout_width="1dp" android:layout_height="match_parent"
+                    android:background="@color/divider" android:layout_marginHorizontal="2dp" />
+
+                <!-- Packing Lists -->
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:orientation="vertical"
-                    android:padding="14dp"
                     android:gravity="center_horizontal">
                     <View
-                        android:layout_width="32dp"
+                        android:layout_width="20dp"
                         android:layout_height="3dp"
                         android:background="@color/primary"
-                        android:layout_marginBottom="8dp" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_kpi_photos"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:textAllCaps="true"
-                        android:letterSpacing="0.07"
                         android:layout_marginBottom="4dp" />
                     <TextView
                         android:id="@+id/txtKpiPhotos"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="28sp"
+                        android:textSize="24sp"
                         android:textStyle="bold"
                         android:textColor="@color/primary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sync_kpi_photos"
+                        android:textColor="@color/on_surface_variant"
+                        android:textSize="11sp" />
                     <TextView
                         android:id="@+id/txtKpiPhotosLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:layout_marginTop="2dp" />
+                        android:textSize="9sp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
-        </LinearLayout>
 
-        <!-- KPI row 2: Vehicles + En Tránsito -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
+                <!-- Divider -->
+                <View android:layout_width="1dp" android:layout_height="match_parent"
+                    android:background="@color/divider" android:layout_marginHorizontal="2dp" />
 
-            <androidx.cardview.widget.CardView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                <!-- Vehículos -->
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:orientation="vertical"
-                    android:padding="14dp"
                     android:gravity="center_horizontal">
                     <View
-                        android:layout_width="32dp"
+                        android:layout_width="20dp"
                         android:layout_height="3dp"
                         android:background="@color/secondary"
-                        android:layout_marginBottom="8dp" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_kpi_observations"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:textAllCaps="true"
-                        android:letterSpacing="0.07"
                         android:layout_marginBottom="4dp" />
                     <TextView
                         android:id="@+id/txtKpiObservations"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="28sp"
+                        android:textSize="24sp"
                         android:textStyle="bold"
                         android:textColor="@color/secondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sync_kpi_observations"
+                        android:textColor="@color/on_surface_variant"
+                        android:textSize="11sp" />
                     <TextView
                         android:id="@+id/txtKpiObservationsLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:layout_marginTop="2dp" />
+                        android:textSize="9sp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
 
-            <androidx.cardview.widget.CardView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                <!-- Divider -->
+                <View android:layout_width="1dp" android:layout_height="match_parent"
+                    android:background="@color/divider" android:layout_marginHorizontal="2dp" />
+
+                <!-- En Tránsito -->
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:orientation="vertical"
-                    android:padding="14dp"
                     android:gravity="center_horizontal">
                     <View
-                        android:layout_width="32dp"
+                        android:layout_width="20dp"
                         android:layout_height="3dp"
                         android:background="@color/warning"
-                        android:layout_marginBottom="8dp" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_kpi_workers"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:textAllCaps="true"
-                        android:letterSpacing="0.07"
                         android:layout_marginBottom="4dp" />
                     <TextView
                         android:id="@+id/txtKpiWorkers"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="28sp"
+                        android:textSize="24sp"
                         android:textStyle="bold"
                         android:textColor="@color/primary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sync_kpi_workers"
+                        android:textColor="@color/on_surface_variant"
+                        android:textSize="11sp" />
                     <TextView
                         android:id="@+id/txtKpiWorkersLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:layout_marginTop="2dp" />
+                        android:textSize="9sp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
-        </LinearLayout>
 
-        <!-- KPI row 3: Pending sync (full-width compact card) -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="3dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp">
-                <View
-                    android:layout_width="3dp"
-                    android:layout_height="36dp"
-                    android:background="@color/granted"
-                    android:layout_marginEnd="12dp" />
+                <!-- Divider -->
+                <View android:layout_width="1dp" android:layout_height="match_parent"
+                    android:background="@color/divider" android:layout_marginHorizontal="2dp" />
+
+                <!-- Pendientes -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal">
+                    <View
+                        android:layout_width="20dp"
+                        android:layout_height="3dp"
+                        android:background="@color/granted"
+                        android:layout_marginBottom="4dp" />
+                    <TextView
+                        android:id="@+id/txtKpiVehicles"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/granted" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/sync_kpi_vehicles"
                         android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:textAllCaps="true"
-                        android:letterSpacing="0.07" />
+                        android:textSize="11sp" />
                     <TextView
                         android:id="@+id/txtKpiVehiclesLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/on_surface_variant"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp" />
+                        android:textSize="9sp" />
                 </LinearLayout>
-                <TextView
-                    android:id="@+id/txtKpiVehicles"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="32sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/granted"
-                    android:minWidth="48dp"
-                    android:gravity="end" />
+
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -527,3 +441,4 @@
 
     </LinearLayout>
 </ScrollView>
+</FrameLayout>

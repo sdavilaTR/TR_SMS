@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -13,58 +14,77 @@
         android:padding="16dp">
 
         <!-- Scan area -->
-        <LinearLayout
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:padding="24dp"
-            android:background="@color/surface"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="6dp"
+            app:strokeColor="@color/primary"
+            app:strokeWidth="2dp">
 
-            <ImageView
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:src="@drawable/ic_qr_scan"
-                android:layout_marginBottom="16dp"
-                android:contentDescription="@null" />
-
-            <TextView
-                android:id="@+id/txtScanStatus"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:orientation="vertical"
                 android:gravity="center"
-                android:textSize="15sp"
-                android:textColor="@color/on_surface_variant"
-                android:layout_marginBottom="20dp" />
+                android:padding="28dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnScanCamera"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                android:text="@string/qr_scanner_btn_camera"
-                android:textAllCaps="false" />
+                <LinearLayout
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:background="@drawable/bg_kpi_primary"
+                    android:gravity="center"
+                    android:layout_marginBottom="18dp">
+                    <ImageView
+                        android:layout_width="46dp"
+                        android:layout_height="46dp"
+                        android:src="@drawable/ic_qr_scan"
+                        app:tint="@color/primary"
+                        android:contentDescription="@null" />
+                </LinearLayout>
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="@string/qr_scanner_hint_laser"
-                android:textSize="12sp"
-                android:textColor="@color/on_surface_variant" />
+                <TextView
+                    android:id="@+id/txtScanStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textSize="16sp"
+                    android:textColor="@color/on_surface_variant"
+                    android:layout_marginBottom="22dp" />
 
-        </LinearLayout>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnScanCamera"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="12dp"
+                    android:text="@string/qr_scanner_btn_camera"
+                    android:textAllCaps="false"
+                    android:textSize="15sp"
+                    app:cornerRadius="12dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="@string/qr_scanner_hint_laser"
+                    android:textSize="12sp"
+                    android:textColor="@color/on_surface_variant" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Relocate mode toggle -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRelocateMode"
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="52dp"
             android:layout_marginBottom="16dp"
             android:text="@string/qr_scanner_btn_relocate"
-            android:textAllCaps="false" />
+            android:textAllCaps="false"
+            app:cornerRadius="12dp" />
 
         <!-- Relocate panel: destination picker + running count -->
         <LinearLayout
@@ -72,10 +92,23 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="12dp"
-            android:background="@color/surface"
             android:layout_marginBottom="16dp"
             android:visibility="gone">
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="@color/surface_variant"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="3dp"
+            app:strokeColor="@color/secondary"
+            app:strokeWidth="2dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilRelocateDest"
@@ -104,16 +137,16 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnRelocateFinish"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="52dp"
                 android:text="@string/qr_scanner_btn_finish_relocate"
-                android:textAllCaps="false" />
+                android:textAllCaps="false"
+                app:cornerRadius="12dp" />
 
         </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
-        <!-- Keyboard-wedge capture: invisible 1×1 EditText that stays focused.
-             The Honeywell imager (com.intermec.datacollectionservice) sends scan
-             data as key events in keyboard-wedge mode. TextWatcher + 250ms timer
-             reassembles multi-line QR payloads before processing. -->
+        <!-- Keyboard-wedge capture: invisible 1×1 EditText that stays focused -->
         <EditText
             android:id="@+id/etKeyboardWedge"
             android:layout_width="1dp"
@@ -131,26 +164,40 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="12dp"
-            android:background="@color/surface"
             android:visibility="gone">
 
-            <TextView
-                android:id="@+id/txtResultType"
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textStyle="bold"
-                android:textSize="13sp"
-                android:textColor="@color/on_surface"
-                android:layout_marginBottom="4dp" />
+                android:orientation="vertical"
+                android:padding="18dp">
 
-            <TextView
-                android:id="@+id/txtResultDetail"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="13sp"
-                android:textColor="@color/on_surface_variant" />
+                <TextView
+                    android:id="@+id/txtResultType"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    android:textColor="@color/on_surface"
+                    android:layout_marginBottom="6dp" />
 
+                <TextView
+                    android:id="@+id/txtResultDetail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="13sp"
+                    android:textColor="@color/on_surface_variant" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
     </LinearLayout>

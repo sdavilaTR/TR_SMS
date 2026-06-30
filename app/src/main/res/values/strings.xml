@@ -701,6 +701,15 @@
     <string name="spool_detail_confirm_hard_delete_msg">Borrado físico en el servidor. No se puede deshacer. ¿Continuar?</string>
     <string name="spool_detail_hard_deleted">Spool eliminado permanentemente del servidor</string>
     <string name="spool_detail_events_empty">Sin eventos registrados</string>
+    <string name="spool_detail_section_gps">UBICACIÓN GPS</string>
+    <string name="spool_detail_gps_no_data">Sin datos de ubicación GPS</string>
+    <string name="spool_detail_gps_current">Actual: %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_previous">Anterior: %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_btn_update_gps">Actualizar GPS</string>
+    <string name="spool_detail_btn_open_maps">Abrir en Maps</string>
+    <string name="spool_detail_gps_capturing">Obteniendo GPS…</string>
+    <string name="spool_detail_gps_saved">Ubicación guardada</string>
+    <string name="spool_detail_gps_unavailable">GPS no disponible</string>
     <string name="spool_detail_assign_pl_title">Seleccionar Packing List</string>
     <string name="spool_detail_assign_pl_remove">Quitar asignación</string>
     <string name="spool_detail_yes">Sí</string>

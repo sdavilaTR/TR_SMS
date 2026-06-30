@@ -110,7 +110,8 @@ class ApiClient(
 
     private fun buildService(baseUrl: String): AtlasApiService {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
+                    else HttpLoggingInterceptor.Level.NONE
         }
 
         // When the PRO profile is active, the public reverse proxy expects every

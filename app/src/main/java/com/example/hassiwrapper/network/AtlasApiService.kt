@@ -300,6 +300,20 @@ interface AtlasApiService {
         @retrofit2.http.Path("spoolId") spoolId: String
     ): Response<okhttp3.ResponseBody>
 
+    // ── GPS Spool Locations ───────────────────────────────────────
+    @GET("/api/atlas/projects/{projectCode}/spools/{spoolId}/locations")
+    suspend fun getSpoolLocations(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("spoolId") spoolId: Long
+    ): Response<okhttp3.ResponseBody>
+
+    @POST("/api/atlas/projects/{projectCode}/spools/{spoolId}/location")
+    suspend fun postSpoolLocation(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("spoolId") spoolId: Long,
+        @Body body: com.example.hassiwrapper.network.dto.SpoolLocationRequest
+    ): Response<okhttp3.ResponseBody>
+
     // ── SMS Lookups (per-project, per current backend swagger) ───
     @GET("/api/atlas/projects/{projectCode}/bore-sizes")
     suspend fun getBoreSizes(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>

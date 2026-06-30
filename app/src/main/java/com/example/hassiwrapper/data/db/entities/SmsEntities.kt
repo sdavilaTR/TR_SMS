@@ -307,3 +307,19 @@ data class SmsVehicleEntity(
     val destination: Int? = null,
     val route_synced: Boolean = true
 )
+
+/** GPS fix for a single spool. Max 2 rows per spool_id (index 0 = current, index 1 = previous). */
+@Entity(
+    tableName = "sms_spool_location",
+    indices = [Index(value = ["spool_id"])]
+)
+data class SmsSpoolLocationEntity(
+    @PrimaryKey(autoGenerate = true) val location_id: Long = 0,
+    val spool_id: Long,
+    val latitude: Double,
+    val longitude: Double,
+    val gps_accuracy_m: Float? = null,
+    val captured_at: String,
+    val captured_by: String? = null,
+    val synced: Boolean = false
+)

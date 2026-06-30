@@ -49,7 +49,8 @@ object ServiceLocator {
             db.smsVehicleLoadingDao(),
             db.smsTransferDao(),
             db.smsIncidentDao(),
-            outboxService
+            outboxService,
+            db.smsSpoolLocationDao()
         )
     }
 
@@ -83,6 +84,7 @@ object ServiceLocator {
     val smsIncidentDao get() = db.smsIncidentDao()
     val smsOutboxDao get() = db.smsOutboxDao()
     val smsAuditLogDao get() = db.smsAuditLogDao()
+    val smsSpoolLocationDao get() = db.smsSpoolLocationDao()
 
     val auditLogService: AuditLogService by lazy { AuditLogService(configRepo, db.smsAuditLogDao()) }
 }

@@ -197,6 +197,9 @@ interface SmsSubPositionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<SmsSubPositionEntity>)
 
+    @Query("SELECT * FROM sms_sub_position WHERE project_id = :projectId AND is_active = 1 ORDER BY full_path ASC")
+    suspend fun getByProject(projectId: Int): List<SmsSubPositionEntity>
+
     @Query("SELECT * FROM sms_sub_position WHERE project_id = :projectId AND position_id = :positionId AND is_active = 1 ORDER BY full_path ASC")
     suspend fun getByPosition(projectId: Int, positionId: Int): List<SmsSubPositionEntity>
 
@@ -225,10 +228,65 @@ interface SmsSpecDao {
     suspend fun deleteAll()
 }
 
+/** Spool count per raw location combo (packing list, zone, position, sub-position).
+ *  Few distinct combos exist per project, so the caller resolves each combo to a
+ *  position code in Kotlin instead of paying per-row SQL subqueries over 100k+ rows. */
+data class SpoolComboCount(val plId: Long?, val zone: String?, val positionId: Int?, val subId: Long?, val cnt: Int)
+
+/**
+ * SQL twin of CreateSpoolFragment.spoolPositionCode() — resolves a spool's position code
+ * (WORKSHOP/LAYDOWN/SITE) with the same 3-level fallback, uppercased:
+ * 1. its packing list's position string, 2. zone exact/prefix match against sms_position
+ * codes, 3. the spool's own position_id. Keep both in sync.
+ */
+private const val SPOOL_RESOLVED_POSITION = """
+    COALESCE(
+        NULLIF(UPPER((SELECT pl.position FROM sms_packing_list pl WHERE pl.packing_list_id = s.packing_list_id)), ''),
+        (SELECT UPPER(p.code) FROM sms_position p
+           WHERE UPPER(s.zone) = UPPER(p.code) OR UPPER(s.zone) LIKE UPPER(p.code) || '/%'
+           LIMIT 1),
+        (SELECT UPPER(p2.code) FROM sms_position p2 WHERE p2.position_id = s.position_id)
+    )
+"""
+
+private const val SPOOL_LIST_FILTER = """
+    s.project_id = :projectId AND s.is_active = 1
+    AND (:positionCode IS NULL OR $SPOOL_RESOLVED_POSITION = UPPER(:positionCode))
+    AND (:subPositionId IS NULL OR s.sub_position_id = :subPositionId)
+    AND (:query = '' OR s.spool_code LIKE '%' || :query || '%'
+         OR s.spool_suffix LIKE '%' || :query || '%'
+         OR (s.spool_code || IFNULL(s.spool_suffix, '')) LIKE '%' || :query || '%'
+         OR s.line_code LIKE '%' || :query || '%'
+         OR s.zone LIKE '%' || :query || '%'
+         OR EXISTS(SELECT 1 FROM sms_packing_list plq
+                   WHERE plq.packing_list_id = s.packing_list_id
+                     AND plq.packing_list_name LIKE '%' || :query || '%'))
+"""
+
 @Dao
 interface SmsSpoolDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(spools: List<SmsSpoolEntity>)
+
+    @Query("""
+        SELECT s.packing_list_id AS plId, s.zone AS zone, s.position_id AS positionId,
+               s.sub_position_id AS subId, COUNT(*) AS cnt
+        FROM sms_spool s
+        WHERE s.project_id = :projectId AND s.is_active = 1
+        GROUP BY plId, zone, positionId, subId
+    """)
+    suspend fun countByLocationCombo(projectId: Int): List<SpoolComboCount>
+
+    @Query("""
+        SELECT s.* FROM sms_spool s
+        WHERE $SPOOL_LIST_FILTER
+        ORDER BY s.spool_code ASC, s.spool_suffix ASC
+        LIMIT :limit
+    """)
+    suspend fun getFilteredPage(projectId: Int, positionCode: String?, subPositionId: Long?, query: String, limit: Int): List<SmsSpoolEntity>
+
+    @Query("SELECT COUNT(*) FROM sms_spool s WHERE $SPOOL_LIST_FILTER")
+    suspend fun countFiltered(projectId: Int, positionCode: String?, subPositionId: Long?, query: String): Int
 
     @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND is_active = 1 ORDER BY spool_code ASC, spool_suffix ASC")
     suspend fun getByProject(projectId: Int): List<SmsSpoolEntity>
@@ -282,6 +340,9 @@ interface SmsSpoolDao {
     @Query("DELETE FROM sms_spool WHERE spool_id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("DELETE FROM sms_spool WHERE spool_id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
     @Query("DELETE FROM sms_spool WHERE project_id = :projectId")
     suspend fun deleteByProject(projectId: Int)
 
@@ -306,8 +367,17 @@ interface SmsSpoolDao {
     @Query("SELECT DISTINCT spool_code FROM sms_spool WHERE project_id = :projectId AND spool_code != ''")
     suspend fun getDistinctSpoolCodes(projectId: Int): List<String>
 
+    @Query("SELECT COUNT(*) FROM sms_spool WHERE packing_list_id = :packingListId")
+    suspend fun countByPackingList(packingListId: Long): Int
+
     @Query("SELECT * FROM sms_spool WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsSpoolEntity>
+
+    /** Spools modified offline via QR relocation / RECEIVE: position or sub-position set locally
+     *  but not yet uploaded to the server as a status-flags PUT. Only positive IDs — temp local
+     *  IDs (offline-created spools) are handled by the outbox, not status-flags. */
+    @Query("SELECT * FROM sms_spool WHERE synced = 0 AND spool_id > 0 AND position_id IS NOT NULL")
+    suspend fun getUnsyncedRelocated(): List<SmsSpoolEntity>
 
     @Query("UPDATE sms_spool SET synced = 1 WHERE spool_id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
@@ -375,6 +445,9 @@ interface SmsSpoolPropertyDao {
     @Query("SELECT * FROM sms_spool_property WHERE spool_id = :spoolId")
     suspend fun getBySpool(spoolId: Long): SmsSpoolPropertyEntity?
 
+    @Query("DELETE FROM sms_spool_property WHERE spool_id = :spoolId")
+    suspend fun deleteBySpool(spoolId: Long)
+
     @Query("DELETE FROM sms_spool_property")
     suspend fun deleteAll()
 }
@@ -413,6 +486,9 @@ interface SmsSpoolStatusFlagsDao {
 
     @Query("UPDATE sms_spool_status_flags SET spool_id = :serverId WHERE spool_id = :localId")
     suspend fun remapSpoolId(localId: Long, serverId: Long)
+
+    @Query("DELETE FROM sms_spool_status_flags WHERE spool_id = :spoolId")
+    suspend fun deleteBySpool(spoolId: Long)
 
     @Query("DELETE FROM sms_spool_status_flags")
     suspend fun deleteAll()
@@ -606,9 +682,6 @@ interface SmsSpoolLocationDao {
 
     @Query("UPDATE sms_spool_location SET synced = 1 WHERE location_id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
-
-    @Query("UPDATE sms_spool_location SET location_id = :serverId, synced = 1 WHERE location_id = :localId")
-    suspend fun remapAndSync(localId: Long, serverId: Long)
 
     /** Deletes the oldest location row for a spool when count exceeds 2. */
     @Query("""

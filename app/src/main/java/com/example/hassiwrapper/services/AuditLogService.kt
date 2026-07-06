@@ -41,7 +41,7 @@ class AuditLogService(
         projectId: Int? = null
     ) {
         val pid = projectId ?: configRepo.getInt("selected_project_id") ?: 6
-        val terminal = configRepo.get("device_name")?.takeIf { it.isNotBlank() }
+        val terminal = configRepo.get("device_code")?.takeIf { it.isNotBlank() }
             ?: "${Build.MANUFACTURER} ${Build.MODEL}"
         dao.insert(
             SmsAuditLogEntity(

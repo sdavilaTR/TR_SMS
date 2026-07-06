@@ -1,8 +1,10 @@
 package com.example.hassiwrapper.ui.transfers
 
+import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,6 +15,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -91,12 +94,40 @@ class ReceivePackingListFragment : Fragment() {
         }
     }
 
+    // Receive-confirm captures a best-effort GPS fix; request location permission once up
+    // front so it's not silently unavailable for the lifetime of the app (see GpsHelper).
+    private val requestLocationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* best-effort — GpsHelper silently skips capture if denied */ }
+
+    private var pendingCameraAction: (() -> Unit)? = null
+    private val requestCameraPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) pendingCameraAction?.invoke() }
+
+    private fun launchScannerWithPermission(action: () -> Unit) {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            action()
+        } else {
+            pendingCameraAction = action
+            requestCameraPermission.launch(Manifest.permission.CAMERA)
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_receive_packing_list, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         (view as com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView).onSwipeBack = { findNavController().navigateUp() }
+
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestLocationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+        }
 
         panelScanVehicle   = view.findViewById(R.id.panelScanVehicle)
         panelSelectPl      = view.findViewById(R.id.panelSelectPl)
@@ -126,10 +157,10 @@ class ReceivePackingListFragment : Fragment() {
         rvSpoolsToConfirm.addItemDecoration(DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
 
         btnScanVehicle.setOnClickListener {
-            vehicleScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java))
+            launchScannerWithPermission { vehicleScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java)) }
         }
         btnScanSpool.setOnClickListener {
-            spoolScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java))
+            launchScannerWithPermission { spoolScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java)) }
         }
         btnConfirmReceive.setOnClickListener { onNextToConfirmReceive() }
 
@@ -395,7 +426,7 @@ class ReceivePackingListFragment : Fragment() {
             val gps = GpsHelper.getCurrentLocation(requireContext())
             if (gps != null) {
                 val (lat, lon, acc) = gps
-                val capturedAt = java.time.Instant.now().toString()
+                val capturedAt = GpsHelper.capturedAtNow()
                 val capturedBy = ServiceLocator.configRepo.get("device_name")
                 confirmedSpools.forEach { sr ->
                     val loc = SmsSpoolLocationEntity(

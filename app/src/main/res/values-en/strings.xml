@@ -160,6 +160,12 @@
     <string name="login_error_format">Error: %s</string>
     <string name="login_error_empty_code">Error: Enter the Terminal Code.</string>
 
+    <string name="db_error_title">Database error</string>
+    <string name="db_error_message">Could not open the local database (migration failure). The app cannot continue.\n\nDetail: %s</string>
+    <string name="db_error_reset">Reset device data</string>
+    <string name="db_error_reset_warning">All unsynced local data on this terminal will be deleted. Continue?</string>
+    <string name="db_error_close">Close app</string>
+
     <string name="settings_check_updates">Check for updates</string>
     <string name="settings_check_updates_searching">Searching…</string>
     <string name="update_up_to_date">You already have the latest version installed</string>
@@ -309,6 +315,10 @@
     <string name="sync_step_heartbeat">Sending telemetry…</string>
     <string name="sync_step_sms">Downloading SMS data…</string>
     <string name="sync_step_done">✓ Base data synchronised</string>
+    <string name="sync_sms_spools_page">Downloading spools… page %1$d (%2$d accumulated)</string>
+    <string name="sync_sms_spools_ok">✓ Spools: %1$d new, %2$d updated (%3$d total)</string>
+    <string name="sync_sms_pl_ok">✓ Packing Lists: %1$d new, %2$d updated (%3$d total)</string>
+    <string name="sync_sms_vehicles_ok">✓ SMS Vehicles: %1$d</string>
     <string name="webview_login_error_network">Could not connect to the server.\nCheck your network connection and try again.</string>
     <string name="webview_login_retry">Retry</string>
 
@@ -420,6 +430,8 @@
     <string name="vehicles_add">Add vehicle</string>
     <!-- Spools List -->
     <string name="spools_list_count">%1$d spools</string>
+    <string name="spools_list_count_capped">%1$d spools (showing first %2$d)</string>
+    <string name="spools_search_hint">Search spool (code, line, PL…)</string>
     <string name="spools_list_empty">No spools in ATLAS for this project</string>
     <string name="spools_list_error_prefix">Error: %1$s</string>
     <string name="spools_list_error_http">HTTP %1$d</string>
@@ -770,6 +782,17 @@
     <string name="spool_detail_confirm_hard_delete_msg">Physical deletion on the server. This cannot be undone. Continue?</string>
     <string name="spool_detail_hard_deleted">Spool permanently deleted from the server</string>
     <string name="spool_detail_events_empty">No events recorded</string>
+    <string name="spool_detail_section_gps">GPS LOCATION</string>
+    <string name="spool_detail_gps_no_data">No GPS location data</string>
+    <string name="spool_detail_gps_current">Current: %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_previous">Previous: %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_current_no_acc">Current: %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_gps_previous_no_acc">Previous: %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_btn_update_gps">Update GPS</string>
+    <string name="spool_detail_btn_open_maps">Open in Maps</string>
+    <string name="spool_detail_gps_capturing">Acquiring GPS…</string>
+    <string name="spool_detail_gps_saved">Location saved</string>
+    <string name="spool_detail_gps_unavailable">GPS unavailable</string>
     <string name="spool_detail_assign_pl_title">Select Packing List</string>
     <string name="spool_detail_assign_pl_remove">Remove assignment</string>
     <string name="spool_detail_yes">Yes</string>

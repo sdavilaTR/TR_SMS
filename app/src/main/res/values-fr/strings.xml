@@ -160,6 +160,12 @@
     <string name="login_error_format">Erreur : %s</string>
     <string name="login_error_empty_code">Erreur : Saisissez le code du terminal.</string>
 
+    <string name="db_error_title">Erreur de base de données</string>
+    <string name="db_error_message">Impossible d\'ouvrir la base de données locale (échec de migration). L\'application ne peut pas continuer.\n\nDétail : %s</string>
+    <string name="db_error_reset">Réinitialiser les données du terminal</string>
+    <string name="db_error_reset_warning">Toutes les données locales non synchronisées de ce terminal seront supprimées. Continuer ?</string>
+    <string name="db_error_close">Fermer l\'application</string>
+
     <string name="settings_check_updates">Rechercher des mises à jour</string>
     <string name="settings_check_updates_searching">Recherche en cours…</string>
     <string name="update_up_to_date">Vous avez déjà la dernière version installée</string>
@@ -309,6 +315,10 @@
     <string name="sync_step_heartbeat">Envoi télémétrie…</string>
     <string name="sync_step_sms">Téléchargement données SMS…</string>
     <string name="sync_step_done">✓ Données de base synchronisées</string>
+    <string name="sync_sms_spools_page">Téléchargement spools… page %1$d (%2$d accumulés)</string>
+    <string name="sync_sms_spools_ok">✓ Spools : %1$d nouveaux, %2$d mis à jour (%3$d total)</string>
+    <string name="sync_sms_pl_ok">✓ Packing Lists : %1$d nouvelles, %2$d mises à jour (%3$d total)</string>
+    <string name="sync_sms_vehicles_ok">✓ Véhicules SMS : %1$d</string>
     <string name="webview_login_error_network">Impossible de se connecter au serveur.\nVérifiez votre connexion réseau et réessayez.</string>
     <string name="webview_login_retry">Réessayer</string>
 
@@ -420,6 +430,8 @@
     <string name="vehicles_add">Ajouter véhicule</string>
     <!-- Spools List -->
     <string name="spools_list_count">%1$d spools</string>
+    <string name="spools_list_count_capped">%1$d spools (affichage des %2$d premiers)</string>
+    <string name="spools_search_hint">Rechercher spool (code, ligne, PL…)</string>
     <string name="spools_list_empty">Aucun spool dans ATLAS pour ce projet</string>
     <string name="spools_list_error_prefix">Erreur : %1$s</string>
     <string name="spools_list_error_http">HTTP %1$d</string>
@@ -770,6 +782,17 @@
     <string name="spool_detail_confirm_hard_delete_msg">Suppression physique sur le serveur. Action irréversible. Continuer ?</string>
     <string name="spool_detail_hard_deleted">Spool supprimé définitivement du serveur</string>
     <string name="spool_detail_events_empty">Aucun événement enregistré</string>
+    <string name="spool_detail_section_gps">LOCALISATION GPS</string>
+    <string name="spool_detail_gps_no_data">Aucune donnée de localisation GPS</string>
+    <string name="spool_detail_gps_current">Actuelle : %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_previous">Précédente : %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_current_no_acc">Actuelle : %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_gps_previous_no_acc">Précédente : %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_btn_update_gps">Mettre à jour GPS</string>
+    <string name="spool_detail_btn_open_maps">Ouvrir dans Maps</string>
+    <string name="spool_detail_gps_capturing">Acquisition GPS…</string>
+    <string name="spool_detail_gps_saved">Position enregistrée</string>
+    <string name="spool_detail_gps_unavailable">GPS non disponible</string>
     <string name="spool_detail_assign_pl_title">Sélectionner une Packing List</string>
     <string name="spool_detail_assign_pl_remove">Retirer l\'assignation</string>
     <string name="spool_detail_yes">Oui</string>

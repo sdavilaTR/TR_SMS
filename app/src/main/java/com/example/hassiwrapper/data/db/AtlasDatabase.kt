@@ -56,7 +56,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsAuditLogEntity::class,
         SmsSpoolLocationEntity::class
     ],
-    version = 30,
+    version = 34,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -817,6 +817,51 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v30 → v31: index sms_spool for the Inventario screen. With 100k+ spools the
+        // unindexed project/active scan plus ORDER BY spool_code took over a minute.
+        private val MIGRATION_30_31 = object : Migration(30, 31) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 30 → 31: index sms_spool(project_id, is_active, spool_code)")
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS `index_sms_spool_project_id_is_active_spool_code`
+                    ON `sms_spool` (`project_id`, `is_active`, `spool_code`)
+                """.trimIndent())
+            }
+        }
+
+        // v31 → v32: covering index for the Inventario zone-chart aggregation. The
+        // GROUP BY over location columns otherwise heap-scans the whole 25MB+ table.
+        private val MIGRATION_31_32 = object : Migration(31, 32) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 31 → 32: covering location index on sms_spool")
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS `index_sms_spool_project_id_is_active_packing_list_id_zone_position_id_sub_position_id`
+                    ON `sms_spool` (`project_id`, `is_active`, `packing_list_id`, `zone`, `position_id`, `sub_position_id`)
+                """.trimIndent())
+            }
+        }
+
+        // v32 → v33: index sms_spool(spool_code) so QR-scan getByCode() hits an index
+        // instead of a full table scan. The existing composite index starts with project_id
+        // so it cannot serve a bare WHERE spool_code = ? predicate efficiently.
+        private val MIGRATION_32_33 = object : Migration(32, 33) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 32 → 33: index sms_spool(spool_code) for QR scan lookup")
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS `index_sms_spool_spool_code`
+                    ON `sms_spool` (`spool_code`)
+                """.trimIndent())
+            }
+        }
+
+        // v33 → v34: store the terminal (device) code that created each incident on the card/detail screens.
+        private val MIGRATION_33_34 = object : Migration(33, 34) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 33 → 34: add device_code to sms_incident")
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `device_code` TEXT")
+            }
+        }
+
         // v27 → v28: link a spool to its sub-position (Laydown/Site sub-section).
         // Mirrors position_id: lives on sms_spool (bulk, for the zone chart) and on
         // sms_spool_status_flags (authoritative, read from GET status-flags in detail).
@@ -864,7 +909,11 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_26_27,
                         MIGRATION_27_28,
                         MIGRATION_28_29,
-                        MIGRATION_29_30
+                        MIGRATION_29_30,
+                        MIGRATION_30_31,
+                        MIGRATION_31_32,
+                        MIGRATION_32_33,
+                        MIGRATION_33_34
                     )
                     .build()
                 INSTANCE = instance

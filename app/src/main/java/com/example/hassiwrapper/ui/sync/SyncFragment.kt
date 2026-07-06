@@ -238,10 +238,10 @@ class SyncFragment : Fragment() {
             if (result.success) {
                 appendLog(getString(R.string.sync_step_sms))
                 try {
-                    (requireActivity() as? com.example.hassiwrapper.MainActivity)?.syncSmsData()
+                    (requireActivity() as? com.example.hassiwrapper.MainActivity)?.syncSmsData(appendLog)
                 } catch (e: Exception) {
                     Log.e("SyncSMS", "SMS sync failed", e)
-                    appendLog("✗ ${e.message}")
+                    appendLog(getString(R.string.sync_error, e.message))
                 }
             }
 

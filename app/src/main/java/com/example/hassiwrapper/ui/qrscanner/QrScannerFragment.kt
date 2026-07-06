@@ -29,7 +29,6 @@ import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
-import com.example.hassiwrapper.data.db.entities.SmsSpoolLocationEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
@@ -97,6 +96,12 @@ class QrScannerFragment : Fragment() {
         else Toast.makeText(requireContext(), getString(R.string.scanner_error_camera_permission), Toast.LENGTH_SHORT).show()
     }
 
+    // Relocate scans capture a best-effort GPS fix; request location permission once up
+    // front so it's not silently unavailable for the lifetime of the app (see GpsHelper).
+    private val requestLocationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* best-effort — GpsHelper silently skips capture if denied */ }
+
     // ── lifecycle ─────────────────────────────────────────────────────────────
 
     override fun onCreateView(
@@ -138,7 +143,6 @@ class QrScannerFragment : Fragment() {
         etKeyboardWedge.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                Log.w(TAG, "=== WEDGE TEXT === len=${s?.length} chars=${s?.take(20)}")
                 if ((s?.length ?: 0) > 0) {
                     wedgeHandler.removeCallbacks(wedgeTrigger)
                     wedgeHandler.postDelayed(wedgeTrigger, 250)
@@ -156,6 +160,12 @@ class QrScannerFragment : Fragment() {
             } else {
                 requestCameraPermission.launch(Manifest.permission.CAMERA)
             }
+        }
+
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestLocationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }
 
         // scanFlow (works when Intermec is in intent-broadcast mode)
@@ -227,6 +237,7 @@ class QrScannerFragment : Fragment() {
                 if (spool != null) {
                     txtScanStatus.text = getString(R.string.qr_scanner_status_spool_found, spool.displayCode)
                     showResult(spool.displayCode, buildSpoolDetail(spool))
+                    GpsHelper.captureAndSaveSpoolLocation(requireContext(), spool.spool_id)
                 } else {
                     showError(
                         getString(R.string.qr_scanner_result_spool_not_found),
@@ -354,22 +365,7 @@ class QrScannerFragment : Fragment() {
                     }
                 }
 
-                // Capture GPS fix and persist offline; SyncService uploads on next sync
-                val gps = GpsHelper.getCurrentLocation(requireContext())
-                if (gps != null) {
-                    val (lat, lon, acc) = gps
-                    val loc = SmsSpoolLocationEntity(
-                        spool_id      = spool.spool_id,
-                        latitude      = lat,
-                        longitude     = lon,
-                        gps_accuracy_m = acc,
-                        captured_at   = java.time.Instant.now().toString(),
-                        captured_by   = ServiceLocator.configRepo.get("device_name")
-                    )
-                    ServiceLocator.smsSpoolLocationDao.insert(loc)
-                    ServiceLocator.smsSpoolLocationDao.pruneOldest(spool.spool_id)
-                    Log.d(TAG, "GPS saved for spool ${spool.spool_id}: lat=$lat lon=$lon acc=$acc")
-                }
+                GpsHelper.captureAndSaveSpoolLocation(requireContext(), spool.spool_id)
 
                 relocateCount++
                 updateRelocateCount()

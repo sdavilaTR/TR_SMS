@@ -368,7 +368,7 @@ class SettingsFragment : Fragment() {
 
     // ── Access code dialog (shared) ─────────────────────────────────────
 
-    private fun requestCodeThen(onValid: () -> Unit) {
+    private fun requestCodeThen(onCancelled: () -> Unit = {}, onValid: () -> Unit) {
         val input = EditText(requireContext()).apply {
             hint = getString(R.string.profile_access_code_hint)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
@@ -383,9 +383,11 @@ class SettingsFragment : Fragment() {
                     onValid()
                 } else {
                     Toast.makeText(requireContext(), R.string.profile_access_code_error, Toast.LENGTH_SHORT).show()
+                    onCancelled()
                 }
             }
-            .setNegativeButton(android.R.string.cancel, null)
+            .setNegativeButton(android.R.string.cancel) { _, _ -> onCancelled() }
+            .setOnCancelListener { onCancelled() }
             .show()
     }
 
@@ -501,6 +503,16 @@ class SettingsFragment : Fragment() {
 
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
+                if (tab.position == 1) {
+                    requestCodeThen(
+                        onCancelled = { tabLayout.getTabAt(0)?.select() },
+                        onValid = {
+                            scrollBasic.visibility = View.GONE
+                            scrollDev.visibility = View.VISIBLE
+                        }
+                    )
+                    return
+                }
                 scrollBasic.visibility = if (tab.position == 0) View.VISIBLE else View.GONE
                 scrollDev.visibility   = if (tab.position == 1) View.VISIBLE else View.GONE
             }

@@ -521,6 +521,10 @@
     <string name="sync_step_heartbeat">Enviando telemetría…</string>
     <string name="sync_step_sms">Descargando datos SMS…</string>
     <string name="sync_step_done">✓ Datos base sincronizados</string>
+    <string name="sync_sms_spools_page">Descargando spools… pág. %1$d (%2$d acumulados)</string>
+    <string name="sync_sms_spools_ok">✓ Spools: %1$d nuevos, %2$d actualizados (%3$d total)</string>
+    <string name="sync_sms_pl_ok">✓ Packing Lists: %1$d nuevos, %2$d actualizados (%3$d total)</string>
+    <string name="sync_sms_vehicles_ok">✓ Vehículos SMS: %1$d</string>
     <string name="webview_login_error_network">No se pudo conectar con el servidor.\nComprueba tu conexión de red e inténtalo de nuevo.</string>
     <string name="webview_login_retry">Reintentar</string>
 
@@ -548,6 +552,8 @@
 
     <!-- Spools List -->
     <string name="spools_list_count">%1$d spools</string>
+    <string name="spools_list_count_capped">%1$d spools (mostrando primeros %2$d)</string>
+    <string name="spools_search_hint">Buscar spool (código, línea, PL…)</string>
     <string name="spools_list_empty">No hay spools en ATLAS para este proyecto</string>
     <string name="spools_list_error_prefix">Error: %1$s</string>
     <string name="spools_list_error_http">HTTP %1$d</string>
@@ -705,6 +711,8 @@
     <string name="spool_detail_gps_no_data">Sin datos de ubicación GPS</string>
     <string name="spool_detail_gps_current">Actual: %.6f, %.6f (±%.0fm) · %s</string>
     <string name="spool_detail_gps_previous">Anterior: %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_current_no_acc">Actual: %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_gps_previous_no_acc">Anterior: %1$.6f, %2$.6f · %3$s</string>
     <string name="spool_detail_btn_update_gps">Actualizar GPS</string>
     <string name="spool_detail_btn_open_maps">Abrir en Maps</string>
     <string name="spool_detail_gps_capturing">Obteniendo GPS…</string>

@@ -133,6 +133,7 @@ class IncidentDetailFragment : Fragment() {
             addRow(rows, R.string.incident_label_subposition, it)
         }
         addRow(rows, R.string.incident_label_author, item.author_name?.takeIf { it.isNotBlank() } ?: getString(R.string.incident_value_unknown))
+        addRow(rows, R.string.settings_device_code_label, item.device_code?.takeIf { it.isNotBlank() } ?: getString(R.string.incident_value_unknown))
         addRow(rows, R.string.incident_label_date, item.event_date.take(16).replace('T', ' '))
         addRow(rows, R.string.incident_label_status, statusLabels[item.status]?.let(::getString) ?: item.status)
 

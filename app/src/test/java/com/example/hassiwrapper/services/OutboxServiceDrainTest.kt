@@ -5,6 +5,7 @@ import com.example.hassiwrapper.data.db.dao.SmsIncidentDao
 import com.example.hassiwrapper.data.db.dao.SmsOutboxDao
 import com.example.hassiwrapper.data.db.dao.SmsPackingListDao
 import com.example.hassiwrapper.data.db.dao.SmsSpoolDao
+import com.example.hassiwrapper.data.db.dao.SmsSpoolStatusFlagsDao
 import com.example.hassiwrapper.data.db.dao.SmsVehicleDao
 import com.example.hassiwrapper.data.db.entities.ProjectEntity
 import com.example.hassiwrapper.data.db.entities.SmsIdMapEntity
@@ -85,6 +86,7 @@ class OutboxServiceDrainTest {
     private lateinit var outboxDao: FakeSmsOutboxDao
     private lateinit var projectDao: ProjectDao
     private lateinit var smsSpoolDao: SmsSpoolDao
+    private lateinit var smsSpoolStatusFlagsDao: SmsSpoolStatusFlagsDao
     private lateinit var smsPackingListDao: SmsPackingListDao
     private lateinit var smsVehicleDao: SmsVehicleDao
     private lateinit var smsIncidentDao: SmsIncidentDao
@@ -95,11 +97,12 @@ class OutboxServiceDrainTest {
         outboxDao = FakeSmsOutboxDao()
         projectDao = mockk(relaxed = true)
         smsSpoolDao = mockk(relaxed = true)
+        smsSpoolStatusFlagsDao = mockk(relaxed = true)
         smsPackingListDao = mockk(relaxed = true)
         smsVehicleDao = mockk(relaxed = true)
         smsIncidentDao = mockk(relaxed = true)
         coEvery { projectDao.getById(any()) } returns ProjectEntity(project_id = 6, project_code = "ELS-001")
-        service = OutboxService(outboxDao, projectDao, smsSpoolDao, smsPackingListDao, smsVehicleDao, smsIncidentDao)
+        service = OutboxService(outboxDao, projectDao, smsSpoolDao, smsSpoolStatusFlagsDao, smsPackingListDao, smsVehicleDao, smsIncidentDao)
     }
 
     private fun spoolCreatePayload(code: String) = SpoolCreatePayload(

@@ -96,8 +96,16 @@ interface AtlasApiService {
 
     // ── SMS Spools ──────────────────────────────────────
     // GET /api/atlas/projects/{projectCode}/spools  →  raw JSON (parsed in fragment after logging)
+    // page/pageSize drive server-side pagination; omit both to get all rows (legacy).
     @GET("/api/atlas/projects/{projectCode}/spools")
-    suspend fun getSpools(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
+    suspend fun getSpools(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @Query("page") page: Int? = null,
+        @Query("pageSize") pageSize: Int? = null,
+        // ISO-8601 timestamp; when set the server should return only rows with updated_at > value.
+        // Ignored by backends that don't implement delta sync — those return all rows (safe fallback).
+        @Query("updatedSince") updatedSince: String? = null
+    ): Response<okhttp3.ResponseBody>
 
     @POST("/api/atlas/projects/{projectCode}/spools")
     suspend fun createSpool(

@@ -1,7 +1,9 @@
 package com.example.hassiwrapper.ui.createspool
 
+import android.Manifest
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -12,6 +14,8 @@ import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
@@ -22,13 +26,11 @@ import com.example.hassiwrapper.data.db.entities.SmsSpoolLocationEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolPropertyEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolStatusFlagsEntity
 import com.example.hassiwrapper.services.GpsHelper
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.MapView
-import com.google.android.gms.maps.MapsInitializer
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 import com.example.hassiwrapper.jBool
 import com.example.hassiwrapper.jDbl
 import com.example.hassiwrapper.jInt
@@ -52,14 +54,28 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
     var onSpoolUpdated: (() -> Unit)? = null
 
     private var mapView: MapView? = null
-    private var googleMap: GoogleMap? = null
+
+    private var pendingGpsAction: (() -> Unit)? = null
+    private val requestLocationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        val action = pendingGpsAction
+        pendingGpsAction = null
+        if (grants.values.any { it }) {
+            action?.invoke()
+        } else if (isAdded) {
+            Toast.makeText(requireContext(), R.string.spool_detail_gps_unavailable, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     companion object {
         private const val TAG = "SpoolDetail"
         private const val ARG_SPOOL_ID = "spool_id"
 
-        /** Spools deleted locally this session — syncSmsData filters these out to prevent re-insertion. */
-        val locallyDeletedSpoolIds = mutableSetOf<Long>()
+        /** Spools deleted locally this session — syncSmsData filters these out to prevent re-insertion.
+         *  ConcurrentHashMap.newKeySet: written from Main (deleteSpool) and read from Dispatchers.Default
+         *  (syncSmsData parallel launch), so must be thread-safe. */
+        val locallyDeletedSpoolIds: MutableSet<Long> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
         fun newInstance(spoolId: Long): SpoolDetailBottomSheet =
             SpoolDetailBottomSheet().apply {
@@ -70,15 +86,20 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
+        Configuration.getInstance().userAgentValue = requireContext().packageName
         val view = inflater.inflate(R.layout.fragment_spool_detail_bottom_sheet, container, false)
-        mapView = view.findViewById(R.id.mapViewSpool)
-        mapView?.onCreate(savedInstanceState)
+        mapView = view.findViewById<MapView>(R.id.mapViewSpool).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(false)
+            // Thumbnail-sized preview inside a scrolling sheet — block pan/zoom gestures so
+            // touches fall through to the sheet's own scroll instead of dragging the map.
+            setOnTouchListener { _, _ -> true }
+        }
         return view
     }
 
     override fun onStart() {
         super.onStart()
-        mapView?.onStart()
         (dialog as? BottomSheetDialog)?.behavior?.apply {
             state = BottomSheetBehavior.STATE_EXPANDED
             skipCollapsed = true
@@ -95,11 +116,6 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
         super.onPause()
     }
 
-    override fun onStop() {
-        mapView?.onStop()
-        super.onStop()
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val spoolId = arguments?.getLong(ARG_SPOOL_ID) ?: return
@@ -112,7 +128,15 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
             btnHardDelete.setOnClickListener { confirmHardDeleteSpool(spoolId) }
         }
         view.findViewById<MaterialButton>(R.id.btnUpdateGps).setOnClickListener {
-            viewLifecycleOwner.lifecycleScope.launch { captureAndSaveGps(view, spoolId) }
+            val action: () -> Unit = { viewLifecycleOwner.lifecycleScope.launch { captureAndSaveGps(view, spoolId) } }
+            val hasFine = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            val hasCoarse = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            if (hasFine || hasCoarse) {
+                action()
+            } else {
+                pendingGpsAction = action
+                requestLocationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+            }
         }
         viewLifecycleOwner.lifecycleScope.launch { loadAndBind(view, spoolId) }
     }
@@ -149,6 +173,10 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
                     )
                 }
                 ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(spoolId)
+                ServiceLocator.smsSpoolLocationDao.deleteBySpool(spoolId)
+                ServiceLocator.smsSpoolStatusFlagsDao.deleteBySpool(spoolId)
+                ServiceLocator.smsSpoolPropertyDao.deleteBySpool(spoolId)
+                ServiceLocator.smsSpoolEventDao.deleteBySpool(spoolId)
                 ServiceLocator.smsSpoolDao.deleteById(spoolId)
                 if (plId != null) refreshPlSpoolCount(plId)
                 ServiceLocator.auditLogService.log(
@@ -198,6 +226,10 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
                     )
                 }
                 ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(spoolId)
+                ServiceLocator.smsSpoolLocationDao.deleteBySpool(spoolId)
+                ServiceLocator.smsSpoolStatusFlagsDao.deleteBySpool(spoolId)
+                ServiceLocator.smsSpoolPropertyDao.deleteBySpool(spoolId)
+                ServiceLocator.smsSpoolEventDao.deleteBySpool(spoolId)
                 ServiceLocator.smsSpoolDao.deleteById(spoolId)
                 if (plId != null) refreshPlSpoolCount(plId)
                 ServiceLocator.auditLogService.log(
@@ -409,7 +441,7 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
     }
 
     private suspend fun refreshPlSpoolCount(plId: Long) {
-        val count = ServiceLocator.smsSpoolDao.getByPackingList(plId).size
+        val count = ServiceLocator.smsSpoolDao.countByPackingList(plId)
         ServiceLocator.smsPackingListDao.getById(plId)?.let { pl ->
             ServiceLocator.smsPackingListDao.insertAll(listOf(pl.copy(total_spools_count = count, synced = false)))
         }
@@ -442,7 +474,7 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
             Log.d(TAG, "doAssign: nextSequence=$nextSequence (from sms_spool.getByPackingList($newPlId))")
 
             if (newPlId != null) {
-                val tempId = spoolId xor newPlId
+                val tempId = ServiceLocator.smsPackingListSpoolDao.getMaxId()?.let { it + 1 } ?: spoolId
                 val entity = SmsPackingListSpoolEntity(
                     packing_list_spool_id = tempId,
                     packing_list_id = newPlId,
@@ -540,7 +572,17 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
             val raw = if (resp.isSuccessful) resp.body()?.string().orEmpty() else ""
             Log.d(TAG, "statusFlags HTTP ${resp.code()} raw(300): ${raw.take(300)}")
             if (resp.isSuccessful) {
-                val flags = parseSpoolStatusFlags(raw, s.spool_id)
+                var flags = parseSpoolStatusFlags(raw, s.spool_id)
+                // If the local spool has a pending offline relocation (synced=false), the server
+                // still returns the old position/sub-position.  Override with local values so the
+                // detail sheet shows the correct state until the retry upload flips synced=true.
+                if (!s.synced && flags != null) {
+                    flags = flags.copy(
+                        position_id     = s.position_id ?: flags.position_id,
+                        sub_position_id = s.sub_position_id ?: flags.sub_position_id
+                    )
+                    Log.d(TAG, "statusFlags: local override pos=${flags.position_id} sub=${flags.sub_position_id} (spool synced=false)")
+                }
                 Log.d(TAG, "statusFlags parsed: $flags")
                 flags?.let { ServiceLocator.smsSpoolStatusFlagsDao.insertAll(listOf(it)) }
             } else {
@@ -654,21 +696,33 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
         val current = locations[0]
         val previous = locations.getOrNull(1)
 
-        txtCurrent.text = getString(
-            R.string.spool_detail_gps_current,
-            current.latitude, current.longitude,
-            current.gps_accuracy_m ?: 0f,
-            current.captured_at.take(10)
-        )
+        txtCurrent.text = if (current.gps_accuracy_m != null) {
+            getString(
+                R.string.spool_detail_gps_current,
+                current.latitude, current.longitude,
+                current.gps_accuracy_m, current.captured_at.take(10)
+            )
+        } else {
+            getString(
+                R.string.spool_detail_gps_current_no_acc,
+                current.latitude, current.longitude, current.captured_at.take(10)
+            )
+        }
         txtCurrent.visibility = View.VISIBLE
 
         if (previous != null) {
-            txtPrev.text = getString(
-                R.string.spool_detail_gps_previous,
-                previous.latitude, previous.longitude,
-                previous.gps_accuracy_m ?: 0f,
-                previous.captured_at.take(10)
-            )
+            txtPrev.text = if (previous.gps_accuracy_m != null) {
+                getString(
+                    R.string.spool_detail_gps_previous,
+                    previous.latitude, previous.longitude,
+                    previous.gps_accuracy_m, previous.captured_at.take(10)
+                )
+            } else {
+                getString(
+                    R.string.spool_detail_gps_previous_no_acc,
+                    previous.latitude, previous.longitude, previous.captured_at.take(10)
+                )
+            }
             txtPrev.visibility = View.VISIBLE
         }
 
@@ -680,32 +734,24 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
 
         // Show map with pins
         mv.visibility = View.VISIBLE
-        try {
-            MapsInitializer.initialize(requireContext())
-        } catch (_: Exception) { return }
+        mv.overlays.clear()
 
-        mv.getMapAsync { gMap ->
-            googleMap = gMap
-            gMap.uiSettings.isZoomControlsEnabled = false
-            gMap.uiSettings.isScrollGesturesEnabled = false
-
-            val currentLatLng = LatLng(current.latitude, current.longitude)
-            gMap.addMarker(
-                MarkerOptions()
-                    .position(currentLatLng)
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
-                    .title("Actual")
-            )
-            if (previous != null) {
-                gMap.addMarker(
-                    MarkerOptions()
-                        .position(LatLng(previous.latitude, previous.longitude))
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_VIOLET))
-                        .title("Anterior")
-                )
-            }
-            gMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 16f))
+        val currentPoint = GeoPoint(current.latitude, current.longitude)
+        mv.overlays.add(Marker(mv).apply {
+            position = currentPoint
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            title = "Actual"
+        })
+        if (previous != null) {
+            mv.overlays.add(Marker(mv).apply {
+                position = GeoPoint(previous.latitude, previous.longitude)
+                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                title = "Anterior"
+            })
         }
+        mv.controller.setZoom(19.0)
+        mv.controller.setCenter(currentPoint)
+        mv.invalidate()
     }
 
     private suspend fun captureAndSaveGps(view: View, spoolId: Long) {
@@ -724,7 +770,7 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
                 latitude       = lat,
                 longitude      = lon,
                 gps_accuracy_m = acc,
-                captured_at    = java.time.Instant.now().toString(),
+                captured_at    = GpsHelper.capturedAtNow(),
                 captured_by    = ServiceLocator.configRepo.get("device_name")
             )
             ServiceLocator.smsSpoolLocationDao.insert(loc)
@@ -732,10 +778,11 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
             Toast.makeText(requireContext(), R.string.spool_detail_gps_saved, Toast.LENGTH_SHORT).show()
 
             // Refresh map display
-            googleMap?.clear()
-            view.findViewById<TextView>(R.id.txtGpsCurrent).visibility = View.GONE
-            view.findViewById<TextView>(R.id.txtGpsPrevious).visibility = View.GONE
+            mapView?.overlays?.clear()
             bindGpsLocations(view, spoolId)
+        } catch (e: Exception) {
+            Log.e(TAG, "captureAndSaveGps error", e)
+            if (isAdded) Toast.makeText(requireContext(), getString(R.string.spool_detail_error_generic, e.message), Toast.LENGTH_LONG).show()
         } finally {
             btn.isEnabled = true
             btn.text = getString(R.string.spool_detail_btn_update_gps)
@@ -743,9 +790,8 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
     }
 
     override fun onDestroyView() {
-        mapView?.onDestroy()
+        mapView?.onDetach()
         mapView = null
-        googleMap = null
         super.onDestroyView()
         onSpoolUpdated = null
     }

@@ -178,7 +178,7 @@ class IncidentsFragment : Fragment() {
             h.description.text = item.description.ifBlank { getString(R.string.incident_card_no_description) }
 
             val metaParts = mutableListOf(locationLabel(item.location_type))
-            item.location_detail?.takeIf { it.isNotBlank() }?.let { metaParts += it }
+            item.device_code?.takeIf { it.isNotBlank() }?.let { metaParts += it }
             item.vehicle_plate?.takeIf { it.isNotBlank() }?.let { metaParts += it }
             metaParts += item.event_date.take(16).replace('T', ' ')
             h.meta.text = metaParts.joinToString("  •  ")

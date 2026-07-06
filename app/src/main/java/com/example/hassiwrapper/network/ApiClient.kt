@@ -32,16 +32,19 @@ class ApiClient(
         const val DEFAULT_FALLBACK = "https://web-atlas-api-pre.azurewebsites.net"
         private const val TIMEOUT_MS = 10_000L
         private const val PING_TIMEOUT_MS = 3_000L
+        private const val LARGE_SYNC_TIMEOUT_MS = 60_000L
     }
 
     @Volatile
     private var resolvedBase: String? = null
     private var cachedService: AtlasApiService? = null
+    private var cachedLargeService: AtlasApiService? = null
 
     /** Force re-resolution on next request (e.g. after settings change). */
     fun resetResolvedBase() {
         resolvedBase = null
         cachedService = null
+        cachedLargeService = null
     }
 
     /** Seed default URLs into config if not already set. */
@@ -57,6 +60,15 @@ class ApiClient(
         cachedService?.let { if (resolvedBase == base) return it }
         val service = buildService(base)
         cachedService = service
+        return service
+    }
+
+    /** Variant with 60 s read timeout for large paginated downloads (e.g. spools). */
+    suspend fun getServiceForLargeSync(): AtlasApiService {
+        val base = getApiBase()
+        cachedLargeService?.let { if (resolvedBase == base) return it }
+        val service = buildService(base, readTimeoutMs = LARGE_SYNC_TIMEOUT_MS)
+        cachedLargeService = service
         return service
     }
 
@@ -108,7 +120,7 @@ class ApiClient(
         }
     }
 
-    private fun buildService(baseUrl: String): AtlasApiService {
+    private fun buildService(baseUrl: String, readTimeoutMs: Long = TIMEOUT_MS): AtlasApiService {
         val logging = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
                     else HttpLoggingInterceptor.Level.NONE
@@ -154,7 +166,7 @@ class ApiClient(
 
         val clientBuilder = OkHttpClient.Builder()
             .connectTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
-            .readTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .readTimeout(readTimeoutMs, TimeUnit.MILLISECONDS)
             .writeTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
             .addInterceptor(proxyPrefixInterceptor)
             .addInterceptor(authInterceptor)

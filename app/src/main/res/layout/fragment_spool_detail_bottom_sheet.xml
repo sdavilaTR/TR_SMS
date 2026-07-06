@@ -273,7 +273,7 @@
                     android:orientation="vertical"
                     android:padding="14dp">
 
-                    <com.google.android.gms.maps.MapView
+                    <org.osmdroid.views.MapView
                         android:id="@+id/mapViewSpool"
                         android:layout_width="match_parent"
                         android:layout_height="200dp"

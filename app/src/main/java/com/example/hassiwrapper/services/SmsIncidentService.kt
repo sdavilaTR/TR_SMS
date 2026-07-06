@@ -80,7 +80,8 @@ class SmsIncidentService(
             photo_path = photoPath,
             event_date = Instant.now().toString(),
             status = "OPEN",
-            synced = false
+            synced = false,
+            device_code = configRepo.get("device_code")?.takeIf { it.isNotBlank() }
         )
         val id = incidentDao.insert(incident)
         return incident.copy(id = id)

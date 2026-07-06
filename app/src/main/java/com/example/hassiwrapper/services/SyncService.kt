@@ -58,6 +58,10 @@ class SyncService(
 
     private val syncMutex = Mutex()
     private val smsUploadMutex = Mutex()
+    // doSync (syncMutex) and doSmsUploads (smsUploadMutex) both call uploadSpoolLocations
+    // and don't block each other, so this locks the upload itself to prevent both paths
+    // reading the same unsynced rows before either has marked them synced.
+    private val spoolLocationUploadMutex = Mutex()
 
     /** Thrown for errors that are worth retrying (network issues, server 5xx). */
     private class TransientException(msg: String, cause: Throwable? = null) : Exception(msg, cause)
@@ -181,6 +185,7 @@ class SyncService(
             uploadVehicleRouteState(api)
             uploadSmsIncidents(api)
             uploadSpoolLocations(api)
+            uploadPendingRelocations(api)
             outboxService?.drain(api)?.let { r ->
                 if (r.transient) Log.w(TAG, "syncSmsUploads: outbox drain stopped (transient), will retry next sync")
             }
@@ -276,6 +281,7 @@ class SyncService(
         uploadSmsIncidents(api)
 
         uploadSpoolLocations(api)
+        uploadPendingRelocations(api)
 
         // 4c. Drain the SMS mutation outbox in order (create/update/delete/assign).
         onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_outbox))
@@ -567,8 +573,11 @@ class SyncService(
 
     /** Pushes a spool's position + sub-position to the server via PUT status-flags.
      *  GET-merge-PUT: reads the current flags row first so the overwrite doesn't wipe
-     *  hold/damaged/status/dates. Best-effort — returns false (and logs) on any failure,
-     *  including no existing flags row (PUT 404) which the backend can't create via API.
+     *  hold/damaged/status/dates. If the GET 404s (spool has no flags row yet — common
+     *  for ETL-created spools that never got one), PUTs a defaults body instead: the
+     *  backend PUT is a MERGE upsert and is the only API path that can create the row.
+     *  Any other GET failure still aborts, so a transient error can't overwrite real
+     *  server flags with defaults. Best-effort — returns false (and logs) on failure.
      *  Called after a local RECEIVE or QR relocate; the local field is the source of truth. */
     suspend fun uploadSpoolStatusFlags(
         projectCode: String,
@@ -579,35 +588,44 @@ class SyncService(
         return try {
             val api = apiClient.getService()
             val getResp = api.getSpoolStatusFlags(projectCode, spoolId.toString())
-            if (!getResp.isSuccessful) {
+            val body: SpoolStatusFlagsRequest
+            if (getResp.code() == 404) {
+                Log.i(TAG, "status-flags GET $spoolId 404 — no server row, creating via PUT upsert")
+                body = SpoolStatusFlagsRequest(
+                    spoolId       = spoolId,
+                    positionId    = positionId,
+                    subPositionId = subPositionId
+                )
+            } else if (!getResp.isSuccessful) {
                 Log.w(TAG, "status-flags GET $spoolId HTTP ${getResp.code()} — skipping upload")
                 return false
+            } else {
+                val json = getResp.body()?.string().orEmpty()
+                if (json.isBlank()) {
+                    Log.w(TAG, "status-flags GET $spoolId empty body — skipping upload")
+                    return false
+                }
+                val o = JsonParser.parseString(json).asJsonObject
+                fun optInt(k: String): Int? = o.get(k)?.takeIf { !it.isJsonNull }?.asInt
+                fun optLong(k: String): Long? = o.get(k)?.takeIf { !it.isJsonNull }?.asLong
+                fun optBool(k: String): Boolean = o.get(k)?.takeIf { !it.isJsonNull }?.asBoolean ?: false
+                fun optStr(k: String): String? = o.get(k)?.takeIf { !it.isJsonNull }?.asString
+                body = SpoolStatusFlagsRequest(
+                    spoolId                   = spoolId,
+                    statusId                  = optInt("statusId"),
+                    incompleteStatusId        = optInt("incompleteStatusId"),
+                    positionId                = positionId ?: optInt("positionId"),
+                    subPositionId             = subPositionId,
+                    hold                      = optBool("hold"),
+                    damaged                   = optBool("damaged"),
+                    returnedToFactory         = optBool("returnedToFactory"),
+                    positionStatusDiscrepancy = optBool("positionStatusDiscrepancy"),
+                    reviewDiscrepancy         = optBool("reviewDiscrepancy"),
+                    lastEventDate             = optStr("lastEventDate"),
+                    pcaStatusDate             = optStr("pcaStatusDate"),
+                    pcaEntryDate              = optStr("pcaEntryDate")
+                )
             }
-            val json = getResp.body()?.string().orEmpty()
-            if (json.isBlank()) {
-                Log.w(TAG, "status-flags GET $spoolId empty body — skipping upload")
-                return false
-            }
-            val o = JsonParser.parseString(json).asJsonObject
-            fun optInt(k: String): Int? = o.get(k)?.takeIf { !it.isJsonNull }?.asInt
-            fun optLong(k: String): Long? = o.get(k)?.takeIf { !it.isJsonNull }?.asLong
-            fun optBool(k: String): Boolean = o.get(k)?.takeIf { !it.isJsonNull }?.asBoolean ?: false
-            fun optStr(k: String): String? = o.get(k)?.takeIf { !it.isJsonNull }?.asString
-            val body = SpoolStatusFlagsRequest(
-                spoolId                   = spoolId,
-                statusId                  = optInt("statusId"),
-                incompleteStatusId        = optInt("incompleteStatusId"),
-                positionId                = positionId ?: optInt("positionId"),
-                subPositionId             = subPositionId,
-                hold                      = optBool("hold"),
-                damaged                   = optBool("damaged"),
-                returnedToFactory         = optBool("returnedToFactory"),
-                positionStatusDiscrepancy = optBool("positionStatusDiscrepancy"),
-                reviewDiscrepancy         = optBool("reviewDiscrepancy"),
-                lastEventDate             = optStr("lastEventDate"),
-                pcaStatusDate             = optStr("pcaStatusDate"),
-                pcaEntryDate              = optStr("pcaEntryDate")
-            )
             val putResp = api.updateSpoolStatusFlags(projectCode, spoolId, body)
             if (putResp.isSuccessful) {
                 Log.i(TAG, "status-flags PUT $spoolId ok (pos=$positionId sub=$subPositionId)")
@@ -771,51 +789,78 @@ class SyncService(
         if (synced.isNotEmpty()) dao.markRouteStateSynced(synced)
     }
 
-    // ── Spool GPS location upload ─────────────────────────────────────────────
+    // ── Pending offline relocation retry ─────────────────────────────────────
+    //
+    // Spools relocated offline (QR scan / RECEIVE) have synced=false but the status-flags PUT
+    // is never retried automatically — it only fires inline during the relocation.  This step
+    // retries it on the next sync cycle so the server gets the correct position/sub-position.
 
-    private suspend fun uploadSpoolLocations(api: AtlasApiService) {
-        val dao = smsSpoolLocationDao ?: return
-        val unsynced = dao.getUnsynced()
-        if (unsynced.isEmpty()) return
+    private suspend fun uploadPendingRelocations(api: AtlasApiService) {
+        val dao = smsSpoolDao ?: return
+        val pending = dao.getUnsyncedRelocated()
+        if (pending.isEmpty()) return
 
-        Log.i(TAG, "Uploading ${unsynced.size} spool location(s)")
+        Log.i(TAG, "uploadPendingRelocations: ${pending.size} pending spool relocation(s)")
         val projectId = configRepo.getInt("selected_project_id") ?: 6
         val projectCode = projectDao.getById(projectId)?.project_code
         if (projectCode.isNullOrBlank()) {
-            Log.w(TAG, "uploadSpoolLocations: no project code for id=$projectId, skipping")
+            Log.w(TAG, "uploadPendingRelocations: no project code for id=$projectId, skipping")
             return
         }
 
         val synced = mutableListOf<Long>()
-        for (loc in unsynced) {
-            try {
-                val body = SpoolLocationRequest(
-                    latitude     = loc.latitude,
-                    longitude    = loc.longitude,
-                    gpsAccuracyM = loc.gps_accuracy_m,
-                    capturedAt   = loc.captured_at,
-                    capturedBy   = loc.captured_by
-                )
-                val response = api.postSpoolLocation(projectCode, loc.spool_id, body)
-                if (response.isSuccessful) {
-                    val json = response.body()?.string().orEmpty()
-                    val serverIdRaw = runCatching {
-                        JsonParser.parseString(json).asJsonObject.get("locationId")?.asLong
-                    }.getOrNull()
-                    if (serverIdRaw != null && serverIdRaw != loc.location_id) {
-                        dao.remapAndSync(loc.location_id, serverIdRaw)
-                    } else {
-                        synced.add(loc.location_id)
-                    }
-                    Log.i(TAG, "Spool location ${loc.location_id} → spool ${loc.spool_id} uploaded")
-                } else {
-                    Log.w(TAG, "Spool location ${loc.location_id} upload HTTP ${response.code()}")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Spool location ${loc.location_id} upload error: ${e.message}")
-            }
+        for (spool in pending) {
+            val ok = uploadSpoolStatusFlags(projectCode, spool.spool_id, spool.position_id, spool.sub_position_id)
+            if (ok) synced.add(spool.spool_id)
         }
         if (synced.isNotEmpty()) dao.markSynced(synced)
+    }
+
+    // ── Spool GPS location upload ─────────────────────────────────────────────
+
+    private suspend fun uploadSpoolLocations(api: AtlasApiService) {
+        if (!spoolLocationUploadMutex.tryLock()) return
+        try {
+            val dao = smsSpoolLocationDao ?: return
+            val unsynced = dao.getUnsynced()
+            if (unsynced.isEmpty()) return
+
+            Log.i(TAG, "Uploading ${unsynced.size} spool location(s)")
+            val projectId = configRepo.getInt("selected_project_id") ?: 6
+            val projectCode = projectDao.getById(projectId)?.project_code
+            if (projectCode.isNullOrBlank()) {
+                Log.w(TAG, "uploadSpoolLocations: no project code for id=$projectId, skipping")
+                return
+            }
+
+            val synced = mutableListOf<Long>()
+            for (loc in unsynced) {
+                try {
+                    val body = SpoolLocationRequest(
+                        latitude     = loc.latitude,
+                        longitude    = loc.longitude,
+                        gpsAccuracyM = loc.gps_accuracy_m,
+                        capturedAt   = loc.captured_at,
+                        capturedBy   = loc.captured_by
+                    )
+                    val response = api.postSpoolLocation(projectCode, loc.spool_id, body)
+                    if (response.isSuccessful) {
+                        // location_id is a local-only autoincrement key (nothing else references it
+                        // as a FK); just mark synced rather than remapping it to the server-assigned
+                        // id, which risked colliding with an existing local PK.
+                        synced.add(loc.location_id)
+                        Log.i(TAG, "Spool location ${loc.location_id} → spool ${loc.spool_id} uploaded")
+                    } else {
+                        Log.w(TAG, "Spool location ${loc.location_id} upload HTTP ${response.code()}")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Spool location ${loc.location_id} upload error: ${e.message}")
+                }
+            }
+            if (synced.isNotEmpty()) dao.markSynced(synced)
+        } finally {
+            spoolLocationUploadMutex.unlock()
+        }
     }
 
 }

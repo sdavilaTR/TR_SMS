@@ -1,7 +1,10 @@
 package com.example.hassiwrapper
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.SoundPool
 import android.net.ConnectivityManager
@@ -23,6 +26,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
@@ -35,6 +39,7 @@ import androidx.navigation.ui.setupWithNavController
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.example.hassiwrapper.scanner.DataWedgeManager
+import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.ui.login.LoginActivity
 import com.example.hassiwrapper.update.UpdateChecker
 import com.example.hassiwrapper.update.UpdateInfo
@@ -60,7 +65,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.time.Instant
 
 class MainActivity : AppCompatActivity() {
 
@@ -94,6 +103,7 @@ class MainActivity : AppCompatActivity() {
 
     private var pendingUpdate: UpdateInfo? = null
     private var autoSyncJob: Job? = null
+    private val smsSyncMutex = Mutex()
 
     private var connectivityManager: ConnectivityManager? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
@@ -101,6 +111,17 @@ class MainActivity : AppCompatActivity() {
     private var soundPool: SoundPool? = null
     private var soundSuccess = 0
     private var soundError = 0
+
+    // Global spool scans (handleGlobalScan) capture a best-effort GPS fix from any screen;
+    // request location permission once up front so it's not silently unavailable for
+    // devices that never visit a screen that already asks (QR Scanner, Send/Receive PL).
+    private val requestLocationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* best-effort — GpsHelper silently skips capture if denied */ }
+
+    private val requestQrCameraPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) launchQrScanner() }
 
     private val qrScanLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -230,7 +251,8 @@ class MainActivity : AppCompatActivity() {
                         dest != R.id.sendPackingListFragment &&
                         dest != R.id.receivePackingListFragment &&
                         dest != R.id.packingListDetailFragment &&
-                        dest != R.id.newPackingListFragment) {
+                        dest != R.id.newPackingListFragment &&
+                        dest != R.id.newIncidentFragment) {
                         handleGlobalScan(code)
                     }
                 }
@@ -277,11 +299,24 @@ class MainActivity : AppCompatActivity() {
 
         startAutoSync()
 
-        findViewById<FloatingActionButton>(R.id.fabQrScan).setOnClickListener {
-            val intent = Intent(this, CustomScannerActivity::class.java)
-                .putExtra(CustomScannerActivity.EXTRA_FRONT_CAMERA, false)
-            qrScanLauncher.launch(intent)
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestLocationPermission.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
         }
+
+        findViewById<FloatingActionButton>(R.id.fabQrScan).setOnClickListener {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED
+            ) launchQrScanner()
+            else requestQrCameraPermission.launch(android.Manifest.permission.CAMERA)
+        }
+    }
+
+    private fun launchQrScanner() {
+        val intent = Intent(this, CustomScannerActivity::class.java)
+            .putExtra(CustomScannerActivity.EXTRA_FRONT_CAMERA, false)
+        qrScanLauncher.launch(intent)
     }
 
     private fun startAutoSync() {
@@ -370,11 +405,35 @@ class MainActivity : AppCompatActivity() {
         networkCallback = null
     }
 
+    // Debug-only hook so test scripts can write config values through the live process —
+    // the Room DB can't be edited externally while the app holds it open (device-admin
+    // keeps the process alive, so a pushed DB file is shadowed by the open connection).
+    // Usage: adb shell am broadcast -a com.tr.atlas.trac.DEBUG_SET_CONFIG --es key <k> --es value <v>
+    // Omitting --es value removes the key.
+    private val debugConfigReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val key = intent.getStringExtra("key") ?: return
+            val value = intent.getStringExtra("value")
+            lifecycleScope.launch {
+                if (value == null) ServiceLocator.configRepo.remove(key)
+                else ServiceLocator.configRepo.set(key, value)
+                Log.i(TAG, "DEBUG_SET_CONFIG: $key = $value")
+            }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         startAutoSync()
         registerNetworkCallback()
         dataWedgeManager.register()
+        if (BuildConfig.DEBUG) {
+            ContextCompat.registerReceiver(
+                this, debugConfigReceiver,
+                IntentFilter("com.tr.atlas.trac.DEBUG_SET_CONFIG"),
+                ContextCompat.RECEIVER_EXPORTED
+            )
+        }
         lifecycleScope.launch {
             val kioskEnabled = ServiceLocator.configRepo.get("kiosk_mode") == "true"
             kioskModeEnabled = kioskEnabled
@@ -412,6 +471,9 @@ class MainActivity : AppCompatActivity() {
         stopAutoSync()
         unregisterNetworkCallback()
         dataWedgeManager.unregister()
+        if (BuildConfig.DEBUG) {
+            try { unregisterReceiver(debugConfigReceiver) } catch (_: Exception) {}
+        }
     }
 
     override fun onDestroy() {
@@ -580,7 +642,37 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    internal suspend fun syncSmsData() {
+    /**
+     * Skips the DB delete+insert if the raw JSON is identical to the last successful write
+     * (CRC32 comparison). The HTTP fetch still happens — server-side ETag/304 support would
+     * be needed to skip that too. Saves ~8 unnecessary Room write transactions per sync cycle
+     * for lookup tables that rarely change (bore-sizes, iso-types, positions, statuses, etc.).
+     */
+    private suspend fun applyLookupIfChanged(cacheKey: String, raw: String, apply: suspend () -> Unit) {
+        if (raw.isBlank()) return
+        val crc = java.util.zip.CRC32().apply { update(raw.toByteArray()) }.value.toString()
+        val storeKey = "lookup_crc_$cacheKey"
+        if (ServiceLocator.configRepo.get(storeKey) == crc) {
+            Log.d(TAG, "syncSMS lookup $cacheKey: unchanged (crc=$crc), skip DB write")
+            return
+        }
+        apply()
+        ServiceLocator.configRepo.set(storeKey, crc)
+    }
+
+    internal suspend fun syncSmsData(onProgress: ((String) -> Unit)? = null) {
+        if (!smsSyncMutex.tryLock()) {
+            Log.i(TAG, "syncSmsData: already in progress, skipping concurrent call")
+            return
+        }
+        try {
+        doSyncSmsData(onProgress)
+        } finally {
+            smsSyncMutex.unlock()
+        }
+    }
+
+    private suspend fun doSyncSmsData(onProgress: ((String) -> Unit)? = null) {
         val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
         // Cache the resolved code under its own config key so a later, unrelated full-sync
         // failure (e.g. an unrelated 500 on /sync/download) can't wipe our ability to resolve
@@ -599,7 +691,7 @@ class MainActivity : AppCompatActivity() {
             Log.w(TAG, "syncSmsData: no project code for id=$projectId")
             return
         }
-        Log.d(TAG, "syncSmsData: fetching SMS data for '$projectCode' (len=${projectCode.length}, bytes=${projectCode.toByteArray().joinToString(",")})")
+        Log.d(TAG, "syncSmsData: fetching SMS data for '$projectCode'")
 
         val service = try {
             ServiceLocator.apiClient.getService()
@@ -607,211 +699,315 @@ class MainActivity : AppCompatActivity() {
             Log.e(TAG, "syncSmsData: could not obtain API service", e)
             return
         }
+        val largeService = ServiceLocator.apiClient.getServiceForLargeSync()
 
-        syncSection("spools") {
-            val spoolResp = service.getSpools(projectCode)
-            if (spoolResp.isSuccessful) {
-                val spoolRaw = spoolResp.body()?.string().orEmpty()
-                Log.d(TAG, "syncSmsData spools raw(500): ${spoolRaw.take(500)}")
-                val entities = parseSpoolEntities(spoolRaw, projectId)
-                if (entities.isNotEmpty()) {
-                    entities.take(2).forEach { e ->
-                        Log.d(TAG, "spool entity: id=${e.spool_id} code=${e.spool_code} suf=${e.spool_suffix} line=${e.line_code} service=${e.service} train=${e.train} module=${e.module} area=${e.area_id} spec=${e.spec_id} unit=${e.unit_id} iso=${e.iso_type_id} sub=${e.subcontractor_id}")
+        // All sections write to independent tables — launch them all in parallel.
+        // coroutineScope suspends until every child completes (or the first uncaught
+        // exception cancels all siblings; syncSection swallows its own exceptions so
+        // that case can only arise from a programming error, not a network failure).
+        coroutineScope {
+            fun logLookup(name: String, resp: retrofit2.Response<okhttp3.ResponseBody>, count: Int) {
+                Log.d(TAG, "syncSMS lookup $name: HTTP ${resp.code()} → parsed $count")
+                if (!resp.isSuccessful) Log.w(TAG, "syncSMS lookup $name error body: ${resp.errorBody()?.string()?.take(200)}")
+            }
+
+            launch(Dispatchers.Default) {
+                syncSection("spools") {
+                    val pageSize = 5000
+                    // Delta sync: send the timestamp of the last successful spool sync so the
+                    // server can return only rows changed since then. Gated on a per-project
+                    // config flag so it stays off until the backend confirms support for
+                    // ?updatedSince= on GET /spools. Full sync behaviour is the safe fallback.
+                    val lastSyncKey  = "sms_spools_last_sync_$projectId"
+                    val deltaEnabled = ServiceLocator.configRepo.get("sms_delta_sync_enabled") == "true"
+                    val updatedSince = if (deltaEnabled) ServiceLocator.configRepo.get(lastSyncKey) else null
+                    val isFullSync   = updatedSince == null
+                    val syncStarted  = Instant.now().minusSeconds(30).toString()
+
+                    val allEntities = mutableListOf<SmsSpoolEntity>()
+                    var page = 1
+                    var fetchOk = false
+                    while (true) {
+                        val spoolResp = largeService.getSpools(projectCode, page, pageSize, updatedSince)
+                        if (!spoolResp.isSuccessful) break
+                        val spoolRaw = spoolResp.body()?.string().orEmpty()
+                        if (page == 1) Log.d(TAG, "syncSmsData spools raw(500): ${spoolRaw.take(500)}")
+                        val pageEntities = parseSpoolEntities(spoolRaw, projectId)
+                        allEntities += pageEntities
+                        Log.d(TAG, "syncSmsData spools page=$page got=${pageEntities.size} total=${allEntities.size} fullSync=$isFullSync")
+                        if (page > 1) {
+                            val msg = getString(R.string.sync_sms_spools_page, page, allEntities.size)
+                            withContext(Dispatchers.Main) { onProgress?.invoke(msg) }
+                        }
+                        if (pageEntities.size < pageSize) { fetchOk = true; break }
+                        page++
                     }
-                    val deleted = com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet.locallyDeletedSpoolIds +
-                        ServiceLocator.outboxService.pendingDeleteIds(com.example.hassiwrapper.services.OutboxService.Entity.SPOOL).toSet()
-                    val toInsert = entities.filter { it.is_active && it.spool_id !in deleted }
-                    // Preserve locally-set fields that the /spools endpoint doesn't return
-                    val localSpools = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
-                        .associateBy { it.spool_id }
-                    // Spools that are SENT but not yet RECEIVED locally — these stay in_transit=true
-                    // regardless of upload status, until a local RECEIVE transfer confirms arrival.
-                    val sentNotReceivedIds = ServiceLocator.smsTransferDao.getSpoolIdsInSentNotReceived().toSet()
-                    val merged = toInsert.map { s ->
-                        val local = localSpools[s.spool_id] ?: return@map s
-                        val keepLocal = !local.synced
-                        s.copy(
-                            in_transit = when {
-                                s.spool_id in sentNotReceivedIds -> true
-                                keepLocal -> local.in_transit
-                                else -> s.in_transit
-                            },
-                            zone            = if (keepLocal) local.zone else (s.zone ?: local.zone),
-                            packing_list_id = if (keepLocal) local.packing_list_id else (s.packing_list_id ?: local.packing_list_id),
-                            position_id     = if (keepLocal) local.position_id else (s.position_id ?: local.position_id),
-                            sub_position_id = if (keepLocal) local.sub_position_id else (s.sub_position_id ?: local.sub_position_id),
-                            // Carry synced=false so the local override persists across multiple sync
-                            // cycles until the server returns the updated value (e.g. after status-flags
-                            // upload is processed server-side and reflected in GET /spools).
-                            synced          = if (keepLocal) false else s.synced
-                        )
+
+                    if (fetchOk) {
+                        val deleted = com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet.locallyDeletedSpoolIds +
+                            ServiceLocator.outboxService.pendingDeleteIds(com.example.hassiwrapper.services.OutboxService.Entity.SPOOL).toSet()
+                        val toInsert = allEntities.filter { it.is_active && it.spool_id !in deleted }
+                        // Delta responses include rows deactivated server-side (is_active=0) so
+                        // offline clients can purge them; a full sync handles this via the
+                        // wipe-and-reinsert below instead.
+                        if (!isFullSync) {
+                            val deactivatedIds = allEntities.filter { !it.is_active }.map { it.spool_id }
+                            deactivatedIds.chunked(800).forEach { ServiceLocator.smsSpoolDao.deleteByIds(it) }
+                        }
+                        // Preserve locally-set fields that the /spools endpoint doesn't return
+                        val localSpools = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
+                            .associateBy { it.spool_id }
+                        // Spools that are SENT but not yet RECEIVED locally — these stay in_transit=true
+                        // regardless of upload status, until a local RECEIVE transfer confirms arrival.
+                        val sentNotReceivedIds = ServiceLocator.smsTransferDao.getSpoolIdsInSentNotReceived().toSet()
+                        val merged = toInsert.map { s ->
+                            val local = localSpools[s.spool_id] ?: return@map s
+                            val keepLocal = !local.synced
+                            s.copy(
+                                in_transit = when {
+                                    s.spool_id in sentNotReceivedIds -> true
+                                    keepLocal -> local.in_transit
+                                    else -> s.in_transit
+                                },
+                                zone            = if (keepLocal) local.zone else (s.zone ?: local.zone),
+                                packing_list_id = if (keepLocal) local.packing_list_id else (s.packing_list_id ?: local.packing_list_id),
+                                position_id     = if (keepLocal) local.position_id else (s.position_id ?: local.position_id),
+                                sub_position_id = if (keepLocal) local.sub_position_id else (s.sub_position_id ?: local.sub_position_id),
+                                // Carry synced=false so the local override persists across multiple sync
+                                // cycles until the server returns the updated value (e.g. after status-flags
+                                // upload is processed server-side and reflected in GET /spools).
+                                synced          = if (keepLocal) false else s.synced
+                            )
+                        }
+
+                        val newCount = merged.count { it.spool_id !in localSpools }
+                        val updatedCount = merged.count { it.spool_id in localSpools }
+                        if (isFullSync) {
+                            // Full sync: wipe stale server-side rows, insert fresh set
+                            ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
+                        }
+                        if (merged.isNotEmpty()) {
+                            ServiceLocator.smsSpoolDao.insertAll(merged)
+                        }
+                        ServiceLocator.smsSpoolDao.deleteInactive()
+                        // Save timestamp (minus 30 s buffer) so next delta only fetches changes
+                        // made after this sync started. Buffer guards against clock skew / rows
+                        // modified during the sync window.
+                        ServiceLocator.configRepo.set(lastSyncKey, syncStarted)
+                        Log.d(TAG, "syncSmsData: ${if (isFullSync) "full" else "delta"} sync ok — ${merged.size} spools written")
+                        val spoolMsg = getString(R.string.sync_sms_spools_ok, newCount, updatedCount, merged.size)
+                        withContext(Dispatchers.Main) { onProgress?.invoke(spoolMsg) }
+                    } else {
+                        Log.w(TAG, "syncSmsData: spools fetch failed (not all pages ok), skipping DB write")
                     }
-                    ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
-                    ServiceLocator.smsSpoolDao.insertAll(merged)
-                    Log.d(TAG, "syncSmsData: inserted ${merged.size} spools (${entities.size - merged.size} locally deleted filtered)")
                 }
             }
-            ServiceLocator.smsSpoolDao.deleteInactive()
-        }
 
-        syncSection("packing-lists") {
-            val plResp = service.getPackingLists(projectCode)
-            if (plResp.isSuccessful) {
-                val raw = plResp.body()?.string().orEmpty()
-                val entities = parsePackingListEntities(raw, projectId)
-                val deletedPLs = com.example.hassiwrapper.ui.packinglists.PackingListDetailFragment.locallyDeletedPLIds +
-                    ServiceLocator.outboxService.pendingDeleteIds(com.example.hassiwrapper.services.OutboxService.Entity.PACKING_LIST).toSet()
-                val activePLs = entities.filter { it.is_active && it.packing_list_id !in deletedPLs }
-                // Preserve locally-set ready_to_send and vehicle assignment so API sync doesn't wipe them
-                val localPLs = ServiceLocator.smsPackingListDao.getByProject(projectId)
-                    .associateBy { it.packing_list_id }
-                val mergedPLs = activePLs.map { pl ->
-                    val local = localPLs[pl.packing_list_id] ?: return@map pl
-                    val keepLocal = !local.synced
-                    pl.copy(
-                        ready_to_send = local.ready_to_send,
-                        vehicle_id    = pl.vehicle_id ?: local.vehicle_id,
-                        vehicle_plate = pl.vehicle_plate ?: local.vehicle_plate,
-                        position_id   = if (keepLocal) local.position_id else (pl.position_id ?: local.position_id),
-                        position      = if (keepLocal) local.position else (pl.position ?: local.position),
-                        synced        = if (keepLocal) false else pl.synced
-                    )
+            launch(Dispatchers.Default) {
+                syncSection("packing-lists") {
+                    val plResp = service.getPackingLists(projectCode)
+                    if (plResp.isSuccessful) {
+                        val raw = plResp.body()?.string().orEmpty()
+                        val entities = parsePackingListEntities(raw, projectId)
+                        val deletedPLs = com.example.hassiwrapper.ui.packinglists.PackingListDetailFragment.locallyDeletedPLIds +
+                            ServiceLocator.outboxService.pendingDeleteIds(com.example.hassiwrapper.services.OutboxService.Entity.PACKING_LIST).toSet()
+                        val activePLs = entities.filter { it.is_active && it.packing_list_id !in deletedPLs }
+                        // Preserve locally-set ready_to_send and vehicle assignment so API sync doesn't wipe them
+                        val localPLs = ServiceLocator.smsPackingListDao.getByProject(projectId)
+                            .associateBy { it.packing_list_id }
+                        val mergedPLs = activePLs.map { pl ->
+                            val local = localPLs[pl.packing_list_id] ?: return@map pl
+                            val keepLocal = !local.synced
+                            pl.copy(
+                                ready_to_send = local.ready_to_send,
+                                vehicle_id    = pl.vehicle_id ?: local.vehicle_id,
+                                vehicle_plate = pl.vehicle_plate ?: local.vehicle_plate,
+                                position_id   = if (keepLocal) local.position_id else (pl.position_id ?: local.position_id),
+                                position      = if (keepLocal) local.position else (pl.position ?: local.position),
+                                synced        = if (keepLocal) false else pl.synced
+                            )
+                        }
+                        val newPLCount = mergedPLs.count { it.packing_list_id !in localPLs }
+                        val updatedPLCount = mergedPLs.count { it.packing_list_id in localPLs }
+                        ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
+                        if (mergedPLs.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(mergedPLs)
+                        Log.d(TAG, "syncSmsData: inserted ${mergedPLs.size} packing lists (${entities.size - mergedPLs.size} inactive/deleted skipped)")
+                        val plMsg = getString(R.string.sync_sms_pl_ok, newPLCount, updatedPLCount, mergedPLs.size)
+                        withContext(Dispatchers.Main) { onProgress?.invoke(plMsg) }
+                    }
+                    ServiceLocator.smsPackingListDao.deleteInactive()
                 }
-                ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
-                if (mergedPLs.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(mergedPLs)
-                Log.d(TAG, "syncSmsData: inserted ${mergedPLs.size} packing lists (${entities.size - mergedPLs.size} inactive/deleted skipped)")
             }
-            ServiceLocator.smsPackingListDao.deleteInactive()
-        }
 
-        syncSection("vehicles") {
-            val vehicleResp = service.getVehicles(projectCode)
-            if (vehicleResp.isSuccessful) {
-                val rawVehicles = vehicleResp.body()?.string().orEmpty()
-                Log.d(TAG, "syncSMS vehicles raw(500): ${rawVehicles.take(500)}")
-                val parsed = parseVehicleEntities(rawVehicles, projectId)
-                // Hide vehicles deleted offline (pending DELETE op) so the server copy doesn't resurrect them.
-                val deletedVehicles = com.example.hassiwrapper.ui.vehicles.VehicleDetailFragment.locallyDeletedVehicleIds +
-                    ServiceLocator.outboxService.pendingDeleteIds(com.example.hassiwrapper.services.OutboxService.Entity.VEHICLE).toSet()
-                val entities = parsed.filter { it.vehicle_id !in deletedVehicles }
-                if (entities.isNotEmpty()) {
-                    // Preserve local route state for vehicles with pending upload (route_synced=false)
-                    val localById = ServiceLocator.smsVehicleDao.getByProject(projectId).associateBy { it.vehicle_id }
-                    val mergedVehicles = entities.map { v ->
-                        val local = localById[v.vehicle_id]
-                        if (local != null && !local.route_synced) {
-                            v.copy(on_route = local.on_route, destination = local.destination, route_synced = false)
-                        } else {
-                            v.copy(route_synced = true)
+            launch(Dispatchers.Default) {
+                syncSection("vehicles") {
+                    val vehicleResp = service.getVehicles(projectCode)
+                    if (vehicleResp.isSuccessful) {
+                        val rawVehicles = vehicleResp.body()?.string().orEmpty()
+                        Log.d(TAG, "syncSMS vehicles raw(500): ${rawVehicles.take(500)}")
+                        val parsed = parseVehicleEntities(rawVehicles, projectId)
+                        // Hide vehicles deleted offline (pending DELETE op) so the server copy doesn't resurrect them.
+                        val deletedVehicles = com.example.hassiwrapper.ui.vehicles.VehicleDetailFragment.locallyDeletedVehicleIds +
+                            ServiceLocator.outboxService.pendingDeleteIds(com.example.hassiwrapper.services.OutboxService.Entity.VEHICLE).toSet()
+                        val entities = parsed.filter { it.vehicle_id !in deletedVehicles }
+                        if (entities.isNotEmpty()) {
+                            // Preserve local route state for vehicles with pending upload (route_synced=false)
+                            val localById = ServiceLocator.smsVehicleDao.getByProject(projectId).associateBy { it.vehicle_id }
+                            val mergedVehicles = entities.map { v ->
+                                val local = localById[v.vehicle_id]
+                                if (local != null && !local.route_synced) {
+                                    v.copy(on_route = local.on_route, destination = local.destination, route_synced = false)
+                                } else {
+                                    v.copy(route_synced = true)
+                                }
+                            }
+                            ServiceLocator.smsVehicleDao.deleteByProject(projectId)
+                            ServiceLocator.smsVehicleDao.insertAll(mergedVehicles)
+                            Log.d(TAG, "syncSmsData: inserted ${mergedVehicles.size} vehicles")
+                            val vehMsg = getString(R.string.sync_sms_vehicles_ok, mergedVehicles.size)
+                            withContext(Dispatchers.Main) { onProgress?.invoke(vehMsg) }
                         }
                     }
-                    ServiceLocator.smsVehicleDao.deleteByProject(projectId)
-                    ServiceLocator.smsVehicleDao.insertAll(mergedVehicles)
-                    Log.d(TAG, "syncSmsData: inserted ${mergedVehicles.size} vehicles")
                 }
             }
-        }
 
-        // Project-specific lookups
-        fun logLookup(name: String, resp: retrofit2.Response<okhttp3.ResponseBody>, count: Int) {
-            Log.d(TAG, "syncSMS lookup $name: HTTP ${resp.code()} → parsed $count")
-            if (!resp.isSuccessful) Log.w(TAG, "syncSMS lookup $name error body: ${resp.errorBody()?.string()?.take(200)}")
-        }
+            launch(Dispatchers.Default) {
+                syncSection("areas") {
+                    service.getAreas(projectCode).let { r ->
+                        val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                        parseAreaEntities(raw, projectId).also { list ->
+                            logLookup("areas", r, list.size)
+                            if (list.isNotEmpty()) applyLookupIfChanged("areas_$projectId", raw) {
+                                ServiceLocator.smsAreaDao.deleteByProject(projectId); ServiceLocator.smsAreaDao.insertAll(list)
+                            }
+                        }
+                    }
+                }
+            }
 
-        syncSection("areas") {
-            service.getAreas(projectCode).let { r ->
-                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
-                Log.d(TAG, "syncSMS areas raw(200): ${raw.take(200)}")
-                parseAreaEntities(raw, projectId).also { list ->
-                    logLookup("areas", r, list.size)
-                    if (list.isNotEmpty()) { ServiceLocator.smsAreaDao.deleteByProject(projectId); ServiceLocator.smsAreaDao.insertAll(list) }
+            launch(Dispatchers.Default) {
+                syncSection("specs") {
+                    service.getSpecs(projectCode).let { r ->
+                        val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                        parseSpecEntities(raw, projectId).also { list ->
+                            logLookup("specs", r, list.size)
+                            if (list.isNotEmpty()) applyLookupIfChanged("specs_$projectId", raw) {
+                                ServiceLocator.smsSpecDao.deleteByProject(projectId); ServiceLocator.smsSpecDao.insertAll(list)
+                            }
+                        }
+                    }
                 }
             }
-        }
-        syncSection("specs") {
-            service.getSpecs(projectCode).let { r ->
-                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
-                Log.d(TAG, "syncSMS specs raw(200): ${raw.take(200)}")
-                parseSpecEntities(raw, projectId).also { list ->
-                    logLookup("specs", r, list.size)
-                    if (list.isNotEmpty()) { ServiceLocator.smsSpecDao.deleteByProject(projectId); ServiceLocator.smsSpecDao.insertAll(list) }
-                }
-            }
-        }
-        syncSection("subcontractors") {
-            service.getSubcontractors(projectCode).let { r ->
-                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
-                Log.d(TAG, "syncSMS subcontractors raw(200): ${raw.take(200)}")
-                parseSubcontractorEntities(raw, projectId).also { list ->
-                    logLookup("subcontractors", r, list.size)
-                    if (list.isNotEmpty()) { ServiceLocator.smsSubcontractorDao.deleteByProject(projectId); ServiceLocator.smsSubcontractorDao.insertAll(list) }
-                }
-            }
-        }
 
-        syncSection("bore-sizes") {
-            service.getBoreSizes(projectCode).let { r ->
-                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
-                Log.d(TAG, "syncSMS bore-sizes raw(300): ${raw.take(300)}")
-                parseBoreSizes(raw).also { list ->
-                    logLookup("bore-sizes", r, list.size)
-                    if (list.isNotEmpty()) { ServiceLocator.smsBoreSizeDao.deleteAll(); ServiceLocator.smsBoreSizeDao.insertAll(list) }
+            launch(Dispatchers.Default) {
+                syncSection("subcontractors") {
+                    service.getSubcontractors(projectCode).let { r ->
+                        val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                        parseSubcontractorEntities(raw, projectId).also { list ->
+                            logLookup("subcontractors", r, list.size)
+                            if (list.isNotEmpty()) applyLookupIfChanged("subcontractors_$projectId", raw) {
+                                ServiceLocator.smsSubcontractorDao.deleteByProject(projectId); ServiceLocator.smsSubcontractorDao.insertAll(list)
+                            }
+                        }
+                    }
                 }
             }
-        }
-        syncSection("iso-types") {
-            service.getIsoTypes(projectCode).let { r ->
-                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
-                Log.d(TAG, "syncSMS iso-types raw(300): ${raw.take(300)}")
-                parseIsoTypes(raw).also { list ->
-                    logLookup("iso-types", r, list.size)
-                    if (list.isNotEmpty()) { ServiceLocator.smsIsoTypeDao.deleteAll(); ServiceLocator.smsIsoTypeDao.insertAll(list) }
+
+            launch(Dispatchers.Default) {
+                syncSection("bore-sizes") {
+                    service.getBoreSizes(projectCode).let { r ->
+                        val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                        parseBoreSizes(raw).also { list ->
+                            logLookup("bore-sizes", r, list.size)
+                            if (list.isNotEmpty()) applyLookupIfChanged("bore-sizes", raw) {
+                                ServiceLocator.smsBoreSizeDao.deleteAll(); ServiceLocator.smsBoreSizeDao.insertAll(list)
+                            }
+                        }
+                    }
                 }
             }
-        }
-        syncSection("positions") {
-            service.getPositions(projectCode).let { r ->
-                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
-                parsePositions(raw).also { list ->
-                    logLookup("positions", r, list.size)
-                    if (list.isNotEmpty()) { ServiceLocator.smsPositionDao.deleteAll(); ServiceLocator.smsPositionDao.insertAll(list) }
+
+            launch(Dispatchers.Default) {
+                syncSection("iso-types") {
+                    service.getIsoTypes(projectCode).let { r ->
+                        val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                        parseIsoTypes(raw).also { list ->
+                            logLookup("iso-types", r, list.size)
+                            if (list.isNotEmpty()) applyLookupIfChanged("iso-types", raw) {
+                                ServiceLocator.smsIsoTypeDao.deleteAll(); ServiceLocator.smsIsoTypeDao.insertAll(list)
+                            }
+                        }
+                    }
                 }
             }
-        }
-        syncSection("sub-positions") {
-            service.getSubPositions(projectCode).let { r ->
-                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
-                parseSubPositions(raw, projectId).also { list ->
-                    logLookup("sub-positions", r, list.size)
-                    if (list.isNotEmpty()) { ServiceLocator.smsSubPositionDao.deleteByProject(projectId); ServiceLocator.smsSubPositionDao.insertAll(list) }
+
+            launch(Dispatchers.Default) {
+                syncSection("positions") {
+                    service.getPositions(projectCode).let { r ->
+                        val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                        parsePositions(raw).also { list ->
+                            logLookup("positions", r, list.size)
+                            if (list.isNotEmpty()) applyLookupIfChanged("positions", raw) {
+                                ServiceLocator.smsPositionDao.deleteAll(); ServiceLocator.smsPositionDao.insertAll(list)
+                            }
+                        }
+                    }
                 }
             }
-        }
-        syncSection("spool-statuses") {
-            service.getSpoolStatuses(projectCode).let { r ->
-                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
-                Log.d(TAG, "syncSMS spool-statuses raw(300): ${raw.take(300)}")
-                parseSpoolStatuses(raw).also { list ->
-                    logLookup("spool-statuses", r, list.size)
-                    if (list.isNotEmpty()) { ServiceLocator.smsSpoolStatusDao.deleteAll(); ServiceLocator.smsSpoolStatusDao.insertAll(list) }
+
+            launch(Dispatchers.Default) {
+                syncSection("sub-positions") {
+                    service.getSubPositions(projectCode).let { r ->
+                        val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                        parseSubPositions(raw, projectId).also { list ->
+                            logLookup("sub-positions", r, list.size)
+                            if (list.isNotEmpty()) applyLookupIfChanged("sub-positions_$projectId", raw) {
+                                ServiceLocator.smsSubPositionDao.deleteByProject(projectId); ServiceLocator.smsSubPositionDao.insertAll(list)
+                            }
+                        }
+                    }
                 }
             }
-        }
-        syncSection("units") {
-            service.getUnits(projectCode).let { r ->
-                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
-                parseUnits(raw).also { list ->
-                    logLookup("units", r, list.size)
-                    if (list.isNotEmpty()) { ServiceLocator.smsUnitDao.deleteAll(); ServiceLocator.smsUnitDao.insertAll(list) }
+
+            launch(Dispatchers.Default) {
+                syncSection("spool-statuses") {
+                    service.getSpoolStatuses(projectCode).let { r ->
+                        val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                        parseSpoolStatuses(raw).also { list ->
+                            logLookup("spool-statuses", r, list.size)
+                            if (list.isNotEmpty()) applyLookupIfChanged("spool-statuses", raw) {
+                                ServiceLocator.smsSpoolStatusDao.deleteAll(); ServiceLocator.smsSpoolStatusDao.insertAll(list)
+                            }
+                        }
+                    }
                 }
             }
-        }
-        syncSection("incomplete-statuses") {
-            service.getIncompleteStatuses(projectCode).let { r ->
-                val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
-                parseIncompleteStatuses(raw).also { list ->
-                    logLookup("incomplete-statuses", r, list.size)
-                    if (list.isNotEmpty()) { ServiceLocator.smsIncompleteStatusDao.deleteAll(); ServiceLocator.smsIncompleteStatusDao.insertAll(list) }
+
+            launch(Dispatchers.Default) {
+                syncSection("units") {
+                    service.getUnits(projectCode).let { r ->
+                        val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                        parseUnits(raw).also { list ->
+                            logLookup("units", r, list.size)
+                            if (list.isNotEmpty()) applyLookupIfChanged("units", raw) {
+                                ServiceLocator.smsUnitDao.deleteAll(); ServiceLocator.smsUnitDao.insertAll(list)
+                            }
+                        }
+                    }
+                }
+            }
+
+            launch(Dispatchers.Default) {
+                syncSection("incomplete-statuses") {
+                    service.getIncompleteStatuses(projectCode).let { r ->
+                        val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
+                        parseIncompleteStatuses(raw).also { list ->
+                            logLookup("incomplete-statuses", r, list.size)
+                            if (list.isNotEmpty()) applyLookupIfChanged("incomplete-statuses", raw) {
+                                ServiceLocator.smsIncompleteStatusDao.deleteAll(); ServiceLocator.smsIncompleteStatusDao.insertAll(list)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -921,7 +1117,7 @@ class MainActivity : AppCompatActivity() {
         }
 
     private suspend fun handleGlobalScan(raw: String) {
-        val code = raw.trim().trimStart('﻿')
+        val code = raw.trim().trimStart('\uFEFF')
         Log.d(TAG, "handleGlobalScan: ${code.take(80)}")
         when (val result = parseQr(code)) {
             is QrResult.Spool -> {
@@ -932,6 +1128,7 @@ class MainActivity : AppCompatActivity() {
                     spools.firstOrNull()
                 if (spool != null) {
                     showScanRegisteredDialog(getString(R.string.scan_result_spool_registered, spool.displayCode))
+                    GpsHelper.captureAndSaveSpoolLocation(this@MainActivity, spool.spool_id)
                 } else {
                     showScanNotRegisteredDialog(getString(R.string.scan_result_spool_not_registered)) {
                         navController.navigate(R.id.action_global_newSpoolFragment,

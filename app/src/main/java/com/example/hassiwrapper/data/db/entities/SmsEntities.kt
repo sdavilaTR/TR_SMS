@@ -117,7 +117,14 @@ data class SmsSpecEntity(
     val updated_by: String? = null
 )
 
-@Entity(tableName = "sms_spool")
+@Entity(
+    tableName = "sms_spool",
+    indices = [
+        Index(value = ["project_id", "is_active", "spool_code"]),
+        Index(value = ["project_id", "is_active", "packing_list_id", "zone", "position_id", "sub_position_id"]),
+        Index(value = ["spool_code"])
+    ]
+)
 data class SmsSpoolEntity(
     @PrimaryKey val spool_id: Long,
     val project_id: Int,
@@ -273,7 +280,9 @@ data class SmsIncidentEntity(
     /** Server-assigned incident id, set once [synced]; required to address the photo-upload endpoint. */
     val server_id: Long? = null,
     /** Whether [photo_path] has been uploaded — tracked separately from [synced] since the photo upload is a second, independently-retried call. */
-    val photo_synced: Boolean = false
+    val photo_synced: Boolean = false,
+    /** Code of the terminal (device) that created the incident — from config `device_code` at creation time. */
+    val device_code: String? = null
 )
 
 @Entity(tableName = "sms_audit_log")

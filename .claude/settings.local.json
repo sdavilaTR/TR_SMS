@@ -134,7 +134,14 @@
       "PowerShell($r = Invoke-WebRequest -Uri \"https://login.microsoftonline.com\" -UseBasicParsing -MaximumRedirection 0 -ErrorAction SilentlyContinue; Write-Host \"Status: $\\($r.StatusCode\\)\"; $r.Headers | ConvertTo-Json)",
       "PowerShell(\\(Invoke-WebRequest -Uri \"https://api.ipify.org\" -UseBasicParsing\\).Content)",
       "Bash(./gradlew compileDebugKotlin --rerun-tasks)",
-      "Bash(python3 -m scripts \"C:\\\\TRAPP\\\\AndroidStudio\\\\TR_SMS\\\\CLAUDE.md\")"
+      "Bash(python3 -m scripts \"C:\\\\TRAPP\\\\AndroidStudio\\\\TR_SMS\\\\CLAUDE.md\")",
+      "Bash(adb -s 25270B026D shell dumpsys package com.tr.atlas.trac)",
+      "Bash(/c/Users/elopezs/AppData/Local/Android/Sdk/platform-tools/sqlite3 /c/Users/elopezs/AppData/Local/Temp/claude/C--TRAPP-AndroidStudio-TR-SMS/4242d2db-50a5-40e0-9fcc-a4694075ecc1/scratchpad/atlas.db '.schema projects')",
+      "Bash(/c/Users/elopezs/AppData/Local/Android/Sdk/platform-tools/sqlite3 /c/Users/elopezs/AppData/Local/Temp/claude/C--TRAPP-AndroidStudio-TR-SMS/4242d2db-50a5-40e0-9fcc-a4694075ecc1/scratchpad/atlas.db 'SELECT key FROM config;')",
+      "Bash(/c/Users/elopezs/AppData/Local/Android/Sdk/platform-tools/sqlite3 /c/Users/elopezs/AppData/Local/Temp/claude/C--TRAPP-AndroidStudio-TR-SMS/4242d2db-50a5-40e0-9fcc-a4694075ecc1/scratchpad/atlas.db 'SELECT project_id, project_code, project_name FROM projects WHERE project_id IN \\(3,6,7\\); SELECT '\\\\''---'\\\\''; SELECT key||'\\\\''='\\\\''||value FROM config WHERE key IN \\('\\\\''selected_project_id'\\\\'','\\\\''device_id'\\\\'','\\\\''device_code'\\\\'','\\\\''cached_project_code_6'\\\\''\\);')",
+      "Bash(/c/Users/elopezs/AppData/Local/Android/Sdk/platform-tools/sqlite3 /c/Users/elopezs/AppData/Local/Temp/claude/C--TRAPP-AndroidStudio-TR-SMS/4242d2db-50a5-40e0-9fcc-a4694075ecc1/scratchpad/atlas.db 'SELECT value FROM config WHERE key='\\\\''user_token'\\\\'';')",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(sqlite3 *)"
     ]
   }
 }

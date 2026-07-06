@@ -28,6 +28,7 @@ import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
+import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.services.SmsIncidentService
 import com.example.hassiwrapper.ui.qrscanner.QrResult
 import com.example.hassiwrapper.ui.qrscanner.parseQr
@@ -102,6 +103,15 @@ class NewIncidentFragment : Fragment() {
             }
         }
 
+    private val requestScanCameraPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) launchScanner()
+        }
+
+    private fun launchScanner() {
+        scanCodeLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java))
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_new_incident, container, false)
 
@@ -134,7 +144,10 @@ class NewIncidentFragment : Fragment() {
         loadAutoFilledFields()
 
         btnScanCode.setOnClickListener {
-            scanCodeLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java))
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED
+            ) launchScanner()
+            else requestScanCameraPermission.launch(Manifest.permission.CAMERA)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -225,6 +238,12 @@ class NewIncidentFragment : Fragment() {
                     etSpoolCode.setText(result.spoolCode)
                     etSpoolSuffix.setText(result.spoolSuffix ?: "")
                     Toast.makeText(requireContext(), getString(R.string.incident_scan_spool_filled, result.spoolCode), Toast.LENGTH_SHORT).show()
+                    val pid = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                    val spool = if (result.spoolSuffix != null)
+                        ServiceLocator.smsSpoolDao.findByCodeAndSuffix(pid, result.spoolCode, result.spoolSuffix)
+                    else
+                        ServiceLocator.smsSpoolDao.findByCode(pid, result.spoolCode)
+                    spool?.let { GpsHelper.captureAndSaveSpoolLocation(requireContext(), it.spool_id) }
                 }
                 is QrResult.VehicleId -> {
                     val vehicle = ServiceLocator.smsVehicleDao.getById(result.id)

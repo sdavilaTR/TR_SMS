@@ -14,6 +14,7 @@ import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -28,8 +29,13 @@ import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.textfield.TextInputEditText
 import androidx.transition.TransitionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class CreateSpoolFragment : Fragment() {
 
@@ -37,12 +43,24 @@ class CreateSpoolFragment : Fragment() {
         ALL(null), WORKSHOP("WORKSHOP"), LAYDOWN("LAYDOWN"), SITE("SITE")
     }
 
+    private companion object {
+        const val PAGE_SIZE = 300
+        const val SEARCH_DEBOUNCE_MS = 250L
+    }
+
     private enum class ViewMode { LIST, CHART }
 
-    private val allItems  = mutableListOf<SmsSpoolEntity>()
+    // List/chart data comes straight from SQL — with 100k+ spools per project the old
+    // load-everything-into-memory approach took over a minute on the device.
     private val items     = mutableListOf<SmsSpoolEntity>()
+    private var comboCounts: List<com.example.hassiwrapper.data.db.dao.SpoolComboCount> = emptyList()
+    private var chartCounts: Map<String?, Int> = emptyMap()
+    private var chartTotal = 0
+    private var subCountsRaw: Map<String, Map<Long?, Int>> = emptyMap()
+    private var listJob: Job? = null
     private var filter    = Filter.ALL
     private var viewMode  = ViewMode.CHART
+    private var searchQuery = ""
     private var showZonePct = false
     private val chartCountViews = mutableListOf<Triple<TextView, Int, Int>>()
     private var plPositions: Map<Long, String?> = emptyMap()
@@ -101,7 +119,16 @@ class CreateSpoolFragment : Fragment() {
 
         adapter = SpoolAdapter()
         rv.layoutManager = LinearLayoutManager(requireContext())
+        rv.setHasFixedSize(true)
         rv.adapter = adapter
+
+        view.findViewById<TextInputEditText>(R.id.editSearch).doOnTextChanged { text, _, _, _ ->
+            val query = text?.toString()?.trim().orEmpty()
+            if (query == searchQuery) return@doOnTextChanged
+            searchQuery = query
+            refreshViewState()
+            reloadList(debounceMs = SEARCH_DEBOUNCE_MS)
+        }
 
         toggleFilter.check(R.id.btnFilterAll)
         toggleFilter.addOnButtonCheckedListener { _, checkedId, isChecked ->
@@ -116,7 +143,8 @@ class CreateSpoolFragment : Fragment() {
             subPositionItems = emptyList()
             spinnerSubPos.visibility = View.GONE
             expandSelectedTab(checkedId)
-            applyFilter()
+            refreshViewState()
+            reloadList()
             viewLifecycleOwner.lifecycleScope.launch { updateSubPositionSpinner() }
         }
 
@@ -137,21 +165,36 @@ class CreateSpoolFragment : Fragment() {
         }
     }
 
-    private fun applyFilter() {
-        items.clear()
-        val targetCode = filter.positionCode
-        val posFiltered = if (targetCode == null) {
-            allItems
-        } else {
-            allItems.filter { spool ->
-                spoolPositionCode(spool)?.equals(targetCode, ignoreCase = true) == true
+    /** Reloads the visible page from SQL (position + sub-position + search filters).
+     *  Only the first [PAGE_SIZE] rows are materialized; the count query gives the real total. */
+    private fun reloadList(debounceMs: Long = 0L) {
+        listJob?.cancel()
+        listJob = viewLifecycleOwner.lifecycleScope.launch {
+            if (debounceMs > 0) delay(debounceMs)
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+            val code = filter.positionCode
+            val subId = selectedSubPositionId
+            // Without a search term the total is derivable from the cheap combo aggregates;
+            // the SQL count (full scan with LIKEs) is only paid while searching.
+            val total = if (searchQuery.isEmpty()) {
+                comboCounts.asSequence()
+                    .filter { code == null || resolveComboPosition(it) == code }
+                    .filter { subId == null || it.subId == subId }
+                    .sumOf { it.cnt }
+            } else {
+                ServiceLocator.smsSpoolDao.countFiltered(projectId, code, subId, searchQuery)
             }
+            val page = ServiceLocator.smsSpoolDao.getFilteredPage(projectId, code, subId, searchQuery, PAGE_SIZE)
+            items.clear()
+            items += page
+            adapter.notifyDataSetChanged()
+            txtCount.text = if (total > page.size)
+                getString(R.string.spools_list_count_capped, total, page.size)
+            else
+                getString(R.string.spools_list_count, total)
+            txtEmpty.visibility = if (page.isEmpty() && txtError.visibility != View.VISIBLE) View.VISIBLE else View.GONE
+            refreshViewState()
         }
-        val subId = selectedSubPositionId
-        items += if (subId == null) posFiltered else posFiltered.filter { it.sub_position_id == subId }
-        adapter.notifyDataSetChanged()
-        refreshCounts()
-        refreshViewState()
     }
 
     private suspend fun updateSubPositionSpinner() {
@@ -183,7 +226,7 @@ class CreateSpoolFragment : Fragment() {
                 val newSubId = if (position == 0) null else subPositionItems[position - 1].sub_position_id
                 if (newSubId == selectedSubPositionId) return
                 selectedSubPositionId = newSubId
-                applyFilter()
+                reloadList()
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
@@ -191,8 +234,9 @@ class CreateSpoolFragment : Fragment() {
     }
 
     private fun refreshViewState() {
-        btnToggleView.visibility = if (filter == Filter.ALL) View.VISIBLE else View.GONE
-        val showChart = filter == Filter.ALL && viewMode == ViewMode.CHART && allItems.isNotEmpty()
+        btnToggleView.visibility = if (filter == Filter.ALL && searchQuery.isEmpty()) View.VISIBLE else View.GONE
+        // Searching always shows the list — the chart aggregates zones, not individual matches.
+        val showChart = filter == Filter.ALL && viewMode == ViewMode.CHART && chartTotal > 0 && searchQuery.isEmpty()
         if (viewMode == ViewMode.CHART) {
             btnToggleView.text = getString(R.string.spools_view_action_list)
             btnToggleView.setIconResource(R.drawable.ic_view_list)
@@ -209,15 +253,13 @@ class CreateSpoolFragment : Fragment() {
     private data class ZoneStat(val label: String, val count: Int, val colorRes: Int, val drillCode: String? = null)
 
     private fun updateZoneChart() {
-        fun countFor(code: String) = allItems.count { spool ->
-            spoolPositionCode(spool)?.equals(code, ignoreCase = true) == true
-        }
+        fun countFor(code: String) = chartCounts[code] ?: 0
 
         val workshop = countFor("WORKSHOP")
         val laydown = countFor("LAYDOWN")
         val site = countFor("SITE")
-        val unassigned = allItems.size - workshop - laydown - site
-        val total = allItems.size
+        val unassigned = chartTotal - workshop - laydown - site
+        val total = chartTotal
 
         val zones = listOf(
             ZoneStat(getString(R.string.spools_filter_workshop), workshop, R.color.chart_zone_workshop),
@@ -292,35 +334,63 @@ class CreateSpoolFragment : Fragment() {
         }
     }
 
-    /** Groups the spools of a Laydown/Site bucket by their per-spool sub_position_id.
-     *  Null sub_position_id, or a sub_position that belongs to a different zone, falls
-     *  into a "(sin sub)" bucket so cross-zone assignments don't bleed into this chart. */
+    /** Groups the spools of a Laydown/Site bucket by their per-spool sub_position_id
+     *  (pre-aggregated in SQL, see refreshChartData). Null sub_position_id, or a
+     *  sub_position that belongs to a different zone, falls into a "(sin sub)" bucket
+     *  so cross-zone assignments don't bleed into this chart. */
     private fun subStatsFor(code: String, colorRes: Int): List<ZoneStat> {
         val zonePositionId = positionCodes.entries.firstOrNull { it.value.equals(code, ignoreCase = true) }?.key
-        val inZone = allItems.filter { s ->
-            spoolPositionCode(s)?.equals(code, ignoreCase = true) == true
-        }
-        return inZone.groupingBy { it.sub_position_id }.eachCount().entries
-            .map { (subId, c) ->
-                val validId = subId?.takeIf { zonePositionId != null && subPositionPositionIds[it] == zonePositionId }
+        return (subCountsRaw[code] ?: emptyMap()).entries
+            .groupBy { (subId, _) ->
+                subId?.takeIf { zonePositionId != null && subPositionPositionIds[it] == zonePositionId }
+            }
+            .map { (validId, entries) ->
                 val label = validId?.let { subPositionLabels[it] } ?: getString(R.string.spools_chart_subpos_none)
-                ZoneStat(label, c, colorRes)
+                ZoneStat(label, entries.sumOf { it.value }, colorRes)
             }
             .sortedByDescending { it.count }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    /** Resolves the display label for every distinct sub_position_id currently loaded. */
-    private suspend fun refreshSubPositionLabels() {
-        val ids = allItems.mapNotNull { it.sub_position_id }.toSet()
-        if (ids.isEmpty()) {
-            subPositionLabels = emptyMap()
-            subPositionPositionIds = emptyMap()
-            return
+    /** Loads chart aggregates from one GROUP BY over the raw location combos (covered by
+     *  index, few result rows) and resolves each combo to a position code in Kotlin. */
+    private suspend fun refreshChartData(projectId: Int) {
+        refreshSubPositionLabels(projectId)
+        comboCounts = ServiceLocator.smsSpoolDao.countByLocationCombo(projectId)
+        chartTotal = comboCounts.sumOf { it.cnt }
+        val byCode = mutableMapOf<String?, Int>()
+        val bySub = mutableMapOf<String, MutableMap<Long?, Int>>()
+        comboCounts.forEach { combo ->
+            val code = resolveComboPosition(combo)
+            byCode.merge(code, combo.cnt, Int::plus)
+            if (code == "LAYDOWN" || code == "SITE") {
+                bySub.getOrPut(code) { mutableMapOf() }.merge(combo.subId, combo.cnt, Int::plus)
+            }
         }
-        val dao = ServiceLocator.smsSubPositionDao
-        val entities = ids.mapNotNull { id -> dao.getById(id) }
+        chartCounts = byCode
+        subCountsRaw = bySub
+    }
+
+    /** Kotlin twin of the DAO's SPOOL_RESOLVED_POSITION SQL expression — same 3-level
+     *  fallback (PL position → zone exact/prefix match → position_id), uppercased.
+     *  Keep both in sync. */
+    private fun resolveComboPosition(combo: com.example.hassiwrapper.data.db.dao.SpoolComboCount): String? {
+        val fromPl = combo.plId?.let { plPositions[it] }
+        if (!fromPl.isNullOrBlank()) return fromPl.uppercase()
+        val zone = combo.zone
+        if (!zone.isNullOrBlank()) {
+            val zUp = zone.uppercase()
+            positionCodes.values.firstOrNull { code ->
+                zUp == code.uppercase() || zUp.startsWith("${code.uppercase()}/")
+            }?.let { return it.uppercase() }
+        }
+        return combo.positionId?.let { positionCodes[it]?.uppercase() }
+    }
+
+    /** Resolves the display label for every sub-position of the project (small table). */
+    private suspend fun refreshSubPositionLabels(projectId: Int) {
+        val entities = ServiceLocator.smsSubPositionDao.getByProject(projectId)
         subPositionLabels      = entities.associate { sp -> sp.sub_position_id to sp.full_path.ifBlank { sp.name.ifBlank { sp.code } } }
         subPositionPositionIds = entities.associate { sp -> sp.sub_position_id to sp.position_id }
     }
@@ -339,22 +409,6 @@ class CreateSpoolFragment : Fragment() {
         positionCodes = ServiceLocator.smsPositionDao.getAll().associate { it.position_id to it.code }
     }
 
-    /** Resolves a position code for a spool with 3 levels of fallback:
-     *  1. PL's own position String (set on receive/send).
-     *  2. Spool zone prefix match (handles "LAYDOWN/SECTOR-1" → "LAYDOWN", or exact "LAYDOWN").
-     *  3. Spool position_id → code lookup (newly created spools with no PL). */
-    private fun spoolPositionCode(spool: com.example.hassiwrapper.data.db.entities.SmsSpoolEntity): String? {
-        val fromPl = spool.packing_list_id?.let { plPositions[it] }
-        if (!fromPl.isNullOrBlank()) return fromPl
-        val zone = spool.zone
-        if (!zone.isNullOrBlank()) {
-            val zUp = zone.uppercase()
-            positionCodes.values.firstOrNull { code -> zUp == code || zUp.startsWith("$code/") }
-                ?.let { return it }
-        }
-        return spool.position_id?.let { positionCodes[it] }
-    }
-
     private fun loadSpools(forceRefresh: Boolean) {
         viewLifecycleOwner.lifecycleScope.launch {
             showLoading(true)
@@ -362,103 +416,63 @@ class CreateSpoolFragment : Fragment() {
             try {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
 
-                val totalInDb      = ServiceLocator.smsSpoolDao.countAll()
-                val projectIds     = ServiceLocator.smsSpoolDao.distinctProjectIds()
-                val countForProj   = ServiceLocator.smsSpoolDao.countByProject(projectId)
-                val countActive    = ServiceLocator.smsSpoolDao.countActiveByProject(projectId)
-                val allInDb        = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
-                Log.d("SpoolsDebug", "projectId=$projectId | totalInDb=$totalInDb | projectIds=$projectIds | countForProj=$countForProj | countActive=$countActive | forceRefresh=$forceRefresh")
-                Log.d("SpoolsDebug", "getByProjectIgnoreActive($projectId) = ${allInDb.size} items")
-                allInDb.forEach { s -> Log.d("SpoolsDebug", "  spool_id=${s.spool_id} code=${s.spool_code} pid=${s.project_id} active=${s.is_active} pl=${s.packing_list_id} position_id=${s.position_id}") }
-                txtCount.text = "DBG pid=$projectId total=$totalInDb pids=$projectIds proj=$countForProj active=$countActive ignoreActive=${allInDb.size}"
-
                 refreshPackingListMap(projectId)
-                val cached = ServiceLocator.smsSpoolDao.getByProject(projectId)
-                if (cached.isNotEmpty() && !forceRefresh) {
-                    Log.d("SpoolsDebug", "Using cache: ${cached.size} spools")
-                    allItems.clear()
-                    allItems += cached
-                    refreshSubPositionLabels()
-                    updateSubPositionSpinner()
-                    applyFilter()
-                    showLoading(false)
+                if (!forceRefresh && ServiceLocator.smsSpoolDao.countActiveByProject(projectId) > 0) {
+                    refreshAllViews(projectId)
                     return@launch
                 }
 
-                val project = ServiceLocator.projectDao.getById(projectId)
-                Log.d("SpoolsDebug", "projectDao.getById($projectId) = $project")
-                val projectCode = project?.project_code
+                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
                 if (projectCode.isNullOrBlank()) {
-                    val allProjects = ServiceLocator.projectDao.getAll()
-                    Log.e("SpoolsDebug", "No project for id=$projectId. All projects in DB: $allProjects")
-                    showError(getString(R.string.spools_list_error_prefix, "Sin proyecto id=$projectId en BD. Proyectos: ${allProjects.map { it.project_id }}"))
+                    showError(getString(R.string.spools_list_error_prefix, "Sin proyecto id=$projectId en BD"))
                     return@launch
                 }
 
-                Log.d("SpoolsDebug", "Fetching from API: getSpools($projectCode)")
                 val response = ServiceLocator.apiClient.getService().getSpools(projectCode)
-                Log.d("SpoolsDebug", "API response: code=${response.code()} ok=${response.isSuccessful}")
                 if (response.isSuccessful) {
-                    val raw = response.body()?.string().orEmpty()
-                    Log.d("SpoolsJSON", "Raw (${raw.length} chars): ${raw.take(500)}")
-                    val entities = parseSpoolEntities(raw, projectId)
-                    Log.d("SpoolsDebug", "Parsed ${entities.size} entities from API")
-                    entities.forEach { e -> Log.d("SpoolsDebug", "  entity spool_id=${e.spool_id} code=${e.spool_code} suffix=${e.spool_suffix} active=${e.is_active} pl=${e.packing_list_id}") }
-                    val locallyDeleted = SpoolDetailBottomSheet.locallyDeletedSpoolIds
-                    val activeEntities = entities.filter { it.is_active && it.spool_id !in locallyDeleted }
-                    if (activeEntities.isNotEmpty()) {
-                        ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
-                        ServiceLocator.smsSpoolDao.insertAll(activeEntities)
-                        Log.d("SpoolsDebug", "Inserted ${activeEntities.size} spools (${entities.size - activeEntities.size} inactive/deleted skipped)")
-                    } else {
-                        ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
-                        Log.d("SpoolsDebug", "No active spools to insert — cleared synced, kept unsynced")
+                    // Body read (IO) + JSON parse (CPU) off the main thread — with thousands
+                    // of spools this froze the UI for seconds.
+                    // Snapshot: the live set is mutated on the main thread while we parse.
+                    val locallyDeleted = SpoolDetailBottomSheet.locallyDeletedSpoolIds.toSet()
+                    val activeEntities = withContext(Dispatchers.Default) {
+                        val raw = response.body()?.string().orEmpty()
+                        parseSpoolEntities(raw, projectId)
+                            .filter { it.is_active && it.spool_id !in locallyDeleted }
                     }
-                    allItems.clear()
-                    allItems += ServiceLocator.smsSpoolDao.getByProject(projectId)
-                    Log.d("SpoolsDebug", "After insert, getByProject($projectId) = ${allItems.size}")
-                    refreshSubPositionLabels()
-                    updateSubPositionSpinner()
-                    applyFilter()
+                    ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
+                    if (activeEntities.isNotEmpty()) ServiceLocator.smsSpoolDao.insertAll(activeEntities)
+                    refreshAllViews(projectId)
                 } else {
-                    val err = response.errorBody()?.string().orEmpty()
-                    Log.e("SpoolsDebug", "HTTP ${response.code()}: $err")
                     showError(getString(R.string.spools_list_error_http, response.code()))
-                    if (allItems.isEmpty()) {
-                        allItems += ServiceLocator.smsSpoolDao.getByProject(projectId)
-                        refreshSubPositionLabels()
-                        applyFilter()
-                    }
+                    refreshAllViews(projectId)   // whatever is cached locally
                 }
             } catch (e: Exception) {
-                Log.e("SpoolsDebug", "Exception in loadSpools", e)
+                Log.e("CreateSpoolFragment", "loadSpools failed", e)
                 showError(e.message ?: e.javaClass.simpleName)
-                if (allItems.isEmpty()) {
-                    try {
-                        val fallbackId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                        allItems += ServiceLocator.smsSpoolDao.getByProject(fallbackId)
-                        applyFilter()
-                    } catch (_: Exception) {}
-                }
+                try {
+                    val fallbackId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                    refreshAllViews(fallbackId)
+                } catch (_: Exception) {}
             } finally {
                 showLoading(false)
             }
         }
     }
 
+    private suspend fun refreshAllViews(projectId: Int) {
+        refreshChartData(projectId)
+        updateSubPositionSpinner()
+        reloadList()
+    }
+
     private fun showLoading(loading: Boolean) {
-        progress.visibility = if (loading && allItems.isEmpty()) View.VISIBLE else View.GONE
+        progress.visibility = if (loading && chartTotal == 0 && items.isEmpty()) View.VISIBLE else View.GONE
         if (!loading) swipe.isRefreshing = false
     }
 
     private fun showError(message: String) {
         txtError.visibility = View.VISIBLE
         txtError.text = getString(R.string.spools_list_error_prefix, message)
-    }
-
-    private fun refreshCounts() {
-        txtCount.text = getString(R.string.spools_list_count, items.size)
-        txtEmpty.visibility = if (items.isEmpty() && txtError.visibility != View.VISIBLE) View.VISIBLE else View.GONE
     }
 
     private inner class SpoolAdapter : RecyclerView.Adapter<SpoolAdapter.VH>() {
@@ -479,7 +493,6 @@ class CreateSpoolFragment : Fragment() {
 
         override fun onBindViewHolder(h: VH, position: Int) {
             val spool = items[position]
-            Log.d("SpoolsUI", "bind[${spool.spool_id}] code=${spool.spool_code} suffix=${spool.spool_suffix}")
             h.code.text = spool.spool_code.ifBlank { spool.spool_id.toString() }
             h.suffix.text = spool.spool_suffix.orEmpty()
             if (!spool.line_code.isNullOrBlank()) {

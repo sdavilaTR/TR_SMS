@@ -10,6 +10,7 @@ import com.example.hassiwrapper.network.ApiClient
 import com.example.hassiwrapper.network.AuthRepository
 import com.example.hassiwrapper.network.AtlasApiService
 import com.example.hassiwrapper.network.dto.*
+import com.google.gson.JsonParser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -17,6 +18,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.Response
 import java.io.File
 import java.time.Instant
 
@@ -42,7 +44,8 @@ class SyncService(
     private val smsVehicleLoadingDao: SmsVehicleLoadingDao? = null,
     private val smsTransferDao: SmsTransferDao? = null,
     private val smsIncidentDao: SmsIncidentDao? = null,
-    private val outboxService: OutboxService? = null
+    private val outboxService: OutboxService? = null,
+    private val smsSpoolLocationDao: SmsSpoolLocationDao? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -55,6 +58,10 @@ class SyncService(
 
     private val syncMutex = Mutex()
     private val smsUploadMutex = Mutex()
+    // doSync (syncMutex) and doSmsUploads (smsUploadMutex) both call uploadSpoolLocations
+    // and don't block each other, so this locks the upload itself to prevent both paths
+    // reading the same unsynced rows before either has marked them synced.
+    private val spoolLocationUploadMutex = Mutex()
 
     /** Thrown for errors that are worth retrying (network issues, server 5xx). */
     private class TransientException(msg: String, cause: Throwable? = null) : Exception(msg, cause)
@@ -86,19 +93,19 @@ class SyncService(
      * [onRetry] is called (on the caller's coroutine dispatcher) each time a retry
      * is about to be scheduled, with the attempt number and wait in seconds.
      */
-    suspend fun fullSync(onRetry: ((RetryState) -> Unit)? = null): SyncResult {
+    suspend fun fullSync(onRetry: ((RetryState) -> Unit)? = null, onProgress: ((String) -> Unit)? = null): SyncResult {
         if (!syncMutex.tryLock()) {
             Log.i(TAG, "Sync already in progress, skipping concurrent call")
             return SyncResult(success = true)
         }
         try {
-        return fullSyncLocked(onRetry)
+        return fullSyncLocked(onRetry, onProgress)
         } finally {
             syncMutex.unlock()
         }
     }
 
-    private suspend fun fullSyncLocked(onRetry: ((RetryState) -> Unit)? = null): SyncResult {
+    private suspend fun fullSyncLocked(onRetry: ((RetryState) -> Unit)? = null, onProgress: ((String) -> Unit)? = null): SyncResult {
         val deadline = System.currentTimeMillis() + RETRY_BUDGET_MS
         var attempt = 0
         var waitMs = RETRY_INITIAL_MS
@@ -110,7 +117,7 @@ class SyncService(
         while (true) {
             attempt++
             try {
-                return doSync()
+                return doSync(onProgress = onProgress)
             } catch (e: TransientException) {
                 val remaining = deadline - System.currentTimeMillis()
                 if (remaining <= 0) {
@@ -177,6 +184,8 @@ class SyncService(
             uploadTransfers(api)
             uploadVehicleRouteState(api)
             uploadSmsIncidents(api)
+            uploadSpoolLocations(api)
+            uploadPendingRelocations(api)
             outboxService?.drain(api)?.let { r ->
                 if (r.transient) Log.w(TAG, "syncSmsUploads: outbox drain stopped (transient), will retry next sync")
             }
@@ -191,11 +200,12 @@ class SyncService(
      * One full sync attempt. Throws [TransientException] for retryable failures.
      * Returns a final [SyncResult] for non-retryable outcomes (including partial success).
      */
-    private suspend fun doSync(didReLogin: Boolean = false): SyncResult {
+    private suspend fun doSync(onProgress: ((String) -> Unit)? = null, didReLogin: Boolean = false): SyncResult {
         val api = apiClient.getService()
 
         // 0. Ensure token is still valid; auto-re-login if expired before hitting the API
         if (!didReLogin && authRepo != null && !authRepo.isAuthenticated()) {
+            onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_session))
             Log.i(TAG, "Token expired, attempting auto-re-login before sync")
             if (authRepo.reLoginWithStoredCode(api)) {
                 Log.i(TAG, "Auto-re-login succeeded after token expiry")
@@ -205,6 +215,7 @@ class SyncService(
         }
 
         // 1. Health check — network errors and 5xx are transient
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_server))
         val healthResp = try {
             api.health()
         } catch (e: Exception) {
@@ -219,7 +230,7 @@ class SyncService(
                 Log.i(TAG, "Auth failed (HTTP ${healthResp.code()}), attempting auto-re-login")
                 if (authRepo.reLoginWithStoredCode(api)) {
                     Log.i(TAG, "Auto-re-login succeeded, retrying sync")
-                    return doSync(didReLogin = true)
+                    return doSync(onProgress = onProgress, didReLogin = true)
                 }
                 Log.w(TAG, "Auto-re-login failed — no stored device code or credentials invalid")
             }
@@ -227,12 +238,11 @@ class SyncService(
         }
 
         // 2. Register device (non-fatal, no retry)
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_register))
         registerDevice(api)
 
         // 3. Download master data (projects/contractors/vehicles; best-effort, if it fails we still upload).
-        // The persons/zones/crypto-keys/compliance sections of this same payload are not parsed —
-        // nothing in the app reads them, and parsing them ties our SMS sync to legacy AC backend
-        // bugs (e.g. a SQL error in the persons query) that have nothing to do with this data.
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_download))
         var vehicleResult = VehicleResult()
         try {
             val projectId = configRepo.getInt("selected_project_id") ?: 6
@@ -241,6 +251,9 @@ class SyncService(
                 val data = downloadResp.body()
                 if (data != null) {
                     vehicleResult = applyMasterData(data)
+                    if (vehicleResult.added + vehicleResult.updated > 0) {
+                        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_download_ok, vehicleResult.added, vehicleResult.updated))
+                    }
                 } else {
                     Log.w(TAG, "downloadSync returned null body")
                 }
@@ -251,21 +264,27 @@ class SyncService(
             Log.w(TAG, "downloadSync exception (non-fatal): ${e.message}")
         }
 
-        // 4b. Upload entities still on their own queues (not the outbox):
-        //  - Send-flow packing lists (positive ids) created in SendPackingListFragment
-        //  - vehicle loadings / transfers / route-state (separate synced/route_synced flags)
-        //  - SMS incidents (smsIncidentDao synced flag, idempotent upsert by uuid)
-        // Spool/vehicle/PL creates from the standard CRUD screens now go through the outbox
-        // drain below; uploadNewSpools/uploadNewVehicles were removed because re-POSTing as a
-        // field-incomplete CREATE raced the outbox op (server dedup kept the incomplete row).
+        // 4b. Upload entities still on their own queues (not the outbox).
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_pl))
         uploadNewPackingLists(api)
+
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_loadings))
         uploadVehicleLoadings(api)
+
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_transfers))
         uploadTransfers(api)
+
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_route))
         uploadVehicleRouteState(api)
+
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_incidents))
         uploadSmsIncidents(api)
 
+        uploadSpoolLocations(api)
+        uploadPendingRelocations(api)
+
         // 4c. Drain the SMS mutation outbox in order (create/update/delete/assign).
-        // A transient failure stops the drain and surfaces here so the retry budget re-runs.
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_outbox))
         outboxService?.drain(api)?.let { r ->
             if (r.transient) throw TransientException(AtlasApp.instance.getString(R.string.sync_error_outbox_retry))
         }
@@ -273,7 +292,10 @@ class SyncService(
         configRepo.set("last_sync", Instant.now().toString())
 
         // 6. Heartbeat telemetry (best-effort, always at the end)
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_heartbeat))
         heartbeatManager?.sendHeartbeat()
+
+        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_done))
 
         return SyncResult(
             success = true,
@@ -354,7 +376,10 @@ class SyncService(
                     insurance_expiry = v.insuranceExpiry ?: v.insuranceExpirySnake,
                     inspection_expiry = v.inspectionExpiry ?: v.inspectionExpirySnake,
                     is_active = v.isActive ?: v.isActiveSnake ?: true,
-                    badge_printed = v.badgePrinted ?: v.badgePrintedSnake ?: false
+                    badge_printed = v.badgePrinted ?: v.badgePrintedSnake ?: false,
+                    is_compliant = v.isCompliant ?: true,
+                    inactive_reason_code = v.inactiveReasonCode,
+                    inactive_reason_detail = v.inactiveReasonDetail
                 )
             }
             if (entities.isNotEmpty() && vehicleDao != null) {
@@ -544,56 +569,185 @@ class SyncService(
         if (synced.isNotEmpty()) dao.markSynced(synced)
     }
 
+    // ── Per-spool position / sub-position upload ──────────────────────────────
+
+    /** Pushes a spool's position + sub-position to the server via PUT status-flags.
+     *  GET-merge-PUT: reads the current flags row first so the overwrite doesn't wipe
+     *  hold/damaged/status/dates. If the GET 404s (spool has no flags row yet — common
+     *  for ETL-created spools that never got one), PUTs a defaults body instead: the
+     *  backend PUT is a MERGE upsert and is the only API path that can create the row.
+     *  Any other GET failure still aborts, so a transient error can't overwrite real
+     *  server flags with defaults. Best-effort — returns false (and logs) on failure.
+     *  Called after a local RECEIVE or QR relocate; the local field is the source of truth. */
+    suspend fun uploadSpoolStatusFlags(
+        projectCode: String,
+        spoolId: Long,
+        positionId: Int?,
+        subPositionId: Long?
+    ): Boolean {
+        return try {
+            val api = apiClient.getService()
+            val getResp = api.getSpoolStatusFlags(projectCode, spoolId.toString())
+            val body: SpoolStatusFlagsRequest
+            if (getResp.code() == 404) {
+                Log.i(TAG, "status-flags GET $spoolId 404 — no server row, creating via PUT upsert")
+                body = SpoolStatusFlagsRequest(
+                    spoolId       = spoolId,
+                    positionId    = positionId,
+                    subPositionId = subPositionId
+                )
+            } else if (!getResp.isSuccessful) {
+                Log.w(TAG, "status-flags GET $spoolId HTTP ${getResp.code()} — skipping upload")
+                return false
+            } else {
+                val json = getResp.body()?.string().orEmpty()
+                if (json.isBlank()) {
+                    Log.w(TAG, "status-flags GET $spoolId empty body — skipping upload")
+                    return false
+                }
+                val o = JsonParser.parseString(json).asJsonObject
+                fun optInt(k: String): Int? = o.get(k)?.takeIf { !it.isJsonNull }?.asInt
+                fun optLong(k: String): Long? = o.get(k)?.takeIf { !it.isJsonNull }?.asLong
+                fun optBool(k: String): Boolean = o.get(k)?.takeIf { !it.isJsonNull }?.asBoolean ?: false
+                fun optStr(k: String): String? = o.get(k)?.takeIf { !it.isJsonNull }?.asString
+                body = SpoolStatusFlagsRequest(
+                    spoolId                   = spoolId,
+                    statusId                  = optInt("statusId"),
+                    incompleteStatusId        = optInt("incompleteStatusId"),
+                    positionId                = positionId ?: optInt("positionId"),
+                    subPositionId             = subPositionId,
+                    hold                      = optBool("hold"),
+                    damaged                   = optBool("damaged"),
+                    returnedToFactory         = optBool("returnedToFactory"),
+                    positionStatusDiscrepancy = optBool("positionStatusDiscrepancy"),
+                    reviewDiscrepancy         = optBool("reviewDiscrepancy"),
+                    lastEventDate             = optStr("lastEventDate"),
+                    pcaStatusDate             = optStr("pcaStatusDate"),
+                    pcaEntryDate              = optStr("pcaEntryDate")
+                )
+            }
+            val putResp = api.updateSpoolStatusFlags(projectCode, spoolId, body)
+            if (putResp.isSuccessful) {
+                Log.i(TAG, "status-flags PUT $spoolId ok (pos=$positionId sub=$subPositionId)")
+                true
+            } else {
+                Log.w(TAG, "status-flags PUT $spoolId HTTP ${putResp.code()}: ${putResp.errorBody()?.string()}")
+                false
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "status-flags upload $spoolId error: ${e.message}")
+            false
+        }
+    }
+
     // ── SMS incident upload ───────────────────────────────────────────────────
 
     private suspend fun uploadSmsIncidents(api: AtlasApiService) {
         val dao = smsIncidentDao ?: return
         val unsynced = dao.getUnsynced()
-        if (unsynced.isEmpty()) return
 
-        Log.i(TAG, "Uploading ${unsynced.size} SMS incident(s)")
-        val synced = mutableListOf<Long>()
+        if (unsynced.isNotEmpty()) {
+            Log.i(TAG, "Uploading ${unsynced.size} SMS incident(s)")
+            val synced = mutableListOf<Long>()
 
-        for (inc in unsynced) {
-            val project = projectDao.getById(inc.project_id)
-            val projectCode = project?.project_code
-            if (projectCode.isNullOrBlank()) {
-                Log.w(TAG, "No project code for SMS incident ${inc.id}, skipping")
+            for (inc in unsynced) {
+                val project = projectDao.getById(inc.project_id)
+                val projectCode = project?.project_code
+                if (projectCode.isNullOrBlank()) {
+                    Log.w(TAG, "No project code for SMS incident ${inc.id}, skipping")
+                    continue
+                }
+                try {
+                    val body = CreateSmsIncidentRequest(
+                        uuid           = inc.uuid,
+                        projectCode    = projectCode,
+                        spoolCode      = inc.spool_code,
+                        spoolSuffix    = inc.spool_suffix,
+                        description    = inc.description,
+                        vehiclePlate   = inc.vehicle_plate,
+                        locationType   = inc.location_type,
+                        locationDetail = inc.location_detail,
+                        severity       = inc.severity,
+                        positionId     = inc.position_id,
+                        subPositionId  = inc.sub_position_id,
+                        positionCode   = inc.position_code,
+                        authorName     = inc.author_name,
+                        eventDate      = inc.event_date,
+                        status         = inc.status,
+                        closedBy       = inc.closed_by,
+                        closedAt       = inc.closed_at
+                    )
+                    val response = api.createSmsIncident(projectCode, body)
+                    if (response.isSuccessful) {
+                        synced.add(inc.id)
+                        parseIncidentServerId(response)?.let { dao.setServerId(inc.id, it) }
+                        Log.i(TAG, "SMS incident ${inc.id} uploaded")
+                    } else {
+                        Log.e(TAG, "SMS incident ${inc.id} upload failed: HTTP ${response.code()}")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "SMS incident ${inc.id} upload error: ${e.message}")
+                }
+            }
+
+            if (synced.isNotEmpty()) dao.markSynced(synced)
+        }
+
+        uploadSmsIncidentPhotos(api, dao)
+    }
+
+    /**
+     * Second pass, decoupled from [uploadSmsIncidents]: uploads the local damage photo for
+     * any incident that has a server id but hasn't had its photo accepted yet. Kept separate
+     * so a photo failure (or the endpoint not existing yet on this environment) never blocks
+     * the metadata upload above, and is retried on its own next cycle.
+     */
+    private suspend fun uploadSmsIncidentPhotos(api: AtlasApiService, dao: SmsIncidentDao) {
+        val pending = dao.getPendingPhotoUploads()
+        if (pending.isEmpty()) return
+
+        Log.i(TAG, "Uploading ${pending.size} SMS incident photo(s)")
+        for (inc in pending) {
+            val serverId = inc.server_id ?: continue
+            val photoPath = inc.photo_path ?: continue
+            val projectCode = projectDao.getById(inc.project_id)?.project_code
+            if (projectCode.isNullOrBlank()) continue
+
+            val file = File(photoPath)
+            if (!file.exists()) {
+                Log.w(TAG, "SMS incident ${inc.id} photo missing on disk ($photoPath) — giving up on it")
+                dao.markPhotoSynced(inc.id)
                 continue
             }
             try {
-                val body = CreateSmsIncidentRequest(
-                    uuid           = inc.uuid,
-                    projectCode    = projectCode,
-                    spoolCode      = inc.spool_code,
-                    spoolSuffix    = inc.spool_suffix,
-                    description    = inc.description,
-                    vehiclePlate   = inc.vehicle_plate,
-                    locationType   = inc.location_type,
-                    locationDetail = inc.location_detail,
-                    severity       = inc.severity,
-                    positionId     = inc.position_id,
-                    positionCode   = inc.position_code,
-                    authorName     = inc.author_name,
-                    eventDate      = inc.event_date,
-                    status         = inc.status,
-                    closedBy       = inc.closed_by,
-                    closedAt       = inc.closed_at
+                val part = MultipartBody.Part.createFormData(
+                    "file", file.name, file.asRequestBody("image/jpeg".toMediaType())
                 )
-                val response = api.createSmsIncident(projectCode, body)
+                val response = api.uploadSmsIncidentPhoto(projectCode, serverId, part)
                 if (response.isSuccessful) {
-                    synced.add(inc.id)
-                    Log.i(TAG, "SMS incident ${inc.id} uploaded")
+                    dao.markPhotoSynced(inc.id)
+                    Log.i(TAG, "SMS incident ${inc.id} photo uploaded")
                 } else {
-                    Log.e(TAG, "SMS incident ${inc.id} upload failed: HTTP ${response.code()}")
+                    Log.e(TAG, "SMS incident ${inc.id} photo upload failed: HTTP ${response.code()}")
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "SMS incident ${inc.id} upload error: ${e.message}")
+                Log.w(TAG, "SMS incident ${inc.id} photo upload error: ${e.message}")
             }
         }
-
-        if (synced.isNotEmpty()) dao.markSynced(synced)
     }
+
+    /** Pulls the server-assigned incident id out of createSmsIncident's raw JSON response body. */
+    private fun parseIncidentServerId(resp: Response<okhttp3.ResponseBody>): Long? = try {
+        val el = JsonParser.parseString(resp.body()?.string().orEmpty())
+        val obj = when {
+            el.isJsonObject && el.asJsonObject.has("data") && !el.asJsonObject.get("data").isJsonNull ->
+                el.asJsonObject.getAsJsonObject("data")
+            el.isJsonObject -> el.asJsonObject
+            else -> null
+        }
+        obj?.get("incidentId")?.takeIf { !it.isJsonNull }?.asLong
+            ?: obj?.get("id")?.takeIf { !it.isJsonNull }?.asLong
+    } catch (_: Exception) { null }
 
     // ── Vehicle route state upload ────────────────────────────────────────────
 
@@ -620,7 +774,9 @@ class SyncService(
                     api.setVehicleOffRoute(projectCode, vehicle.vehicle_id)
                 }
                 if (response.isSuccessful) {
-                    synced.add(vehicle.vehicle_id)
+                    // Only mark route_synced=1 when going off-route: server doesn't persist on_route=true
+                    // in GET /vehicles, so trusting server after on-route upload would flip on_route=false.
+                    if (!vehicle.on_route) synced.add(vehicle.vehicle_id)
                     Log.i(TAG, "Vehicle ${vehicle.vehicle_id} route state synced (on_route=${vehicle.on_route})")
                 } else {
                     Log.e(TAG, "Vehicle ${vehicle.vehicle_id} route state failed: HTTP ${response.code()}")
@@ -631,6 +787,80 @@ class SyncService(
         }
 
         if (synced.isNotEmpty()) dao.markRouteStateSynced(synced)
+    }
+
+    // ── Pending offline relocation retry ─────────────────────────────────────
+    //
+    // Spools relocated offline (QR scan / RECEIVE) have synced=false but the status-flags PUT
+    // is never retried automatically — it only fires inline during the relocation.  This step
+    // retries it on the next sync cycle so the server gets the correct position/sub-position.
+
+    private suspend fun uploadPendingRelocations(api: AtlasApiService) {
+        val dao = smsSpoolDao ?: return
+        val pending = dao.getUnsyncedRelocated()
+        if (pending.isEmpty()) return
+
+        Log.i(TAG, "uploadPendingRelocations: ${pending.size} pending spool relocation(s)")
+        val projectId = configRepo.getInt("selected_project_id") ?: 6
+        val projectCode = projectDao.getById(projectId)?.project_code
+        if (projectCode.isNullOrBlank()) {
+            Log.w(TAG, "uploadPendingRelocations: no project code for id=$projectId, skipping")
+            return
+        }
+
+        val synced = mutableListOf<Long>()
+        for (spool in pending) {
+            val ok = uploadSpoolStatusFlags(projectCode, spool.spool_id, spool.position_id, spool.sub_position_id)
+            if (ok) synced.add(spool.spool_id)
+        }
+        if (synced.isNotEmpty()) dao.markSynced(synced)
+    }
+
+    // ── Spool GPS location upload ─────────────────────────────────────────────
+
+    private suspend fun uploadSpoolLocations(api: AtlasApiService) {
+        if (!spoolLocationUploadMutex.tryLock()) return
+        try {
+            val dao = smsSpoolLocationDao ?: return
+            val unsynced = dao.getUnsynced()
+            if (unsynced.isEmpty()) return
+
+            Log.i(TAG, "Uploading ${unsynced.size} spool location(s)")
+            val projectId = configRepo.getInt("selected_project_id") ?: 6
+            val projectCode = projectDao.getById(projectId)?.project_code
+            if (projectCode.isNullOrBlank()) {
+                Log.w(TAG, "uploadSpoolLocations: no project code for id=$projectId, skipping")
+                return
+            }
+
+            val synced = mutableListOf<Long>()
+            for (loc in unsynced) {
+                try {
+                    val body = SpoolLocationRequest(
+                        latitude     = loc.latitude,
+                        longitude    = loc.longitude,
+                        gpsAccuracyM = loc.gps_accuracy_m,
+                        capturedAt   = loc.captured_at,
+                        capturedBy   = loc.captured_by
+                    )
+                    val response = api.postSpoolLocation(projectCode, loc.spool_id, body)
+                    if (response.isSuccessful) {
+                        // location_id is a local-only autoincrement key (nothing else references it
+                        // as a FK); just mark synced rather than remapping it to the server-assigned
+                        // id, which risked colliding with an existing local PK.
+                        synced.add(loc.location_id)
+                        Log.i(TAG, "Spool location ${loc.location_id} → spool ${loc.spool_id} uploaded")
+                    } else {
+                        Log.w(TAG, "Spool location ${loc.location_id} upload HTTP ${response.code()}")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Spool location ${loc.location_id} upload error: ${e.message}")
+                }
+            }
+            if (synced.isNotEmpty()) dao.markSynced(synced)
+        } finally {
+            spoolLocationUploadMutex.unlock()
+        }
     }
 
 }

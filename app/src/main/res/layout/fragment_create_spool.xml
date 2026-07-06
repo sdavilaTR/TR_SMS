@@ -29,6 +29,28 @@
         android:visibility="gone"
         android:layout_marginBottom="8dp" />
 
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/searchLayout"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:hint="@string/spools_search_hint"
+        app:startIconDrawable="@drawable/ic_search"
+        app:endIconMode="clear_text"
+        app:boxBackgroundColor="@color/surface">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editSearch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:maxLines="1"
+            android:textSize="14sp" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
     <com.google.android.material.button.MaterialButtonToggleGroup
         android:id="@+id/toggleFilter"
         android:layout_width="match_parent"
@@ -41,7 +63,7 @@
             android:id="@+id/btnFilterAll"
             android:layout_width="0dp"
             android:layout_height="52dp"
-            android:layout_weight="1"
+            android:layout_weight="1.6"
             android:text="@string/spools_filter_all"
             android:textSize="15sp"
             android:textStyle="bold"
@@ -86,6 +108,75 @@
             app:cornerRadius="10dp" />
 
     </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <Spinner
+        android:id="@+id/spinnerSubPos"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnToggleView"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_gravity="end"
+        android:layout_marginBottom="10dp"
+        android:minWidth="0dp"
+        android:paddingHorizontal="16dp"
+        android:textSize="13sp"
+        android:textAllCaps="false"
+        android:visibility="gone"
+        app:icon="@drawable/ic_view_list"
+        app:iconTint="@color/on_primary"
+        app:iconGravity="textStart"
+        app:iconSize="18dp"
+        app:cornerRadius="20dp"
+        app:backgroundTint="@color/primary"
+        android:textColor="@color/on_primary"
+        style="@style/Widget.MaterialComponents.Button" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardZoneChart"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="@color/surface"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <TextView
+                android:id="@+id/txtChartTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:textColor="@color/on_surface"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <ScrollView
+                android:id="@+id/chartScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fillViewport="false">
+
+                <LinearLayout
+                    android:id="@+id/chartZoneRows"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+            </ScrollView>
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefresh"

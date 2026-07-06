@@ -16,6 +16,15 @@ object LocaleHelper {
     fun setLanguage(context: Context, language: String) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit().putString(KEY_LANGUAGE, language).apply()
+        // Update Application resources immediately so service-layer getString() (e.g. SyncService
+        // via AtlasApp.instance.getString()) uses the new locale before Activity.recreate() runs.
+        val locale = Locale(language)
+        Locale.setDefault(locale)
+        val appRes = context.applicationContext.resources
+        val config = Configuration(appRes.configuration)
+        config.setLocale(locale)
+        @Suppress("DEPRECATION")
+        appRes.updateConfiguration(config, appRes.displayMetrics)
     }
 
     fun applyLocale(context: Context): Context {

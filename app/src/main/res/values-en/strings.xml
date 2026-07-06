@@ -160,6 +160,12 @@
     <string name="login_error_format">Error: %s</string>
     <string name="login_error_empty_code">Error: Enter the Terminal Code.</string>
 
+    <string name="db_error_title">Database error</string>
+    <string name="db_error_message">Could not open the local database (migration failure). The app cannot continue.\n\nDetail: %s</string>
+    <string name="db_error_reset">Reset device data</string>
+    <string name="db_error_reset_warning">All unsynced local data on this terminal will be deleted. Continue?</string>
+    <string name="db_error_close">Close app</string>
+
     <string name="settings_check_updates">Check for updates</string>
     <string name="settings_check_updates_searching">Searching…</string>
     <string name="update_up_to_date">You already have the latest version installed</string>
@@ -293,6 +299,28 @@
     <string name="sync_error_server_unavailable">Server unavailable (HTTP %d)</string>
     <string name="sync_error_server_rejected">Server rejected the connection (HTTP %d)</string>
     <string name="sync_error_outbox_retry">Change queue: no connection, retrying</string>
+    <!-- Sync progress step messages -->
+    <string name="sync_log_start">Starting synchronisation…</string>
+    <string name="sync_step_session">Checking session…</string>
+    <string name="sync_step_server">Connecting to server…</string>
+    <string name="sync_step_register">Registering device…</string>
+    <string name="sync_step_download">Downloading master data…</string>
+    <string name="sync_step_download_ok">✓ %1$d vehicles added, %2$d updated</string>
+    <string name="sync_step_upload_pl">Uploading packing lists…</string>
+    <string name="sync_step_upload_loadings">Uploading vehicle loadings…</string>
+    <string name="sync_step_upload_transfers">Uploading transfers…</string>
+    <string name="sync_step_upload_route">Updating vehicle route state…</string>
+    <string name="sync_step_upload_incidents">Uploading SMS incidents…</string>
+    <string name="sync_step_outbox">Processing change queue…</string>
+    <string name="sync_step_heartbeat">Sending telemetry…</string>
+    <string name="sync_step_sms">Downloading SMS data…</string>
+    <string name="sync_step_done">✓ Base data synchronised</string>
+    <string name="sync_sms_spools_page">Downloading spools… page %1$d (%2$d accumulated)</string>
+    <string name="sync_sms_spools_ok">✓ Spools: %1$d new, %2$d updated (%3$d total)</string>
+    <string name="sync_sms_pl_ok">✓ Packing Lists: %1$d new, %2$d updated (%3$d total)</string>
+    <string name="sync_sms_vehicles_ok">✓ SMS Vehicles: %1$d</string>
+    <string name="webview_login_error_network">Could not connect to the server.\nCheck your network connection and try again.</string>
+    <string name="webview_login_retry">Retry</string>
 
     <!-- Coming soon -->
     <string name="coming_soon_title">Coming soon</string>
@@ -402,6 +430,8 @@
     <string name="vehicles_add">Add vehicle</string>
     <!-- Spools List -->
     <string name="spools_list_count">%1$d spools</string>
+    <string name="spools_list_count_capped">%1$d spools (showing first %2$d)</string>
+    <string name="spools_search_hint">Search spool (code, line, PL…)</string>
     <string name="spools_list_empty">No spools in ATLAS for this project</string>
     <string name="spools_list_error_prefix">Error: %1$s</string>
     <string name="spools_list_error_http">HTTP %1$d</string>
@@ -442,6 +472,8 @@
     <string name="incident_label_location">Incident location</string>
     <string name="incident_label_location_detail">Location detail</string>
     <string name="incident_hint_location_detail">E.g.: zone, unit, shelf…</string>
+    <string name="incident_label_subposition">Sub-section</string>
+    <string name="incident_subposition_none">No sub-section</string>
     <string name="incident_label_severity">Severity</string>
     <string name="incident_label_position">Position (terminal)</string>
     <string name="incident_label_author">Author</string>
@@ -605,6 +637,12 @@
     <string name="spools_filter_workshop">Workshop</string>
     <string name="spools_filter_laydown">Laydown</string>
     <string name="spools_filter_site">Site</string>
+    <string name="spools_subpos_all">All sub-positions</string>
+    <string name="spools_chart_title">Spools by zone (%1$d)</string>
+    <string name="spools_chart_zone_unassigned">No zone</string>
+    <string name="spools_chart_subpos_none">(no sub)</string>
+    <string name="spools_view_action_list">View list</string>
+    <string name="spools_view_action_chart">View chart</string>
 
     <!-- New Packing List -->
     <string name="new_packing_list_title">New Packing List</string>
@@ -678,6 +716,7 @@
     <string name="new_spool_field_iso_type">ISO Type</string>
     <string name="new_spool_field_status">Status</string>
     <string name="new_spool_field_position">Position</string>
+    <string name="new_spool_field_sub_position">Sub-position</string>
     <string name="new_spool_field_incomplete_status">Incomplete status</string>
     <string name="new_spool_field_bore_size">Bore Size</string>
     <string name="new_spool_btn_save">Save Spool</string>
@@ -719,6 +758,7 @@
     <string name="spool_detail_field_status">Status</string>
     <string name="spool_detail_field_incomplete_status">Incomplete status</string>
     <string name="spool_detail_field_position">Position</string>
+    <string name="spool_detail_field_sub_position">Sub-position</string>
     <string name="spool_detail_field_hold">On hold</string>
     <string name="spool_detail_field_damaged">Damaged</string>
     <string name="spool_detail_field_returned">Returned to factory</string>
@@ -742,6 +782,17 @@
     <string name="spool_detail_confirm_hard_delete_msg">Physical deletion on the server. This cannot be undone. Continue?</string>
     <string name="spool_detail_hard_deleted">Spool permanently deleted from the server</string>
     <string name="spool_detail_events_empty">No events recorded</string>
+    <string name="spool_detail_section_gps">GPS LOCATION</string>
+    <string name="spool_detail_gps_no_data">No GPS location data</string>
+    <string name="spool_detail_gps_current">Current: %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_previous">Previous: %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_current_no_acc">Current: %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_gps_previous_no_acc">Previous: %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_btn_update_gps">Update GPS</string>
+    <string name="spool_detail_btn_open_maps">Open in Maps</string>
+    <string name="spool_detail_gps_capturing">Acquiring GPS…</string>
+    <string name="spool_detail_gps_saved">Location saved</string>
+    <string name="spool_detail_gps_unavailable">GPS unavailable</string>
     <string name="spool_detail_assign_pl_title">Select Packing List</string>
     <string name="spool_detail_assign_pl_remove">Remove assignment</string>
     <string name="spool_detail_yes">Yes</string>
@@ -826,7 +877,9 @@
     <string name="transfer_send_dest_laydown">Laydown</string>
     <string name="transfer_send_dest_site">Site (urgent)</string>
     <string name="transfer_send_btn_confirm">Confirm Shipment</string>
-    <string name="transfer_send_success">Shipment recorded successfully (pending sync)</string>
+    <string name="transfer_send_success">Shipment recorded and uploaded successfully</string>
+    <string name="transfer_send_success_partial">Shipment recorded (data pending upload)</string>
+    <string name="transfer_send_uploading">Uploading data to server…</string>
     <string name="transfer_send_error">Error: %s</string>
     <string name="transfer_send_location_blocked">Cannot send from this location.</string>
     <string name="transfer_select_destination">Select shipment destination</string>
@@ -885,9 +938,12 @@
     <string name="event_label_pl_created">Packing List created</string>
     <string name="event_label_pl_edited">Packing List edited</string>
     <string name="event_label_pl_deleted">Packing List deleted</string>
+    <string name="event_label_pl_deleted_hard">Packing List deleted (permanent)</string>
     <string name="event_label_vehicle_created">Vehicle created</string>
     <string name="event_label_vehicle_edited">Vehicle edited</string>
     <string name="event_label_vehicle_deleted">Vehicle deleted</string>
     <string name="event_label_transfer_sent">Shipment recorded</string>
     <string name="event_label_transfer_received">Receipt recorded</string>
+    <string name="event_label_incident_created">Incident created</string>
+    <string name="event_label_incident_closed">Incident closed</string>
 </resources>

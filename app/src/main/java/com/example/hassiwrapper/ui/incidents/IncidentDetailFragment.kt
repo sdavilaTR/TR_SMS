@@ -62,7 +62,8 @@ class IncidentDetailFragment : Fragment() {
         fun reload() {
             viewLifecycleOwner.lifecycleScope.launch {
                 val incident = ServiceLocator.smsIncidentDao.getById(incidentId) ?: return@launch
-                bind(incident, imgPhoto, txtSpool, txtSeverity, txtDescription, rows, btnClose)
+                val subPositionPath = incident.sub_position_id?.let { ServiceLocator.smsSubPositionDao.getById(it)?.full_path }
+                bind(incident, subPositionPath, imgPhoto, txtSpool, txtSeverity, txtDescription, rows, btnClose)
             }
         }
 
@@ -94,6 +95,7 @@ class IncidentDetailFragment : Fragment() {
 
     private fun bind(
         item: SmsIncidentEntity,
+        subPositionPath: String?,
         imgPhoto: ImageView,
         txtSpool: TextView,
         txtSeverity: TextView,
@@ -127,7 +129,11 @@ class IncidentDetailFragment : Fragment() {
             addRow(rows, R.string.incident_label_vehicle_plate, it)
         }
         addRow(rows, R.string.incident_label_position, item.position_code ?: getString(R.string.incident_value_unknown))
+        subPositionPath?.takeIf { it.isNotBlank() }?.let {
+            addRow(rows, R.string.incident_label_subposition, it)
+        }
         addRow(rows, R.string.incident_label_author, item.author_name?.takeIf { it.isNotBlank() } ?: getString(R.string.incident_value_unknown))
+        addRow(rows, R.string.settings_device_code_label, item.device_code?.takeIf { it.isNotBlank() } ?: getString(R.string.incident_value_unknown))
         addRow(rows, R.string.incident_label_date, item.event_date.take(16).replace('T', ' '))
         addRow(rows, R.string.incident_label_status, statusLabels[item.status]?.let(::getString) ?: item.status)
 

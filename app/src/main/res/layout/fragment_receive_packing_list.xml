@@ -4,6 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/background"
     android:fillViewport="true"
     android:padding="16dp">
 
@@ -43,13 +44,13 @@
                         android:gravity="center_vertical">
 
                         <TextView
-                            android:layout_width="30dp"
-                            android:layout_height="30dp"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
                             android:text="1"
                             android:gravity="center"
                             android:textColor="@color/primary"
                             android:textStyle="bold"
-                            android:textSize="14sp"
+                            android:textSize="16sp"
                             android:background="@drawable/bg_step_badge"
                             android:layout_marginEnd="10dp"/>
 
@@ -99,21 +100,51 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
-                app:cardElevation="2dp"
-                app:cardCornerRadius="14dp">
+                app:cardElevation="6dp"
+                app:cardCornerRadius="16dp"
+                app:strokeColor="@color/secondary"
+                app:strokeWidth="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:orientation="vertical">
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/transfer_receive_step2_title"
-                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                        android:layout_marginBottom="8dp"/>
+                        android:orientation="horizontal"
+                        android:background="@color/secondary"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="12dp"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:text="2"
+                            android:gravity="center"
+                            android:textColor="@color/secondary"
+                            android:textStyle="bold"
+                            android:textSize="16sp"
+                            android:background="@drawable/bg_step_badge"
+                            android:layout_marginEnd="10dp"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/transfer_receive_step2_title"
+                            android:textColor="@color/on_primary"
+                            android:textStyle="bold"
+                            android:textSize="16sp"/>
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
                     <TextView
                         android:id="@+id/txtNoPls"
@@ -130,6 +161,7 @@
                         android:layout_height="wrap_content"
                         android:nestedScrollingEnabled="false"/>
 
+                    </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
@@ -146,21 +178,51 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
-                app:cardElevation="2dp"
-                app:cardCornerRadius="14dp">
+                app:cardElevation="6dp"
+                app:cardCornerRadius="16dp"
+                app:strokeColor="@color/green"
+                app:strokeWidth="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:orientation="vertical">
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/transfer_receive_step3_title"
-                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                        android:layout_marginBottom="8dp"/>
+                        android:orientation="horizontal"
+                        android:background="@color/green"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="12dp"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:text="3"
+                            android:gravity="center"
+                            android:textColor="@color/green"
+                            android:textStyle="bold"
+                            android:textSize="16sp"
+                            android:background="@drawable/bg_step_badge"
+                            android:layout_marginEnd="10dp"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/transfer_receive_step3_title"
+                            android:textColor="@color/on_primary"
+                            android:textStyle="bold"
+                            android:textSize="16sp"/>
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
                     <TextView
                         android:id="@+id/txtSpoolsProgress"
@@ -190,6 +252,7 @@
                         android:layout_marginTop="8dp"
                         android:text="@string/transfer_receive_btn_confirm"/>
 
+                    </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>

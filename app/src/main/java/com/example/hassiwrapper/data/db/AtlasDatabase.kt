@@ -30,6 +30,7 @@ import com.example.hassiwrapper.data.db.entities.*
         TrainingComplianceEntity::class,
         DocumentComplianceEntity::class,
         SmsAreaEntity::class,
+        SmsSubPositionEntity::class,
         SmsBoreSizeEntity::class,
         SmsIncompleteStatusEntity::class,
         SmsIsoTypeEntity::class,
@@ -52,9 +53,10 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsIncidentEntity::class,
         SmsOutboxEntity::class,
         SmsIdMapEntity::class,
-        SmsAuditLogEntity::class
+        SmsAuditLogEntity::class,
+        SmsSpoolLocationEntity::class
     ],
-    version = 24,
+    version = 34,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -83,6 +85,7 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun smsPackingListDao(): SmsPackingListDao
     abstract fun smsPackingListSpoolDao(): SmsPackingListSpoolDao
     abstract fun smsPositionDao(): SmsPositionDao
+    abstract fun smsSubPositionDao(): SmsSubPositionDao
     abstract fun smsSpecDao(): SmsSpecDao
     abstract fun smsSpoolDao(): SmsSpoolDao
     abstract fun smsSpoolEventDao(): SmsSpoolEventDao
@@ -97,6 +100,7 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun smsIncidentDao(): SmsIncidentDao
     abstract fun smsOutboxDao(): SmsOutboxDao
     abstract fun smsAuditLogDao(): SmsAuditLogDao
+    abstract fun smsSpoolLocationDao(): SmsSpoolLocationDao
 
     /** Clears all data from every table (used when switching to DEV profile). */
     suspend fun clearAllData() {
@@ -716,6 +720,159 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v24 → v25: create sms_sub_position (Laydown/Site sub-sections) + link from sms_incident
+        private val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 24 → 25: create sms_sub_position, add sub_position_id to sms_incident")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_sub_position` (
+                        `sub_position_id` INTEGER NOT NULL PRIMARY KEY,
+                        `project_id` INTEGER NOT NULL,
+                        `position_id` INTEGER NOT NULL,
+                        `parent_sub_id` INTEGER,
+                        `code` TEXT NOT NULL DEFAULT '',
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `full_path` TEXT NOT NULL DEFAULT '',
+                        `level` INTEGER NOT NULL DEFAULT 0,
+                        `is_active` INTEGER NOT NULL DEFAULT 1,
+                        `created_at` TEXT NOT NULL DEFAULT '',
+                        `created_by` TEXT NOT NULL DEFAULT '',
+                        `updated_at` TEXT,
+                        `updated_by` TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `sub_position_id` INTEGER")
+            }
+        }
+
+        // v25 → v26: track server-assigned incident id + photo upload state separately from `synced`
+        private val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 25 → 26: add server_id, photo_synced to sms_incident")
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `server_id` INTEGER")
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `photo_synced` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 26 → 27: add is_compliant, inactive_reason_code, inactive_reason_detail to vehicles")
+                db.execSQL("ALTER TABLE `vehicles` ADD COLUMN `is_compliant` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `vehicles` ADD COLUMN `inactive_reason_code` TEXT")
+                db.execSQL("ALTER TABLE `vehicles` ADD COLUMN `inactive_reason_detail` TEXT")
+            }
+        }
+
+        // v28 → v29: enforce one-spool-one-PL rule at DB level.
+        // Deduplicates existing rows (keeps max packing_list_spool_id per spool_id = last assignment),
+        // then creates a UNIQUE index on spool_id so OnConflictStrategy.REPLACE auto-evicts the old
+        // PL link whenever a spool is reassigned — no manual deleteBySpoolId required from this point.
+        private val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 28 → 29: deduplicate sms_packing_list_spool + UNIQUE(spool_id) + sync sms_spool.packing_list_id")
+                db.execSQL("""
+                    DELETE FROM sms_packing_list_spool
+                    WHERE packing_list_spool_id NOT IN (
+                        SELECT MAX(packing_list_spool_id)
+                        FROM sms_packing_list_spool
+                        GROUP BY spool_id
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    UPDATE sms_spool
+                    SET packing_list_id = (
+                        SELECT packing_list_id
+                        FROM sms_packing_list_spool
+                        WHERE sms_packing_list_spool.spool_id = sms_spool.spool_id
+                    )
+                    WHERE spool_id IN (SELECT spool_id FROM sms_packing_list_spool)
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_sms_packing_list_spool_spool_id`
+                    ON `sms_packing_list_spool` (`spool_id`)
+                """.trimIndent())
+            }
+        }
+
+        // v29 → v30: create sms_spool_location (GPS coordinates, max 2 rows per spool)
+        private val MIGRATION_29_30 = object : Migration(29, 30) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 29 → 30: create sms_spool_location")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_spool_location` (
+                        `location_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `spool_id` INTEGER NOT NULL,
+                        `latitude` REAL NOT NULL,
+                        `longitude` REAL NOT NULL,
+                        `gps_accuracy_m` REAL,
+                        `captured_at` TEXT NOT NULL,
+                        `captured_by` TEXT,
+                        `synced` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS `index_sms_spool_location_spool_id`
+                    ON `sms_spool_location` (`spool_id`)
+                """.trimIndent())
+            }
+        }
+
+        // v30 → v31: index sms_spool for the Inventario screen. With 100k+ spools the
+        // unindexed project/active scan plus ORDER BY spool_code took over a minute.
+        private val MIGRATION_30_31 = object : Migration(30, 31) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 30 → 31: index sms_spool(project_id, is_active, spool_code)")
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS `index_sms_spool_project_id_is_active_spool_code`
+                    ON `sms_spool` (`project_id`, `is_active`, `spool_code`)
+                """.trimIndent())
+            }
+        }
+
+        // v31 → v32: covering index for the Inventario zone-chart aggregation. The
+        // GROUP BY over location columns otherwise heap-scans the whole 25MB+ table.
+        private val MIGRATION_31_32 = object : Migration(31, 32) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 31 → 32: covering location index on sms_spool")
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS `index_sms_spool_project_id_is_active_packing_list_id_zone_position_id_sub_position_id`
+                    ON `sms_spool` (`project_id`, `is_active`, `packing_list_id`, `zone`, `position_id`, `sub_position_id`)
+                """.trimIndent())
+            }
+        }
+
+        // v32 → v33: index sms_spool(spool_code) so QR-scan getByCode() hits an index
+        // instead of a full table scan. The existing composite index starts with project_id
+        // so it cannot serve a bare WHERE spool_code = ? predicate efficiently.
+        private val MIGRATION_32_33 = object : Migration(32, 33) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 32 → 33: index sms_spool(spool_code) for QR scan lookup")
+                db.execSQL("""
+                    CREATE INDEX IF NOT EXISTS `index_sms_spool_spool_code`
+                    ON `sms_spool` (`spool_code`)
+                """.trimIndent())
+            }
+        }
+
+        // v33 → v34: store the terminal (device) code that created each incident on the card/detail screens.
+        private val MIGRATION_33_34 = object : Migration(33, 34) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 33 → 34: add device_code to sms_incident")
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `device_code` TEXT")
+            }
+        }
+
+        // v27 → v28: link a spool to its sub-position (Laydown/Site sub-section).
+        // Mirrors position_id: lives on sms_spool (bulk, for the zone chart) and on
+        // sms_spool_status_flags (authoritative, read from GET status-flags in detail).
+        private val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 27 → 28: add sub_position_id to sms_spool and sms_spool_status_flags")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `sub_position_id` INTEGER")
+                db.execSQL("ALTER TABLE `sms_spool_status_flags` ADD COLUMN `sub_position_id` INTEGER")
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -746,7 +903,17 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_20_21,
                         MIGRATION_21_22,
                         MIGRATION_22_23,
-                        MIGRATION_23_24
+                        MIGRATION_23_24,
+                        MIGRATION_24_25,
+                        MIGRATION_25_26,
+                        MIGRATION_26_27,
+                        MIGRATION_27_28,
+                        MIGRATION_28_29,
+                        MIGRATION_29_30,
+                        MIGRATION_30_31,
+                        MIGRATION_31_32,
+                        MIGRATION_32_33,
+                        MIGRATION_33_34
                     )
                     .build()
                 INSTANCE = instance

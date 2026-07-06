@@ -77,6 +77,8 @@
         app:menu="@menu/nav_menu"
         app:itemTextColor="@color/on_surface"
         app:itemIconTint="@color/primary"
-        app:itemRippleColor="@color/surface_variant" />
+        app:itemRippleColor="@color/ripple"
+        app:itemHorizontalPadding="20dp"
+        app:itemIconPadding="12dp" />
 
 </com.example.hassiwrapper.ui.common.WideEdgeDrawerLayout>

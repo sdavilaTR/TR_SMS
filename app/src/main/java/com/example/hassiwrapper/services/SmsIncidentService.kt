@@ -3,8 +3,10 @@ package com.example.hassiwrapper.services
 import com.example.hassiwrapper.data.ConfigRepository
 import com.example.hassiwrapper.data.db.dao.SmsIncidentDao
 import com.example.hassiwrapper.data.db.dao.SmsPositionDao
+import com.example.hassiwrapper.data.db.dao.SmsSubPositionDao
 import com.example.hassiwrapper.data.db.entities.SmsIncidentEntity
 import com.example.hassiwrapper.data.db.entities.SmsPositionEntity
+import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
 import java.time.Instant
 import java.util.UUID
 
@@ -15,7 +17,8 @@ import java.util.UUID
 class SmsIncidentService(
     private val incidentDao: SmsIncidentDao,
     private val configRepo: ConfigRepository,
-    private val positionDao: SmsPositionDao
+    private val positionDao: SmsPositionDao,
+    private val subPositionDao: SmsSubPositionDao
 ) {
     companion object {
         val SEVERITIES = listOf("LOW", "MEDIUM", "HIGH", "CRITICAL")
@@ -40,6 +43,13 @@ class SmsIncidentService(
     suspend fun getAssignedOperatorName(): String? =
         configRepo.get("assigned_operator_name")?.takeIf { it.isNotBlank() }
 
+    /** Sub-sections (Laydown/Site) belonging to the terminal's configured position, for the incident's sub-section picker. */
+    suspend fun getSubPositionsForCurrentPosition(): List<SmsSubPositionEntity> {
+        val position = getCurrentPosition() ?: return emptyList()
+        val projectId = configRepo.getInt("selected_project_id") ?: 6
+        return subPositionDao.getByPosition(projectId, position.position_id)
+    }
+
     suspend fun createIncident(
         spoolCode: String,
         spoolSuffix: String?,
@@ -48,7 +58,8 @@ class SmsIncidentService(
         locationType: String,
         locationDetail: String?,
         severity: String,
-        photoPath: String?
+        photoPath: String?,
+        subPositionId: Long? = null
     ): SmsIncidentEntity {
         val projectId = configRepo.getInt("selected_project_id") ?: 6
         val position = getCurrentPosition()
@@ -63,12 +74,14 @@ class SmsIncidentService(
             location_detail = locationDetail,
             severity = severity,
             position_id = position?.position_id,
+            sub_position_id = subPositionId,
             position_code = position?.code,
             author_name = getAssignedOperatorName(),
             photo_path = photoPath,
             event_date = Instant.now().toString(),
             status = "OPEN",
-            synced = false
+            synced = false,
+            device_code = configRepo.get("device_code")?.takeIf { it.isNotBlank() }
         )
         val id = incidentDao.insert(incident)
         return incident.copy(id = id)

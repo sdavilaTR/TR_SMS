@@ -30,6 +30,7 @@ import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
+import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
@@ -50,12 +51,17 @@ class QrScannerFragment : Fragment() {
     private lateinit var txtRelocateCount: TextView
     private lateinit var btnRelocateFinish: MaterialButton
 
+    /** A pickable sub-position. [subPositionId] is null only in the CSV fallback
+     *  (when the position has no sub-position catalog seeded yet). */
+    private data class AssignOption(val label: String, val subPositionId: Long?)
+
     // ── relocate mode state ──────────────────────────────────────────────────
     private var relocateActive = false
     private var relocateLocationType: String? = null // "LAYDOWN" or "SITE"
     private var relocatePositionId: Int? = null
-    private var relocateDestinations: List<String> = emptyList()
+    private var relocateOptions: List<AssignOption> = emptyList()
     private var relocateDestName: String? = null
+    private var relocateSubPositionId: Long? = null
     private var relocateCount = 0
 
     // ── keyboard-wedge: timeout reassembles multi-line QR payloads ───────────
@@ -90,6 +96,12 @@ class QrScannerFragment : Fragment() {
         else Toast.makeText(requireContext(), getString(R.string.scanner_error_camera_permission), Toast.LENGTH_SHORT).show()
     }
 
+    // Relocate scans capture a best-effort GPS fix; request location permission once up
+    // front so it's not silently unavailable for the lifetime of the app (see GpsHelper).
+    private val requestLocationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* best-effort — GpsHelper silently skips capture if denied */ }
+
     // ── lifecycle ─────────────────────────────────────────────────────────────
 
     override fun onCreateView(
@@ -118,7 +130,9 @@ class QrScannerFragment : Fragment() {
         }
         btnRelocateFinish.setOnClickListener { stopRelocateMode() }
         actvRelocateDest.setOnItemClickListener { _, _, position, _ ->
-            relocateDestName = relocateDestinations.getOrNull(position)
+            val option = relocateOptions.getOrNull(position)
+            relocateDestName = option?.label
+            relocateSubPositionId = option?.subPositionId
             relocateCount = 0
             updateRelocateCount()
         }
@@ -129,7 +143,6 @@ class QrScannerFragment : Fragment() {
         etKeyboardWedge.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                Log.w(TAG, "=== WEDGE TEXT === len=${s?.length} chars=${s?.take(20)}")
                 if ((s?.length ?: 0) > 0) {
                     wedgeHandler.removeCallbacks(wedgeTrigger)
                     wedgeHandler.postDelayed(wedgeTrigger, 250)
@@ -147,6 +160,12 @@ class QrScannerFragment : Fragment() {
             } else {
                 requestCameraPermission.launch(Manifest.permission.CAMERA)
             }
+        }
+
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestLocationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }
 
         // scanFlow (works when Intermec is in intent-broadcast mode)
@@ -218,6 +237,7 @@ class QrScannerFragment : Fragment() {
                 if (spool != null) {
                     txtScanStatus.text = getString(R.string.qr_scanner_status_spool_found, spool.displayCode)
                     showResult(spool.displayCode, buildSpoolDetail(spool))
+                    GpsHelper.captureAndSaveSpoolLocation(requireContext(), spool.spool_id)
                 } else {
                     showError(
                         getString(R.string.qr_scanner_result_spool_not_found),
@@ -236,39 +256,46 @@ class QrScannerFragment : Fragment() {
     private fun startRelocateMode() {
         viewLifecycleOwner.lifecycleScope.launch {
             val location = ServiceLocator.configRepo.get("device_location")?.trim()?.uppercase()
-
-            when (location) {
-                "LAYDOWN" -> {
-                    relocateDestinations = (ServiceLocator.configRepo.get("laydown_sections") ?: "1A,2A,1B,2B,1C,2C,1D,2D")
-                        .split(",")
-                        .map { it.trim() }
-                        .filter { it.isNotEmpty() }
-                    tilRelocateDest.hint = getString(R.string.qr_scanner_relocate_label_area)
-                }
-                "SITE" -> {
-                    relocateDestinations = (ServiceLocator.configRepo.get("site_units") ?: "1,2,3,4")
-                        .split(",")
-                        .map { it.trim() }
-                        .filter { it.isNotEmpty() }
-                    tilRelocateDest.hint = getString(R.string.qr_scanner_relocate_label_unit)
-                }
-                else -> {
-                    Toast.makeText(requireContext(), R.string.qr_scanner_relocate_no_location, Toast.LENGTH_LONG).show()
-                    return@launch
-                }
+            if (location != "LAYDOWN" && location != "SITE") {
+                Toast.makeText(requireContext(), R.string.qr_scanner_relocate_no_location, Toast.LENGTH_LONG).show()
+                return@launch
             }
 
-            if (relocateDestinations.isEmpty()) {
+            val projectId  = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+            val positionId = ServiceLocator.smsPositionDao.getByCode(location)?.position_id
+
+            // Prefer the real sub-position catalog for this position; fall back to the
+            // legacy CSV (label-only, no sub_position_id) when none is seeded yet.
+            val catalog = positionId?.let {
+                ServiceLocator.smsSubPositionDao.getByPosition(projectId, it)
+            }.orEmpty()
+
+            relocateOptions = if (catalog.isNotEmpty()) {
+                catalog.map { AssignOption(it.full_path.ifBlank { it.name.ifBlank { it.code } }, it.sub_position_id) }
+            } else {
+                val csv = if (location == "LAYDOWN")
+                    (ServiceLocator.configRepo.get("laydown_sections") ?: "1A,2A,1B,2B,1C,2C,1D,2D")
+                else
+                    (ServiceLocator.configRepo.get("site_units") ?: "1,2,3,4")
+                csv.split(",").map { it.trim() }.filter { it.isNotEmpty() }.map { AssignOption(it, null) }
+            }
+            tilRelocateDest.hint = getString(
+                if (location == "LAYDOWN") R.string.qr_scanner_relocate_label_area
+                else R.string.qr_scanner_relocate_label_unit
+            )
+
+            if (relocateOptions.isEmpty()) {
                 Toast.makeText(requireContext(), R.string.qr_scanner_relocate_no_destinations, Toast.LENGTH_LONG).show()
                 return@launch
             }
             actvRelocateDest.setAdapter(
-                ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, relocateDestinations)
+                ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, relocateOptions.map { it.label })
             )
 
             relocateLocationType = location
-            relocatePositionId = ServiceLocator.smsPositionDao.getByCode(location)?.position_id
+            relocatePositionId = positionId
             relocateDestName = null
+            relocateSubPositionId = null
             relocateCount = 0
             actvRelocateDest.setText("", false)
             relocateActive = true
@@ -283,6 +310,7 @@ class QrScannerFragment : Fragment() {
         relocateLocationType = null
         relocatePositionId = null
         relocateDestName = null
+        relocateSubPositionId = null
         relocateCount = 0
         layoutRelocate.visibility = View.GONE
         btnRelocateMode.setText(R.string.qr_scanner_btn_relocate)
@@ -324,6 +352,20 @@ class QrScannerFragment : Fragment() {
                 relocatePositionId?.let { posId ->
                     ServiceLocator.smsSpoolDao.updatePosition(spool.spool_id, posId)
                 }
+                ServiceLocator.smsSpoolDao.updateSubPosition(spool.spool_id, relocateSubPositionId)
+                // Push position + sub-position to the server (authoritative PUT status-flags).
+                // Only when a real catalog sub-position is selected; best-effort, non-blocking.
+                relocateSubPositionId?.let { subId ->
+                    val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+                    if (!projectCode.isNullOrBlank()) {
+                        ServiceLocator.syncService.uploadSpoolStatusFlags(
+                            projectCode, spool.spool_id, relocatePositionId, subId
+                        )
+                    }
+                }
+
+                GpsHelper.captureAndSaveSpoolLocation(requireContext(), spool.spool_id)
 
                 relocateCount++
                 updateRelocateCount()

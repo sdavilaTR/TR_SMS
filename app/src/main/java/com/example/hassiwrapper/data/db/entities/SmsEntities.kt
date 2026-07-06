@@ -1,6 +1,7 @@
 package com.example.hassiwrapper.data.db.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "sms_area")
@@ -8,6 +9,23 @@ data class SmsAreaEntity(
     @PrimaryKey val area_id: Long,
     val project_id: Int,
     val parent_area_id: Long? = null,
+    val name: String = "",
+    val full_path: String = "",
+    val level: Int = 0,
+    val is_active: Boolean = true,
+    val created_at: String = "",
+    val created_by: String = "",
+    val updated_at: String? = null,
+    val updated_by: String? = null
+)
+
+@Entity(tableName = "sms_sub_position")
+data class SmsSubPositionEntity(
+    @PrimaryKey val sub_position_id: Long,
+    val project_id: Int,
+    val position_id: Int,
+    val parent_sub_id: Long? = null,
+    val code: String = "",
     val name: String = "",
     val full_path: String = "",
     val level: Int = 0,
@@ -66,7 +84,7 @@ data class SmsPackingListEntity(
     val ready_to_send: Boolean = false
 )
 
-@Entity(tableName = "sms_packing_list_spool")
+@Entity(tableName = "sms_packing_list_spool", indices = [Index(value = ["spool_id"], unique = true)])
 data class SmsPackingListSpoolEntity(
     @PrimaryKey val packing_list_spool_id: Long,
     val packing_list_id: Long,
@@ -99,7 +117,14 @@ data class SmsSpecEntity(
     val updated_by: String? = null
 )
 
-@Entity(tableName = "sms_spool")
+@Entity(
+    tableName = "sms_spool",
+    indices = [
+        Index(value = ["project_id", "is_active", "spool_code"]),
+        Index(value = ["project_id", "is_active", "packing_list_id", "zone", "position_id", "sub_position_id"]),
+        Index(value = ["spool_code"])
+    ]
+)
 data class SmsSpoolEntity(
     @PrimaryKey val spool_id: Long,
     val project_id: Int,
@@ -130,7 +155,8 @@ data class SmsSpoolEntity(
     val assigned_unit: String? = null,
     val packing_list_name: String? = null,
     val in_transit: Boolean = false,
-    val position_id: Int? = null
+    val position_id: Int? = null,
+    val sub_position_id: Long? = null
 ) {
     val displayCode: String
         get() = if (spool_suffix.isNullOrBlank()) spool_code else "$spool_code-$spool_suffix"
@@ -174,6 +200,7 @@ data class SmsSpoolStatusFlagsEntity(
     val status_id: Int? = null,
     val incomplete_status_id: Int? = null,
     val position_id: Int? = null,
+    val sub_position_id: Long? = null,
     val hold: Boolean = false,
     val damaged: Boolean = false,
     val returned_to_factory: Boolean = false,
@@ -241,6 +268,7 @@ data class SmsIncidentEntity(
     val location_detail: String? = null,
     val severity: String,
     val position_id: Int? = null,
+    val sub_position_id: Long? = null,
     val position_code: String? = null,
     val author_name: String? = null,
     val photo_path: String? = null,
@@ -248,7 +276,13 @@ data class SmsIncidentEntity(
     val status: String = "OPEN",
     val closed_by: String? = null,
     val closed_at: String? = null,
-    val synced: Boolean = false
+    val synced: Boolean = false,
+    /** Server-assigned incident id, set once [synced]; required to address the photo-upload endpoint. */
+    val server_id: Long? = null,
+    /** Whether [photo_path] has been uploaded — tracked separately from [synced] since the photo upload is a second, independently-retried call. */
+    val photo_synced: Boolean = false,
+    /** Code of the terminal (device) that created the incident — from config `device_code` at creation time. */
+    val device_code: String? = null
 )
 
 @Entity(tableName = "sms_audit_log")
@@ -281,4 +315,20 @@ data class SmsVehicleEntity(
     val on_route: Boolean = false,
     val destination: Int? = null,
     val route_synced: Boolean = true
+)
+
+/** GPS fix for a single spool. Max 2 rows per spool_id (index 0 = current, index 1 = previous). */
+@Entity(
+    tableName = "sms_spool_location",
+    indices = [Index(value = ["spool_id"])]
+)
+data class SmsSpoolLocationEntity(
+    @PrimaryKey(autoGenerate = true) val location_id: Long = 0,
+    val spool_id: Long,
+    val latitude: Double,
+    val longitude: Double,
+    val gps_accuracy_m: Float? = null,
+    val captured_at: String,
+    val captured_by: String? = null,
+    val synced: Boolean = false
 )

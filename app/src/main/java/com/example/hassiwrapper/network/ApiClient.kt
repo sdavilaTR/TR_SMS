@@ -32,16 +32,19 @@ class ApiClient(
         const val DEFAULT_FALLBACK = "https://web-atlas-api-pre.azurewebsites.net"
         private const val TIMEOUT_MS = 10_000L
         private const val PING_TIMEOUT_MS = 3_000L
+        private const val LARGE_SYNC_TIMEOUT_MS = 60_000L
     }
 
     @Volatile
     private var resolvedBase: String? = null
     private var cachedService: AtlasApiService? = null
+    private var cachedLargeService: AtlasApiService? = null
 
     /** Force re-resolution on next request (e.g. after settings change). */
     fun resetResolvedBase() {
         resolvedBase = null
         cachedService = null
+        cachedLargeService = null
     }
 
     /** Seed default URLs into config if not already set. */
@@ -57,6 +60,15 @@ class ApiClient(
         cachedService?.let { if (resolvedBase == base) return it }
         val service = buildService(base)
         cachedService = service
+        return service
+    }
+
+    /** Variant with 60 s read timeout for large paginated downloads (e.g. spools). */
+    suspend fun getServiceForLargeSync(): AtlasApiService {
+        val base = getApiBase()
+        cachedLargeService?.let { if (resolvedBase == base) return it }
+        val service = buildService(base, readTimeoutMs = LARGE_SYNC_TIMEOUT_MS)
+        cachedLargeService = service
         return service
     }
 
@@ -81,8 +93,9 @@ class ApiClient(
                 .connectTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .readTimeout(PING_TIMEOUT_MS, TimeUnit.MILLISECONDS)
 
-            // TODO: DELETE FOR PRODUCTION — bypasses SSL cert validation in debug builds
-            if (BuildConfig.DEBUG) {
+            // Opt-in only via ALLOW_INSECURE_SSL env var at build time — never tied to
+            // BuildConfig.DEBUG, since debug-signed APKs do get installed on field devices.
+            if (BuildConfig.ALLOW_INSECURE_SSL) {
                 val trustAll = object : X509TrustManager {
                     override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
                     override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit
@@ -107,9 +120,10 @@ class ApiClient(
         }
     }
 
-    private fun buildService(baseUrl: String): AtlasApiService {
+    private fun buildService(baseUrl: String, readTimeoutMs: Long = TIMEOUT_MS): AtlasApiService {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
+                    else HttpLoggingInterceptor.Level.NONE
         }
 
         // When the PRO profile is active, the public reverse proxy expects every
@@ -152,14 +166,15 @@ class ApiClient(
 
         val clientBuilder = OkHttpClient.Builder()
             .connectTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
-            .readTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .readTimeout(readTimeoutMs, TimeUnit.MILLISECONDS)
             .writeTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
             .addInterceptor(proxyPrefixInterceptor)
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
 
-        // TODO: DELETE FOR PRODUCTION — bypasses SSL cert validation in debug builds
-        if (BuildConfig.DEBUG) {
+        // Opt-in only via ALLOW_INSECURE_SSL env var at build time — never tied to
+        // BuildConfig.DEBUG, since debug-signed APKs do get installed on field devices.
+        if (BuildConfig.ALLOW_INSECURE_SSL) {
             val trustAll = object : X509TrustManager {
                 override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
                 override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit

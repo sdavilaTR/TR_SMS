@@ -20,17 +20,6 @@ class InventarioFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        if (savedInstanceState == null) {
-            val spoolsFrag = CreateSpoolFragment()
-            val plsFrag    = PackingListsFragment()
-            val vehiclesFrag = VehiclesFragment()
-            childFragmentManager.beginTransaction()
-                .add(R.id.inventarioContainer, spoolsFrag, TAG_SPOOLS)
-                .add(R.id.inventarioContainer, plsFrag, TAG_PLS).hide(plsFrag)
-                .add(R.id.inventarioContainer, vehiclesFrag, TAG_VEHICLES).hide(vehiclesFrag)
-                .commitNow()
-        }
-
         val tabLayout = view.findViewById<TabLayout>(R.id.tabInventario)
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) = showTab(tab.position)
@@ -38,10 +27,11 @@ class InventarioFragment : Fragment() {
             override fun onTabReselected(tab: TabLayout.Tab) {}
         })
 
-        val initialTab = arguments?.getInt("initialTab", 0) ?: 0
-        if (initialTab != 0) {
-            tabLayout.getTabAt(initialTab)?.select()
-            showTab(initialTab)
+        // Tabs are created lazily on first selection: instantiating all three at once
+        // fired three parallel network loads and delayed the visible Spools tab.
+        if (savedInstanceState == null) {
+            val initialTab = arguments?.getInt("initialTab", 0) ?: 0
+            if (initialTab != 0) tabLayout.getTabAt(initialTab)?.select() else showTab(0)
         }
 
         view.findViewById<SwipeTabContainer>(R.id.inventarioContainer).apply {
@@ -57,15 +47,21 @@ class InventarioFragment : Fragment() {
     }
 
     private fun showTab(position: Int) {
-        val target = when (position) {
-            0 -> childFragmentManager.findFragmentByTag(TAG_SPOOLS)
-            1 -> childFragmentManager.findFragmentByTag(TAG_PLS)
-            else -> childFragmentManager.findFragmentByTag(TAG_VEHICLES)
-        } ?: return
-        childFragmentManager.beginTransaction().apply {
-            childFragmentManager.fragments.forEach { hide(it) }
-            show(target)
-        }.commit()
+        val tag = when (position) {
+            0 -> TAG_SPOOLS
+            1 -> TAG_PLS
+            else -> TAG_VEHICLES
+        }
+        val tx = childFragmentManager.beginTransaction()
+        val target = childFragmentManager.findFragmentByTag(tag)
+            ?: when (position) {
+                0 -> CreateSpoolFragment()
+                1 -> PackingListsFragment()
+                else -> VehiclesFragment()
+            }.also { tx.add(R.id.inventarioContainer, it, tag) }
+        childFragmentManager.fragments.forEach { if (it !== target) tx.hide(it) }
+        tx.show(target)
+        tx.commit()
     }
 
     companion object {

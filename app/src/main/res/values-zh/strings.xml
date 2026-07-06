@@ -1,0 +1,949 @@
+<resources>
+    <string name="app_name">Smart Material System</string>
+
+    <!-- Navigation -->
+    <string name="nav_header_title">Smart Material System</string>
+    <string name="menu_home">主页</string>
+    <string name="menu_scanner">管段列表</string>
+    <string name="menu_passport">装箱单</string>
+    <string name="packing_lists_empty">暂无装箱单。</string>
+    <string name="packing_lists_count">%1$d 个装箱单</string>
+    <string name="packing_lists_error_prefix">错误：%s</string>
+    <string name="packing_lists_error_http">HTTP %d</string>
+    <string name="packing_lists_error_project_code">projectCode 为空，project_id=%d。是否已同步？</string>
+    <string name="home_label_packing_lists">装箱单</string>
+    <string name="menu_attendance">管段记录</string>
+    <string name="menu_sync">同步</string>
+    <string name="menu_workers">管段</string>
+    <string name="menu_settings">设置</string>
+
+    <!-- Home -->
+    <string name="home_label_terminal">终端</string>
+    <string name="home_label_workers">工人</string>
+    <string name="home_label_spools">管段</string>
+    <string name="home_label_scans_today">今日扫描</string>
+    <string name="home_label_pending">待处理</string>
+    <string name="home_label_incidents">事件</string>
+    <string name="home_btn_access">Smart Material System</string>
+    <string name="home_btn_sync">同步</string>
+    <string name="home_last_sync_none">上次同步：—</string>
+    <string name="home_last_sync_format">上次同步：%s</string>
+
+    <!-- Scanner -->
+    <string name="scanner_label_direction">方向：</string>
+    <string name="scanner_status_waiting">等待扫描…</string>
+    <string name="scanner_status_processing">处理中…</string>
+    <string name="scanner_hint_usage">使用终端激光扫描器或摄像头按钮</string>
+    <string name="scanner_btn_camera">摄像头</string>
+    <string name="scanner_btn_laser">激光</string>
+    <string name="scanner_laser_hint">按下终端侧边按钮以使用激光扫描</string>
+    <string name="scanner_label_recent">最近读取记录</string>
+    <string name="scanner_error_camera_permission">需要摄像头权限</string>
+    <string name="scanner_camera_prompt">对准工人的二维码／条形码</string>
+    <string name="scanner_unknown">未知</string>
+    <string name="scanner_granted">已授权</string>
+    <string name="scanner_denied">已拒绝</string>
+    <string name="scanner_result_error">错误</string>
+    <string name="scanner_worker">工人</string>
+    <string name="scanner_entry">↑ 进入</string>
+    <string name="scanner_exit">↓ 离开</string>
+
+    <!-- Passport -->
+    <string name="passport_waiting_title">扫描管段</string>
+    <string name="passport_waiting_hint">扫描后管段信息将显示在此处</string>
+    <string name="passport_card_title">UTE TR — SE HASSI MESSAOUD PROJECT</string>
+    <string name="passport_scanned_at">扫描时间：%s</string>
+    <string name="passport_label_family_name">姓</string>
+    <string name="passport_label_given_name">名</string>
+    <string name="passport_label_position">职位／职称</string>
+    <string name="passport_label_company">公司／承包商</string>
+    <string name="passport_label_document">证件号</string>
+    <string name="passport_label_badge">工牌号</string>
+    <string name="passport_label_category">类别</string>
+    <string name="passport_label_valid_from">入场日期</string>
+    <string name="passport_label_valid_to">有效期至</string>
+    <string name="passport_status_active">● 有效</string>
+    <string name="passport_status_inactive">● 无效</string>
+    <string name="passport_worker_not_found">本地数据库中未找到该工人</string>
+    <string name="passport_photo_tap">拍摄\n照片</string>
+    <string name="passport_photo_uploading">正在上传照片…</string>
+    <string name="passport_photo_uploaded">照片更新成功</string>
+    <string name="passport_photo_error">照片上传错误：%s</string>
+    <string name="passport_photo_no_connection">照片已保存在本地，将在下次同步时上传</string>
+    <string name="sync_pending_photos">照片：%d</string>
+
+    <!-- Attendance -->
+    <string name="attendance_title">管段记录</string>
+    <string name="attendance_filter_all">全部</string>
+    <string name="attendance_filter_synced">已同步</string>
+    <string name="attendance_filter_pending">待同步</string>
+
+    <!-- Sync -->
+    <string name="sync_title">同步</string>
+    <string name="sync_label_connection">连接状态</string>
+    <string name="sync_label_pending_data">待同步数据</string>
+    <string name="sync_pending_logs">记录：%d</string>
+    <string name="sync_pending_incidents">事件：%d</string>
+    <string name="sync_pending_sessions">会话：%d</string>
+    <string name="sync_btn">完全同步</string>
+    <string name="sync_last_none">上次同步：—</string>
+    <string name="sync_last_format">上次同步：%s</string>
+    <string name="sync_syncing">同步中…</string>
+    <string name="sync_success">✓ 同步完成：%1$d 条记录，新增 %2$d，更新 %3$d</string>
+    <string name="sync_error">✕ 错误：%s</string>
+    <string name="sync_photos_ok">已上传 %d 张照片</string>
+    <string name="sync_photos_fail">%d 张照片上传失败</string>
+    <string name="sync_photos_fail_detail">%1$d 张照片失败：\n%2$s</string>
+    <string name="sync_status_checking">检查中…</string>
+    <string name="sync_network_online">网络：已连接</string>
+    <string name="sync_network_offline">网络：无连接</string>
+    <string name="sync_api_ok">ATLAS API：可用</string>
+    <string name="sync_api_fail">ATLAS API：不可用</string>
+    <string name="sync_auth_ok">会话：有效</string>
+    <string name="sync_auth_none">会话：未登录</string>
+    <string name="sync_auth_required">请登录以进行同步</string>
+    <string name="sync_retrying">重试中 (%1$d)…等待 %2$d 秒</string>
+
+    <!-- Sync KPIs -->
+    <string name="sync_kpi_records">记录</string>
+    <string name="sync_kpi_photos">照片</string>
+    <string name="sync_kpi_observations">观察记录</string>
+    <string name="sync_kpi_workers">工人</string>
+    <string name="sync_kpi_synced">已同步</string>
+    <string name="sync_kpi_pending">待同步</string>
+    <string name="sync_kpi_workers_synced">已是最新</string>
+
+    <!-- Sync KPI vehicles -->
+    <string name="sync_kpi_vehicles">车辆</string>
+    <string name="sync_kpi_vehicles_synced">已是最新</string>
+
+    <!-- Sync result structured -->
+    <string name="sync_result_title_ok">同步完成</string>
+    <string name="sync_result_title_error">同步错误</string>
+    <string name="sync_result_logs">已上传记录：%d</string>
+    <string name="sync_result_workers">工人：新增 %1$d，更新 %2$d</string>
+    <string name="sync_result_vehicles">车辆：新增 %1$d，更新 %2$d</string>
+    <string name="sync_result_observations">观察记录：%d</string>
+    <string name="sync_result_photos_ok">已上传照片：%d</string>
+    <string name="sync_result_photos_fail">上传失败照片：%d</string>
+
+    <!-- Home vehicles -->
+    <string name="home_label_vehicles">车辆</string>
+
+    <!-- Workers -->
+    <string name="workers_hint_search">搜索工人…</string>
+    <string name="workers_count">%d 名工人</string>
+    <string name="workers_badge_format">工牌：%1$s | %2$s</string>
+
+    <!-- Vehicles -->
+    <string name="menu_vehicles">车辆</string>
+    <string name="vehicles_hint_search">搜索车辆…</string>
+    <string name="vehicles_count">%d 辆车</string>
+    <string name="vehicles_item_format">%1$s | %2$s</string>
+    <string name="vehicles_plate_format">车牌：%s</string>
+
+    <!-- Login -->
+    <string name="login_app_name">ATLAS</string>
+    <string name="login_subtitle">Smart Material System</string>
+    <string name="login_hint_email">电子邮箱</string>
+    <string name="login_hint_password">密码</string>
+    <string name="login_btn">登录</string>
+    <string name="login_label_or">或</string>
+    <string name="login_btn_microsoft">使用 Microsoft 登录</string>
+    <string name="login_btn_config">API 设置</string>
+    <string name="login_hint_api_url">API 地址</string>
+    <string name="login_btn_save_url">保存地址</string>
+    <string name="login_url_saved">✓ 地址已保存</string>
+    <string name="login_error_token">无法获取 Microsoft 令牌。</string>
+    <string name="login_error_empty">请输入电子邮箱和密码。</string>
+    <string name="login_error_auth">认证错误。</string>
+    <string name="login_error_format">错误：%s</string>
+    <string name="login_error_empty_code">错误：请输入终端代码。</string>
+
+    <string name="db_error_title">数据库错误</string>
+    <string name="db_error_message">无法打开本地数据库（迁移失败），应用无法继续。\n\n详情：%s</string>
+    <string name="db_error_reset">重置设备数据</string>
+    <string name="db_error_reset_warning">此终端上所有未同步的本地数据将被删除。是否继续？</string>
+    <string name="db_error_close">关闭应用</string>
+
+    <string name="settings_check_updates">检查更新</string>
+    <string name="settings_check_updates_searching">正在搜索…</string>
+    <string name="update_up_to_date">已是最新版本</string>
+
+    <!-- Settings -->
+    <string name="settings_title">设置</string>
+    <string name="settings_tab_basic">基本</string>
+    <string name="settings_tab_dev">DEV</string>
+    <string name="settings_api_url_label">API 地址</string>
+    <string name="settings_save">保存</string>
+    <string name="settings_device_label">设备</string>
+    <string name="settings_device_name_label">名称</string>
+    <string name="settings_device_id_label">ID</string>
+    <string name="settings_device_location_label">位置</string>
+    <string name="settings_device_name_hint">设备名称</string>
+    <string name="settings_device_id_format">ID：%s</string>
+    <string name="settings_device_id_none">ID：—</string>
+    <string name="settings_save_device">保存设备</string>
+    <string name="settings_logout">退出登录</string>
+    <string name="settings_login">登录</string>
+    <string name="login_skip">不登录继续</string>
+    <string name="settings_info_title">应用信息</string>
+    <string name="settings_info_version">版本</string>
+    <string name="settings_info_build_date">构建日期</string>
+    <string name="settings_info_repo">代码仓库</string>
+    <string name="settings_info_deployment">部署方式</string>
+    <string name="settings_info_package">包名</string>
+    <string name="settings_info_deployment_value">GitHub Actions（自动）</string>
+    <string name="settings_info_build_local">本地构建</string>
+    <string name="settings_url_saved">地址已保存</string>
+    <string name="settings_name_required">请输入名称</string>
+    <string name="settings_device_saved">设备已保存</string>
+    <string name="settings_language_label">语言</string>
+    <string name="language_es">Español</string>
+    <string name="language_en">English</string>
+    <string name="language_fr">Français</string>
+
+    <!-- Observations -->
+    <string name="obs_title">HSE 观察记录</string>
+    <string name="obs_open_observation">新建观察记录</string>
+    <string name="obs_worker_header">被观察工人</string>
+    <string name="obs_location">地点</string>
+    <string name="obs_area_authority">区域负责人</string>
+    <string name="obs_description">观察描述 *</string>
+    <string name="obs_type_header">观察类型</string>
+    <string name="obs_condition">状态</string>
+    <string name="obs_behaviour">行为</string>
+    <string name="obs_safety_header">安全类型</string>
+    <string name="obs_safe">安全</string>
+    <string name="obs_unsafe">不安全</string>
+    <string name="obs_intervention_header">干预</string>
+    <string name="obs_no_intervene">未进行干预</string>
+    <string name="obs_intervened">已干预／已采取措施</string>
+    <string name="obs_spot_coaching">现场指导</string>
+    <string name="obs_positive_reinforcement">正向激励</string>
+    <string name="obs_positive_observation">正面观察</string>
+    <string name="obs_non_peer">非同级干预</string>
+    <string name="obs_outcome_header">结果</string>
+    <string name="obs_corrected">已纠正</string>
+    <string name="obs_partly_corrected">部分纠正</string>
+    <string name="obs_not_corrected">未纠正</string>
+    <string name="obs_outcome_positive">正向激励</string>
+    <string name="obs_action_taken">已采取措施</string>
+    <string name="obs_coaching_header">指导</string>
+    <string name="obs_coaching_not_required">无需指导</string>
+    <string name="obs_coaching_pending">待处理</string>
+    <string name="obs_coaching_done">已完成</string>
+    <string name="obs_categories_header">分类</string>
+    <string name="obs_cat_ppe">个人防护装备 (PPE)</string>
+    <string name="obs_cat_situational_awareness">情境意识</string>
+    <string name="obs_cat_safety_devices">安全装置</string>
+    <string name="obs_cat_isolation_lockout">隔离／锁定</string>
+    <string name="obs_cat_safety_signage">安全标识</string>
+    <string name="obs_cat_tools_equipment">工具／设备</string>
+    <string name="obs_cat_line_of_fire">危险作业线</string>
+    <string name="obs_cat_health_hygiene">健康／卫生／用水</string>
+    <string name="obs_cat_workplace_environment">工作环境</string>
+    <string name="obs_cat_lifting">起重作业</string>
+    <string name="obs_cat_manual_handling">人工／机械搬运</string>
+    <string name="obs_cat_housekeeping">现场整理</string>
+    <string name="obs_cat_toxic_flammable">有毒／易燃</string>
+    <string name="obs_cat_work_planning">作业计划／许可证</string>
+    <string name="obs_cat_working_at_height">高处作业</string>
+    <string name="obs_cat_confined_space">受限空间</string>
+    <string name="obs_cat_hot_work">动火作业</string>
+    <string name="obs_cat_excavation">挖掘作业</string>
+    <string name="obs_cat_driving_vehicles">驾驶／车辆</string>
+    <string name="obs_cat_supervision">监督管理</string>
+    <string name="obs_cat_procedures">操作规程</string>
+    <string name="obs_cat_security">安保</string>
+    <string name="obs_cat_improvement_opportunity">改进机会</string>
+    <string name="obs_cat_emergency_response">应急响应</string>
+    <string name="obs_additional_comments">补充说明</string>
+    <string name="obs_save">保存观察记录</string>
+    <string name="obs_back">返回</string>
+    <string name="obs_saved">观察记录保存成功</string>
+    <string name="obs_description_required">必须填写描述</string>
+    <string name="obs_type_required">请选择观察类型</string>
+    <string name="obs_safety_required">请选择安全类型</string>
+
+    <!-- Profiles -->
+    <string name="profile_label">配置文件</string>
+    <string name="profile_user">用户</string>
+    <string name="profile_admin">管理员</string>
+    <string name="profile_pre">PRE</string>
+    <string name="profile_dev">DEV</string>
+    <string name="profile_user_desc">基础模式 — 生产环境 (atlas.tecnicasreunidas.es)</string>
+    <string name="profile_admin_desc">完全访问权限 — 生产环境 (atlas.tecnicasreunidas.es)</string>
+    <string name="profile_pre_desc">预生产环境 — API：web-atlas-pre</string>
+    <string name="profile_dev_desc">开发环境 — API：web-atlas-dev</string>
+    <string name="profile_current">当前配置文件：%s</string>
+    <string name="profile_access_code_title">访问代码</string>
+    <string name="profile_access_code_hint">输入代码</string>
+    <string name="profile_access_code_error">代码错误</string>
+    <string name="profile_changed">配置文件已切换为 %s</string>
+    <string name="profile_dev_reset_warning">切换到 DEV 时本地数据库将被重置</string>
+    <string name="profile_dev_db_cleared">数据库已重置</string>
+
+    <!-- Device code (admin settings) -->
+    <string name="settings_device_code_label">终端代码</string>
+    <string name="settings_device_code_hint">例如：HASSI01</string>
+    <string name="settings_device_code_desc">用于同步时自动登录</string>
+    <string name="settings_device_code_save">保存代码</string>
+    <string name="settings_device_code_saved">终端代码已保存</string>
+    <string name="settings_device_code_empty">请输入终端代码</string>
+    <string name="sync_auto_relogin">正在自动重新认证…</string>
+    <string name="sync_auto_relogin_ok">会话已更新，正在重试同步</string>
+    <string name="sync_auto_relogin_fail">无法自动更新会话</string>
+    <string name="sync_error_session_expired">会话已过期，且无法自动更新</string>
+    <string name="sync_error_no_connection">无法连接服务器</string>
+    <string name="sync_error_server_unavailable">服务器不可用 (HTTP %d)</string>
+    <string name="sync_error_server_rejected">服务器拒绝连接 (HTTP %d)</string>
+    <string name="sync_error_outbox_retry">变更队列：无连接，正在重试</string>
+    <!-- Sync progress step messages -->
+    <string name="sync_log_start">开始同步…</string>
+    <string name="sync_step_session">验证会话…</string>
+    <string name="sync_step_server">连接服务器…</string>
+    <string name="sync_step_register">注册设备…</string>
+    <string name="sync_step_download">下载主数据…</string>
+    <string name="sync_step_download_ok">✓ 新增 %1$d 辆，已更新 %2$d 辆车辆</string>
+    <string name="sync_step_upload_pl">上传装箱单…</string>
+    <string name="sync_step_upload_loadings">上传车辆装载…</string>
+    <string name="sync_step_upload_transfers">上传转移记录…</string>
+    <string name="sync_step_upload_route">更新车辆路线状态…</string>
+    <string name="sync_step_upload_incidents">上传SMS事件…</string>
+    <string name="sync_step_outbox">处理操作队列…</string>
+    <string name="sync_step_heartbeat">发送遥测数据…</string>
+    <string name="sync_step_sms">下载SMS数据…</string>
+    <string name="sync_step_done">✓ 基础数据已同步</string>
+    <string name="sync_sms_spools_page">下载线轴… 第%1$d页（已累计%2$d条）</string>
+    <string name="sync_sms_spools_ok">✓ 线轴：%1$d条新增，%2$d条更新（共%3$d条）</string>
+    <string name="sync_sms_pl_ok">✓ 装箱单：%1$d条新增，%2$d条更新（共%3$d条）</string>
+    <string name="sync_sms_vehicles_ok">✓ SMS车辆：%1$d条</string>
+    <string name="webview_login_error_network">无法连接服务器。\n请检查网络连接后重试。</string>
+    <string name="webview_login_retry">重试</string>
+
+    <!-- Coming soon -->
+    <string name="coming_soon_title">即将推出</string>
+    <string name="coming_soon_inspections">检查模块将支持您规划、执行并记录现场安全检查。</string>
+    <string name="coming_soon_observations">通用观察模块将支持您记录与特定工人无关的安全观察。</string>
+
+    <!-- Menu -->
+    <string name="menu_inspections">检查</string>
+    <string name="menu_observations_general">观察记录</string>
+
+    <!-- HSE observations -->
+    <string name="obs_hub_title">HSE 观察记录</string>
+    <string name="obs_select_target">选择观察类型</string>
+    <string name="obs_target_worker">工人</string>
+    <string name="obs_target_vehicle">车辆</string>
+    <string name="obs_target_site">工地／区域</string>
+    <string name="obs_target_equipment">设备</string>
+    <string name="obs_target_worker_banner">观察记录 — 工人</string>
+    <string name="obs_target_vehicle_banner">观察记录 — 车辆</string>
+    <string name="obs_target_site_banner">观察记录 — 工地／区域</string>
+    <string name="obs_target_equipment_banner">观察记录 — 设备</string>
+    <string name="obs_scan_observer">扫描主管工牌</string>
+    <string name="obs_scan_observer_laser">激光</string>
+    <string name="obs_scan_observer_camera">摄像头</string>
+    <string name="obs_scan_worker_title">扫描工人工牌</string>
+    <string name="obs_scan_vehicle_title">扫描车辆二维码</string>
+    <string name="obs_scan_cancel">取消</string>
+    <string name="obs_step1_label">观察员</string>
+    <string name="obs_step2_label">类型</string>
+    <string name="obs_step3_label">对象</string>
+    <string name="obs_scan_observer_prompt">扫描您的 HSE 工牌</string>
+    <string name="obs_observer_label">HSE 观察员</string>
+    <string name="obs_observer_empty">未登记 — 请扫描主管工牌</string>
+    <string name="obs_observer_format">%1$s — %2$s</string>
+    <string name="obs_observer_not_found">本地数据库中未找到该观察员</string>
+    <string name="obs_observer_required">请先扫描 HSE 主管工牌</string>
+    <string name="obs_not_hse_error">您不是 HSE 人员 — 没有权限创建观察记录</string>
+    <string name="obs_photos">照片（可选，最多 8 张）</string>
+    <string name="obs_photos_hint">可以不添加照片直接保存。如已添加，将在终端恢复连接后同步。</string>
+    <string name="obs_photo_max">每条观察记录最多 8 张照片</string>
+    <string name="obs_add_photo_camera">摄像头</string>
+    <string name="obs_add_photo_gallery">相册</string>
+    <string name="equipment_description">设备描述</string>
+    <string name="vehicle_info_format">%1$s — %2$s (%3$s)</string>
+
+    <!-- Passport -->
+    <string name="passport_compliance">合规情况</string>
+    <string name="passport_section_docs">证件</string>
+    <string name="passport_section_trainings">培训记录</string>
+    <string name="passport_doc_valid">有效</string>
+    <string name="passport_doc_expiring">即将到期</string>
+    <string name="passport_doc_expired">已过期</string>
+    <string name="passport_doc_missing">缺失</string>
+    <string name="passport_doc_no_connection">无连接，无法下载文件</string>
+    <string name="passport_doc_no_viewer">没有可用于打开此文件类型的应用</string>
+    <string name="passport_training_completed">已完成</string>
+    <string name="passport_training_pending">待完成</string>
+    <string name="passport_training_expired">已过期</string>
+    <string name="passport_training_missing">缺失</string>
+    <string name="passport_mandatory">必修</string>
+    <string name="passport_no_docs">暂无登记证件</string>
+    <string name="passport_no_trainings">暂无登记培训</string>
+    <string name="passport_of">／</string>
+
+    <!-- Profile -->
+    <string name="profile_hse">HSE</string>
+    <string name="profile_hse_desc">HSE — 证件信息＋观察记录＋检查（生产环境）</string>
+
+    <!-- App update -->
+    <string name="update_title">有新版本可用</string>
+    <string name="update_message">版本 %s 可用。\n是否立即更新应用？</string>
+    <string name="update_btn_update">更新</string>
+    <string name="update_btn_later">稍后</string>
+    <string name="update_downloading">正在下载更新…</string>
+    <string name="update_downloading_version">正在下载版本 %s…</string>
+    <string name="update_invalid_apk">下载的文件不是有效的 APK — 请检查更新令牌</string>
+    <string name="update_no_previous_version">没有可用的旧版本</string>
+    <string name="update_previous_corrupt">旧版本文件已损坏</string>
+
+    <!-- Auth Repository -->
+    <string name="auth_error_invalid_credentials">凭据无效。</string>
+    <string name="auth_error_http">错误 %d。</string>
+    <string name="auth_error_empty_response">服务器返回空响应。</string>
+    <string name="auth_error_connection">无法连接服务器：%s</string>
+    <string name="update_permission_needed">请启用安装未知应用权限以继续更新</string>
+
+    <!-- Rollback -->
+    <string name="settings_reinstall_previous">重新安装旧版本</string>
+    <string name="settings_reinstall_previous_title">重新安装旧版本</string>
+    <string name="settings_reinstall_previous_confirm">将重新安装备份的旧版本，是否继续？</string>
+    <!-- Spools sections -->
+    <string name="spools_section_workshop">车间</string>
+    <string name="spools_section_laydown">堆场</string>
+    <string name="spools_section_site">工地</string>
+    <string name="spools_section_hint_workshop">正在制作的管段</string>
+    <string name="spools_section_hint_laydown">存放在堆场的管段</string>
+    <string name="spools_section_hint_site">已安装在现场的管段</string>
+    <string name="spools_empty_placeholder">暂无数据 — 等待 ATLAS 同步</string>
+    <string name="spools_count_format">%d 个管段</string>
+
+    <!-- Vehicles -->
+    <string name="vehicles_packet_list_label">关联装箱单</string>
+    <string name="vehicles_packet_list_none">未分配</string>
+    <string name="vehicles_assign_packet_list">分配装箱单</string>
+    <string name="vehicles_title">车辆</string>
+    <string name="vehicles_empty_placeholder">暂无登记车辆 — 待在 ATLAS 中创建</string>
+    <string name="vehicles_add">添加车辆</string>
+    <!-- Spools List -->
+    <string name="spools_list_count">%1$d 个管段</string>
+    <string name="spools_list_count_capped">%1$d 个管段（显示前 %2$d 个）</string>
+    <string name="spools_search_hint">搜索管段（编号、管线、PL…）</string>
+    <string name="spools_list_empty">该项目在 ATLAS 中没有管段</string>
+    <string name="spools_list_error_prefix">错误：%1$s</string>
+    <string name="spools_list_error_http">HTTP %1$d</string>
+
+    <!-- Settings: assigned operator -->
+    <string name="settings_assigned_operator_title">指定操作员</string>
+    <string name="settings_assigned_operator_label">操作员姓名</string>
+    <string name="settings_assigned_operator_hint">例如：张三</string>
+    <string name="settings_assigned_operator_save">保存</string>
+    <string name="settings_assigned_operator_saved">操作员已保存</string>
+
+    <!-- Incidents -->
+    <string name="menu_incidencias">事件</string>
+    <string name="incidents_title">事件</string>
+    <string name="incidents_empty">暂无事件记录</string>
+    <string name="incidents_btn_new">新建事件</string>
+    <string name="incidents_tab_open">进行中</string>
+    <string name="incidents_tab_closed">已关闭</string>
+    <string name="incident_filter_all">全部</string>
+    <string name="incident_card_no_description">无描述</string>
+    <string name="new_incident_title">新建事件</string>
+    <string name="incident_label_photo">损坏照片</string>
+    <string name="incident_btn_take_photo">拍照</string>
+    <string name="incident_btn_retake_photo">重新拍照</string>
+    <string name="incident_btn_scan">扫描代码</string>
+    <string name="incident_scan_spool_filled">已添加管段 %s</string>
+    <string name="incident_scan_vehicle_filled">已添加车辆 %s</string>
+    <string name="incident_scan_vehicle_not_found">未找到车辆</string>
+    <string name="incident_scan_not_recognized">无法识别代码</string>
+    <string name="incident_label_spool_code">管段编号</string>
+    <string name="incident_hint_spool_code">例如：SP-1234</string>
+    <string name="incident_label_spool_suffix">后缀</string>
+    <string name="incident_hint_spool_suffix">例如：A</string>
+    <string name="incident_label_description">事件描述</string>
+    <string name="incident_hint_description">描述观察到的损坏情况…</string>
+    <string name="incident_label_vehicle_plate">涉及车辆车牌</string>
+    <string name="incident_hint_vehicle_plate">例如：1234-ABC</string>
+    <string name="incident_label_location">事件地点</string>
+    <string name="incident_label_location_detail">地点详情</string>
+    <string name="incident_hint_location_detail">例如：区域、单元、货架…</string>
+    <string name="incident_label_subposition">子分区</string>
+    <string name="incident_subposition_none">无子分区</string>
+    <string name="incident_label_severity">严重程度</string>
+    <string name="incident_label_position">位置（终端）</string>
+    <string name="incident_label_author">记录人</string>
+    <string name="incident_label_date">日期</string>
+    <string name="incident_label_status">状态</string>
+    <string name="incident_detail_title">事件详情</string>
+    <string name="incident_value_unknown">—</string>
+    <string name="incident_status_open">进行中</string>
+    <string name="incident_status_closed">已关闭</string>
+    <string name="incident_btn_close">关闭事件</string>
+    <string name="incident_close_confirm_title">关闭事件</string>
+    <string name="incident_close_confirm_msg">确定要关闭此事件吗？系统将记录关闭人及关闭时间。</string>
+    <string name="incident_close_confirm_yes">关闭</string>
+    <string name="incident_close_confirm_no">取消</string>
+    <string name="incident_closed_ok">事件已关闭</string>
+    <string name="incident_label_closed_by">关闭人</string>
+    <string name="incident_label_closed_at">关闭时间</string>
+    <string name="incident_btn_save">保存事件</string>
+    <string name="incident_saved_ok">事件已记录</string>
+    <string name="incident_error_missing_spool_code">请输入管段编号</string>
+    <string name="incident_error_missing_description">请描述事件</string>
+    <string name="incident_error_save">错误：%s</string>
+    <string name="incident_location_laydown">堆场</string>
+    <string name="incident_location_site">工地</string>
+    <string name="incident_location_workshop">车间</string>
+    <string name="incident_severity_low">低</string>
+    <string name="incident_severity_medium">中</string>
+    <string name="incident_severity_high">高</string>
+    <string name="incident_severity_critical">严重</string>
+    <string name="home_label_critical_incidents">严重事件</string>
+
+    <!-- QR Scanner FAB -->
+    <string name="qr_scan_button">扫描二维码</string>
+    <string name="qr_result_title">检测到二维码</string>
+
+    <!-- QR Scanner Fragment -->
+    <string name="menu_qr_scanner">二维码扫描</string>
+    <string name="qr_scanner_status_waiting">等待扫描…\n使用激光扫描器或摄像头按钮</string>
+    <string name="qr_scanner_status_processing">正在处理代码…</string>
+    <string name="qr_scanner_status_spool_found">已找到管段：%1$s</string>
+    <string name="qr_scanner_status_vehicle_found">已找到车辆：%1$s</string>
+    <string name="qr_scanner_btn_camera">使用摄像头扫描</string>
+    <string name="qr_scanner_hint_laser">按下终端侧边按钮以使用激光扫描</string>
+    <string name="qr_scanner_result_spool_not_found">本地数据库中未找到该管段 — 请先同步</string>
+    <string name="qr_scanner_result_vehicle_not_found">本地数据库中未找到该车辆 — 请先同步</string>
+    <string name="qr_scanner_result_vehicle_badge">车辆（工牌 UUID）</string>
+    <string name="qr_scanner_result_badge_unsupported">该工牌 UUID 未关联 SMS 车辆。请使用 ATLAS 系统中的车辆二维码。</string>
+    <string name="qr_scanner_result_unknown">无法识别二维码</string>
+    <string name="qr_scanner_result_id_detail">ID：%1$s</string>
+
+    <!-- QR Scanner: relocate mode -->
+    <string name="qr_scanner_btn_relocate">转移管段</string>
+    <string name="qr_scanner_btn_relocate_active">取消转移</string>
+    <string name="qr_scanner_relocate_label_area">目标区域（堆场）</string>
+    <string name="qr_scanner_relocate_label_unit">目标单元（工地）</string>
+    <string name="qr_scanner_relocate_no_location">请在设置中配置终端位置（堆场／工地）</string>
+    <string name="qr_scanner_relocate_no_destinations">该终端尚未登记区域／单元，请在设置中配置</string>
+    <string name="qr_scanner_relocate_select_dest_first">请先选择目标位置再扫描</string>
+    <string name="qr_scanner_relocate_count">已转移至 %1$s 的管段：%2$d</string>
+    <string name="qr_scanner_relocate_success">%1$s → %2$s</string>
+    <string name="qr_scanner_relocate_only_spools">只能转移管段</string>
+    <string name="qr_scanner_btn_finish_relocate">完成转移</string>
+    <string name="scan_result_spool_registered">已登记管段：%1$s</string>
+    <string name="scan_result_spool_not_registered">数据库中未登记该管段</string>
+    <string name="scan_result_vehicle_registered">已登记车辆：%1$s</string>
+    <string name="scan_result_vehicle_not_registered">数据库中未登记该车辆</string>
+    <string name="scan_create_question">是否要新建记录？</string>
+    <string name="scan_action_create">新建</string>
+    <string name="scan_action_close">关闭</string>
+
+    <!-- Passport -->
+    <string name="passport_screen_title">证件信息</string>
+
+    <!-- Sync KPI vehicles -->
+    <string name="sync_kpi_in_transit_active">运输中</string>
+
+    <!-- Vehicles -->
+    <string name="menu_transfers">发货与收货</string>
+    <string name="menu_send_packing_list">发货</string>
+    <string name="menu_receive_packing_list">收货</string>
+    <string name="transfer_send_subtitle">从该终端发送装箱单</string>
+    <string name="transfer_receive_subtitle">在该终端接收装箱单</string>
+    <string name="transfer_manual_vehicle_hint">手动输入车牌</string>
+    <string name="transfer_manual_spool_hint">手动输入管段编号</string>
+    <string name="transfer_btn_manual_confirm">确认手动输入</string>
+    <string name="settings_debug_location_btn">[调试] 更改终端位置</string>
+    <string name="settings_debug_location_changed">位置已更改为：%s</string>
+    <string name="settings_kiosk_title">单一应用模式</string>
+    <string name="settings_kiosk_desc">将应用锁定为全屏模式（屏幕固定）。在关闭此选项前，设备将无法退出该应用。</string>
+    <string name="settings_kiosk_enabled">单一应用模式已启用</string>
+    <string name="settings_kiosk_disabled">单一应用模式已关闭</string>
+    <string name="settings_close_app">关闭应用</string>
+    <string name="settings_close_app_confirm">是否要关闭应用？</string>
+    <string name="vehicles_empty">暂无车辆数据。</string>
+    <string name="vehicles_error_prefix">错误：%s</string>
+    <string name="vehicles_error_http">HTTP %d</string>
+    <string name="vehicles_error_project_code">projectCode 为空，project_id=%d。是否已同步？</string>
+    <string name="vehicles_label_fallback">车辆 %d</string>
+    <string name="vehicles_no_packing_lists">未分配装箱单</string>
+    <string name="vehicles_packing_lists_label">装箱单</string>
+    <string name="vehicles_ready_to_send_badge">已装载・可发货</string>
+    <string name="vehicles_origin_badge">来自：%s</string>
+
+    <!-- New Vehicle -->
+    <string name="new_vehicle_title">新建车辆</string>
+    <string name="new_vehicle_section_details">车辆详情</string>
+    <string name="new_vehicle_field_plate">车牌 *</string>
+    <string name="new_vehicle_field_name">车辆名称</string>
+    <string name="new_vehicle_field_company">公司</string>
+    <string name="new_vehicle_field_type">车辆类型</string>
+    <string name="new_vehicle_field_capacity">载重（公斤）</string>
+    <string name="new_vehicle_btn_save">保存车辆</string>
+    <string name="new_vehicle_error_plate_required">必须填写车牌</string>
+    <string name="new_vehicle_success">车辆创建成功</string>
+    <string name="new_vehicle_error_save">保存错误：%s</string>
+
+    <!-- API environment -->
+    <string name="settings_api_section_title">API 设置</string>
+    <string name="env_pro">PRO</string>
+    <string name="env_pre">PRE</string>
+    <string name="env_dev">DEV</string>
+    <string name="env_pro_desc">生产环境 — atlas.tecnicasreunidas.es</string>
+    <string name="env_pre_desc">预生产环境 — web-atlas-pre</string>
+    <string name="env_dev_desc">开发环境 — web-atlas-dev</string>
+    <string name="env_changed">API 环境已切换为 %s</string>
+
+    <!-- User role -->
+    <string name="settings_role_section_title">用户配置文件</string>
+    <string name="role_guest">访客</string>
+    <string name="role_admin">管理员</string>
+    <string name="role_dev">DEV</string>
+    <string name="role_guest_desc">基础模式 — 主页、扫描、同步</string>
+    <string name="role_admin_desc">完全访问权限 — 库存与调拨</string>
+    <string name="role_dev_desc">完全访问权限＋开发工具</string>
+    <string name="role_changed">配置文件已切换为 %s</string>
+
+    <!-- Inventory -->
+    <string name="menu_inventario">库存</string>
+    <string name="inventario_tab_spools">管段</string>
+    <string name="inventario_tab_pls">装箱单</string>
+    <string name="inventario_tab_vehicles">车辆</string>
+
+    <!-- Quick Actions -->
+    <string name="home_quick_actions_title">快捷操作</string>
+    <string name="home_qa_new_pl">创建装箱单</string>
+    <string name="home_qa_send">发送管段</string>
+    <string name="home_qa_transfers">接收管段</string>
+    <string name="home_qa_new_incident">新建事件</string>
+    <string name="home_qa_new_spool">新建管段</string>
+    <string name="home_qa_new_vehicle">新建车辆</string>
+
+    <!-- Debug: Project Switcher -->
+    <string name="home_btn_change_project">[调试] 切换项目</string>
+    <string name="home_dialog_select_project">选择项目</string>
+    <string name="home_syncing_project">同步中…</string>
+    <string name="home_project_synced">项目已更新：%s</string>
+    <string name="home_project_label">项目：%s</string>
+
+    <!-- Spools List -->
+    <string name="spools_filter_all">全部</string>
+    <string name="spools_filter_workshop">Workshop</string>
+    <string name="spools_filter_laydown">Laydown</string>
+    <string name="spools_filter_site">Site</string>
+    <string name="spools_subpos_all">所有子位置</string>
+    <string name="spools_chart_title">按区域统计管段（%1$d）</string>
+    <string name="spools_chart_zone_unassigned">无区域</string>
+    <string name="spools_chart_subpos_none">（无子位置）</string>
+    <string name="spools_view_action_list">查看列表</string>
+    <string name="spools_view_action_chart">查看图表</string>
+
+    <!-- New Packing List -->
+    <string name="new_packing_list_title">新建装箱单</string>
+    <string name="new_packing_list_field_name">名称 *</string>
+    <string name="new_packing_list_field_vehicle">车辆</string>
+    <string name="new_packing_list_field_position">位置 *</string>
+    <string name="new_packing_list_field_notes">备注</string>
+    <string name="new_packing_list_btn_add_spools">选择未分配装箱单的管段</string>
+    <string name="new_packing_list_spools_selected">已选择 %d 个管段</string>
+    <string name="new_packing_list_no_spools_available">该项目没有未分配装箱单的管段</string>
+    <string name="new_packing_list_btn_save">保存装箱单</string>
+    <string name="new_packing_list_btn_create">创建新装箱单</string>
+    <string name="new_packing_list_success">装箱单已创建</string>
+    <string name="new_packing_list_error_field_required">必填</string>
+    <string name="new_packing_list_error_save">保存错误：%1$s</string>
+    <string name="new_packing_list_preview_label">名称：</string>
+    <string name="new_packing_list_section_details">详情</string>
+    <string name="new_packing_list_section_spools">管段</string>
+
+    <string name="pl_detail_title">装箱单详情</string>
+    <string name="pl_detail_section_info">信息</string>
+    <string name="pl_detail_section_spools">已分配管段</string>
+    <string name="pl_detail_label_date">日期</string>
+    <string name="pl_detail_label_position">位置</string>
+    <string name="pl_detail_label_vehicle">车辆</string>
+    <string name="pl_detail_label_notes">备注</string>
+    <string name="pl_detail_label_ready_to_send">可发货</string>
+    <string name="pl_detail_ready_yes">是</string>
+    <string name="pl_detail_ready_no">否</string>
+    <string name="pl_detail_loading_spools">正在加载管段…</string>
+    <string name="pl_detail_no_spools">未分配管段</string>
+    <string name="pl_detail_btn_edit">编辑</string>
+    <string name="pl_detail_btn_delete">删除</string>
+    <string name="pl_detail_confirm_delete_title">删除装箱单</string>
+    <string name="pl_detail_confirm_delete_msg">确定要删除此装箱单吗？</string>
+    <string name="pl_detail_deleted">装箱单已删除</string>
+    <string name="pl_detail_error_delete">删除错误：%1$s</string>
+    <string name="pl_edit_title">编辑装箱单</string>
+    <string name="pl_edit_current_name_label">名称：</string>
+    <string name="pl_edit_btn_update">更新装箱单</string>
+    <string name="pl_edit_success">装箱单已更新</string>
+    <string name="pl_edit_error_save">更新错误：%1$s</string>
+    <string name="pl_edit_btn_cancel">取消</string>
+    <string name="pl_detail_btn_add_spool">添加管段</string>
+    <string name="pl_detail_btn_remove_spool">移除</string>
+    <string name="pl_detail_add_spool_title">添加管段至装箱单</string>
+    <string name="pl_detail_no_available_spools">没有未分配装箱单的可用管段</string>
+    <string name="pl_detail_spool_added">管段已添加至装箱单</string>
+    <string name="pl_detail_spool_removed">管段已从装箱单移除</string>
+    <string name="pl_scan_hint">扫描管段二维码即可直接添加</string>
+    <string name="pl_scan_spool_already_in_pl">管段 %1$s 已属于装箱单 %2$s</string>
+    <string name="pl_scan_spool_not_found">系统中未找到该管段</string>
+    <string name="new_pl_scan_spool_added">管段 %1$s 已加入选择</string>
+    <string name="new_pl_scan_spool_already_selected">管段 %1$s 已被选择</string>
+    <string name="pl_detail_remove_spool_title">移除管段</string>
+    <string name="pl_detail_remove_spool_msg">是否将 %1$s 从此装箱单中移除？</string>
+
+    <string name="new_spool_title">新建管段</string>
+    <string name="new_spool_section_id">标识 ({unit}-{line}-{code}-{train})</string>
+    <string name="new_spool_section_property">属性</string>
+    <string name="new_spool_field_unit">单元 *</string>
+    <string name="new_spool_field_line">管线 *</string>
+    <string name="new_spool_field_code">编号 *</string>
+    <string name="new_spool_field_train">系列 *</string>
+    <string name="new_spool_preview_label">编号：</string>
+    <string name="new_spool_field_diameter_inches">直径（英寸）</string>
+    <string name="new_spool_field_diameter">直径</string>
+    <string name="new_spool_field_bore_size_id">管径 ID</string>
+    <string name="new_spool_field_weight_kg">重量（公斤）</string>
+    <string name="new_spool_section_classification">分类</string>
+    <string name="new_spool_field_iso_type">ISO 类型</string>
+    <string name="new_spool_field_status">状态</string>
+    <string name="new_spool_field_position">位置</string>
+    <string name="new_spool_field_sub_position">子位置</string>
+    <string name="new_spool_field_incomplete_status">未完成状态</string>
+    <string name="new_spool_field_bore_size">管径</string>
+    <string name="new_spool_btn_save">保存管段</string>
+    <string name="new_spool_btn_create">创建新管段</string>
+    <string name="new_spool_success">管段创建成功</string>
+    <string name="new_spool_error_field_required">必填</string>
+    <string name="new_spool_error_save">保存错误：%1$s</string>
+    <string name="spool_item_pl_assigned">装箱单：%1$s</string>
+    <string name="spool_item_pl_none">未分配装箱单</string>
+
+    <!-- Spool Detail Bottom Sheet -->
+    <string name="spool_detail_section_id">标识信息</string>
+    <string name="spool_detail_section_properties">物理属性</string>
+    <string name="spool_detail_section_status">状态</string>
+    <string name="spool_detail_section_packing_list">装箱单</string>
+    <string name="spool_detail_section_events">事件历史</string>
+    <string name="spool_detail_field_code">编号</string>
+    <string name="spool_detail_field_description">描述</string>
+    <string name="spool_detail_field_priority">优先级</string>
+    <string name="spool_detail_field_zone">区域</string>
+    <string name="spool_detail_field_in_transit">运输中</string>
+    <string name="spool_detail_field_line">管线</string>
+    <string name="spool_detail_field_service">用途</string>
+    <string name="spool_detail_field_train">系列</string>
+    <string name="spool_detail_field_module">模块</string>
+    <string name="spool_detail_field_unit">单元</string>
+    <string name="spool_detail_field_iso_type">ISO 类型</string>
+    <string name="spool_detail_field_iso_date">ISO 版本</string>
+    <string name="spool_detail_field_area">区域</string>
+    <string name="spool_detail_field_spec">规格</string>
+    <string name="spool_detail_field_subcontractor">分包商</string>
+    <string name="spool_detail_field_active">启用</string>
+    <string name="spool_detail_field_created">创建时间</string>
+    <string name="spool_detail_field_updated">更新时间</string>
+    <string name="spool_detail_field_diameter_in">直径（英寸）</string>
+    <string name="spool_detail_field_diameter">直径</string>
+    <string name="spool_detail_field_bore_size">管径</string>
+    <string name="spool_detail_field_weight">重量</string>
+    <string name="spool_detail_field_status">状态</string>
+    <string name="spool_detail_field_incomplete_status">未完成状态</string>
+    <string name="spool_detail_field_position">位置</string>
+    <string name="spool_detail_field_sub_position">子位置</string>
+    <string name="spool_detail_field_hold">暂缓</string>
+    <string name="spool_detail_field_damaged">已损坏</string>
+    <string name="spool_detail_field_returned">已退回工厂</string>
+    <string name="spool_detail_field_pos_discrepancy">位置差异</string>
+    <string name="spool_detail_field_review_discrepancy">版本差异</string>
+    <string name="spool_detail_field_last_event">最近事件</string>
+    <string name="spool_detail_field_pca_status">PCA 状态日期</string>
+    <string name="spool_detail_field_pca_entry">PCA 登记日期</string>
+    <string name="spool_detail_btn_assign_pl">分配至装箱单</string>
+    <string name="spool_detail_btn_remove_pl">从装箱单移除</string>
+    <string name="spool_detail_btn_delete">删除管段</string>
+    <string name="spool_detail_confirm_delete_title">删除管段</string>
+    <string name="spool_detail_confirm_delete_msg">是否从本地数据库删除该管段？</string>
+    <string name="spool_detail_deleted">管段已删除</string>
+    <string name="pl_detail_btn_hard_delete">[DEV] 永久删除装箱单</string>
+    <string name="pl_detail_confirm_hard_delete_title">[DEV] 永久删除装箱单</string>
+    <string name="pl_detail_confirm_hard_delete_msg">将在服务器上彻底删除。此操作不可撤销，是否继续？</string>
+    <string name="pl_detail_hard_deleted">装箱单已从服务器永久删除</string>
+    <string name="spool_detail_btn_hard_delete">[DEV] 永久删除</string>
+    <string name="spool_detail_confirm_hard_delete_title">[DEV] 永久删除</string>
+    <string name="spool_detail_confirm_hard_delete_msg">将在服务器上彻底删除。此操作不可撤销，是否继续？</string>
+    <string name="spool_detail_hard_deleted">管段已从服务器永久删除</string>
+    <string name="spool_detail_events_empty">暂无事件记录</string>
+    <string name="spool_detail_section_gps">GPS 定位</string>
+    <string name="spool_detail_gps_no_data">暂无 GPS 定位数据</string>
+    <string name="spool_detail_gps_current">当前：%.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_previous">上次：%.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_current_no_acc">当前：%1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_gps_previous_no_acc">上次：%1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_btn_update_gps">更新 GPS</string>
+    <string name="spool_detail_btn_open_maps">在地图中打开</string>
+    <string name="spool_detail_gps_capturing">正在获取 GPS…</string>
+    <string name="spool_detail_gps_saved">位置已保存</string>
+    <string name="spool_detail_gps_unavailable">GPS 不可用</string>
+    <string name="spool_detail_assign_pl_title">选择装箱单</string>
+    <string name="spool_detail_assign_pl_remove">取消分配</string>
+    <string name="spool_detail_yes">是</string>
+    <string name="spool_detail_no">否</string>
+    <string name="spool_detail_label_fallback">管段 %d</string>
+    <string name="spool_detail_error_delete">删除错误：%s</string>
+    <string name="spool_detail_error_generic">错误：%s</string>
+
+    <!-- Vehicle Detail -->
+    <string name="vehicle_detail_title">车辆详情</string>
+    <string name="vehicle_detail_section_info">信息</string>
+    <string name="vehicle_detail_section_packing_lists">已分配装箱单</string>
+    <string name="vehicle_detail_label_plate">车牌</string>
+    <string name="vehicle_detail_label_name">名称</string>
+    <string name="vehicle_detail_label_company">公司</string>
+    <string name="vehicle_detail_label_type">类型</string>
+    <string name="vehicle_detail_label_capacity">载重</string>
+    <string name="vehicle_detail_loading_pls">正在加载装箱单…</string>
+    <string name="vehicle_detail_no_pls">未分配装箱单</string>
+    <string name="vehicle_detail_btn_add_pl">添加未分配车辆的装箱单</string>
+    <string name="vehicle_detail_btn_edit">编辑车辆</string>
+    <string name="vehicle_detail_btn_hard_delete">永久删除车辆</string>
+    <string name="vehicle_detail_btn_remove_pl">取消分配</string>
+    <string name="vehicle_detail_add_pl_title">添加装箱单至车辆</string>
+    <string name="vehicle_detail_no_unassigned_pls">没有未分配车辆的装箱单</string>
+    <string name="vehicle_detail_pl_added">装箱单已分配至车辆</string>
+    <string name="vehicle_detail_pl_removed">装箱单已从车辆取消分配</string>
+    <string name="vehicle_detail_remove_pl_title">取消分配装箱单</string>
+    <string name="vehicle_detail_remove_pl_msg">是否取消该车辆与 %1$s 的分配？</string>
+    <string name="vehicle_detail_confirm_hard_delete_title">永久删除车辆</string>
+    <string name="vehicle_detail_confirm_hard_delete_msg">将在服务器及本地数据库中彻底删除。此操作不可撤销，是否继续？</string>
+    <string name="vehicle_detail_hard_deleted">车辆已永久删除</string>
+
+    <!-- Edit Vehicle -->
+    <string name="edit_vehicle_title">编辑车辆</string>
+    <string name="edit_vehicle_btn_update">保存更改</string>
+    <string name="edit_vehicle_btn_cancel">取消</string>
+    <string name="edit_vehicle_success">车辆更新成功</string>
+    <string name="edit_vehicle_error_not_found">未找到车辆</string>
+    <string name="edit_vehicle_error_save">保存错误：%s</string>
+
+    <!-- Load Spools into Vehicle -->
+    <string name="load_spools_step1_title">第一步：选择车辆</string>
+    <string name="load_spools_step2_title">第二步：扫描管段</string>
+    <string name="load_spools_plate_hint">车牌</string>
+    <string name="load_spools_scan_vehicle">扫描车辆二维码</string>
+    <string name="load_spools_confirm_vehicle">确认车辆</string>
+    <string name="load_spools_vehicle_not_found">未找到车辆，请检查车牌或先进行同步。</string>
+    <string name="load_spools_vehicle_selected">已选择车辆：%s</string>
+    <string name="load_spools_spool_code_hint">管段编号</string>
+    <string name="load_spools_spool_suffix_hint">后缀（可选）</string>
+    <string name="load_spools_scan_spool">扫描管段</string>
+    <string name="load_spools_add_spool">添加</string>
+    <string name="load_spools_save">保存装载</string>
+    <string name="load_spools_spool_not_found">本地数据库中未找到该管段，将不带装箱单数据添加。</string>
+    <string name="load_spools_spools_count">已添加管段：%1$d</string>
+    <string name="load_spools_warning_multi_pl">⚠ 警告：这些管段属于 %1$d 个不同的装箱单。</string>
+    <string name="load_spools_error_incomplete">未完成装箱单：\n%1$s</string>
+    <string name="load_spools_confirm_incomplete_title">未完成装箱单</string>
+    <string name="load_spools_confirm_incomplete_msg">以下装箱单尚未装载全部管段：\n\n%1$s\n\n是否仍要继续？</string>
+    <string name="load_spools_confirm_second_title">确认保存</string>
+    <string name="load_spools_confirm_second_msg">此操作将保存含未完成装箱单的装载记录，且不可撤销。是否确认？</string>
+    <string name="load_spools_pl_created">已创建新装箱单：%1$s</string>
+    <string name="load_spools_saved">装载已保存成功</string>
+    <string name="load_spools_spool_duplicate">该管段已被添加。</string>
+    <string name="load_spools_enter_code">请输入管段编号。</string>
+    <string name="load_spools_enter_plate">请输入或扫描车牌。</string>
+    <string name="load_spools_spool_added">管段 %1$s 已添加。</string>
+    <string name="load_spools_no_pl">无装箱单</string>
+    <string name="load_spools_empty_error">保存前请至少添加一个管段。</string>
+    <string name="load_spools_btn_continue">继续</string>
+    <string name="load_spools_btn_save_anyway">仍要保存</string>
+    <string name="load_spools_qr_is_spool">该二维码属于管段，而非车辆。请扫描车辆二维码。</string>
+    <string name="load_spools_weight_meter">装载：%1$s / %2$s 公斤 (%3$d%%)</string>
+    <string name="load_spools_weight_no_capacity">装载：%1$s 公斤（未设置车辆载重）</string>
+
+    <!-- Transfer: Send Packing List -->
+    <string name="transfer_send_title">发送装箱单</string>
+    <string name="transfer_send_step3_title">第三步：目的地</string>
+    <string name="transfer_send_destination_label">发货目的地</string>
+    <string name="transfer_send_destination_required">请先选择目的地再确认</string>
+    <string name="transfer_send_dest_laydown">堆场</string>
+    <string name="transfer_send_dest_site">工地（紧急）</string>
+    <string name="transfer_send_btn_confirm">确认发货</string>
+    <string name="transfer_send_success">发货已记录并上传成功</string>
+    <string name="transfer_send_success_partial">发货已记录（数据待上传）</string>
+    <string name="transfer_send_uploading">正在上传数据到服务器…</string>
+    <string name="transfer_send_error">错误：%s</string>
+    <string name="transfer_send_location_blocked">无法从该位置发货。</string>
+    <string name="transfer_select_destination">选择发货目的地</string>
+    <string name="transfer_destination_laydown">堆场</string>
+    <string name="transfer_destination_site">工地</string>
+
+    <!-- Transfer: Receive Packing List -->
+    <string name="transfer_receive_title">接收装箱单</string>
+    <string name="transfer_receive_step1_title">第一步：扫描车辆</string>
+    <string name="transfer_receive_step2_title">第二步：选择装箱单</string>
+    <string name="transfer_receive_step3_title">第三步：确认管段</string>
+    <string name="transfer_receive_btn_confirm">确认收货</string>
+    <string name="transfer_receive_success">收货已记录成功（待同步）</string>
+    <string name="transfer_receive_no_pls">该车辆没有运输中的装箱单。</string>
+
+    <!-- Transfer: Shared -->
+    <string name="transfer_spools_progress">已确认 %1$d / %2$d 个管段</string>
+    <string name="transfer_vehicle_confirmed">✓ 车辆已确认：%s</string>
+    <string name="transfer_spool_not_in_list">该管段不属于所选装箱单。</string>
+    <string name="transfer_spool_already_confirmed">该管段已被确认。</string>
+    <string name="transfer_spool_confirmed">✓ 管段 %s 已确认。</string>
+    <string name="transfer_btn_scan_vehicle">扫描车辆二维码</string>
+    <string name="transfer_btn_scan_spool">扫描管段</string>
+    <string name="transfer_confirm_incomplete_title">未确认的管段</string>
+    <string name="transfer_confirm_incomplete_msg">还有 %1$d 个管段未扫描，是否仍要继续？</string>
+    <string name="transfer_assign_section">区域</string>
+    <string name="transfer_assign_unit">单元</string>
+    <string name="transfer_assign_hint_laydown">分配一个堆场区域</string>
+    <string name="transfer_assign_hint_site">分配一个工地单元</string>
+    <string name="transfer_vehicle_not_found">本地数据库中未找到该车辆。</string>
+    <string name="transfer_vehicle_not_on_route">该车辆不在运输途中。</string>
+    <string name="transfer_vehicle_wrong_destination">该车辆并非前往此位置。</string>
+    <string name="transfer_vehicle_wrong_project">该车辆不属于当前项目。</string>
+    <string name="transfer_send_to">您即将发送至 %s</string>
+    <string name="transfer_pl_label">装箱单：%1$s</string>
+    <string name="transfer_vehicle_label">车辆：%1$s</string>
+
+    <!-- Auto-sync notifications -->
+    <string name="auto_sync_completed">自动同步已完成</string>
+
+    <!-- Settings: location config -->
+    <string name="settings_location_config_title">位置设置</string>
+    <string name="settings_laydown_sections_label">堆场区域</string>
+    <string name="settings_laydown_sections_hint">例如：1A,2A,1B,2B,1C,2C,1D,2D</string>
+    <string name="settings_site_units_label">工地单元</string>
+    <string name="settings_site_units_hint">例如：1,2,3,4</string>
+    <string name="settings_location_config_save">保存</string>
+    <string name="settings_location_config_saved">位置设置已保存</string>
+
+    <!-- Event History -->
+    <string name="menu_event_history">事件历史</string>
+    <string name="event_history_empty">该项目暂无事件记录</string>
+    <string name="event_label_spool_created">管段已创建</string>
+    <string name="event_label_spool_deleted">管段已删除</string>
+    <string name="event_label_spool_deleted_hard">管段已删除（永久）</string>
+    <string name="event_label_pl_created">装箱单已创建</string>
+    <string name="event_label_pl_edited">装箱单已编辑</string>
+    <string name="event_label_pl_deleted">装箱单已删除</string>
+    <string name="event_label_pl_deleted_hard">装箱单已删除（永久）</string>
+    <string name="event_label_vehicle_created">车辆已创建</string>
+    <string name="event_label_vehicle_edited">车辆已编辑</string>
+    <string name="event_label_vehicle_deleted">车辆已删除</string>
+    <string name="event_label_transfer_sent">发货已记录</string>
+    <string name="event_label_transfer_received">收货已记录</string>
+    <string name="event_label_incident_created">事件已创建</string>
+    <string name="event_label_incident_closed">事件已关闭</string>
+</resources>

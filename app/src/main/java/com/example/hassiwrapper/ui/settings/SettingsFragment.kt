@@ -11,8 +11,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
+import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.example.hassiwrapper.AtlasApp
 import com.example.hassiwrapper.BuildConfig
 import com.example.hassiwrapper.LocaleHelper
@@ -49,10 +51,22 @@ class SettingsFragment : Fragment() {
         setupUserRoleSelector(view)
         setupLanguageSelector(view)
         setupDeviceCode(view)
-        setupLocationConfig(view)
+        view.findViewById<View>(R.id.cardLocationConfig)?.visibility = View.GONE
         setupAssignedOperator(view)
         setupDebugLocationButton(view)
         setupKioskMode(view)
+
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    val nav = findNavController()
+                    if (!nav.popBackStack(R.id.homeFragment, false)) {
+                        nav.navigate(R.id.homeFragment)
+                    }
+                }
+            }
+        )
 
         refreshAuthButtons()
 
@@ -354,7 +368,7 @@ class SettingsFragment : Fragment() {
 
     // ── Access code dialog (shared) ─────────────────────────────────────
 
-    private fun requestCodeThen(onValid: () -> Unit) {
+    private fun requestCodeThen(onCancelled: () -> Unit = {}, onValid: () -> Unit) {
         val input = EditText(requireContext()).apply {
             hint = getString(R.string.profile_access_code_hint)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
@@ -369,9 +383,11 @@ class SettingsFragment : Fragment() {
                     onValid()
                 } else {
                     Toast.makeText(requireContext(), R.string.profile_access_code_error, Toast.LENGTH_SHORT).show()
+                    onCancelled()
                 }
             }
-            .setNegativeButton(android.R.string.cancel, null)
+            .setNegativeButton(android.R.string.cancel) { _, _ -> onCancelled() }
+            .setOnCancelListener { onCancelled() }
             .show()
     }
 
@@ -423,12 +439,9 @@ class SettingsFragment : Fragment() {
         val txtLocation = view.findViewById<TextView>(R.id.txtDeviceLocation)
         btn.setOnClickListener {
             viewLifecycleOwner.lifecycleScope.launch {
-                val positions = ServiceLocator.smsPositionDao.getAll()
-                val options = if (positions.isNotEmpty()) {
-                    positions.map { it.code }.toTypedArray()
-                } else {
-                    arrayOf("WORKSHOP", "LAYDOWN", "SITE")
-                }
+                // Only the valid terminal locations — never offer free-form positions
+                // (e.g. UNRECOGNIZED_LOCATION) that would break the Send/Receive gates.
+                val options = com.example.hassiwrapper.VALID_DEVICE_LOCATIONS.toTypedArray()
                 AlertDialog.Builder(requireContext())
                     .setTitle(getString(R.string.settings_debug_location_btn))
                     .setItems(options) { _, which ->
@@ -490,6 +503,16 @@ class SettingsFragment : Fragment() {
 
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
+                if (tab.position == 1) {
+                    requestCodeThen(
+                        onCancelled = { tabLayout.getTabAt(0)?.select() },
+                        onValid = {
+                            scrollBasic.visibility = View.GONE
+                            scrollDev.visibility = View.VISIBLE
+                        }
+                    )
+                    return
+                }
                 scrollBasic.visibility = if (tab.position == 0) View.VISIBLE else View.GONE
                 scrollDev.visibility   = if (tab.position == 1) View.VISIBLE else View.GONE
             }

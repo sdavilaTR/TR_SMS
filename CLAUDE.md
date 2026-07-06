@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Build Commands
 
 ```bash
@@ -24,11 +22,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew clean
 ```
 
-> **Note**: `gradle.properties` points to a custom JBR at `C:/Users/sdavila.AD/Documents/HassiSiteApp/custom_jbr` and includes SSL truststore workarounds. If builds fail on a new machine, update `org.gradle.java.home` or remove it to use system Java 17.
+> **Note**: `gradle.properties` points to custom JBR at `C:/Users/sdavila.AD/Documents/HassiSiteApp/custom_jbr`, includes SSL truststore workarounds. Build fail on new machine: update `org.gradle.java.home` or remove to use system Java 17.
 
 ## Architecture
 
-**MVVM + Repository + Service Locator** — no Dagger/Hilt. All singletons are constructed and held by `ServiceLocator.kt` (an `object`), which reads `AtlasApp.instance.database` on first access.
+**MVVM + Repository + Service Locator** — no Dagger/Hilt. Singletons held by `ServiceLocator.kt` (`object`), reads `AtlasApp.instance.database` on first access.
 
 ### Dependency flow
 
@@ -45,10 +43,10 @@ UI (Fragment / Activity)
 
 | File | Role |
 |------|------|
-| `ServiceLocator.kt` | Central DI: lazy-creates every singleton; also exposes every DAO directly |
-| `AtlasApp.kt` | Application class; initialises Room, stores global `instance` ref |
-| `ProfileManager.kt` | 5 profiles: USER, HSE, ADMIN, PRE, DEV — controls API URL and menu visibility |
-| `ApiClient.kt` | Retrofit wrapper; resolves primary vs. fallback URL via `/health` ping; injects JWT + Device-ID via OkHttp interceptor |
+| `ServiceLocator.kt` | Central DI: lazy-creates singletons; exposes all DAOs |
+| `AtlasApp.kt` | App class; init Room, stores global `instance` ref |
+| `ProfileManager.kt` | 5 profiles: USER, HSE, ADMIN, PRE, DEV — controls API URL + menu |
+| `ApiClient.kt` | Retrofit wrapper; resolves primary/fallback URL via `/health`; injects JWT + Device-ID via OkHttp interceptor |
 | `AuthRepository.kt` | JWT login, storage, expiry; `reLoginWithStoredCode()` for session recovery |
 | `ClockingService.kt` | Core access-control logic — anti-bounce (30 s), ENTRY/EXIT/AUTO resolution, session management |
 | `SyncService.kt` | Full sync orchestration: device registration → download master data → upload logs/incidents/sessions/observations |
@@ -72,7 +70,7 @@ UI (Fragment / Activity)
 | PRE | PRE (`web-atlas-api-pre.azurewebsites.net`) | All items |
 | DEV | DEV (`web-atlas-api-dev.azurewebsites.net`) | All items |
 
-Switching to PRE/DEV resets the local database. Access code to unlock non-USER profiles: `ATLAS2026`. PRO traffic routes through a public reverse proxy that prepends `/api` to every path — `ApiClient` handles this transparently.
+PRE/DEV switch resets local DB. Unlock non-USER profiles: `ATLAS2026`. PRO via public reverse proxy prepending `/api` — `ApiClient` handles transparently.
 
 ### Database (Room — v8, 33 tables)
 
@@ -80,13 +78,13 @@ Switching to PRE/DEV resets the local database. Access code to unlock non-USER p
 
 **SMS tables (v7→v8):** `sms_spool`, `sms_packing_list`, `sms_packing_list_spool`, `sms_vehicle`, `sms_area`, `sms_spec`, `sms_subcontractor`, `sms_spool_event`, `sms_spool_property`, `sms_spool_status`, `sms_spool_status_flags`, `sms_bore_size`, `sms_incomplete_status`, `sms_iso_type`, `sms_position`, `sms_unit`.
 
-Unsynced records use `synced = false`; `SyncService` uploads and flips the flag. When adding new tables, add a `MIGRATION_N_N+1` in `AtlasDatabase.kt` and bump `version`.
+Unsynced records: `synced = false`; `SyncService` uploads + flips flag. New tables: add `MIGRATION_N_N+1` in `AtlasDatabase.kt`, bump `version`.
 
 ### SMS Module
 
-The SMS (Spool Management System) module syncs spools, packing lists, and vehicles per project. Data flows: API → raw JSON → `parseSpoolEntities()` / `parsePackingListEntities()` / `parseVehicleEntities()` → Room. These three parse helpers are currently duplicated across `MainActivity`, `HomeFragment`, and `SyncFragment` — prefer `MainActivity.syncSmsData()` as the canonical path and avoid adding a fourth copy.
+SMS (Spool Management System) syncs spools, packing lists, vehicles per project. Data: API → raw JSON → `parseSpoolEntities()` / `parsePackingListEntities()` / `parseVehicleEntities()` → Room. Parse helpers duplicated across `MainActivity`, `HomeFragment`, `SyncFragment` — prefer `MainActivity.syncSmsData()`, don't add 4th copy.
 
-SMS endpoints use `projectCode` (string) not `projectId` (int). The selected project is stored in `config` table under key `"selected_project_id"` (defaults to `6`).
+SMS endpoints use `projectCode` (string) not `projectId` (int). Selected project: `config` key `"selected_project_id"` (default `6`).
 
 ### API endpoints (`AtlasApiService.kt`)
 
@@ -123,16 +121,16 @@ Entry point: `LoginActivity` → `MainActivity` (Navigation Drawer).
 
 Fragments: `HomeFragment`, `ScannerFragment`, `PassportFragment`, `PackingListsFragment`, `AttendanceFragment`, `SyncFragment`, `WorkersFragment`, `VehiclesFragment`, `ObservationFragment`, `ObservationsGeneralFragment`, `InspectionsFragment`, `SettingsFragment`.
 
-Profile visibility is enforced in `MainActivity.applyProfileMenuVisibility()` and re-applied after profile changes via `refreshProfileMenu()`.
+Profile visibility enforced in `MainActivity.applyProfileMenuVisibility()`, re-applied via `refreshProfileMenu()` after changes.
 
 ### Auto-sync
 
-`MainActivity` runs a coroutine loop every 60 s (`AUTO_SYNC_INTERVAL_MS`) that calls `SyncService.fullSync()` then `syncSmsData()`. The loop is tied to `onResume`/`onPause` so it stops when the app is backgrounded. `DataWedgeManager` is also registered/unregistered on resume/pause.
+`MainActivity` runs coroutine loop every 60 s (`AUTO_SYNC_INTERVAL_MS`): `SyncService.fullSync()` then `syncSmsData()`. Tied to `onResume`/`onPause`; stops when backgrounded. `DataWedgeManager` registered/unregistered on resume/pause.
 
 ### Localization
 
-All user-facing strings are in **Spanish** (`res/values/strings.xml`).
+All strings in **Spanish** (`res/values/strings.xml`).
 
 ### Scanner integration
 
-`DataWedgeManager` listens for Honeywell DataWedge broadcast intents (default action `com.honeywell.sample.action.BARCODE`). Hardware scanning only works on compatible Honeywell devices (e.g., EDA52) with DataWedge configured to output scan intents.
+`DataWedgeManager` listens for Honeywell DataWedge broadcast intents (default action `com.honeywell.sample.action.BARCODE`). Hardware scan only on Honeywell devices (e.g., EDA52) with DataWedge configured for scan intents.

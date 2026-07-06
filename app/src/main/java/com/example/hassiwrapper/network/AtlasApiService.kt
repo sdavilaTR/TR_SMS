@@ -96,8 +96,16 @@ interface AtlasApiService {
 
     // ── SMS Spools ──────────────────────────────────────
     // GET /api/atlas/projects/{projectCode}/spools  →  raw JSON (parsed in fragment after logging)
+    // page/pageSize drive server-side pagination; omit both to get all rows (legacy).
     @GET("/api/atlas/projects/{projectCode}/spools")
-    suspend fun getSpools(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
+    suspend fun getSpools(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @Query("page") page: Int? = null,
+        @Query("pageSize") pageSize: Int? = null,
+        // ISO-8601 timestamp; when set the server should return only rows with updated_at > value.
+        // Ignored by backends that don't implement delta sync — those return all rows (safe fallback).
+        @Query("updatedSince") updatedSince: String? = null
+    ): Response<okhttp3.ResponseBody>
 
     @POST("/api/atlas/projects/{projectCode}/spools")
     suspend fun createSpool(
@@ -256,12 +264,30 @@ interface AtlasApiService {
         @Body body: CreateSpoolStatusFlagsRequest
     ): Response<okhttp3.ResponseBody>
 
+    // Authoritative per-spool position + sub-position write (validates sub belongs to position/project).
+    @PUT("/api/atlas/projects/{projectCode}/spools/{spoolId}/status-flags")
+    suspend fun updateSpoolStatusFlags(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("spoolId") spoolId: Long,
+        @Body body: SpoolStatusFlagsRequest
+    ): Response<okhttp3.ResponseBody>
+
     // ── SMS Incidents ─────────────────────────────────
     // Upsert on body.uuid so best-effort retries don't duplicate.
     @POST("/api/atlas/projects/{projectCode}/incidents")
     suspend fun createSmsIncident(
         @retrofit2.http.Path("projectCode") projectCode: String,
         @Body body: com.example.hassiwrapper.network.dto.CreateSmsIncidentRequest
+    ): Response<okhttp3.ResponseBody>
+
+    // Single photo only (server overwrites on re-upload), 8MB limit. {incidentId} is the
+    // server-assigned id returned by createSmsIncident, not the client uuid.
+    @Multipart
+    @POST("/api/atlas/projects/{projectCode}/incidents/{incidentId}/photo")
+    suspend fun uploadSmsIncidentPhoto(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("incidentId") incidentId: Long,
+        @Part file: MultipartBody.Part
     ): Response<okhttp3.ResponseBody>
 
     @GET("/api/atlas/projects/{projectCode}/spools/{spoolId}/events")
@@ -282,6 +308,20 @@ interface AtlasApiService {
         @retrofit2.http.Path("spoolId") spoolId: String
     ): Response<okhttp3.ResponseBody>
 
+    // ── GPS Spool Locations ───────────────────────────────────────
+    @GET("/api/atlas/projects/{projectCode}/spools/{spoolId}/locations")
+    suspend fun getSpoolLocations(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("spoolId") spoolId: Long
+    ): Response<okhttp3.ResponseBody>
+
+    @POST("/api/atlas/projects/{projectCode}/spools/{spoolId}/location")
+    suspend fun postSpoolLocation(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("spoolId") spoolId: Long,
+        @Body body: com.example.hassiwrapper.network.dto.SpoolLocationRequest
+    ): Response<okhttp3.ResponseBody>
+
     // ── SMS Lookups (per-project, per current backend swagger) ───
     @GET("/api/atlas/projects/{projectCode}/bore-sizes")
     suspend fun getBoreSizes(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
@@ -291,6 +331,9 @@ interface AtlasApiService {
 
     @GET("/api/atlas/projects/{projectCode}/positions")
     suspend fun getPositions(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
+
+    @GET("/api/atlas/projects/{projectCode}/sub-positions")
+    suspend fun getSubPositions(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
 
     @GET("/api/atlas/projects/{projectCode}/spool-statuses")
     suspend fun getSpoolStatuses(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>

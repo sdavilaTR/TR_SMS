@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background">
+
+    <com.example.hassiwrapper.ui.home.ParticleNetworkView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+<ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -11,260 +19,227 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/sync_title"
-            android:textColor="@color/on_surface"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="16dp" />
-
-        <!-- Connectivity status card -->
+        <!-- Connection status card (compact) -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="8dp"
             app:cardBackgroundColor="@color/card_bg"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="3dp">
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:gravity="center_vertical">
 
+                <!-- Network -->
+                <View
+                    android:id="@+id/dotNetwork"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:background="@drawable/dot_grey"
+                    android:layout_marginEnd="6dp" />
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:id="@+id/txtNetworkStatus"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/sync_label_connection"
-                    android:textColor="@color/on_surface"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="10dp" />
+                    android:layout_weight="1"
+                    android:text="@string/sync_status_checking"
+                    android:textColor="@color/on_surface_variant"
+                    android:textSize="13sp" />
 
-                <!-- Network row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <!-- API -->
+                <View
+                    android:id="@+id/dotApi"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:background="@drawable/dot_grey"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="6dp" />
+                <TextView
+                    android:id="@+id/txtApiStatus"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="6dp">
-                    <View
-                        android:id="@+id/dotNetwork"
-                        android:layout_width="10dp"
-                        android:layout_height="10dp"
-                        android:background="@drawable/dot_grey"
-                        android:layout_marginEnd="10dp" />
-                    <TextView
-                        android:id="@+id/txtNetworkStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_status_checking"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="14sp" />
-                </LinearLayout>
+                    android:layout_weight="1"
+                    android:text="@string/sync_status_checking"
+                    android:textColor="@color/on_surface_variant"
+                    android:textSize="13sp" />
 
-                <!-- API row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <!-- Auth -->
+                <View
+                    android:id="@+id/dotAuth"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:background="@drawable/dot_grey"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="6dp" />
+                <TextView
+                    android:id="@+id/txtAuthStatus"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="6dp">
-                    <View
-                        android:id="@+id/dotApi"
-                        android:layout_width="10dp"
-                        android:layout_height="10dp"
-                        android:background="@drawable/dot_grey"
-                        android:layout_marginEnd="10dp" />
-                    <TextView
-                        android:id="@+id/txtApiStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_status_checking"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="14sp" />
-                </LinearLayout>
-
-                <!-- Auth session row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-                    <View
-                        android:id="@+id/dotAuth"
-                        android:layout_width="10dp"
-                        android:layout_height="10dp"
-                        android:background="@drawable/dot_grey"
-                        android:layout_marginEnd="10dp" />
-                    <TextView
-                        android:id="@+id/txtAuthStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_status_checking"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="14sp" />
-                </LinearLayout>
+                    android:layout_weight="1"
+                    android:text="@string/sync_status_checking"
+                    android:textColor="@color/on_surface_variant"
+                    android:textSize="13sp" />
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- KPI cards row 1: Records + Photos -->
-        <LinearLayout
+        <!-- KPI row: all 5 in a single horizontal card (compact) -->
+        <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <!-- Records KPI -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="0dp"
+            android:layout_marginBottom="14dp"
+            app:cardBackgroundColor="@color/card_bg"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                android:orientation="vertical">
+
+                <!-- Spools (full-width row so large counts fit at full size) -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="14dp"
-                    android:gravity="center_horizontal">
+                    android:gravity="center_horizontal"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="8dp">
+                    <View
+                        android:layout_width="20dp"
+                        android:layout_height="3dp"
+                        android:background="@color/primary"
+                        android:layout_marginBottom="4dp" />
+                    <TextView
+                        android:id="@+id/txtKpiRecords"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:maxLines="1"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/primary" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/sync_kpi_records"
                         android:textColor="@color/on_surface_variant"
-                        android:textSize="12sp"
-                        android:layout_marginBottom="6dp" />
-                    <TextView
-                        android:id="@+id/txtKpiRecords"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="24sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/granted" />
+                        android:textSize="11sp" />
                     <TextView
                         android:id="@+id/txtKpiRecordsLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:layout_marginTop="2dp" />
+                        android:textSize="9sp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
 
-            <!-- Photos KPI -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/divider"
+                    android:layout_marginHorizontal="12dp" />
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="10dp">
+
+                <!-- Packing Lists -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:orientation="vertical"
-                    android:padding="14dp"
                     android:gravity="center_horizontal">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_kpi_photos"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="12sp"
-                        android:layout_marginBottom="6dp" />
+                    <View
+                        android:layout_width="20dp"
+                        android:layout_height="3dp"
+                        android:background="@color/primary"
+                        android:layout_marginBottom="4dp" />
                     <TextView
                         android:id="@+id/txtKpiPhotos"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textSize="24sp"
                         android:textStyle="bold"
-                        android:textColor="@color/granted" />
+                        android:textColor="@color/primary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sync_kpi_photos"
+                        android:textColor="@color/on_surface_variant"
+                        android:textSize="11sp" />
                     <TextView
                         android:id="@+id/txtKpiPhotosLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:layout_marginTop="2dp" />
+                        android:textSize="9sp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
-        </LinearLayout>
 
-        <!-- KPI cards row 2: Observations + Workers -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
+                <!-- Divider -->
+                <View android:layout_width="1dp" android:layout_height="match_parent"
+                    android:background="@color/divider" android:layout_marginHorizontal="2dp" />
 
-            <!-- Observations KPI -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                <!-- Vehículos -->
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:orientation="vertical"
-                    android:padding="14dp"
                     android:gravity="center_horizontal">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_kpi_observations"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="12sp"
-                        android:layout_marginBottom="6dp" />
+                    <View
+                        android:layout_width="20dp"
+                        android:layout_height="3dp"
+                        android:background="@color/secondary"
+                        android:layout_marginBottom="4dp" />
                     <TextView
                         android:id="@+id/txtKpiObservations"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textSize="24sp"
                         android:textStyle="bold"
-                        android:textColor="@color/granted" />
+                        android:textColor="@color/secondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sync_kpi_observations"
+                        android:textColor="@color/on_surface_variant"
+                        android:textSize="11sp" />
                     <TextView
                         android:id="@+id/txtKpiObservationsLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:layout_marginTop="2dp" />
+                        android:textSize="9sp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
 
-            <!-- Workers KPI -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                <!-- Divider -->
+                <View android:layout_width="1dp" android:layout_height="match_parent"
+                    android:background="@color/divider" android:layout_marginHorizontal="2dp" />
+
+                <!-- En Tránsito -->
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:orientation="vertical"
-                    android:padding="14dp"
                     android:gravity="center_horizontal">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_kpi_workers"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="12sp"
-                        android:layout_marginBottom="6dp" />
+                    <View
+                        android:layout_width="20dp"
+                        android:layout_height="3dp"
+                        android:background="@color/warning"
+                        android:layout_marginBottom="4dp" />
                     <TextView
                         android:id="@+id/txtKpiWorkers"
                         android:layout_width="wrap_content"
@@ -273,101 +248,110 @@
                         android:textStyle="bold"
                         android:textColor="@color/primary" />
                     <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sync_kpi_workers"
+                        android:textColor="@color/on_surface_variant"
+                        android:textSize="11sp" />
+                    <TextView
                         android:id="@+id/txtKpiWorkersLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:layout_marginTop="2dp" />
+                        android:textSize="9sp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
-        </LinearLayout>
 
-        <!-- KPI cards row 3: Vehicles -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
+                <!-- Divider -->
+                <View android:layout_width="1dp" android:layout_height="match_parent"
+                    android:background="@color/divider" android:layout_marginHorizontal="2dp" />
 
-            <!-- Vehicles KPI -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="3dp">
+                <!-- Pendientes -->
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:orientation="vertical"
-                    android:padding="14dp"
                     android:gravity="center_horizontal">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/sync_kpi_vehicles"
-                        android:textColor="@color/on_surface_variant"
-                        android:textSize="12sp"
-                        android:layout_marginBottom="6dp" />
+                    <View
+                        android:layout_width="20dp"
+                        android:layout_height="3dp"
+                        android:background="@color/granted"
+                        android:layout_marginBottom="4dp" />
                     <TextView
                         android:id="@+id/txtKpiVehicles"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textSize="24sp"
                         android:textStyle="bold"
-                        android:textColor="@color/secondary" />
+                        android:textColor="@color/granted" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sync_kpi_vehicles"
+                        android:textColor="@color/on_surface_variant"
+                        android:textSize="11sp" />
                     <TextView
                         android:id="@+id/txtKpiVehiclesLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/on_surface_variant"
-                        android:textSize="11sp"
-                        android:layout_marginTop="2dp" />
+                        android:textSize="9sp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
 
-            <!-- Spacer -->
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp" />
-        </LinearLayout>
+                </LinearLayout>
 
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Sync button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnFullSync"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="56dp"
             android:text="@string/sync_btn"
             android:textAllCaps="false"
-            android:layout_marginBottom="8dp" />
+            android:textSize="16sp"
+            app:icon="@drawable/ic_sync"
+            app:iconGravity="textStart"
+            app:iconPadding="8dp"
+            android:layout_marginBottom="12dp" />
 
-        <ProgressBar
+        <!-- Progress indicator (indeterminate, shown while syncing) -->
+        <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/progressSync"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+            android:indeterminate="true"
             android:visibility="gone"
+            app:indicatorColor="@color/primary"
+            app:trackThickness="4dp"
             android:layout_marginBottom="8dp" />
 
-        <!-- Status text for in-progress / retrying messages -->
-        <TextView
-            android:id="@+id/txtSyncStatus"
+        <!-- Live sync log (shown during and after sync) -->
+        <ScrollView
+            android:id="@+id/scrollSyncLog"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="@color/on_surface_variant"
-            android:textSize="14sp"
-            android:gravity="center" />
+            android:layout_height="164dp"
+            android:visibility="gone"
+            android:background="@drawable/bg_log_box"
+            android:layout_marginBottom="8dp"
+            android:fillViewport="true">
+            <TextView
+                android:id="@+id/txtSyncLog"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="12dp"
+                android:textColor="@color/on_surface"
+                android:textSize="12sp"
+                android:lineSpacingMultiplier="1.5" />
+        </ScrollView>
 
-        <!-- Structured sync result card -->
+        <!-- Result card (shown after sync completes) -->
         <androidx.cardview.widget.CardView
             android:id="@+id/cardSyncResult"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="4dp"
             android:visibility="gone"
             app:cardBackgroundColor="@color/card_bg"
             app:cardCornerRadius="16dp"
@@ -378,18 +362,17 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <!-- Result title row with icon -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginBottom="12dp">
+                    android:layout_marginBottom="8dp">
                     <TextView
                         android:id="@+id/txtResultIcon"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="18sp"
+                        android:textSize="20sp"
                         android:layout_marginEnd="8dp" />
                     <TextView
                         android:id="@+id/txtResultTitle"
@@ -400,7 +383,6 @@
                         android:textColor="@color/on_surface" />
                 </LinearLayout>
 
-                <!-- Result lines -->
                 <TextView
                     android:id="@+id/txtResultLogs"
                     android:layout_width="match_parent"
@@ -451,6 +433,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
+        <!-- Last sync timestamp -->
         <TextView
             android:id="@+id/txtLastSync"
             android:layout_width="match_parent"
@@ -461,5 +444,13 @@
             android:gravity="center"
             android:layout_marginTop="16dp" />
 
+        <!-- Hidden compat view, kept for legacy references -->
+        <TextView
+            android:id="@+id/txtSyncStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
     </LinearLayout>
 </ScrollView>
+</FrameLayout>

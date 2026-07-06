@@ -26,6 +26,7 @@ import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
 import com.example.hassiwrapper.data.db.entities.SmsPackingListSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
+import com.example.hassiwrapper.data.db.entities.SmsSpoolLocationEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolPropertyEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferSpoolEntity
@@ -37,6 +38,7 @@ import com.example.hassiwrapper.jInt
 import com.example.hassiwrapper.jStr
 import com.example.hassiwrapper.network.dto.AssignSpoolRequest
 import com.example.hassiwrapper.network.dto.CreatePackingListRequest
+import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.ui.qrscanner.QrResult
 import com.example.hassiwrapper.ui.qrscanner.parseQr
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
@@ -94,6 +96,8 @@ class SendPackingListFragment : Fragment() {
     private lateinit var rgDestination: RadioGroup
     private lateinit var txtSendDestination: TextView
     private lateinit var btnConfirmSend: MaterialButton
+    private lateinit var panelUploadProgress: View
+    private lateinit var txtUploadStatus: TextView
 
     private val vehicleScanLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -113,12 +117,40 @@ class SendPackingListFragment : Fragment() {
         }
     }
 
+    // Send-confirm captures a best-effort GPS fix; request location permission once up
+    // front so it's not silently unavailable for the lifetime of the app (see GpsHelper).
+    private val requestLocationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* best-effort — GpsHelper silently skips capture if denied */ }
+
+    private var pendingCameraAction: (() -> Unit)? = null
+    private val requestCameraPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) pendingCameraAction?.invoke() }
+
+    private fun launchScannerWithPermission(action: () -> Unit) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.CAMERA)
+            == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            action()
+        } else {
+            pendingCameraAction = action
+            requestCameraPermission.launch(android.Manifest.permission.CAMERA)
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_send_packing_list, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         (view as com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView).onSwipeBack = { findNavController().navigateUp() }
+
+        if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED &&
+            androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_COARSE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestLocationPermission.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
+        }
 
         txtLocationBlocked = view.findViewById(R.id.txtLocationBlocked)
 
@@ -141,10 +173,12 @@ class SendPackingListFragment : Fragment() {
         btnContinueToSignature = view.findViewById(R.id.btnContinueToSignature)
 
         panelDestination         = view.findViewById(R.id.panelDestination)
-        panelDestinationChoice = view.findViewById(R.id.panelDestinationChoice)
-        rgDestination          = view.findViewById(R.id.rgDestination)
-        txtSendDestination     = view.findViewById(R.id.txtSendDestination)
-        btnConfirmSend         = view.findViewById(R.id.btnConfirmSend)
+        panelDestinationChoice   = view.findViewById(R.id.panelDestinationChoice)
+        rgDestination            = view.findViewById(R.id.rgDestination)
+        txtSendDestination       = view.findViewById(R.id.txtSendDestination)
+        btnConfirmSend           = view.findViewById(R.id.btnConfirmSend)
+        panelUploadProgress      = view.findViewById(R.id.panelUploadProgress)
+        txtUploadStatus          = view.findViewById(R.id.txtUploadStatus)
 
         adapter = ScannedSpoolAdapter()
         rvLoadedSpools.layoutManager = LinearLayoutManager(requireContext())
@@ -155,12 +189,12 @@ class SendPackingListFragment : Fragment() {
         txtSpoolsCount.text = getString(R.string.load_spools_spools_count, 0)
 
         btnScanVehicle.setOnClickListener {
-            vehicleScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java))
+            launchScannerWithPermission { vehicleScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java)) }
         }
         btnConfirmVehicle.setOnClickListener { confirmVehicle() }
 
         btnScanSpool.setOnClickListener {
-            spoolScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java))
+            launchScannerWithPermission { spoolScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java)) }
         }
         btnAddSpool.setOnClickListener { addSpoolManually() }
 
@@ -683,17 +717,34 @@ class SendPackingListFragment : Fragment() {
 
                 ServiceLocator.smsPackingListDao.setReadyToSend(effectivePlId, false)
 
+                // Position stays put until the receiving side confirms — only in_transit/on_route
+                // flags move at send time. See ReceivePackingListFragment for the position update.
                 val destPosition = ServiceLocator.smsPositionDao.getByCode(destination)
-                if (destPosition != null) {
-                    transferSpools.forEach { s ->
-                        ServiceLocator.smsSpoolDao.updatePosition(s.spoolId, destPosition.position_id)
-                    }
-                    ServiceLocator.smsPackingListDao.updatePosition(effectivePlId, destPosition.position_id)
-                } else {
-                    Log.w("SendPL", "onConfirmSend: no position found for code='$destination' — spool/PL position NOT updated")
+                if (destPosition == null) {
+                    Log.w("SendPL", "onConfirmSend: no position found for code='$destination'")
                 }
 
                 ServiceLocator.smsVehicleDao.setOnRoute(vehicle.vehicle_id, destPosition?.position_id)
+
+                // One GPS fix for the whole send batch — captured at the moment of confirm.
+                val gps = GpsHelper.getCurrentLocation(requireContext())
+                if (gps != null) {
+                    val (lat, lon, acc) = gps
+                    val capturedAt = GpsHelper.capturedAtNow()
+                    val capturedBy = ServiceLocator.configRepo.get("device_name")
+                    transferSpools.forEach { s ->
+                        val loc = SmsSpoolLocationEntity(
+                            spool_id       = s.spoolId,
+                            latitude       = lat,
+                            longitude      = lon,
+                            gps_accuracy_m = acc,
+                            captured_at    = capturedAt,
+                            captured_by    = capturedBy
+                        )
+                        ServiceLocator.smsSpoolLocationDao.insert(loc)
+                        ServiceLocator.smsSpoolLocationDao.pruneOldest(s.spoolId)
+                    }
+                }
 
                 try {
                     val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
@@ -707,7 +758,19 @@ class SendPackingListFragment : Fragment() {
                 }
 
                 val activity = requireActivity() as? MainActivity
-                activity?.lifecycleScope?.launch { ServiceLocator.syncService.syncSmsUploads() }
+
+                // Block and upload immediately before navigating — prevents sync from
+                // overwriting the just-recorded send state (vehicle on_route, spool positions).
+                if (isAdded) {
+                    btnConfirmSend.isEnabled = false
+                    panelUploadProgress.visibility = android.view.View.VISIBLE
+                    txtUploadStatus.text = getString(R.string.transfer_send_uploading)
+                }
+                val uploadResult = ServiceLocator.syncService.syncSmsUploads()
+                if (isAdded) {
+                    panelUploadProgress.visibility = android.view.View.GONE
+                    btnConfirmSend.isEnabled = true
+                }
 
                 if (!isAdded) return@launch
                 activity?.playSuccess()
@@ -718,7 +781,9 @@ class SendPackingListFragment : Fragment() {
                     detail = "${vehicle.license_plate} → $destination",
                     projectId = projectId
                 )
-                Toast.makeText(requireContext(), getString(R.string.transfer_send_success), Toast.LENGTH_LONG).show()
+                val msg = if (uploadResult.success) R.string.transfer_send_success
+                          else R.string.transfer_send_success_partial
+                Toast.makeText(requireContext(), getString(msg), Toast.LENGTH_LONG).show()
                 findNavController().navigateUp()
             } catch (e: Exception) {
                 Log.e("SendPL", "onConfirmSend FAILED", e)

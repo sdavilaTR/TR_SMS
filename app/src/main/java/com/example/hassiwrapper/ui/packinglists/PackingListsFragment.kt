@@ -16,10 +16,8 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
-import com.example.hassiwrapper.network.dto.SmsPackingListDto
+import com.example.hassiwrapper.parsePackingListEntities
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.gson.Gson
-import com.google.gson.JsonParser
 import kotlinx.coroutines.launch
 
 class PackingListsFragment : Fragment() {
@@ -133,37 +131,6 @@ class PackingListsFragment : Fragment() {
                 showLoading(false)
                 refreshCounts()
             }
-        }
-    }
-
-    private fun parsePackingListEntities(raw: String, defaultProjectId: Int): List<SmsPackingListEntity> {
-        val gson = Gson()
-        return try {
-            val el = JsonParser.parseString(raw)
-            val array = when {
-                el.isJsonArray -> el.asJsonArray
-                el.isJsonObject -> {
-                    val obj = el.asJsonObject
-                    listOf("data", "items", "results", "packingLists", "packing_lists").asSequence()
-                        .mapNotNull { obj.get(it) }
-                        .firstOrNull { it.isJsonArray }?.asJsonArray
-                }
-                else -> null
-            } ?: return emptyList()
-            array.mapNotNull { element ->
-                if (!element.isJsonObject) return@mapNotNull null
-                try {
-                    val dto = gson.fromJson(element, SmsPackingListDto::class.java)
-                    val entity = dto.toEntity(defaultProjectId)
-                    if (entity.packing_list_id == 0L) null else entity
-                } catch (e: Exception) {
-                    Log.w("PackingListsJSON", "Failed to parse PL element", e)
-                    null
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("PackingListsJSON", "Parse error", e)
-            emptyList()
         }
     }
 

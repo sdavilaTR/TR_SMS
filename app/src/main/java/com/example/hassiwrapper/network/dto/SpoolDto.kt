@@ -2,6 +2,7 @@ package com.example.hassiwrapper.network.dto
 
 import com.google.gson.annotations.SerializedName
  import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
+import com.example.hassiwrapper.data.db.entities.SmsSpoolLocationEntity
 import com.example.hassiwrapper.data.model.Spool
 import java.util.zip.CRC32
 
@@ -21,7 +22,8 @@ data class CreateSpoolRequest(
     @SerializedName("isActive")    val isActive: Boolean = true,
     @SerializedName("unitId")      val unitId: Int? = null,
     @SerializedName("isoTypeId")   val isoTypeId: Int? = null,
-    @SerializedName("train")       val train: String? = null
+    @SerializedName("train")       val train: String? = null,
+    @SerializedName("zone")        val zone: String? = null
 )
 
 data class CreateSpoolPropertyRequest(
@@ -36,7 +38,28 @@ data class CreateSpoolStatusFlagsRequest(
     @SerializedName("spoolId")            val spoolId: Long,
     @SerializedName("statusId")           val statusId: Int?,
     @SerializedName("incompleteStatusId") val incompleteStatusId: Int?,
-    @SerializedName("positionId")         val positionId: Int?
+    @SerializedName("positionId")         val positionId: Int?,
+    @SerializedName("subPositionId")      val subPositionId: Long? = null
+)
+
+/** Full mirror of backend SpoolStatusFlagsDto — body for the authoritative PUT status-flags path.
+ *  The PUT overwrites the whole flags row, so callers GET-merge-PUT (read current flags, override
+ *  only positionId/subPositionId, send everything back) to avoid wiping hold/damaged/status/dates.
+ *  updatedAt is set server-side (GETUTCDATE) and intentionally omitted. */
+data class SpoolStatusFlagsRequest(
+    @SerializedName("spoolId")                   val spoolId: Long,
+    @SerializedName("statusId")                  val statusId: Int? = null,
+    @SerializedName("incompleteStatusId")        val incompleteStatusId: Int? = null,
+    @SerializedName("positionId")                val positionId: Int? = null,
+    @SerializedName("subPositionId")             val subPositionId: Long? = null,
+    @SerializedName("hold")                      val hold: Boolean = false,
+    @SerializedName("damaged")                   val damaged: Boolean = false,
+    @SerializedName("returnedToFactory")         val returnedToFactory: Boolean = false,
+    @SerializedName("positionStatusDiscrepancy") val positionStatusDiscrepancy: Boolean = false,
+    @SerializedName("reviewDiscrepancy")         val reviewDiscrepancy: Boolean = false,
+    @SerializedName("lastEventDate")             val lastEventDate: String? = null,
+    @SerializedName("pcaStatusDate")             val pcaStatusDate: String? = null,
+    @SerializedName("pcaEntryDate")              val pcaEntryDate: String? = null
 )
 
 /** Transport object matching the JSON shape returned by ATLAS for [sms].[sms_spool].
@@ -61,6 +84,7 @@ data class SpoolDto(
     @SerializedName(value = "iso_revision_date",  alternate = ["isoRevisionDate"])   val isoRevisionDate: String? = null,
     @SerializedName(value = "subcontractor_id",   alternate = ["subcontractorId"])   val subcontractorId: String? = null,
     @SerializedName(value = "area_id",            alternate = ["areaId"])            val areaId: String? = null,
+    @SerializedName(value = "sub_position_id",    alternate = ["subPositionId"])     val subPositionId: String? = null,
     @SerializedName(value = "status")                                                 val status: String? = null,
     @SerializedName(value = "zone")                                                   val zone: String? = null,
     @SerializedName(value = "description")                                            val description: String? = null,
@@ -141,6 +165,7 @@ data class SpoolDto(
         iso_revision_date = isoRevisionDate,
         subcontractor_id = subcontractorId.toLongOrNullSafe(),
         area_id         = areaId.toLongOrNullSafe(),
+        sub_position_id = subPositionId.toLongOrNullSafe(),
         is_active       = isActive ?: true,
         created_at      = createdAt.orEmpty(),
         created_by      = createdBy.orEmpty(),
@@ -155,5 +180,34 @@ data class SpoolDto(
         assigned_unit   = assignedUnit?.takeIf { it.isNotBlank() },
         packing_list_name = packingListName?.takeIf { it.isNotBlank() },
         in_transit      = inTransit ?: false
+    )
+}
+
+data class SpoolLocationRequest(
+    @SerializedName("latitude")      val latitude: Double,
+    @SerializedName("longitude")     val longitude: Double,
+    @SerializedName("gpsAccuracyM") val gpsAccuracyM: Float?,
+    @SerializedName("capturedAt")   val capturedAt: String,
+    @SerializedName("capturedBy")   val capturedBy: String?
+)
+
+data class SpoolLocationResponse(
+    @SerializedName("locationId")   val locationId: Long,
+    @SerializedName("spoolId")      val spoolId: Long,
+    @SerializedName("latitude")     val latitude: Double,
+    @SerializedName("longitude")    val longitude: Double,
+    @SerializedName("gpsAccuracyM") val gpsAccuracyM: Float?,
+    @SerializedName("capturedAt")   val capturedAt: String,
+    @SerializedName("capturedBy")   val capturedBy: String?
+) {
+    fun toEntity(synced: Boolean = true) = SmsSpoolLocationEntity(
+        location_id   = locationId,
+        spool_id      = spoolId,
+        latitude      = latitude,
+        longitude     = longitude,
+        gps_accuracy_m = gpsAccuracyM,
+        captured_at   = capturedAt,
+        captured_by   = capturedBy,
+        synced        = synced
     )
 }

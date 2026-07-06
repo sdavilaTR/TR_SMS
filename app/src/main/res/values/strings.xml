@@ -255,6 +255,12 @@
     <string name="login_error_format">Error: %s</string>
     <string name="login_error_empty_code">Error: Introduce el Código del Terminal.</string>
 
+    <string name="db_error_title">Error de base de datos</string>
+    <string name="db_error_message">No se pudo abrir la base de datos local (fallo de migración). La app no puede continuar así.\n\nDetalle: %s</string>
+    <string name="db_error_reset">Reiniciar datos del dispositivo</string>
+    <string name="db_error_reset_warning">Se borrarán todos los datos locales no sincronizados de este terminal. ¿Continuar?</string>
+    <string name="db_error_close">Cerrar app</string>
+
     <!-- Update (Settings button) -->
     <string name="settings_check_updates">Buscar actualizaciones</string>
     <string name="settings_check_updates_searching">Buscando…</string>
@@ -499,6 +505,28 @@
     <string name="sync_error_server_unavailable">Servidor no disponible (HTTP %d)</string>
     <string name="sync_error_server_rejected">Servidor rechazó la conexión (HTTP %d)</string>
     <string name="sync_error_outbox_retry">Cola de cambios: sin conexión, reintentando</string>
+    <!-- Sync progress step messages -->
+    <string name="sync_log_start">Iniciando sincronización…</string>
+    <string name="sync_step_session">Verificando sesión…</string>
+    <string name="sync_step_server">Conectando con servidor…</string>
+    <string name="sync_step_register">Registrando dispositivo…</string>
+    <string name="sync_step_download">Descargando datos maestros…</string>
+    <string name="sync_step_download_ok">✓ %1$d vehículos añadidos, %2$d actualizados</string>
+    <string name="sync_step_upload_pl">Subiendo packing lists…</string>
+    <string name="sync_step_upload_loadings">Subiendo cargas de vehículos…</string>
+    <string name="sync_step_upload_transfers">Subiendo traslados…</string>
+    <string name="sync_step_upload_route">Actualizando estado de vehículos…</string>
+    <string name="sync_step_upload_incidents">Subiendo incidencias…</string>
+    <string name="sync_step_outbox">Procesando cola de cambios…</string>
+    <string name="sync_step_heartbeat">Enviando telemetría…</string>
+    <string name="sync_step_sms">Descargando datos SMS…</string>
+    <string name="sync_step_done">✓ Datos base sincronizados</string>
+    <string name="sync_sms_spools_page">Descargando spools… pág. %1$d (%2$d acumulados)</string>
+    <string name="sync_sms_spools_ok">✓ Spools: %1$d nuevos, %2$d actualizados (%3$d total)</string>
+    <string name="sync_sms_pl_ok">✓ Packing Lists: %1$d nuevos, %2$d actualizados (%3$d total)</string>
+    <string name="sync_sms_vehicles_ok">✓ Vehículos SMS: %1$d</string>
+    <string name="webview_login_error_network">No se pudo conectar con el servidor.\nComprueba tu conexión de red e inténtalo de nuevo.</string>
+    <string name="webview_login_retry">Reintentar</string>
 
     <!-- Inventario -->
     <string name="menu_inventario">Inventario</string>
@@ -524,6 +552,8 @@
 
     <!-- Spools List -->
     <string name="spools_list_count">%1$d spools</string>
+    <string name="spools_list_count_capped">%1$d spools (mostrando primeros %2$d)</string>
+    <string name="spools_search_hint">Buscar spool (código, línea, PL…)</string>
     <string name="spools_list_empty">No hay spools en ATLAS para este proyecto</string>
     <string name="spools_list_error_prefix">Error: %1$s</string>
     <string name="spools_list_error_http">HTTP %1$d</string>
@@ -531,6 +561,12 @@
     <string name="spools_filter_workshop">Workshop</string>
     <string name="spools_filter_laydown">Laydown</string>
     <string name="spools_filter_site">Site</string>
+    <string name="spools_subpos_all">Todas las sub-posiciones</string>
+    <string name="spools_chart_title">Spools por zona (%1$d)</string>
+    <string name="spools_chart_zone_unassigned">Sin zona</string>
+    <string name="spools_chart_subpos_none">(sin sub)</string>
+    <string name="spools_view_action_list">Ver lista</string>
+    <string name="spools_view_action_chart">Ver gráfico</string>
 
     <!-- New Spool -->
     <!-- New Packing List -->
@@ -605,6 +641,7 @@
     <string name="new_spool_field_iso_type">Tipo ISO</string>
     <string name="new_spool_field_status">Estado</string>
     <string name="new_spool_field_position">Posición</string>
+    <string name="new_spool_field_sub_position">Sub-posición</string>
     <string name="new_spool_field_incomplete_status">Estado incompleto</string>
     <string name="new_spool_field_bore_size">Bore Size</string>
     <string name="new_spool_btn_save">Guardar Spool</string>
@@ -646,6 +683,7 @@
     <string name="spool_detail_field_status">Estado</string>
     <string name="spool_detail_field_incomplete_status">Estado incompleto</string>
     <string name="spool_detail_field_position">Posición</string>
+    <string name="spool_detail_field_sub_position">Sub-posición</string>
     <string name="spool_detail_field_hold">En retención</string>
     <string name="spool_detail_field_damaged">Dañado</string>
     <string name="spool_detail_field_returned">Dev. a fábrica</string>
@@ -669,6 +707,17 @@
     <string name="spool_detail_confirm_hard_delete_msg">Borrado físico en el servidor. No se puede deshacer. ¿Continuar?</string>
     <string name="spool_detail_hard_deleted">Spool eliminado permanentemente del servidor</string>
     <string name="spool_detail_events_empty">Sin eventos registrados</string>
+    <string name="spool_detail_section_gps">UBICACIÓN GPS</string>
+    <string name="spool_detail_gps_no_data">Sin datos de ubicación GPS</string>
+    <string name="spool_detail_gps_current">Actual: %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_previous">Anterior: %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_current_no_acc">Actual: %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_gps_previous_no_acc">Anterior: %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_btn_update_gps">Actualizar GPS</string>
+    <string name="spool_detail_btn_open_maps">Abrir en Maps</string>
+    <string name="spool_detail_gps_capturing">Obteniendo GPS…</string>
+    <string name="spool_detail_gps_saved">Ubicación guardada</string>
+    <string name="spool_detail_gps_unavailable">GPS no disponible</string>
     <string name="spool_detail_assign_pl_title">Seleccionar Packing List</string>
     <string name="spool_detail_assign_pl_remove">Quitar asignación</string>
     <string name="spool_detail_yes">Sí</string>
@@ -753,7 +802,9 @@
     <string name="transfer_send_dest_laydown">Laydown</string>
     <string name="transfer_send_dest_site">Site (urgente)</string>
     <string name="transfer_send_btn_confirm">Confirmar Envío</string>
-    <string name="transfer_send_success">Envío registrado correctamente (pendiente de sincronización)</string>
+    <string name="transfer_send_success">Envío registrado y subido correctamente</string>
+    <string name="transfer_send_success_partial">Envío registrado (datos pendientes de subir)</string>
+    <string name="transfer_send_uploading">Subiendo datos al servidor…</string>
     <string name="transfer_send_error">Error: %s</string>
     <string name="transfer_send_location_blocked">No se puede enviar desde esta ubicación.</string>
     <string name="transfer_select_destination">Seleccionar destino del envío</string>
@@ -839,6 +890,8 @@
     <string name="incident_label_location">Lugar de la incidencia</string>
     <string name="incident_label_location_detail">Detalle del lugar</string>
     <string name="incident_hint_location_detail">Ej: zona, unidad, estantería…</string>
+    <string name="incident_label_subposition">Subsección</string>
+    <string name="incident_subposition_none">Sin subsección</string>
     <string name="incident_label_severity">Gravedad</string>
     <string name="incident_label_position">Posición (terminal)</string>
     <string name="incident_label_author">Autor</string>

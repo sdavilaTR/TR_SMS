@@ -1,8 +1,10 @@
 package com.example.hassiwrapper.ui.transfers
 
+import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,6 +15,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -26,9 +29,11 @@ import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
+import com.example.hassiwrapper.data.db.entities.SmsSpoolLocationEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
+import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.ui.qrscanner.QrResult
 import com.example.hassiwrapper.ui.qrscanner.parseQr
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
@@ -43,6 +48,10 @@ class ReceivePackingListFragment : Fragment() {
         var confirmed: Boolean = false,
         var assignment: String = ""
     )
+
+    /** A pickable sub-position. [subPositionId] is null only in the CSV fallback
+     *  (when the position has no sub-position catalog seeded yet). */
+    private data class AssignOption(val label: String, val subPositionId: Long?)
 
     // Panels
     private lateinit var panelScanVehicle: View
@@ -68,7 +77,8 @@ class ReceivePackingListFragment : Fragment() {
     private var selectedVehicle: SmsVehicleEntity? = null
     private var selectedPl: SmsPackingListEntity? = null
     private val spoolReceives = mutableListOf<SpoolReceive>()
-    private var assignmentOptions: List<String> = emptyList()
+    private var assignOptions: List<AssignOption> = emptyList()
+    private var receivePositionId: Int? = null
 
     private val vehicleScanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -84,12 +94,40 @@ class ReceivePackingListFragment : Fragment() {
         }
     }
 
+    // Receive-confirm captures a best-effort GPS fix; request location permission once up
+    // front so it's not silently unavailable for the lifetime of the app (see GpsHelper).
+    private val requestLocationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* best-effort — GpsHelper silently skips capture if denied */ }
+
+    private var pendingCameraAction: (() -> Unit)? = null
+    private val requestCameraPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) pendingCameraAction?.invoke() }
+
+    private fun launchScannerWithPermission(action: () -> Unit) {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            action()
+        } else {
+            pendingCameraAction = action
+            requestCameraPermission.launch(Manifest.permission.CAMERA)
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_receive_packing_list, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         (view as com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView).onSwipeBack = { findNavController().navigateUp() }
+
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestLocationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+        }
 
         panelScanVehicle   = view.findViewById(R.id.panelScanVehicle)
         panelSelectPl      = view.findViewById(R.id.panelSelectPl)
@@ -119,10 +157,10 @@ class ReceivePackingListFragment : Fragment() {
         rvSpoolsToConfirm.addItemDecoration(DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
 
         btnScanVehicle.setOnClickListener {
-            vehicleScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java))
+            launchScannerWithPermission { vehicleScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java)) }
         }
         btnScanSpool.setOnClickListener {
-            spoolScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java))
+            launchScannerWithPermission { spoolScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java)) }
         }
         btnConfirmReceive.setOnClickListener { onNextToConfirmReceive() }
 
@@ -143,16 +181,24 @@ class ReceivePackingListFragment : Fragment() {
 
     private fun loadAssignmentOptions() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val location = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: ""
-            assignmentOptions = when (location) {
-                "LAYDOWN" -> {
-                    val csv = ServiceLocator.configRepo.get("laydown_sections") ?: "1A,2A,1B,2B,1C,2C,1D,2D"
-                    csv.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                }
-                "SITE" -> {
-                    val csv = ServiceLocator.configRepo.get("site_units") ?: "1,2,3,4"
-                    csv.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                }
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+            val location  = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: ""
+            val position  = ServiceLocator.smsPositionDao.getByCode(location)
+            receivePositionId = position?.position_id
+
+            // Prefer the real sub-position catalog for this position; fall back to the
+            // legacy CSV (label-only, no sub_position_id) when none is seeded yet.
+            val catalog = position?.position_id?.let {
+                ServiceLocator.smsSubPositionDao.getByPosition(projectId, it)
+            }.orEmpty()
+
+            assignOptions = if (catalog.isNotEmpty()) {
+                catalog.map { AssignOption(it.full_path.ifBlank { it.name.ifBlank { it.code } }, it.sub_position_id) }
+            } else when (location) {
+                "LAYDOWN" -> (ServiceLocator.configRepo.get("laydown_sections") ?: "1A,2A,1B,2B,1C,2C,1D,2D")
+                    .split(",").map { it.trim() }.filter { it.isNotBlank() }.map { AssignOption(it, null) }
+                "SITE" -> (ServiceLocator.configRepo.get("site_units") ?: "1,2,3,4")
+                    .split(",").map { it.trim() }.filter { it.isNotBlank() }.map { AssignOption(it, null) }
                 else -> emptyList()
             }
         }
@@ -350,23 +396,53 @@ class ReceivePackingListFragment : Fragment() {
                         spool_id     = sr.spool.spool_id,
                         spool_code   = sr.spool.spool_code,
                         spool_suffix = sr.spool.spool_suffix,
-                        assignment   = assignments[sr.spool.spool_id]
+                        assignment   = assignments[sr.spool.spool_id]?.label
                     )
                 }
             )
 
             val receivePosition = ServiceLocator.smsPositionDao.getByCode(location)
+            val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
             confirmedSpools.forEach { sr ->
-                val assign = assignments[sr.spool.spool_id]
-                val zone   = if (location == "LAYDOWN") assign else sr.spool.zone
-                val unit   = if (location == "SITE") assign else sr.spool.assigned_unit
+                val option = assignments[sr.spool.spool_id]
+                val label  = option?.label
+                val zone   = if (location == "LAYDOWN") location else sr.spool.zone
+                val unit   = if (location == "SITE") label else sr.spool.assigned_unit
                 ServiceLocator.smsSpoolDao.updateZoneAndUnit(sr.spool.spool_id, zone, unit)
                 if (receivePosition != null) {
                     ServiceLocator.smsSpoolDao.updatePosition(sr.spool.spool_id, receivePosition.position_id)
                 }
+                ServiceLocator.smsSpoolDao.updateSubPosition(sr.spool.spool_id, option?.subPositionId)
+                // Push position + sub-position to the server (authoritative PUT status-flags).
+                // Only when a real catalog sub-position was picked; best-effort, never blocks receive.
+                if (!projectCode.isNullOrBlank() && option?.subPositionId != null) {
+                    ServiceLocator.syncService.uploadSpoolStatusFlags(
+                        projectCode, sr.spool.spool_id, receivePosition?.position_id, option.subPositionId
+                    )
+                }
+            }
+
+            // One GPS fix for the whole receive batch — captured at the moment of confirm
+            val gps = GpsHelper.getCurrentLocation(requireContext())
+            if (gps != null) {
+                val (lat, lon, acc) = gps
+                val capturedAt = GpsHelper.capturedAtNow()
+                val capturedBy = ServiceLocator.configRepo.get("device_name")
+                confirmedSpools.forEach { sr ->
+                    val loc = SmsSpoolLocationEntity(
+                        spool_id       = sr.spool.spool_id,
+                        latitude       = lat,
+                        longitude      = lon,
+                        gps_accuracy_m = acc,
+                        captured_at    = capturedAt,
+                        captured_by    = capturedBy
+                    )
+                    ServiceLocator.smsSpoolLocationDao.insert(loc)
+                    ServiceLocator.smsSpoolLocationDao.pruneOldest(sr.spool.spool_id)
+                }
             }
             if (receivePosition != null) {
-                ServiceLocator.smsPackingListDao.updatePosition(pl.packing_list_id, receivePosition.position_id)
+                ServiceLocator.smsPackingListDao.updatePosition(pl.packing_list_id, receivePosition.position_id, receivePosition.code)
             }
 
             ServiceLocator.smsVehicleDao.setOffRoute(vehicle.vehicle_id)
@@ -440,9 +516,9 @@ class ReceivePackingListFragment : Fragment() {
                 else android.R.drawable.checkbox_off_background
             )
 
-            if (sr.confirmed && assignmentOptions.isNotEmpty()) {
+            if (sr.confirmed && assignOptions.isNotEmpty()) {
                 h.spinner.visibility = View.VISIBLE
-                val spinnerAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, assignmentOptions)
+                val spinnerAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, assignOptions.map { it.label })
                 spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                 h.spinner.adapter = spinnerAdapter
                 val savedSel = spinnerSelections[sr.spool.spool_id] ?: 0
@@ -450,7 +526,7 @@ class ReceivePackingListFragment : Fragment() {
                 h.spinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
                     override fun onItemSelected(parent: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
                         spinnerSelections[sr.spool.spool_id] = pos
-                        sr.assignment = assignmentOptions[pos]
+                        sr.assignment = assignOptions[pos].label
                     }
                     override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
                 }
@@ -459,11 +535,11 @@ class ReceivePackingListFragment : Fragment() {
             }
         }
 
-        fun getAssignments(): Map<Long, String?> {
+        fun getAssignments(): Map<Long, AssignOption?> {
             return spoolReceives.associate { sr ->
-                sr.spool.spool_id to if (sr.confirmed && assignmentOptions.isNotEmpty()) {
+                sr.spool.spool_id to if (sr.confirmed && assignOptions.isNotEmpty()) {
                     val sel = spinnerSelections[sr.spool.spool_id] ?: 0
-                    assignmentOptions.getOrNull(sel)
+                    assignOptions.getOrNull(sel)
                 } else null
             }
         }

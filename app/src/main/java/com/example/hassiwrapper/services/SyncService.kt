@@ -45,7 +45,8 @@ class SyncService(
     private val smsTransferDao: SmsTransferDao? = null,
     private val smsIncidentDao: SmsIncidentDao? = null,
     private val outboxService: OutboxService? = null,
-    private val smsSpoolLocationDao: SmsSpoolLocationDao? = null
+    private val smsSpoolLocationDao: SmsSpoolLocationDao? = null,
+    private val smsPackingListSpoolDao: SmsPackingListSpoolDao? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -62,6 +63,11 @@ class SyncService(
     // and don't block each other, so this locks the upload itself to prevent both paths
     // reading the same unsynced rows before either has marked them synced.
     private val spoolLocationUploadMutex = Mutex()
+    // doSync and doSmsUploads also both run the shared upload-queue block (uploadNewPackingLists
+    // through outboxService.drain) — same overlap as above, one level up. tryLock+skip: if the
+    // other path is mid-block, this cycle's upload phase is skipped and picked up next cycle,
+    // rather than double-posting the same unsynced rows / outbox ops to the backend.
+    private val smsQueueUploadMutex = Mutex()
 
     /** Thrown for errors that are worth retrying (network issues, server 5xx). */
     private class TransientException(msg: String, cause: Throwable? = null) : Exception(msg, cause)
@@ -179,15 +185,23 @@ class SyncService(
         }
 
         return try {
-            uploadNewPackingLists(api)
-            uploadVehicleLoadings(api)
-            uploadTransfers(api)
-            uploadVehicleRouteState(api)
-            uploadSmsIncidents(api)
-            uploadSpoolLocations(api)
-            uploadPendingRelocations(api)
-            outboxService?.drain(api)?.let { r ->
-                if (r.transient) Log.w(TAG, "syncSmsUploads: outbox drain stopped (transient), will retry next sync")
+            if (smsQueueUploadMutex.tryLock()) {
+                try {
+                    uploadNewPackingLists(api)
+                    uploadVehicleLoadings(api)
+                    uploadTransfers(api)
+                    uploadVehicleRouteState(api)
+                    uploadSmsIncidents(api)
+                    uploadSpoolLocations(api)
+                    uploadPendingRelocations(api)
+                    outboxService?.drain(api)?.let { r ->
+                        if (r.transient) Log.w(TAG, "syncSmsUploads: outbox drain stopped (transient), will retry next sync")
+                    }
+                } finally {
+                    smsQueueUploadMutex.unlock()
+                }
+            } else {
+                Log.i(TAG, "syncSmsUploads: upload pipeline busy (concurrent fullSync), skipping this cycle")
             }
             SmsUploadResult()
         } catch (e: Exception) {
@@ -264,29 +278,39 @@ class SyncService(
             Log.w(TAG, "downloadSync exception (non-fatal): ${e.message}")
         }
 
-        // 4b. Upload entities still on their own queues (not the outbox).
-        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_pl))
-        uploadNewPackingLists(api)
+        // 4b/4c. Upload entities still on their own queues, then drain the SMS mutation outbox
+        // in order (create/update/delete/assign). Guarded by smsQueueUploadMutex since
+        // doSmsUploads runs this same block under a different lock — if it's mid-block, skip
+        // the whole upload phase this cycle rather than double-posting the same rows/ops.
+        if (smsQueueUploadMutex.tryLock()) {
+            try {
+                onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_pl))
+                uploadNewPackingLists(api)
 
-        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_loadings))
-        uploadVehicleLoadings(api)
+                onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_loadings))
+                uploadVehicleLoadings(api)
 
-        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_transfers))
-        uploadTransfers(api)
+                onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_transfers))
+                uploadTransfers(api)
 
-        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_route))
-        uploadVehicleRouteState(api)
+                onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_route))
+                uploadVehicleRouteState(api)
 
-        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_incidents))
-        uploadSmsIncidents(api)
+                onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_incidents))
+                uploadSmsIncidents(api)
 
-        uploadSpoolLocations(api)
-        uploadPendingRelocations(api)
+                uploadSpoolLocations(api)
+                uploadPendingRelocations(api)
 
-        // 4c. Drain the SMS mutation outbox in order (create/update/delete/assign).
-        onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_outbox))
-        outboxService?.drain(api)?.let { r ->
-            if (r.transient) throw TransientException(AtlasApp.instance.getString(R.string.sync_error_outbox_retry))
+                onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_outbox))
+                outboxService?.drain(api)?.let { r ->
+                    if (r.transient) throw TransientException(AtlasApp.instance.getString(R.string.sync_error_outbox_retry))
+                }
+            } finally {
+                smsQueueUploadMutex.unlock()
+            }
+        } else {
+            Log.i(TAG, "doSync: upload pipeline busy (concurrent syncSmsUploads), skipping upload phase this cycle")
         }
 
         configRepo.set("last_sync", Instant.now().toString())
@@ -451,8 +475,21 @@ class SyncService(
                 )
                 val response = api.createPackingList(projectCode, body)
                 if (response.isSuccessful) {
-                    synced.add(pl.packing_list_id)
-                    Log.i(TAG, "PL ${pl.packing_list_id} uploaded")
+                    val serverId = parseCreatedPlId(response.body()?.string().orEmpty())
+                    if (serverId != null && serverId > 0L && serverId != pl.packing_list_id) {
+                        // Server assigned its own id — remap every local table that stored
+                        // the local id as a foreign key before this upload landed, mirroring
+                        // OutboxService's remap-on-CREATE pattern for spool/vehicle.
+                        dao.remapAndSync(pl.packing_list_id, serverId)
+                        smsSpoolDao?.remapPackingListId(pl.packing_list_id, serverId)
+                        smsPackingListSpoolDao?.remapPackingListId(pl.packing_list_id, serverId)
+                        smsVehicleLoadingDao?.remapPackingListId(pl.packing_list_id, serverId)
+                        smsTransferDao?.remapPackingListId(pl.packing_list_id, serverId)
+                        Log.i(TAG, "PL ${pl.packing_list_id} uploaded, remapped to server id $serverId")
+                    } else {
+                        synced.add(pl.packing_list_id)
+                        Log.i(TAG, "PL ${pl.packing_list_id} uploaded")
+                    }
                 } else {
                     Log.e(TAG, "PL ${pl.packing_list_id} upload failed: HTTP ${response.code()}")
                 }
@@ -462,6 +499,21 @@ class SyncService(
         }
 
         if (synced.isNotEmpty()) dao.markSynced(synced)
+    }
+
+    private fun parseCreatedPlId(raw: String): Long? {
+        return try {
+            val el = JsonParser.parseString(raw)
+            val obj = when {
+                el.isJsonObject && el.asJsonObject.has("data") && !el.asJsonObject.get("data").isJsonNull ->
+                    el.asJsonObject.getAsJsonObject("data")
+                el.isJsonObject -> el.asJsonObject
+                else -> return null
+            }
+            obj.get("packingListId")?.takeIf { !it.isJsonNull }?.asLong
+                ?: obj.get("packing_list_id")?.takeIf { !it.isJsonNull }?.asLong
+                ?: obj.get("id")?.takeIf { !it.isJsonNull }?.asLong
+        } catch (_: Exception) { null }
     }
 
     // ── Vehicle loading upload ────────────────────────────────────────────────

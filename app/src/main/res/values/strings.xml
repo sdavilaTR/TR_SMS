@@ -523,6 +523,7 @@
     <string name="sync_step_done">✓ Datos base sincronizados</string>
     <string name="sync_sms_spools_page">Descargando spools… pág. %1$d (%2$d acumulados)</string>
     <string name="sync_sms_spools_ok">✓ Spools: %1$d nuevos, %2$d actualizados (%3$d total)</string>
+    <string name="sync_sms_spools_partial">⚠ Spools: sync parcial hasta pág. %1$d (%2$d guardados), reintentará</string>
     <string name="sync_sms_pl_ok">✓ Packing Lists: %1$d nuevos, %2$d actualizados (%3$d total)</string>
     <string name="sync_sms_vehicles_ok">✓ Vehículos SMS: %1$d</string>
     <string name="webview_login_error_network">No se pudo conectar con el servidor.\nComprueba tu conexión de red e inténtalo de nuevo.</string>
@@ -567,6 +568,8 @@
     <string name="spools_chart_subpos_none">(sin sub)</string>
     <string name="spools_view_action_list">Ver lista</string>
     <string name="spools_view_action_chart">Ver gráfico</string>
+    <string name="spools_btn_load_more">Cargar más spools</string>
+    <string name="spools_btn_loading">Cargando…</string>
 
     <!-- New Spool -->
     <!-- New Packing List -->
@@ -819,8 +822,13 @@
     <string name="transfer_receive_step2_title">Paso 2: Seleccionar Packing List</string>
     <string name="transfer_receive_step3_title">Paso 3: Confirmar Spools</string>
     <string name="transfer_receive_btn_confirm">Confirmar Recibo</string>
-    <string name="transfer_receive_success">Recibo registrado correctamente (pendiente de sincronización)</string>
+    <string name="transfer_receive_success_partial">%1$d spools recibidos en %2$s. Packing list pendiente — continúa con la siguiente sub-posición.</string>
+    <string name="transfer_receive_success_complete">Entrega completada. Packing list eliminada.</string>
     <string name="transfer_receive_no_pls">No hay Packing Lists en tránsito para este vehículo.</string>
+    <string name="transfer_receive_subposition_label">Sub-posición para este lote</string>
+    <string name="transfer_receive_subposition_placeholder">— Selecciona sub-posición —</string>
+    <string name="transfer_receive_no_spools_scanned">Escanea al menos un spool antes de confirmar.</string>
+    <string name="transfer_receive_subposition_required">Selecciona la sub-posición de este lote.</string>
 
     <!-- Transfer: Shared -->
     <string name="transfer_spools_progress">%1$d / %2$d spools confirmados</string>
@@ -830,8 +838,6 @@
     <string name="transfer_spool_confirmed">✓ Spool %s confirmado.</string>
     <string name="transfer_btn_scan_vehicle">Escanear QR del vehículo</string>
     <string name="transfer_btn_scan_spool">Escanear Spool</string>
-    <string name="transfer_confirm_incomplete_title">Spools sin confirmar</string>
-    <string name="transfer_confirm_incomplete_msg">Hay %1$d spools sin escanear. ¿Desea continuar de todas formas?</string>
     <string name="transfer_assign_section">Sección</string>
     <string name="transfer_assign_unit">Unidad</string>
     <string name="transfer_assign_hint_laydown">Asigne una sección de Laydown</string>

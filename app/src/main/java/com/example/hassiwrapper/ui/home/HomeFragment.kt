@@ -233,7 +233,7 @@ class HomeFragment : Fragment() {
     private fun animateCountUp(tv: TextView, target: Int) {
         if (target == 0) { tv.text = "0"; return }
         ValueAnimator.ofInt(0, target).apply {
-            duration = 600
+            duration = 1200
             interpolator = DecelerateInterpolator()
             addUpdateListener { tv.text = (animatedValue as Int).toString() }
             start()

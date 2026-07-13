@@ -507,7 +507,7 @@ class SendPackingListFragment : Fragment() {
                 // ───── Part 1: load spools onto vehicle → resolve/create the Packing List ─────
                 val distinctPlIds = scannedSpools.mapNotNull { it.packingListId }.distinct()
                 val sameSinglePl = distinctPlIds.size == 1 && scannedSpools.all { it.packingListId != null }
-                val scannedSpoolIds = scannedSpools.mapNotNull { it.spoolId.takeIf { id -> id > 0 } }.toSet()
+                val scannedSpoolIds = scannedSpools.mapNotNull { it.spoolId.takeIf { id -> id != 0L } }.toSet()
                 val existingPlSpoolIds = if (sameSinglePl)
                     ServiceLocator.smsPackingListSpoolDao.getSpoolIdsByPackingList(distinctPlIds[0]).toSet()
                 else emptySet()
@@ -591,7 +591,7 @@ class SendPackingListFragment : Fragment() {
                     }
 
                     val maxPlSpoolId = ServiceLocator.smsPackingListSpoolDao.getMaxId() ?: 0L
-                    val plSpoolEntries = scannedSpools.filter { it.spoolId > 0 }.mapIndexed { idx, s ->
+                    val plSpoolEntries = scannedSpools.filter { it.spoolId != 0L }.mapIndexed { idx, s ->
                         SmsPackingListSpoolEntity(
                             packing_list_spool_id = maxPlSpoolId + idx + 1,
                             packing_list_id       = finalPlId,
@@ -606,7 +606,7 @@ class SendPackingListFragment : Fragment() {
                         .filter { it != finalPlId }
                         .distinct()
 
-                    scannedSpools.filter { it.spoolId > 0 }.forEachIndexed { idx, s ->
+                    scannedSpools.filter { it.spoolId != 0L }.forEachIndexed { idx, s ->
                         ServiceLocator.smsSpoolDao.updatePackingList(s.spoolId, finalPlId)
                         ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(s.spoolId)
                         if (createdOnServer) {
@@ -698,7 +698,7 @@ class SendPackingListFragment : Fragment() {
                     )
                 )
 
-                val transferSpools = scannedSpools.filter { it.spoolId > 0 }
+                val transferSpools = scannedSpools.filter { it.spoolId != 0L }
                 ServiceLocator.smsTransferDao.insertSpools(
                     transferSpools.map { s ->
                         SmsTransferSpoolEntity(

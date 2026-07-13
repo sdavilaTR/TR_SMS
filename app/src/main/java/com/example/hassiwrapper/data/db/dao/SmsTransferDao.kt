@@ -31,6 +31,18 @@ interface SmsTransferDao {
     @Query("UPDATE sms_transfer SET synced = 1 WHERE transfer_id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
 
+    /** Fixes up transfers that reference a vehicle by its negative temp id once that vehicle's CREATE lands. */
+    @Query("UPDATE sms_transfer SET vehicle_id = :serverId WHERE vehicle_id = :localId")
+    suspend fun remapVehicleId(localId: Long, serverId: Long)
+
+    /** Fixes up transfers that reference a PL by its negative temp id once that PL's CREATE lands. */
+    @Query("UPDATE sms_transfer SET packing_list_id = :serverId WHERE packing_list_id = :localId")
+    suspend fun remapPackingListId(localId: Long, serverId: Long)
+
+    /** Fixes up transfer-spool rows that reference a spool by its negative temp id once that spool's CREATE lands. */
+    @Query("UPDATE sms_transfer_spool SET spool_id = :serverId WHERE spool_id = :localId")
+    suspend fun remapSpoolId(localId: Long, serverId: Long)
+
     @Query("SELECT * FROM sms_transfer_spool WHERE transfer_id = :transferId")
     suspend fun getSpoolsByTransfer(transferId: Long): List<SmsTransferSpoolEntity>
 

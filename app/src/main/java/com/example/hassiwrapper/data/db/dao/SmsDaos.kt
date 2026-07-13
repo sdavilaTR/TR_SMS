@@ -415,6 +415,9 @@ interface SmsSpoolDao {
     @Query("UPDATE sms_spool SET unit_id = :unitId, assigned_unit = :assignedUnit, synced = 0 WHERE spool_id = :spoolId")
     suspend fun updateUnit(spoolId: Long, unitId: Int?, assignedUnit: String?)
 
+    @Query("UPDATE sms_spool SET sit_number = COALESCE(sit_number, :sitNumber), revision = COALESCE(revision, :revision) WHERE spool_id = :spoolId")
+    suspend fun backfillSitAndRevision(spoolId: Long, sitNumber: String?, revision: String?)
+
     @Query("SELECT * FROM sms_spool WHERE packing_list_id = :packingListId AND in_transit = 1")
     suspend fun getInTransitByPackingList(packingListId: Long): List<SmsSpoolEntity>
 

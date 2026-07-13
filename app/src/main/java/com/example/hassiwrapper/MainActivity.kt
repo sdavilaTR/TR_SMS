@@ -1129,10 +1129,18 @@ class MainActivity : AppCompatActivity() {
                 if (spool != null) {
                     showScanRegisteredDialog(getString(R.string.scan_result_spool_registered, spool.displayCode))
                     GpsHelper.captureAndSaveSpoolLocation(this@MainActivity, spool.spool_id)
+                    ServiceLocator.smsSpoolDao.backfillSitAndRevision(spool.spool_id, result.sitNumber, result.revision)
                 } else {
                     showScanNotRegisteredDialog(getString(R.string.scan_result_spool_not_registered)) {
                         navController.navigate(R.id.action_global_newSpoolFragment,
-                            Bundle().apply { putString("prefillSpoolCode", result.spoolCode) })
+                            Bundle().apply {
+                                putString("prefillSpoolCode", result.spoolCode)
+                                putString("prefillUnitCode", result.unitCode)
+                                putString("prefillService", result.service)
+                                putString("prefillLineCode", result.lineCode)
+                                putString("prefillSitNumber", result.sitNumber)
+                                putString("prefillRevision", result.revision)
+                            })
                     }
                 }
             }

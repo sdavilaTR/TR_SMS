@@ -156,7 +156,9 @@ data class SmsSpoolEntity(
     val packing_list_name: String? = null,
     val in_transit: Boolean = false,
     val position_id: Int? = null,
-    val sub_position_id: Long? = null
+    val sub_position_id: Long? = null,
+    val sit_number: String? = null,   // JAFURAH "sit" number — sheet/page of the line drawing
+    val revision: String? = null      // fab/drawing revision code (e.g. "01A")
 ) {
     val displayCode: String
         get() = if (spool_suffix.isNullOrBlank()) spool_code else "$spool_code-$spool_suffix"

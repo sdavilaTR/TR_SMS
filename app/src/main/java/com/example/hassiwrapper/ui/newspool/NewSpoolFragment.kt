@@ -80,6 +80,14 @@ class NewSpoolFragment : Fragment() {
     private var selectedIncompleteStatusId: Int? = null
     private var selectedBoreSizeId: Int? = null
     private var prefillSpoolCode: String? = null
+    // Structured JAFURAH tag fields, passed alongside prefillSpoolCode when the scan came from
+    // the new physical spool tag format (821-RP-25107-002-SP01-01A). No dedicated UI fields exist
+    // for these today, so they're carried straight through to the created entity.
+    private var prefillUnitCode: String? = null
+    private var prefillService: String? = null
+    private var prefillLineCode: String? = null
+    private var prefillSitNumber: String? = null
+    private var prefillRevision: String? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_new_spool, container, false)
@@ -88,6 +96,11 @@ class NewSpoolFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         (view as com.example.hassiwrapper.ui.common.SwipeBackScrollView).onSwipeBack = { findNavController().navigateUp() }
         prefillSpoolCode = arguments?.getString("prefillSpoolCode")
+        prefillUnitCode  = arguments?.getString("prefillUnitCode")
+        prefillService   = arguments?.getString("prefillService")
+        prefillLineCode  = arguments?.getString("prefillLineCode")
+        prefillSitNumber = arguments?.getString("prefillSitNumber")
+        prefillRevision  = arguments?.getString("prefillRevision")
         tilUnit             = view.findViewById(R.id.tilUnit)
         tilLine             = view.findViewById(R.id.tilLine)
         tilCode             = view.findViewById(R.id.tilCode)
@@ -286,7 +299,10 @@ class NewSpoolFragment : Fragment() {
                     is_active       = true,
                     created_at      = now,
                     created_by      = "",
-                    synced          = false
+                    synced          = false,
+                    service         = prefillService,
+                    sit_number      = prefillSitNumber,
+                    revision        = prefillRevision
                 )
                 ServiceLocator.smsSpoolDao.insertAll(listOf(spool))
 
@@ -355,6 +371,27 @@ class NewSpoolFragment : Fragment() {
     }
 
     private fun applySpoolCodePrefill(units: List<SmsUnitEntity>) {
+        // JAFURAH tag scan: unit/line come as discrete fields already split by QrParser, so map
+        // them directly instead of blind-splitting prefillSpoolCode (which is unit-service-line-sit,
+        // not the legacy unit-line-code-train shape and would scramble under a dash split).
+        val unitCode = prefillUnitCode
+        if (unitCode != null) {
+            val matchedUnit = units.find { it.code.equals(unitCode, ignoreCase = true) }
+                ?: units.find { it.name.equals(unitCode, ignoreCase = true) }
+            if (matchedUnit != null) {
+                selectedUnitId   = matchedUnit.unit_id
+                selectedUnitCode = matchedUnit.code
+                tilUnit.error    = null
+                actvUnit.setText(matchedUnit.name.ifBlank { matchedUnit.code }, false)
+            } else {
+                actvUnit.setText(unitCode, false)
+            }
+            actvLine.setText(prefillLineCode.orEmpty())
+            actvCode.setText(prefillSitNumber.orEmpty())
+            updatePreview()
+            return
+        }
+
         val raw = prefillSpoolCode ?: return
         val parts = raw.split("-")
         val matchedUnit = units.find { it.code.equals(parts[0], ignoreCase = true) }

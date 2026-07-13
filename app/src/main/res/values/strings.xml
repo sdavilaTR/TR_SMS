@@ -665,6 +665,8 @@
     <string name="spool_detail_field_in_transit">En tránsito</string>
     <string name="spool_detail_field_line">Línea</string>
     <string name="spool_detail_field_service">Servicio</string>
+    <string name="spool_detail_field_sit_number">Número de sit</string>
+    <string name="spool_detail_field_revision">Revisión</string>
     <string name="spool_detail_field_train">Tren</string>
     <string name="spool_detail_field_module">Módulo</string>
     <string name="spool_detail_field_unit">Unidad</string>

@@ -96,7 +96,9 @@ data class SpoolDto(
     @SerializedName(value = "packing_list_id",    alternate = ["packingListId"])     val packingListId: Long? = null,
     @SerializedName(value = "priority")                                              val priority: String? = null,
     @SerializedName(value = "in_transit",        alternate = ["inTransit"])         val inTransit: Boolean? = null,
-    @SerializedName(value = "packing_list_name", alternate = ["packingListName"])   val packingListName: String? = null
+    @SerializedName(value = "packing_list_name", alternate = ["packingListName"])   val packingListName: String? = null,
+    @SerializedName(value = "sit_number",        alternate = ["sitNumber"])         val sitNumber: String? = null,
+    @SerializedName(value = "revision",          alternate = ["revisionCode", "fabRevision"]) val revision: String? = null
 ) {
     private fun String?.toLongOrNullSafe(): Long? =
         this?.trim()?.takeIf { it.isNotEmpty() }?.toDoubleOrNull()?.toLong()
@@ -147,7 +149,9 @@ data class SpoolDto(
         createdBy.orEmpty(),
         updatedAt,
         updatedBy,
-        packingListId
+        packingListId,
+        sitNumber?.takeIf { it.isNotBlank() },
+        revision?.takeIf { it.isNotBlank() }
     )
 
     fun toEntity(defaultPackingListId: Long? = null): SmsSpoolEntity = SmsSpoolEntity(
@@ -179,7 +183,9 @@ data class SpoolDto(
         zone            = zone?.takeIf { it.isNotBlank() },
         assigned_unit   = assignedUnit?.takeIf { it.isNotBlank() },
         packing_list_name = packingListName?.takeIf { it.isNotBlank() },
-        in_transit      = inTransit ?: false
+        in_transit      = inTransit ?: false,
+        sit_number      = sitNumber?.takeIf { it.isNotBlank() },
+        revision        = revision?.takeIf { it.isNotBlank() }
     )
 }
 

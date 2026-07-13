@@ -27,7 +27,9 @@ object ServiceLocator {
         OutboxService(
             db.smsOutboxDao(), db.projectDao(),
             db.smsSpoolDao(), db.smsSpoolStatusFlagsDao(),
-            db.smsPackingListDao(), db.smsVehicleDao(), db.smsIncidentDao()
+            db.smsPackingListDao(), db.smsVehicleDao(), db.smsIncidentDao(),
+            db.smsSpoolPropertyDao(), db.smsSpoolEventDao(), db.smsSpoolLocationDao(),
+            db.smsPackingListSpoolDao(), db.smsVehicleLoadingDao(), db.smsTransferDao()
         )
     }
 
@@ -50,7 +52,8 @@ object ServiceLocator {
             db.smsTransferDao(),
             db.smsIncidentDao(),
             outboxService,
-            db.smsSpoolLocationDao()
+            db.smsSpoolLocationDao(),
+            db.smsPackingListSpoolDao()
         )
     }
 

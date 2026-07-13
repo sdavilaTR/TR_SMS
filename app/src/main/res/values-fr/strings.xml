@@ -317,6 +317,7 @@
     <string name="sync_step_done">✓ Données de base synchronisées</string>
     <string name="sync_sms_spools_page">Téléchargement spools… page %1$d (%2$d accumulés)</string>
     <string name="sync_sms_spools_ok">✓ Spools : %1$d nouveaux, %2$d mis à jour (%3$d total)</string>
+    <string name="sync_sms_spools_partial">⚠ Spools : sync partielle jusqu\'à la page %1$d (%2$d enregistrés), nouvelle tentative</string>
     <string name="sync_sms_pl_ok">✓ Packing Lists : %1$d nouvelles, %2$d mises à jour (%3$d total)</string>
     <string name="sync_sms_vehicles_ok">✓ Véhicules SMS : %1$d</string>
     <string name="webview_login_error_network">Impossible de se connecter au serveur.\nVérifiez votre connexion réseau et réessayez.</string>
@@ -643,6 +644,8 @@
     <string name="spools_chart_subpos_none">(sans sous)</string>
     <string name="spools_view_action_list">Voir la liste</string>
     <string name="spools_view_action_chart">Voir le graphique</string>
+    <string name="spools_btn_load_more">Charger plus de spools</string>
+    <string name="spools_btn_loading">Chargement…</string>
 
     <!-- New Packing List -->
     <string name="new_packing_list_title">Nouvelle Packing List</string>

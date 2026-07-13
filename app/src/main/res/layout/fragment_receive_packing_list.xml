@@ -75,12 +75,40 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="12dp"
+                            android:visibility="gone"
                             android:textAppearance="@style/TextAppearance.Material3.BodyMedium"/>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/load_spools_plate_hint"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                            android:layout_marginBottom="12dp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etPlate"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textCapCharacters"
+                                android:imeOptions="actionDone" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnConfirmVehicle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:text="@string/load_spools_confirm_vehicle"/>
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnScanVehicle"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:textAllCaps="false"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            app:icon="@drawable/ic_qr_scan"
+                            app:iconGravity="textStart"
                             android:text="@string/transfer_btn_scan_vehicle"/>
 
                     </LinearLayout>
@@ -230,6 +258,22 @@
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="12dp"
                         android:textAppearance="@style/TextAppearance.Material3.BodyLarge"/>
+
+                    <TextView
+                        android:id="@+id/txtBatchAssignmentLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/transfer_receive_subposition_label"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"/>
+
+                    <Spinner
+                        android:id="@+id/spinnerBatchAssignment"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:visibility="gone"/>
 
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/rvSpoolsToConfirm"

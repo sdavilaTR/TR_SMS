@@ -46,6 +46,8 @@ class CreateSpoolFragment : Fragment() {
     private companion object {
         const val PAGE_SIZE = 300
         const val SEARCH_DEBOUNCE_MS = 250L
+        const val VIEW_TYPE_ITEM = 0
+        const val VIEW_TYPE_FOOTER = 1
     }
 
     private enum class ViewMode { LIST, CHART }
@@ -58,6 +60,7 @@ class CreateSpoolFragment : Fragment() {
     private var chartTotal = 0
     private var subCountsRaw: Map<String, Map<Long?, Int>> = emptyMap()
     private var listJob: Job? = null
+    private var loadMoreJob: Job? = null
     private var filter    = Filter.ALL
     private var viewMode  = ViewMode.CHART
     private var searchQuery = ""
@@ -72,6 +75,8 @@ class CreateSpoolFragment : Fragment() {
     private lateinit var spinnerSubPos: Spinner
     private var selectedSubPositionId: Long? = null
     private var subPositionItems: List<SmsSubPositionEntity> = emptyList()
+    private var listTotal = 0
+    private var loadingMore = false
 
     private lateinit var rv: RecyclerView
     private lateinit var swipe: SwipeRefreshLayout
@@ -169,6 +174,8 @@ class CreateSpoolFragment : Fragment() {
      *  Only the first [PAGE_SIZE] rows are materialized; the count query gives the real total. */
     private fun reloadList(debounceMs: Long = 0L) {
         listJob?.cancel()
+        loadMoreJob?.cancel()
+        loadingMore = false
         listJob = viewLifecycleOwner.lifecycleScope.launch {
             if (debounceMs > 0) delay(debounceMs)
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
@@ -187,14 +194,39 @@ class CreateSpoolFragment : Fragment() {
             val page = ServiceLocator.smsSpoolDao.getFilteredPage(projectId, code, subId, searchQuery, PAGE_SIZE)
             items.clear()
             items += page
+            listTotal = total
             adapter.notifyDataSetChanged()
-            txtCount.text = if (total > page.size)
-                getString(R.string.spools_list_count_capped, total, page.size)
-            else
-                getString(R.string.spools_list_count, total)
+            updateCount()
             txtEmpty.visibility = if (page.isEmpty() && txtError.visibility != View.VISIBLE) View.VISIBLE else View.GONE
             refreshViewState()
         }
+    }
+
+    /** Fetches the next PAGE_SIZE rows (same filters as the current list) and appends them.
+     *  Triggered from the adapter's load-more footer row, shown while items.size < listTotal. */
+    private fun loadMore() {
+        if (loadingMore || items.size >= listTotal) return
+        loadingMore = true
+        adapter.notifyItemChanged(items.size) // footer row -> loading state
+        loadMoreJob = viewLifecycleOwner.lifecycleScope.launch {
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+            val code = filter.positionCode
+            val subId = selectedSubPositionId
+            val more = ServiceLocator.smsSpoolDao.getFilteredPage(
+                projectId, code, subId, searchQuery, PAGE_SIZE, offset = items.size
+            )
+            items += more
+            loadingMore = false
+            updateCount()
+            adapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun updateCount() {
+        txtCount.text = if (listTotal > items.size)
+            getString(R.string.spools_list_count_capped, listTotal, items.size)
+        else
+            getString(R.string.spools_list_count, listTotal)
     }
 
     private suspend fun updateSubPositionSpinner() {
@@ -475,8 +507,10 @@ class CreateSpoolFragment : Fragment() {
         txtError.text = getString(R.string.spools_list_error_prefix, message)
     }
 
-    private inner class SpoolAdapter : RecyclerView.Adapter<SpoolAdapter.VH>() {
+    private inner class SpoolAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         var packingLists: Map<Long, String> = emptyMap()
+
+        private val hasFooter get() = items.size < listTotal
 
         inner class VH(view: View) : RecyclerView.ViewHolder(view) {
             val code:        TextView = view.findViewById(R.id.txtSpoolCode)
@@ -486,12 +520,31 @@ class CreateSpoolFragment : Fragment() {
             val packingList: TextView = view.findViewById(R.id.txtPackingList)
         }
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
-            VH(LayoutInflater.from(parent.context).inflate(R.layout.item_spool, parent, false))
+        inner class FooterVH(view: View) : RecyclerView.ViewHolder(view) {
+            val button: MaterialButton = view.findViewById(R.id.btnLoadMore)
+        }
 
-        override fun getItemCount() = items.size
+        override fun getItemViewType(position: Int) =
+            if (position == items.size) VIEW_TYPE_FOOTER else VIEW_TYPE_ITEM
 
-        override fun onBindViewHolder(h: VH, position: Int) {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
+            if (viewType == VIEW_TYPE_FOOTER)
+                FooterVH(LayoutInflater.from(parent.context).inflate(R.layout.item_spool_load_more, parent, false))
+            else
+                VH(LayoutInflater.from(parent.context).inflate(R.layout.item_spool, parent, false))
+
+        override fun getItemCount() = items.size + if (hasFooter) 1 else 0
+
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            if (holder is FooterVH) {
+                holder.button.isEnabled = !loadingMore
+                holder.button.text = getString(
+                    if (loadingMore) R.string.spools_btn_loading else R.string.spools_btn_load_more
+                )
+                holder.button.setOnClickListener { loadMore() }
+                return
+            }
+            val h = holder as VH
             val spool = items[position]
             h.code.text = spool.spool_code.ifBlank { spool.spool_id.toString() }
             h.suffix.text = spool.spool_suffix.orEmpty()

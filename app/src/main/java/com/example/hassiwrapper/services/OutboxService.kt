@@ -5,9 +5,15 @@ import com.example.hassiwrapper.data.db.dao.ProjectDao
 import com.example.hassiwrapper.data.db.dao.SmsIncidentDao
 import com.example.hassiwrapper.data.db.dao.SmsOutboxDao
 import com.example.hassiwrapper.data.db.dao.SmsPackingListDao
+import com.example.hassiwrapper.data.db.dao.SmsPackingListSpoolDao
 import com.example.hassiwrapper.data.db.dao.SmsSpoolDao
+import com.example.hassiwrapper.data.db.dao.SmsSpoolEventDao
+import com.example.hassiwrapper.data.db.dao.SmsSpoolLocationDao
+import com.example.hassiwrapper.data.db.dao.SmsSpoolPropertyDao
 import com.example.hassiwrapper.data.db.dao.SmsSpoolStatusFlagsDao
+import com.example.hassiwrapper.data.db.dao.SmsTransferDao
 import com.example.hassiwrapper.data.db.dao.SmsVehicleDao
+import com.example.hassiwrapper.data.db.dao.SmsVehicleLoadingDao
 import com.example.hassiwrapper.data.db.entities.SmsIdMapEntity
 import com.example.hassiwrapper.data.db.entities.SmsOutboxEntity
 import com.example.hassiwrapper.network.AtlasApiService
@@ -39,7 +45,13 @@ class OutboxService(
     private val smsSpoolStatusFlagsDao: SmsSpoolStatusFlagsDao,
     private val smsPackingListDao: SmsPackingListDao,
     private val smsVehicleDao: SmsVehicleDao,
-    private val smsIncidentDao: SmsIncidentDao
+    private val smsIncidentDao: SmsIncidentDao,
+    private val smsSpoolPropertyDao: SmsSpoolPropertyDao? = null,
+    private val smsSpoolEventDao: SmsSpoolEventDao? = null,
+    private val smsSpoolLocationDao: SmsSpoolLocationDao? = null,
+    private val smsPackingListSpoolDao: SmsPackingListSpoolDao? = null,
+    private val smsVehicleLoadingDao: SmsVehicleLoadingDao? = null,
+    private val smsTransferDao: SmsTransferDao? = null
 ) {
     companion object {
         private const val TAG = "OutboxService"
@@ -223,6 +235,7 @@ class OutboxService(
                 // and preserve locally-set zone/sub_position_id that the GET /spools response omits.
                 smsSpoolDao.remapAndSync(op.local_entity_id, serverId)
                 smsSpoolStatusFlagsDao.remapSpoolId(op.local_entity_id, serverId)
+                remapSpoolReferences(op.local_entity_id, serverId)
                 payload.property?.let { p ->
                     runCatching { api.createSpoolProperty(projectCode, serverId, p.copy(spoolId = serverId)) }
                 }
@@ -255,7 +268,8 @@ class OutboxService(
             val serverId = parseServerId(resp, "vehicleId", "vehicle_id")
             if (serverId != null) {
                 outboxDao.putMapping(SmsIdMapEntity(Entity.VEHICLE, op.local_entity_id, serverId))
-                smsVehicleDao.markSynced(listOf(op.local_entity_id))
+                smsVehicleDao.remapAndSync(op.local_entity_id, serverId)
+                remapVehicleReferences(op.local_entity_id, serverId)
             }
         }
     }
@@ -282,7 +296,8 @@ class OutboxService(
             val serverId = parseServerId(resp, "packingListId", "packing_list_id")
             if (serverId != null) {
                 outboxDao.putMapping(SmsIdMapEntity(Entity.PACKING_LIST, op.local_entity_id, serverId))
-                smsPackingListDao.markSynced(listOf(op.local_entity_id))
+                smsPackingListDao.remapAndSync(op.local_entity_id, serverId)
+                remapPackingListReferences(op.local_entity_id, serverId)
             }
         }
     }
@@ -323,6 +338,35 @@ class OutboxService(
         val payload = gson.fromJson(op.payload_json, CreateSmsIncidentRequest::class.java)
         val resp = call { api.createSmsIncident(projectCode, payload) }
         return onResponse(op, resp) { smsIncidentDao.markSynced(listOf(op.local_entity_id)) }
+    }
+
+    // ── Cross-table id remap ─────────────────────────────────────────────────────
+    //
+    // A row's own PK is fixed up by its own DAO's remapAndSync (spool/vehicle/PL). These
+    // fix up every *other* local table that stored the negative temp id as a foreign key
+    // before the CREATE drained — otherwise those rows keep pointing at an id nothing
+    // references anymore (orphaned property/event/location cards, unsyncable route state).
+
+    private suspend fun remapSpoolReferences(localId: Long, serverId: Long) {
+        smsSpoolPropertyDao?.remapSpoolId(localId, serverId)
+        smsSpoolEventDao?.remapSpoolId(localId, serverId)
+        smsSpoolLocationDao?.remapSpoolId(localId, serverId)
+        smsPackingListSpoolDao?.remapSpoolId(localId, serverId)
+        smsVehicleLoadingDao?.remapSpoolId(localId, serverId)
+        smsTransferDao?.remapSpoolId(localId, serverId)
+    }
+
+    private suspend fun remapVehicleReferences(localId: Long, serverId: Long) {
+        smsPackingListDao.remapVehicleId(localId, serverId)
+        smsVehicleLoadingDao?.remapVehicleId(localId, serverId)
+        smsTransferDao?.remapVehicleId(localId, serverId)
+    }
+
+    private suspend fun remapPackingListReferences(localId: Long, serverId: Long) {
+        smsSpoolDao.remapPackingListId(localId, serverId)
+        smsPackingListSpoolDao?.remapPackingListId(localId, serverId)
+        smsVehicleLoadingDao?.remapPackingListId(localId, serverId)
+        smsTransferDao?.remapPackingListId(localId, serverId)
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────────

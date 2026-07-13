@@ -2,7 +2,6 @@ package com.example.hassiwrapper.ui.transfers
 
 import android.Manifest
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -45,8 +44,7 @@ class ReceivePackingListFragment : Fragment() {
 
     private data class SpoolReceive(
         val spool: SmsSpoolEntity,
-        var confirmed: Boolean = false,
-        var assignment: String = ""
+        var confirmed: Boolean = false
     )
 
     /** A pickable sub-position. [subPositionId] is null only in the CSV fallback
@@ -60,6 +58,8 @@ class ReceivePackingListFragment : Fragment() {
 
     // Panel A
     private lateinit var txtScannedVehicle: TextView
+    private lateinit var etPlate: com.google.android.material.textfield.TextInputEditText
+    private lateinit var btnConfirmVehicle: MaterialButton
     private lateinit var btnScanVehicle: MaterialButton
 
     // Panel B
@@ -69,6 +69,8 @@ class ReceivePackingListFragment : Fragment() {
 
     // Panel C
     private lateinit var txtSpoolsProgress: TextView
+    private lateinit var txtBatchAssignmentLabel: TextView
+    private lateinit var spinnerBatchAssignment: Spinner
     private lateinit var rvSpoolsToConfirm: RecyclerView
     private lateinit var btnScanSpool: MaterialButton
     private lateinit var btnConfirmReceive: MaterialButton
@@ -79,6 +81,9 @@ class ReceivePackingListFragment : Fragment() {
     private val spoolReceives = mutableListOf<SpoolReceive>()
     private var assignOptions: List<AssignOption> = emptyList()
     private var receivePositionId: Int? = null
+    /** Sub-position picked once for the whole current batch — every confirmed spool in
+     *  this scan session goes there (one stop = one destination), not per-spool anymore. */
+    private var selectedBatchOption: AssignOption? = null
 
     private val vehicleScanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -134,12 +139,16 @@ class ReceivePackingListFragment : Fragment() {
         panelConfirmSpools = view.findViewById(R.id.panelConfirmSpools)
 
         txtScannedVehicle  = view.findViewById(R.id.txtScannedVehicle)
+        etPlate            = view.findViewById(R.id.etPlate)
+        btnConfirmVehicle  = view.findViewById(R.id.btnConfirmVehicle)
         btnScanVehicle     = view.findViewById(R.id.btnScanVehicle)
 
         txtNoPls           = view.findViewById(R.id.txtNoPls)
         rvPackingLists     = view.findViewById(R.id.rvPackingLists)
 
         txtSpoolsProgress  = view.findViewById(R.id.txtSpoolsProgress)
+        txtBatchAssignmentLabel = view.findViewById(R.id.txtBatchAssignmentLabel)
+        spinnerBatchAssignment  = view.findViewById(R.id.spinnerBatchAssignment)
         rvSpoolsToConfirm  = view.findViewById(R.id.rvSpoolsToConfirm)
         btnScanSpool       = view.findViewById(R.id.btnScanSpool)
         btnConfirmReceive  = view.findViewById(R.id.btnConfirmReceive)
@@ -158,6 +167,14 @@ class ReceivePackingListFragment : Fragment() {
 
         btnScanVehicle.setOnClickListener {
             launchScannerWithPermission { vehicleScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java)) }
+        }
+        btnConfirmVehicle.setOnClickListener {
+            val plate = etPlate.text?.toString()?.trim().orEmpty()
+            if (plate.isBlank()) {
+                Toast.makeText(requireContext(), getString(R.string.load_spools_enter_plate), Toast.LENGTH_SHORT).show()
+            } else {
+                handleVehicleScan(plate)
+            }
         }
         btnScanSpool.setOnClickListener {
             launchScannerWithPermission { spoolScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java)) }
@@ -220,6 +237,7 @@ class ReceivePackingListFragment : Fragment() {
             if (vehicle == null) {
                 Toast.makeText(requireContext(), getString(R.string.transfer_vehicle_not_found), Toast.LENGTH_LONG).show()
                 txtScannedVehicle.text = raw
+                txtScannedVehicle.visibility = View.VISIBLE
                 return@launch
             }
 
@@ -243,6 +261,7 @@ class ReceivePackingListFragment : Fragment() {
 
             selectedVehicle = vehicle
             txtScannedVehicle.text = getString(R.string.transfer_vehicle_confirmed, vehicle.license_plate)
+            txtScannedVehicle.visibility = View.VISIBLE
             loadPackingListsForVehicle(vehicle)
         }
     }
@@ -282,9 +301,28 @@ class ReceivePackingListFragment : Fragment() {
         panelSelectPl.visibility = View.GONE
         panelConfirmSpools.visibility = View.VISIBLE
 
+        selectedBatchOption = null
+        if (assignOptions.isNotEmpty()) {
+            txtBatchAssignmentLabel.visibility = View.VISIBLE
+            spinnerBatchAssignment.visibility = View.VISIBLE
+            val labels = listOf(getString(R.string.transfer_receive_subposition_placeholder)) + assignOptions.map { it.label }
+            val spinnerAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels)
+            spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            spinnerBatchAssignment.adapter = spinnerAdapter
+            spinnerBatchAssignment.setSelection(0)
+            spinnerBatchAssignment.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                    selectedBatchOption = if (pos == 0) null else assignOptions[pos - 1]
+                }
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            }
+        } else {
+            txtBatchAssignmentLabel.visibility = View.GONE
+            spinnerBatchAssignment.visibility = View.GONE
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
-            val inTransit = ServiceLocator.smsSpoolDao.getByPackingList(pl.packing_list_id)
-                .filter { it.in_transit }
+            val inTransit = ServiceLocator.smsSpoolDao.getInTransitByPackingList(pl.packing_list_id)
             val spools = inTransit.ifEmpty {
                 ServiceLocator.smsSpoolDao.getByPackingList(pl.packing_list_id)
             }
@@ -346,17 +384,15 @@ class ReceivePackingListFragment : Fragment() {
     }
 
     private fun onNextToConfirmReceive() {
-        val unconfirmed = spoolReceives.count { !it.confirmed }
-        if (unconfirmed > 0) {
-            AlertDialog.Builder(requireContext())
-                .setTitle(getString(R.string.transfer_confirm_incomplete_title))
-                .setMessage(getString(R.string.transfer_confirm_incomplete_msg, unconfirmed))
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(getString(R.string.load_spools_btn_continue)) { _, _ -> onConfirmReceive() }
-                .show()
-        } else {
-            onConfirmReceive()
+        if (spoolReceives.none { it.confirmed }) {
+            Toast.makeText(requireContext(), getString(R.string.transfer_receive_no_spools_scanned), Toast.LENGTH_SHORT).show()
+            return
         }
+        if (assignOptions.isNotEmpty() && selectedBatchOption == null) {
+            Toast.makeText(requireContext(), getString(R.string.transfer_receive_subposition_required), Toast.LENGTH_SHORT).show()
+            return
+        }
+        onConfirmReceive()
     }
 
     private fun onConfirmReceive() {
@@ -385,9 +421,8 @@ class ReceivePackingListFragment : Fragment() {
             )
 
             val confirmedSpools = spoolReceives.filter { it.confirmed }
-
-            // Collect assignment from adapters before processing
-            val assignments = spoolAdapter.getAssignments()
+            val option = selectedBatchOption
+            val label  = option?.label
 
             ServiceLocator.smsTransferDao.insertSpools(
                 confirmedSpools.map { sr ->
@@ -396,7 +431,7 @@ class ReceivePackingListFragment : Fragment() {
                         spool_id     = sr.spool.spool_id,
                         spool_code   = sr.spool.spool_code,
                         spool_suffix = sr.spool.spool_suffix,
-                        assignment   = assignments[sr.spool.spool_id]?.label
+                        assignment   = label
                     )
                 }
             )
@@ -404,10 +439,8 @@ class ReceivePackingListFragment : Fragment() {
             val receivePosition = ServiceLocator.smsPositionDao.getByCode(location)
             val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
             confirmedSpools.forEach { sr ->
-                val option = assignments[sr.spool.spool_id]
-                val label  = option?.label
-                val zone   = if (location == "LAYDOWN") location else sr.spool.zone
-                val unit   = if (location == "SITE") label else sr.spool.assigned_unit
+                val zone = if (location == "LAYDOWN") location else sr.spool.zone
+                val unit = if (location == "SITE") label else sr.spool.assigned_unit
                 ServiceLocator.smsSpoolDao.updateZoneAndUnit(sr.spool.spool_id, zone, unit)
                 if (receivePosition != null) {
                     ServiceLocator.smsSpoolDao.updatePosition(sr.spool.spool_id, receivePosition.position_id)
@@ -441,19 +474,44 @@ class ReceivePackingListFragment : Fragment() {
                     ServiceLocator.smsSpoolLocationDao.pruneOldest(sr.spool.spool_id)
                 }
             }
-            if (receivePosition != null) {
+
+            // A truck can now unload in stages across several sub-positions — only auto-delete
+            // the PL / free the vehicle once nothing is left in transit for it, not after every batch.
+            val remainingInPl = ServiceLocator.smsSpoolDao.getInTransitByPackingList(pl.packing_list_id)
+            val plDelivered = remainingInPl.isEmpty()
+
+            if (plDelivered) {
+                val plSpools = ServiceLocator.smsSpoolDao.getByPackingList(pl.packing_list_id)
+                plSpools.forEach { ServiceLocator.smsSpoolDao.updatePackingList(it.spool_id, null) }
+                ServiceLocator.smsPackingListSpoolDao.deleteByPackingList(pl.packing_list_id)
+                ServiceLocator.smsPackingListDao.deleteById(pl.packing_list_id)
+                com.example.hassiwrapper.ui.packinglists.PackingListDetailFragment.locallyDeletedPLIds.add(pl.packing_list_id)
+                if (pl.synced && !projectCode.isNullOrBlank()) {
+                    ServiceLocator.outboxService.enqueue(
+                        com.example.hassiwrapper.services.OutboxService.Entity.PACKING_LIST,
+                        com.example.hassiwrapper.services.OutboxService.Op.DELETE,
+                        pl.packing_list_id, projectId
+                    )
+                }
+                ServiceLocator.auditLogService.log(
+                    com.example.hassiwrapper.services.AuditLogService.PL_ELIMINADO,
+                    com.example.hassiwrapper.services.AuditLogService.ENTITY_PL,
+                    pl.packing_list_id, pl.packing_list_name, projectId = projectId
+                )
+            } else if (receivePosition != null) {
                 ServiceLocator.smsPackingListDao.updatePosition(pl.packing_list_id, receivePosition.position_id, receivePosition.code)
             }
 
-            ServiceLocator.smsVehicleDao.setOffRoute(vehicle.vehicle_id)
-
-            try {
-                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                if (!projectCode.isNullOrBlank()) {
-                    ServiceLocator.apiClient.getService()
-                        .setVehicleOffRoute(projectCode, vehicle.vehicle_id)
-                }
-            } catch (_: Exception) { }
+            val remainingInVehicle = ServiceLocator.smsSpoolDao.countInTransitByVehicle(vehicle.vehicle_id)
+            if (remainingInVehicle == 0) {
+                ServiceLocator.smsVehicleDao.setOffRoute(vehicle.vehicle_id)
+                try {
+                    if (!projectCode.isNullOrBlank()) {
+                        ServiceLocator.apiClient.getService()
+                            .setVehicleOffRoute(projectCode, vehicle.vehicle_id)
+                    }
+                } catch (_: Exception) { }
+            }
 
             activity?.lifecycleScope?.launch { ServiceLocator.syncService.syncSmsUploads() }
 
@@ -466,9 +524,27 @@ class ReceivePackingListFragment : Fragment() {
                 detail = "${vehicle.license_plate} → $location",
                 projectId = projectId
             )
-            Toast.makeText(requireContext(), getString(R.string.transfer_receive_success), Toast.LENGTH_LONG).show()
-            findNavController().navigateUp()
+            val msg = if (plDelivered) getString(R.string.transfer_receive_success_complete)
+                      else getString(R.string.transfer_receive_success_partial, confirmedSpools.size, label ?: location)
+            Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+            resetToScanVehicle()
         }
+    }
+
+    /** Back to Panel A so the operator can scan the vehicle again at the next sub-position
+     *  stop — the truck may still be carrying spools for other destinations. */
+    private fun resetToScanVehicle() {
+        selectedVehicle = null
+        selectedPl = null
+        selectedBatchOption = null
+        spoolReceives.clear()
+        spoolAdapter.notifyDataSetChanged()
+        txtScannedVehicle.text = ""
+        txtScannedVehicle.visibility = View.GONE
+        etPlate.setText("")
+        panelConfirmSpools.visibility = View.GONE
+        panelSelectPl.visibility = View.GONE
+        panelScanVehicle.visibility = View.VISIBLE
     }
 
     private inner class PlAdapter : RecyclerView.Adapter<PlAdapter.VH>() {
@@ -495,7 +571,6 @@ class ReceivePackingListFragment : Fragment() {
     }
 
     private inner class SpoolReceiveAdapter : RecyclerView.Adapter<SpoolReceiveAdapter.VH>() {
-        private val spinnerSelections = mutableMapOf<Long, Int>()
 
         inner class VH(view: View) : RecyclerView.ViewHolder(view) {
             val imgCheck: ImageView = view.findViewById(R.id.imgCheckMark)
@@ -515,33 +590,8 @@ class ReceivePackingListFragment : Fragment() {
                 if (sr.confirmed) android.R.drawable.checkbox_on_background
                 else android.R.drawable.checkbox_off_background
             )
-
-            if (sr.confirmed && assignOptions.isNotEmpty()) {
-                h.spinner.visibility = View.VISIBLE
-                val spinnerAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, assignOptions.map { it.label })
-                spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                h.spinner.adapter = spinnerAdapter
-                val savedSel = spinnerSelections[sr.spool.spool_id] ?: 0
-                h.spinner.setSelection(savedSel)
-                h.spinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-                    override fun onItemSelected(parent: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
-                        spinnerSelections[sr.spool.spool_id] = pos
-                        sr.assignment = assignOptions[pos].label
-                    }
-                    override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-                }
-            } else {
-                h.spinner.visibility = View.GONE
-            }
-        }
-
-        fun getAssignments(): Map<Long, AssignOption?> {
-            return spoolReceives.associate { sr ->
-                sr.spool.spool_id to if (sr.confirmed && assignOptions.isNotEmpty()) {
-                    val sel = spinnerSelections[sr.spool.spool_id] ?: 0
-                    assignOptions.getOrNull(sel)
-                } else null
-            }
+            // Assignment is now picked once per batch (see spinnerBatchAssignment), not per spool.
+            h.spinner.visibility = View.GONE
         }
     }
 }

@@ -128,6 +128,14 @@ interface SmsPackingListDao {
     @Query("UPDATE sms_packing_list SET synced = 1 WHERE packing_list_id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
 
+    /** Flips a locally-created PL's negative temp id to its server id once the outbox CREATE lands. */
+    @Query("UPDATE sms_packing_list SET packing_list_id = :serverId, synced = 1 WHERE packing_list_id = :localId")
+    suspend fun remapAndSync(localId: Long, serverId: Long)
+
+    /** Fixes up PLs that reference a vehicle by its negative temp id once that vehicle's CREATE lands. */
+    @Query("UPDATE sms_packing_list SET vehicle_id = :serverId WHERE vehicle_id = :localId")
+    suspend fun remapVehicleId(localId: Long, serverId: Long)
+
     @Query("DELETE FROM sms_packing_list WHERE packing_list_id = :id")
     suspend fun deleteById(id: Long)
 
@@ -169,6 +177,12 @@ interface SmsPackingListSpoolDao {
 
     @Query("DELETE FROM sms_packing_list_spool WHERE spool_id = :spoolId")
     suspend fun deleteBySpoolId(spoolId: Long)
+
+    @Query("UPDATE sms_packing_list_spool SET spool_id = :serverId WHERE spool_id = :localId")
+    suspend fun remapSpoolId(localId: Long, serverId: Long)
+
+    @Query("UPDATE sms_packing_list_spool SET packing_list_id = :serverId WHERE packing_list_id = :localId")
+    suspend fun remapPackingListId(localId: Long, serverId: Long)
 
     @Query("DELETE FROM sms_packing_list_spool")
     suspend fun deleteAll()
@@ -281,9 +295,9 @@ interface SmsSpoolDao {
         SELECT s.* FROM sms_spool s
         WHERE $SPOOL_LIST_FILTER
         ORDER BY s.spool_code ASC, s.spool_suffix ASC
-        LIMIT :limit
+        LIMIT :limit OFFSET :offset
     """)
-    suspend fun getFilteredPage(projectId: Int, positionCode: String?, subPositionId: Long?, query: String, limit: Int): List<SmsSpoolEntity>
+    suspend fun getFilteredPage(projectId: Int, positionCode: String?, subPositionId: Long?, query: String, limit: Int, offset: Int = 0): List<SmsSpoolEntity>
 
     @Query("SELECT COUNT(*) FROM sms_spool s WHERE $SPOOL_LIST_FILTER")
     suspend fun countFiltered(projectId: Int, positionCode: String?, subPositionId: Long?, query: String): Int
@@ -297,7 +311,11 @@ interface SmsSpoolDao {
     @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND packing_list_id IN (SELECT packing_list_id FROM sms_packing_list WHERE UPPER(position) = UPPER(:location)) ORDER BY spool_code ASC, spool_suffix ASC")
     suspend fun getByProjectIgnoreActiveAndZone(projectId: Int, location: String): List<SmsSpoolEntity>
 
-    @Query("SELECT COUNT(*) FROM sms_spool WHERE project_id = :projectId AND is_active = 1 AND packing_list_id IN (SELECT packing_list_id FROM sms_packing_list WHERE UPPER(position) = UPPER(:location))")
+    // Matches spools directly by their own `zone` column (set for freshly-imported spools not
+    // yet assigned to a packing list) OR by their packing list's position (for packed spools,
+    // whose own `zone` may be stale after a move). Counting via the packing-list join alone
+    // returns 0 for any project with no packing lists yet, even with thousands of real spools.
+    @Query("SELECT COUNT(*) FROM sms_spool WHERE project_id = :projectId AND is_active = 1 AND (UPPER(zone) = UPPER(:location) OR packing_list_id IN (SELECT packing_list_id FROM sms_packing_list WHERE UPPER(position) = UPPER(:location)))")
     suspend fun countActiveByProjectAndZone(projectId: Int, location: String): Int
 
     @Query("SELECT * FROM sms_spool WHERE spool_id = :id")
@@ -423,6 +441,13 @@ interface SmsSpoolDao {
 
     @Query("SELECT COUNT(*) FROM sms_spool WHERE project_id = :projectId AND in_transit = 1")
     suspend fun countInTransitByProject(projectId: Int): Int
+
+    @Query("SELECT COUNT(*) FROM sms_spool WHERE in_transit = 1 AND packing_list_id IN (SELECT packing_list_id FROM sms_packing_list WHERE vehicle_id = :vehicleId)")
+    suspend fun countInTransitByVehicle(vehicleId: Long): Int
+
+    /** Fixes up spools assigned to a PL by its negative temp id once that PL's CREATE lands. */
+    @Query("UPDATE sms_spool SET packing_list_id = :serverId WHERE packing_list_id = :localId")
+    suspend fun remapPackingListId(localId: Long, serverId: Long)
 }
 
 @Dao
@@ -435,6 +460,9 @@ interface SmsSpoolEventDao {
 
     @Query("DELETE FROM sms_spool_event WHERE spool_id = :spoolId")
     suspend fun deleteBySpool(spoolId: Long)
+
+    @Query("UPDATE sms_spool_event SET spool_id = :serverId WHERE spool_id = :localId")
+    suspend fun remapSpoolId(localId: Long, serverId: Long)
 
     @Query("DELETE FROM sms_spool_event")
     suspend fun deleteAll()
@@ -450,6 +478,9 @@ interface SmsSpoolPropertyDao {
 
     @Query("DELETE FROM sms_spool_property WHERE spool_id = :spoolId")
     suspend fun deleteBySpool(spoolId: Long)
+
+    @Query("UPDATE sms_spool_property SET spool_id = :serverId WHERE spool_id = :localId")
+    suspend fun remapSpoolId(localId: Long, serverId: Long)
 
     @Query("DELETE FROM sms_spool_property")
     suspend fun deleteAll()
@@ -559,6 +590,10 @@ interface SmsVehicleDao {
     @Query("UPDATE sms_vehicle SET synced = 1 WHERE vehicle_id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
 
+    /** Flips a locally-created vehicle's negative temp id to its server id once the outbox CREATE lands. */
+    @Query("UPDATE sms_vehicle SET vehicle_id = :serverId, synced = 1 WHERE vehicle_id = :localId")
+    suspend fun remapAndSync(localId: Long, serverId: Long)
+
     @Query("SELECT * FROM sms_vehicle WHERE route_synced = 0")
     suspend fun getUnsyncedRouteState(): List<SmsVehicleEntity>
 
@@ -603,6 +638,18 @@ interface SmsVehicleLoadingDao {
 
     @Query("UPDATE sms_vehicle_loading SET synced = 1 WHERE loading_id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
+
+    /** Fixes up loadings that reference a vehicle by its negative temp id once that vehicle's CREATE lands. */
+    @Query("UPDATE sms_vehicle_loading SET vehicle_id = :serverId WHERE vehicle_id = :localId")
+    suspend fun remapVehicleId(localId: Long, serverId: Long)
+
+    /** Fixes up loading-spool rows that reference a spool by its negative temp id once that spool's CREATE lands. */
+    @Query("UPDATE sms_vehicle_loading_spool SET spool_id = :serverId WHERE spool_id = :localId")
+    suspend fun remapSpoolId(localId: Long, serverId: Long)
+
+    /** Fixes up loading-spool rows that reference a PL by its negative temp id once that PL's CREATE lands. */
+    @Query("UPDATE sms_vehicle_loading_spool SET packing_list_id = :serverId WHERE packing_list_id = :localId")
+    suspend fun remapPackingListId(localId: Long, serverId: Long)
 
     @Query("DELETE FROM sms_vehicle_loading WHERE loading_id = :id")
     suspend fun deleteById(id: Long)
@@ -700,6 +747,9 @@ interface SmsSpoolLocationDao {
 
     @Query("DELETE FROM sms_spool_location WHERE spool_id = :spoolId")
     suspend fun deleteBySpool(spoolId: Long)
+
+    @Query("UPDATE sms_spool_location SET spool_id = :serverId WHERE spool_id = :localId")
+    suspend fun remapSpoolId(localId: Long, serverId: Long)
 
     @Query("DELETE FROM sms_spool_location")
     suspend fun deleteAll()

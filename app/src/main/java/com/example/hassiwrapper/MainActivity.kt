@@ -724,12 +724,28 @@ class MainActivity : AppCompatActivity() {
                     val isFullSync   = updatedSince == null
                     val syncStarted  = Instant.now().minusSeconds(30).toString()
 
+                    // Each page gets a few retries with backoff before we give up on it — large
+                    // projects (MERAM, JAFURAH) need dozens of sequential page requests, and a
+                    // single flaky page used to abort the whole sync (see fetchOk below).
+                    suspend fun fetchPageWithRetry(page: Int): retrofit2.Response<okhttp3.ResponseBody>? {
+                        repeat(3) { attempt ->
+                            try {
+                                val resp = largeService.getSpools(projectCode, page, pageSize, updatedSince)
+                                if (resp.isSuccessful) return resp
+                                Log.w(TAG, "syncSmsData spools page=$page HTTP ${resp.code()} (attempt ${attempt + 1}/3)")
+                            } catch (e: Exception) {
+                                Log.w(TAG, "syncSmsData spools page=$page exception (attempt ${attempt + 1}/3): ${e.message}")
+                            }
+                            if (attempt < 2) delay(1000L * (attempt + 1))
+                        }
+                        return null
+                    }
+
                     val allEntities = mutableListOf<SmsSpoolEntity>()
                     var page = 1
                     var fetchOk = false
                     while (true) {
-                        val spoolResp = largeService.getSpools(projectCode, page, pageSize, updatedSince)
-                        if (!spoolResp.isSuccessful) break
+                        val spoolResp = fetchPageWithRetry(page) ?: break
                         val spoolRaw = spoolResp.body()?.string().orEmpty()
                         if (page == 1) Log.d(TAG, "syncSmsData spools raw(500): ${spoolRaw.take(500)}")
                         val pageEntities = parseSpoolEntities(spoolRaw, projectId)
@@ -743,7 +759,11 @@ class MainActivity : AppCompatActivity() {
                         page++
                     }
 
-                    if (fetchOk) {
+                    // Persist whatever pages we did get, even on partial failure: upserting the
+                    // fetched rows still advances the KPI/local data, and skipping the wipe below
+                    // when incomplete means we never delete spools we haven't re-fetched yet
+                    // (a prior delta-purge bug wiped 139k MERAM spools this way — see git history).
+                    if (allEntities.isNotEmpty() || fetchOk) {
                         val deleted = com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet.locallyDeletedSpoolIds +
                             ServiceLocator.outboxService.pendingDeleteIds(com.example.hassiwrapper.services.OutboxService.Entity.SPOOL).toSet()
                         val toInsert = allEntities.filter { it.is_active && it.spool_id !in deleted }
@@ -752,7 +772,22 @@ class MainActivity : AppCompatActivity() {
                         // wipe-and-reinsert below instead.
                         if (!isFullSync) {
                             val deactivatedIds = allEntities.filter { !it.is_active }.map { it.spool_id }
-                            deactivatedIds.chunked(800).forEach { ServiceLocator.smsSpoolDao.deleteByIds(it) }
+                            if (deactivatedIds.isNotEmpty()) {
+                                val localCount = ServiceLocator.smsSpoolDao.countByProject(projectId)
+                                val ratio = if (localCount > 0) deactivatedIds.size.toDouble() / localCount else 0.0
+                                // A delta batch legitimately deactivating a large slice of a project's
+                                // spools is implausible — a prior backend bug returned the ENTIRE
+                                // project as is_active=0 in one delta call and this client purged all
+                                // 139k MERAM spools before anyone noticed. Skip the purge and clear the
+                                // delta cursor so the next cycle falls back to a full sync (safe,
+                                // wipe-and-reinsert path) instead of trusting a suspicious payload.
+                                if (localCount > 200 && ratio > 0.2) {
+                                    Log.e(TAG, "syncSmsData: delta anomaly — ${deactivatedIds.size}/$localCount spools marked inactive (${(ratio * 100).toInt()}%), skipping purge, forcing full sync next cycle")
+                                    ServiceLocator.configRepo.remove(lastSyncKey)
+                                } else {
+                                    deactivatedIds.chunked(800).forEach { ServiceLocator.smsSpoolDao.deleteByIds(it) }
+                                }
+                            }
                         }
                         // Preserve locally-set fields that the /spools endpoint doesn't return
                         val localSpools = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
@@ -782,23 +817,28 @@ class MainActivity : AppCompatActivity() {
 
                         val newCount = merged.count { it.spool_id !in localSpools }
                         val updatedCount = merged.count { it.spool_id in localSpools }
-                        if (isFullSync) {
-                            // Full sync: wipe stale server-side rows, insert fresh set
+                        if (isFullSync && fetchOk) {
+                            // Full sync completed all pages: safe to wipe stale server-side rows.
+                            // Never wipe on a partial fetch — we'd delete spools beyond the last
+                            // page we reached, with no fresh data to replace them.
                             ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
                         }
                         if (merged.isNotEmpty()) {
                             ServiceLocator.smsSpoolDao.insertAll(merged)
                         }
                         ServiceLocator.smsSpoolDao.deleteInactive()
-                        // Save timestamp (minus 30 s buffer) so next delta only fetches changes
-                        // made after this sync started. Buffer guards against clock skew / rows
-                        // modified during the sync window.
-                        ServiceLocator.configRepo.set(lastSyncKey, syncStarted)
-                        Log.d(TAG, "syncSmsData: ${if (isFullSync) "full" else "delta"} sync ok — ${merged.size} spools written")
-                        val spoolMsg = getString(R.string.sync_sms_spools_ok, newCount, updatedCount, merged.size)
+                        if (fetchOk) {
+                            // Only advance the delta cursor once we've actually caught up —
+                            // a partial fetch must retry from page 1 next time, not skip ahead.
+                            ServiceLocator.configRepo.set(lastSyncKey, syncStarted)
+                        }
+                        val status = if (!fetchOk) "PARTIAL" else if (isFullSync) "full" else "delta"
+                        Log.d(TAG, "syncSmsData: $status sync — ${merged.size} spools written (page=$page)")
+                        val spoolMsg = if (fetchOk) getString(R.string.sync_sms_spools_ok, newCount, updatedCount, merged.size)
+                                       else getString(R.string.sync_sms_spools_partial, page, merged.size)
                         withContext(Dispatchers.Main) { onProgress?.invoke(spoolMsg) }
                     } else {
-                        Log.w(TAG, "syncSmsData: spools fetch failed (not all pages ok), skipping DB write")
+                        Log.w(TAG, "syncSmsData: spools page 1 fetch failed after retries, skipping DB write")
                     }
                 }
             }

@@ -317,6 +317,7 @@
     <string name="sync_step_done">✓ Base data synchronised</string>
     <string name="sync_sms_spools_page">Downloading spools… page %1$d (%2$d accumulated)</string>
     <string name="sync_sms_spools_ok">✓ Spools: %1$d new, %2$d updated (%3$d total)</string>
+    <string name="sync_sms_spools_partial">⚠ Spools: partial sync up to page %1$d (%2$d saved), will retry</string>
     <string name="sync_sms_pl_ok">✓ Packing Lists: %1$d new, %2$d updated (%3$d total)</string>
     <string name="sync_sms_vehicles_ok">✓ SMS Vehicles: %1$d</string>
     <string name="webview_login_error_network">Could not connect to the server.\nCheck your network connection and try again.</string>
@@ -643,6 +644,8 @@
     <string name="spools_chart_subpos_none">(no sub)</string>
     <string name="spools_view_action_list">View list</string>
     <string name="spools_view_action_chart">View chart</string>
+    <string name="spools_btn_load_more">Load more spools</string>
+    <string name="spools_btn_loading">Loading…</string>
 
     <!-- New Packing List -->
     <string name="new_packing_list_title">New Packing List</string>

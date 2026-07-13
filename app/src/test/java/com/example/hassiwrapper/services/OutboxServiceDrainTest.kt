@@ -4,18 +4,26 @@ import com.example.hassiwrapper.data.db.dao.ProjectDao
 import com.example.hassiwrapper.data.db.dao.SmsIncidentDao
 import com.example.hassiwrapper.data.db.dao.SmsOutboxDao
 import com.example.hassiwrapper.data.db.dao.SmsPackingListDao
+import com.example.hassiwrapper.data.db.dao.SmsPackingListSpoolDao
 import com.example.hassiwrapper.data.db.dao.SmsSpoolDao
+import com.example.hassiwrapper.data.db.dao.SmsSpoolEventDao
+import com.example.hassiwrapper.data.db.dao.SmsSpoolLocationDao
+import com.example.hassiwrapper.data.db.dao.SmsSpoolPropertyDao
 import com.example.hassiwrapper.data.db.dao.SmsSpoolStatusFlagsDao
+import com.example.hassiwrapper.data.db.dao.SmsTransferDao
 import com.example.hassiwrapper.data.db.dao.SmsVehicleDao
+import com.example.hassiwrapper.data.db.dao.SmsVehicleLoadingDao
 import com.example.hassiwrapper.data.db.entities.ProjectEntity
 import com.example.hassiwrapper.data.db.entities.SmsIdMapEntity
 import com.example.hassiwrapper.data.db.entities.SmsOutboxEntity
 import com.example.hassiwrapper.network.AtlasApiService
 import com.example.hassiwrapper.network.dto.CreateSpoolRequest
+import com.example.hassiwrapper.network.dto.CreateVehicleRequest
 import com.example.hassiwrapper.network.dto.SpoolCreatePayload
 import com.example.hassiwrapper.network.dto.UpdateSpoolRequest
 import com.google.gson.Gson
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
@@ -90,6 +98,12 @@ class OutboxServiceDrainTest {
     private lateinit var smsPackingListDao: SmsPackingListDao
     private lateinit var smsVehicleDao: SmsVehicleDao
     private lateinit var smsIncidentDao: SmsIncidentDao
+    private lateinit var smsSpoolPropertyDao: SmsSpoolPropertyDao
+    private lateinit var smsSpoolEventDao: SmsSpoolEventDao
+    private lateinit var smsSpoolLocationDao: SmsSpoolLocationDao
+    private lateinit var smsPackingListSpoolDao: SmsPackingListSpoolDao
+    private lateinit var smsVehicleLoadingDao: SmsVehicleLoadingDao
+    private lateinit var smsTransferDao: SmsTransferDao
     private lateinit var service: OutboxService
 
     @Before
@@ -101,8 +115,17 @@ class OutboxServiceDrainTest {
         smsPackingListDao = mockk(relaxed = true)
         smsVehicleDao = mockk(relaxed = true)
         smsIncidentDao = mockk(relaxed = true)
+        smsSpoolPropertyDao = mockk(relaxed = true)
+        smsSpoolEventDao = mockk(relaxed = true)
+        smsSpoolLocationDao = mockk(relaxed = true)
+        smsPackingListSpoolDao = mockk(relaxed = true)
+        smsVehicleLoadingDao = mockk(relaxed = true)
+        smsTransferDao = mockk(relaxed = true)
         coEvery { projectDao.getById(any()) } returns ProjectEntity(project_id = 6, project_code = "ELS-001")
-        service = OutboxService(outboxDao, projectDao, smsSpoolDao, smsSpoolStatusFlagsDao, smsPackingListDao, smsVehicleDao, smsIncidentDao)
+        service = OutboxService(
+            outboxDao, projectDao, smsSpoolDao, smsSpoolStatusFlagsDao, smsPackingListDao, smsVehicleDao, smsIncidentDao,
+            smsSpoolPropertyDao, smsSpoolEventDao, smsSpoolLocationDao, smsPackingListSpoolDao, smsVehicleLoadingDao, smsTransferDao
+        )
     }
 
     private fun spoolCreatePayload(code: String) = SpoolCreatePayload(
@@ -229,5 +252,49 @@ class OutboxServiceDrainTest {
         assertEquals(true, result.transient)
         assertEquals("PENDING", outboxDao.statusOf(opId))
         assertEquals(1, outboxDao.attemptsOf(opId))
+    }
+
+    @Test
+    fun `CREATE remaps the temp spool id in every local child table`() = runTest {
+        val api = mockk<AtlasApiService>(relaxed = true)
+        coEvery { api.createSpool(any(), any()) } returns jsonResponse(200, """{"spoolId": 900}""")
+
+        enqueueSpoolCreate(-7, "S1")
+        service.drain(api)
+
+        coVerify { smsSpoolPropertyDao.remapSpoolId(-7, 900) }
+        coVerify { smsSpoolEventDao.remapSpoolId(-7, 900) }
+        coVerify { smsSpoolLocationDao.remapSpoolId(-7, 900) }
+        coVerify { smsPackingListSpoolDao.remapSpoolId(-7, 900) }
+        coVerify { smsVehicleLoadingDao.remapSpoolId(-7, 900) }
+        coVerify { smsTransferDao.remapSpoolId(-7, 900) }
+    }
+
+    @Test
+    fun `vehicle CREATE remaps the vehicle's own PK plus every local referencing table`() = runTest {
+        val api = mockk<AtlasApiService>(relaxed = true)
+        coEvery { api.createVehicle(any(), any()) } returns jsonResponse(200, """{"vehicleId": 42}""")
+
+        outboxDao.insert(
+            SmsOutboxEntity(
+                entity_type = OutboxService.Entity.VEHICLE,
+                op_type = OutboxService.Op.CREATE,
+                local_entity_id = -3,
+                payload_json = gson.toJson(
+                    CreateVehicleRequest(
+                        licensePlate = "TEST-001", company = null, vehicleName = null, vehicleType = null,
+                        capacityWeightKg = null, createdBy = "tester", projectCode = "ELS-001"
+                    )
+                ),
+                project_id = 6,
+                created_at = "2026-06-24T00:00:00Z"
+            )
+        )
+        service.drain(api)
+
+        coVerify { smsVehicleDao.remapAndSync(-3, 42) }
+        coVerify { smsPackingListDao.remapVehicleId(-3, 42) }
+        coVerify { smsVehicleLoadingDao.remapVehicleId(-3, 42) }
+        coVerify { smsTransferDao.remapVehicleId(-3, 42) }
     }
 }

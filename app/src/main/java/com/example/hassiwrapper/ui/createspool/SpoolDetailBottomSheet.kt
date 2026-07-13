@@ -312,6 +312,8 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
         s.assigned_unit?.let { addRow(layout, R.string.spool_detail_field_unit, it) }
         s.line_code?.let { addRow(layout, R.string.spool_detail_field_line, it) }
         s.service?.let { addRow(layout, R.string.spool_detail_field_service, it) }
+        s.sit_number?.let { addRow(layout, R.string.spool_detail_field_sit_number, it) }
+        s.revision?.let { addRow(layout, R.string.spool_detail_field_revision, it) }
         s.train?.let { addRow(layout, R.string.spool_detail_field_train, it) }
         s.module?.let { addRow(layout, R.string.spool_detail_field_module, it) }
         s.iso_revision_date?.let { addRow(layout, R.string.spool_detail_field_iso_date, it) }

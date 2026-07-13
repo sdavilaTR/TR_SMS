@@ -210,8 +210,8 @@ class QrScannerFragment : Fragment() {
 
         when (val result = parseQr(code)) {
             is QrResult.Spool        -> {
-                if (relocateActive) relocateSpool(result.spoolCode, result.spoolSuffix)
-                else lookupSpool(result.spoolCode, result.spoolSuffix)
+                if (relocateActive) relocateSpool(result.spoolCode, result.spoolSuffix, result.sitNumber, result.revision)
+                else lookupSpool(result.spoolCode, result.spoolSuffix, result.sitNumber, result.revision)
             }
             is QrResult.VehicleId    -> lookupVehicleById(result.id)
             is QrResult.VehiclePlate -> lookupVehicleByPlate(result.plate)
@@ -226,7 +226,7 @@ class QrScannerFragment : Fragment() {
         }
     }
 
-    private fun lookupSpool(spoolCode: String, spoolSuffix: String?) {
+    private fun lookupSpool(spoolCode: String, spoolSuffix: String?, sitNumber: String? = null, revision: String? = null) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val spools = ServiceLocator.smsSpoolDao.getByCode(spoolCode)
@@ -238,6 +238,7 @@ class QrScannerFragment : Fragment() {
                     txtScanStatus.text = getString(R.string.qr_scanner_status_spool_found, spool.displayCode)
                     showResult(spool.displayCode, buildSpoolDetail(spool))
                     GpsHelper.captureAndSaveSpoolLocation(requireContext(), spool.spool_id)
+                    ServiceLocator.smsSpoolDao.backfillSitAndRevision(spool.spool_id, sitNumber, revision)
                 } else {
                     showError(
                         getString(R.string.qr_scanner_result_spool_not_found),
@@ -321,7 +322,7 @@ class QrScannerFragment : Fragment() {
         txtRelocateCount.text = getString(R.string.qr_scanner_relocate_count, dest, relocateCount)
     }
 
-    private fun relocateSpool(spoolCode: String, spoolSuffix: String?) {
+    private fun relocateSpool(spoolCode: String, spoolSuffix: String?, sitNumber: String? = null, revision: String? = null) {
         if (relocateDestName == null) {
             txtScanStatus.text = getString(R.string.qr_scanner_status_waiting)
             Toast.makeText(requireContext(), R.string.qr_scanner_relocate_select_dest_first, Toast.LENGTH_SHORT).show()
@@ -353,6 +354,7 @@ class QrScannerFragment : Fragment() {
                     ServiceLocator.smsSpoolDao.updatePosition(spool.spool_id, posId)
                 }
                 ServiceLocator.smsSpoolDao.updateSubPosition(spool.spool_id, relocateSubPositionId)
+                ServiceLocator.smsSpoolDao.backfillSitAndRevision(spool.spool_id, sitNumber, revision)
                 // Push position + sub-position to the server (authoritative PUT status-flags).
                 // Only when a real catalog sub-position is selected; best-effort, non-blocking.
                 relocateSubPositionId?.let { subId ->

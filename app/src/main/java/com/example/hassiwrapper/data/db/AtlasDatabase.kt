@@ -56,7 +56,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsAuditLogEntity::class,
         SmsSpoolLocationEntity::class
     ],
-    version = 34,
+    version = 35,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -862,6 +862,16 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v34 → v35: add sit_number (line-drawing sheet) and revision (fab/drawing revision)
+        // to sms_spool for the JAFURAH physical tag QR format (e.g. 821-RP-25107-002-SP01-01A).
+        private val MIGRATION_34_35 = object : Migration(34, 35) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 34 → 35: add sit_number, revision to sms_spool")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `sit_number` TEXT")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `revision` TEXT")
+            }
+        }
+
         // v27 → v28: link a spool to its sub-position (Laydown/Site sub-section).
         // Mirrors position_id: lives on sms_spool (bulk, for the zone chart) and on
         // sms_spool_status_flags (authoritative, read from GET status-flags in detail).
@@ -913,7 +923,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_30_31,
                         MIGRATION_31_32,
                         MIGRATION_32_33,
-                        MIGRATION_33_34
+                        MIGRATION_33_34,
+                        MIGRATION_34_35
                     )
                     .build()
                 INSTANCE = instance

@@ -740,6 +740,8 @@
     <string name="spool_detail_field_in_transit">In transit</string>
     <string name="spool_detail_field_line">Line</string>
     <string name="spool_detail_field_service">Service</string>
+    <string name="spool_detail_field_sit_number">Sit number</string>
+    <string name="spool_detail_field_revision">Revision</string>
     <string name="spool_detail_field_train">Train</string>
     <string name="spool_detail_field_module">Module</string>
     <string name="spool_detail_field_unit">Unit</string>

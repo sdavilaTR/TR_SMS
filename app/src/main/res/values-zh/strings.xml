@@ -740,6 +740,8 @@
     <string name="spool_detail_field_in_transit">运输中</string>
     <string name="spool_detail_field_line">管线</string>
     <string name="spool_detail_field_service">用途</string>
+    <string name="spool_detail_field_sit_number">Sit 编号</string>
+    <string name="spool_detail_field_revision">版本</string>
     <string name="spool_detail_field_train">系列</string>
     <string name="spool_detail_field_module">模块</string>
     <string name="spool_detail_field_unit">单元</string>

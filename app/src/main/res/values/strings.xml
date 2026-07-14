@@ -267,6 +267,7 @@
     <string name="settings_check_updates">Buscar actualizaciones</string>
     <string name="settings_check_updates_searching">Buscando…</string>
     <string name="update_up_to_date">Ya tienes la última versión instalada</string>
+    <string name="update_check_failed">No se pudo comprobar actualizaciones — revise la conexión</string>
 
     <!-- Update -->
     <string name="update_title">Nueva actualización disponible</string>

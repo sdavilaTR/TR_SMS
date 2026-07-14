@@ -22,6 +22,7 @@ import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
+import com.example.hassiwrapper.update.UpdateCheckResult
 import com.example.hassiwrapper.update.UpdateInstaller
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.tabs.TabLayout
@@ -102,11 +103,15 @@ class SettingsFragment : Fragment() {
         btnCheckUpdates.setOnClickListener {
             btnCheckUpdates.isEnabled = false
             btnCheckUpdates.text = getString(R.string.settings_check_updates_searching)
-            (requireActivity() as? MainActivity)?.checkForUpdatesManually { alreadyUpToDate ->
+            (requireActivity() as? MainActivity)?.checkForUpdatesManually { result ->
                 btnCheckUpdates.isEnabled = true
                 btnCheckUpdates.text = getString(R.string.settings_check_updates)
-                if (alreadyUpToDate) {
-                    Toast.makeText(requireContext(), R.string.update_up_to_date, Toast.LENGTH_SHORT).show()
+                when (result) {
+                    is UpdateCheckResult.UpToDate ->
+                        Toast.makeText(requireContext(), R.string.update_up_to_date, Toast.LENGTH_SHORT).show()
+                    is UpdateCheckResult.Error ->
+                        Toast.makeText(requireContext(), R.string.update_check_failed, Toast.LENGTH_LONG).show()
+                    is UpdateCheckResult.Available -> Unit // dialog shown by MainActivity
                 }
             }
         }

@@ -46,7 +46,7 @@ jobs:
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > atlas-release.jks
 
       - name: Build with Gradle
-        run: ./gradlew assembleRelease -PreleaseTag=v${{ steps.date.outputs.date }}
+        run: ./gradlew assembleRelease -PreleaseTag=v${{ steps.date.outputs.date }} --stacktrace
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/atlas-release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}

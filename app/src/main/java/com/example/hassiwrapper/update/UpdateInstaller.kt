@@ -15,6 +15,10 @@ import com.example.hassiwrapper.BuildConfig
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.receiver.DownloadCompleteReceiver
 import com.example.hassiwrapper.receiver.InstallStatusReceiver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.File
 
 object UpdateInstaller {
@@ -23,6 +27,12 @@ object UpdateInstaller {
     const val PREVIOUS_APK_FILENAME = "atlas-previous.apk"
 
     private const val TAG = "UpdateInstaller"
+
+    // followRedirects=false: the GitHub asset API returns a 302 to a presigned blob-storage
+    // URL. That URL rejects requests carrying our Authorization header (signature conflict),
+    // so we must resolve it ourselves and hand DownloadManager the bare, unauthenticated
+    // redirect target instead of letting it forward our headers across the redirect.
+    private val redirectClient = OkHttpClient.Builder().followRedirects(false).build()
 
     // ── Install-in-flight flag (prevents duplicate PackageInstaller sessions) ──
     // Without this, MainActivity.onResume fires while the user is looking at the
@@ -78,12 +88,18 @@ object UpdateInstaller {
      * Enqueues an APK download via [DownloadManager]. The previous "previous-version"
      * APK is NOT touched — it stays as a rollback target until a newer install succeeds.
      */
-    fun downloadAndInstall(context: Context, updateInfo: UpdateInfo) {
+    suspend fun downloadAndInstall(context: Context, updateInfo: UpdateInfo) {
         val apkFile = getUpdateApkFile(context) ?: return
         // Only clear the in-flight update file; leave atlas-previous.apk alone.
         if (apkFile.exists()) apkFile.delete()
 
-        val request = DownloadManager.Request(Uri.parse(updateInfo.downloadUrl))
+        val resolvedUrl = resolveDownloadUrl(updateInfo.downloadUrl)
+        if (resolvedUrl == null) {
+            Log.e(TAG, "Could not resolve download URL, aborting update download")
+            return
+        }
+
+        val request = DownloadManager.Request(Uri.parse(resolvedUrl))
             .setTitle("Smart Material System")
             .setDescription(context.getString(R.string.update_downloading_version, updateInfo.version))
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, APK_FILENAME)
@@ -91,12 +107,8 @@ object UpdateInstaller {
             .setAllowedNetworkTypes(
                 DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE
             )
-            .apply {
-                if (BuildConfig.GH_RELEASE_TOKEN.isNotEmpty()) {
-                    addRequestHeader("Authorization", "Bearer ${BuildConfig.GH_RELEASE_TOKEN}")
-                    addRequestHeader("Accept", "application/octet-stream")
-                }
-            }
+        // No Authorization/Accept headers here — resolvedUrl is the already-signed
+        // blob-storage URL, which rejects requests carrying extra auth headers.
 
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadId = dm.enqueue(request)
@@ -104,6 +116,35 @@ object UpdateInstaller {
         DownloadCompleteReceiver.savePendingDownloadId(context, downloadId)
 
         Log.d(TAG, "Download enqueued (id=$downloadId)")
+    }
+
+    /**
+     * Follows the GitHub asset API's redirect (without letting OkHttp auto-follow it) so we can
+     * hand DownloadManager the final, unauthenticated blob-storage URL. Falls back to the
+     * original URL if resolution fails, in case GitHub ever serves the asset directly.
+     */
+    private suspend fun resolveDownloadUrl(assetApiUrl: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val requestBuilder = Request.Builder()
+                .url(assetApiUrl)
+                .header("Accept", "application/octet-stream")
+            if (BuildConfig.GH_RELEASE_TOKEN.isNotEmpty()) {
+                requestBuilder.header("Authorization", "Bearer ${BuildConfig.GH_RELEASE_TOKEN}")
+            }
+            redirectClient.newCall(requestBuilder.build()).execute().use { response ->
+                when {
+                    response.isRedirect -> response.header("Location")
+                    response.isSuccessful -> assetApiUrl // already the final content, no redirect
+                    else -> {
+                        Log.e(TAG, "Asset resolve failed: HTTP ${response.code}")
+                        null
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Asset resolve failed", e)
+            null
+        }
     }
 
     // ── Install entry points ───────────────────────────────────────────────

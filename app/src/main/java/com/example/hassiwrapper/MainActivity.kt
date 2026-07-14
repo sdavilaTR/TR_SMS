@@ -43,6 +43,7 @@ import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.services.PositionHelper
 import com.example.hassiwrapper.ui.login.LoginActivity
 import com.example.hassiwrapper.update.UpdateChecker
+import com.example.hassiwrapper.update.UpdateCheckResult
 import com.example.hassiwrapper.update.UpdateInfo
 import com.example.hassiwrapper.update.UpdateInstaller
 import com.example.hassiwrapper.data.db.entities.*
@@ -487,7 +488,7 @@ class MainActivity : AppCompatActivity() {
         val pending = pendingUpdate
         if (pending != null && canInstallPackages()) {
             pendingUpdate = null
-            UpdateInstaller.downloadAndInstall(this, pending)
+            lifecycleScope.launch { UpdateInstaller.downloadAndInstall(this@MainActivity, pending) }
         }
 
         // Safety net for Xiaomi HyperOS / MIUI: if the static receiver was suppressed
@@ -574,7 +575,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         Toast.makeText(this, R.string.update_downloading, Toast.LENGTH_SHORT).show()
-        UpdateInstaller.downloadAndInstall(this, update)
+        lifecycleScope.launch { UpdateInstaller.downloadAndInstall(this@MainActivity, update) }
     }
 
     private fun canInstallPackages(): Boolean {
@@ -585,17 +586,17 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Called from [SettingsFragment] via the "Buscar actualizaciones" button.
-     * [onComplete] is invoked on the main thread with true if already up-to-date.
+     * [onComplete] is invoked on the main thread with the outcome — distinguishing "no
+     * update available" from "the check itself failed" so a network/API error doesn't
+     * masquerade as being up to date.
      */
-    fun checkForUpdatesManually(onComplete: (alreadyUpToDate: Boolean) -> Unit) {
+    fun checkForUpdatesManually(onComplete: (result: UpdateCheckResult) -> Unit) {
         lifecycleScope.launch {
-            val update = UpdateChecker.checkForUpdate(BuildConfig.BUILD_TAG)
+            val result = UpdateChecker.checkForUpdateDetailed(BuildConfig.BUILD_TAG)
             withContext(Dispatchers.Main) {
-                if (update != null) {
-                    onComplete(false)
-                    showUpdateDialog(update)
-                } else {
-                    onComplete(true)
+                onComplete(result)
+                if (result is UpdateCheckResult.Available) {
+                    showUpdateDialog(result.info)
                 }
             }
         }

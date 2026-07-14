@@ -27,6 +27,13 @@ data class UpdateInfo(
     val releaseNotes: String?
 )
 
+/** Distinguishes "no update available" from "couldn't check" — both used to collapse to null. */
+sealed class UpdateCheckResult {
+    data class Available(val info: UpdateInfo) : UpdateCheckResult()
+    object UpToDate : UpdateCheckResult()
+    data class Error(val message: String) : UpdateCheckResult()
+}
+
 object UpdateChecker {
 
     private const val API_URL =
@@ -44,40 +51,49 @@ object UpdateChecker {
      *   the workflow), the app has no way to know its real version, so it always returns the
      *   latest release to ensure those devices receive updates.
      *
-     * Returns null on network/API errors or when already on the latest release.
+     * Returns null on network/API errors or when already on the latest release — callers that
+     * need to tell those two cases apart should use [checkForUpdateDetailed] instead.
      */
-    suspend fun checkForUpdate(currentBuildTag: String): UpdateInfo? = withContext(Dispatchers.IO) {
-        try {
-            val requestBuilder = Request.Builder()
-                .url(API_URL)
-                .header("Accept", "application/vnd.github.v3+json")
-            if (BuildConfig.GH_RELEASE_TOKEN.isNotEmpty()) {
-                requestBuilder.header("Authorization", "Bearer ${BuildConfig.GH_RELEASE_TOKEN}")
-            }
-            val request = requestBuilder.build()
+    suspend fun checkForUpdate(currentBuildTag: String): UpdateInfo? =
+        (checkForUpdateDetailed(currentBuildTag) as? UpdateCheckResult.Available)?.info
 
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext null
-                val bodyStr = response.body?.string() ?: return@withContext null
-                val release = gson.fromJson(bodyStr, GithubRelease::class.java)
+    suspend fun checkForUpdateDetailed(currentBuildTag: String): UpdateCheckResult =
+        withContext(Dispatchers.IO) {
+            try {
+                val requestBuilder = Request.Builder()
+                    .url(API_URL)
+                    .header("Accept", "application/vnd.github.v3+json")
+                if (BuildConfig.GH_RELEASE_TOKEN.isNotEmpty()) {
+                    requestBuilder.header("Authorization", "Bearer ${BuildConfig.GH_RELEASE_TOKEN}")
+                }
+                val request = requestBuilder.build()
 
-                // "dev" builds have no real version — treat them as always outdated so they
-                // self-update to the first properly tagged release.
-                val needsUpdate = currentBuildTag == "dev" || release.tagName > currentBuildTag
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@withContext UpdateCheckResult.Error("HTTP ${response.code}")
+                    }
+                    val bodyStr = response.body?.string()
+                        ?: return@withContext UpdateCheckResult.Error("Empty response body")
+                    val release = gson.fromJson(bodyStr, GithubRelease::class.java)
 
-                if (needsUpdate) {
+                    // "dev" builds have no real version — treat them as always outdated so they
+                    // self-update to the first properly tagged release.
+                    val needsUpdate = currentBuildTag == "dev" || release.tagName > currentBuildTag
+
+                    if (!needsUpdate) return@withContext UpdateCheckResult.UpToDate
+
                     val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk") }
-                    apkAsset?.let {
+                        ?: return@withContext UpdateCheckResult.Error("Release has no .apk asset")
+                    UpdateCheckResult.Available(
                         UpdateInfo(
                             version = release.tagName,
-                            downloadUrl = it.url,
+                            downloadUrl = apkAsset.url,
                             releaseNotes = release.body
                         )
-                    }
-                } else null
+                    )
+                }
+            } catch (e: Exception) {
+                UpdateCheckResult.Error(e.message ?: e.javaClass.simpleName)
             }
-        } catch (_: Exception) {
-            null // Network unavailable or API error — fail silently
         }
-    }
 }

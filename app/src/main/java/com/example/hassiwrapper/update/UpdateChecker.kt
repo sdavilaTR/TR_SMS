@@ -30,7 +30,7 @@ data class UpdateInfo(
 object UpdateChecker {
 
     private const val API_URL =
-        "https://api.github.com/repos/sdavilaTR/HassiSiteApp/releases/latest"
+        "https://api.github.com/repos/sdavilaTR/TR_SMS/releases/latest"
 
     private val client = OkHttpClient()
     private val gson = Gson()

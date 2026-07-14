@@ -20,22 +20,20 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
-import com.example.hassiwrapper.parseSpoolEntities
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
 import androidx.transition.TransitionManager
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class CreateSpoolFragment : Fragment() {
 
@@ -158,8 +156,8 @@ class CreateSpoolFragment : Fragment() {
             refreshViewState()
         }
 
-        swipe.setOnRefreshListener { loadSpools(forceRefresh = true) }
-        loadSpools(forceRefresh = false)
+        swipe.setOnRefreshListener { loadSpools(forceSync = true) }
+        loadSpools()
     }
 
     private fun expandSelectedTab(selectedId: Int) {
@@ -441,43 +439,25 @@ class CreateSpoolFragment : Fragment() {
         positionCodes = ServiceLocator.smsPositionDao.getAll().associate { it.position_id to it.code }
     }
 
-    private fun loadSpools(forceRefresh: Boolean) {
+    // Reads the local sms_spool mirror (scanned=1 filter lives in the DAO queries
+    // themselves — see SPOOL_LIST_FILTER/countByLocationCombo). No fragment-owned fetch:
+    // a separate per-fragment fetch used to wipe-and-replace the *shared* local mirror
+    // (deleteSyncedByProject + insertAll), which also feeds scan-recognition/search/packing-list
+    // pickers elsewhere — that destroyed unscanned spools app-wide on every pull-to-refresh.
+    // Instead, when the mirror is empty (fresh install/DB reset, or navigating here before the
+    // shared sync completed) or on a manual pull-to-refresh, trigger MainActivity's shared,
+    // non-destructive sync (same one the auto-sync loop runs) rather than adding a 4th copy.
+    private fun loadSpools(forceSync: Boolean = false) {
         viewLifecycleOwner.lifecycleScope.launch {
             showLoading(true)
             txtError.visibility = View.GONE
             try {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-
+                if (forceSync || ServiceLocator.smsSpoolDao.countActiveByProject(projectId) == 0) {
+                    (activity as? MainActivity)?.syncSmsData()
+                }
                 refreshPackingListMap(projectId)
-                if (!forceRefresh && ServiceLocator.smsSpoolDao.countActiveByProject(projectId) > 0) {
-                    refreshAllViews(projectId)
-                    return@launch
-                }
-
-                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                if (projectCode.isNullOrBlank()) {
-                    showError(getString(R.string.spools_list_error_prefix, "Sin proyecto id=$projectId en BD"))
-                    return@launch
-                }
-
-                val response = ServiceLocator.apiClient.getService().getSpools(projectCode)
-                if (response.isSuccessful) {
-                    // Body read (IO) + JSON parse (CPU) off the main thread — with thousands
-                    // of spools this froze the UI for seconds.
-                    // Snapshot: the live set is mutated on the main thread while we parse.
-                    val locallyDeleted = SpoolDetailBottomSheet.locallyDeletedSpoolIds.toSet()
-                    val activeEntities = withContext(Dispatchers.Default) {
-                        val raw = response.body()?.string().orEmpty()
-                        parseSpoolEntities(raw, projectId)
-                            .filter { it.is_active && it.spool_id !in locallyDeleted }
-                    }
-                    ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
-                    if (activeEntities.isNotEmpty()) ServiceLocator.smsSpoolDao.insertAll(activeEntities)
-                    refreshAllViews(projectId)
-                } else {
-                    showError(getString(R.string.spools_list_error_http, response.code()))
-                    refreshAllViews(projectId)   // whatever is cached locally
-                }
+                refreshAllViews(projectId)
             } catch (e: Exception) {
                 Log.e("CreateSpoolFragment", "loadSpools failed", e)
                 showError(e.message ?: e.javaClass.simpleName)
@@ -515,6 +495,7 @@ class CreateSpoolFragment : Fragment() {
         inner class VH(view: View) : RecyclerView.ViewHolder(view) {
             val code:        TextView = view.findViewById(R.id.txtSpoolCode)
             val suffix:      TextView = view.findViewById(R.id.txtSpoolSuffix)
+            val revision:    TextView = view.findViewById(R.id.txtSpoolRevision)
             val line:        TextView = view.findViewById(R.id.txtSpoolLine)
             val details:     TextView = view.findViewById(R.id.txtSpoolDetails)
             val packingList: TextView = view.findViewById(R.id.txtPackingList)
@@ -548,6 +529,9 @@ class CreateSpoolFragment : Fragment() {
             val spool = items[position]
             h.code.text = spool.spool_code.ifBlank { spool.spool_id.toString() }
             h.suffix.text = spool.spool_suffix.orEmpty()
+            h.suffix.visibility = if (spool.spool_suffix.isNullOrBlank()) View.GONE else View.VISIBLE
+            h.revision.text = spool.revision.orEmpty()
+            h.revision.visibility = if (spool.revision.isNullOrBlank()) View.GONE else View.VISIBLE
             if (!spool.line_code.isNullOrBlank()) {
                 h.line.text = spool.line_code
                 h.line.visibility = View.VISIBLE
@@ -570,7 +554,7 @@ class CreateSpoolFragment : Fragment() {
 
     private fun showSpoolDialog(spool: SmsSpoolEntity) {
         SpoolDetailBottomSheet.newInstance(spool.spool_id).also { sheet ->
-            sheet.onSpoolUpdated = { loadSpools(forceRefresh = false) }
+            sheet.onSpoolUpdated = { loadSpools() }
             sheet.show(childFragmentManager, "spool_detail")
         }
     }

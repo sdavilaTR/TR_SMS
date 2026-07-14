@@ -34,11 +34,14 @@
 
                 <TextView
                     android:id="@+id/txtSpoolCode"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:textColor="@color/on_surface"
                     android:textSize="17sp"
-                    android:textStyle="bold" />
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
 
                 <TextView
                     android:id="@+id/txtSpoolSuffix"
@@ -50,7 +53,21 @@
                     android:paddingVertical="2dp"
                     android:textColor="@color/primary"
                     android:textStyle="bold"
-                    android:textSize="12sp" />
+                    android:textSize="12sp"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/txtSpoolRevision"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_kpi_purple"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="2dp"
+                    android:textColor="@color/purple"
+                    android:textStyle="bold"
+                    android:textSize="12sp"
+                    android:maxLines="1" />
 
             </LinearLayout>
 

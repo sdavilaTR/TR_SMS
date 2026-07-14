@@ -238,6 +238,14 @@ class NewSpoolFragment : Fragment() {
         val unit  = selectedUnitCode
         val line  = actvLine.text?.toString()?.trim().orEmpty()
         val code  = actvCode.text?.toString()?.trim().orEmpty()
+        // JAFURAH physical tag: code is unit-service-line-sit — must match QrParser's
+        // Spool.spoolCode so re-scanning the same tag finds the spool just created here.
+        // Use the raw scanned unit token (prefillUnitCode), not selectedUnitCode — the latter
+        // is the DB's canonical unit.code, which can differ from the tag text when the unit
+        // was matched by name (applySpoolCodePrefill's fallback lookup).
+        if (prefillUnitCode != null) {
+            return listOf(prefillUnitCode.orEmpty(), prefillService.orEmpty(), line, code).filter { it.isNotEmpty() }.joinToString("-")
+        }
         val train = actvTrain.text?.toString()?.trim().orEmpty()
         return listOf(unit, line, code, train).filter { it.isNotEmpty() }.joinToString("-")
     }
@@ -270,7 +278,9 @@ class NewSpoolFragment : Fragment() {
         if (selectedUnitId == null) { tilUnit.error  = getString(R.string.new_spool_error_field_required); valid = false }
         if (line.isEmpty())  { tilLine.error  = getString(R.string.new_spool_error_field_required); valid = false }
         if (code.isEmpty())  { tilCode.error  = getString(R.string.new_spool_error_field_required); valid = false }
-        if (train.isEmpty()) { tilTrain.error = getString(R.string.new_spool_error_field_required); valid = false }
+        // JAFURAH tag creations don't use the Train field — its slot in the composed
+        // code is taken by prefillService instead (see buildSpoolCode).
+        if (train.isEmpty() && prefillUnitCode == null) { tilTrain.error = getString(R.string.new_spool_error_field_required); valid = false }
         if (!valid) return
 
         btnSave.isEnabled = false
@@ -278,7 +288,7 @@ class NewSpoolFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                val spoolCode = "$selectedUnitCode-$line-$code-$train"
+                val spoolCode = buildSpoolCode()
                 val count     = ServiceLocator.smsSpoolDao.countByProjectAndCode(projectId, spoolCode)
                 val suffix    = "SP%02d".format(count + 1)
                 val spoolId   = ServiceLocator.outboxService.nextTempSpoolId()
@@ -388,6 +398,7 @@ class NewSpoolFragment : Fragment() {
             }
             actvLine.setText(prefillLineCode.orEmpty())
             actvCode.setText(prefillSitNumber.orEmpty())
+            tilTrain.visibility = View.GONE
             updatePreview()
             return
         }

@@ -302,6 +302,7 @@ class PackingListDetailFragment : Fragment() {
             try {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
                 ServiceLocator.smsSpoolDao.updatePackingList(spoolId, null)
+                ServiceLocator.smsSpoolDao.updateInTransit(spoolId, false)
                 ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(spoolId)
                 val newCount = ServiceLocator.smsSpoolDao.getByPackingList(packingListId).size
                 ServiceLocator.smsPackingListDao.getById(packingListId)?.let { pl ->
@@ -365,7 +366,10 @@ class PackingListDetailFragment : Fragment() {
 
                 locallyDeletedPLIds.add(packingListId)
                 val spools = ServiceLocator.smsSpoolDao.getByPackingList(packingListId)
-                spools.forEach { ServiceLocator.smsSpoolDao.updatePackingList(it.spool_id, null) }
+                spools.forEach {
+                    ServiceLocator.smsSpoolDao.updatePackingList(it.spool_id, null)
+                    ServiceLocator.smsSpoolDao.updateInTransit(it.spool_id, false)
+                }
                 ServiceLocator.smsPackingListSpoolDao.deleteByPackingList(packingListId)
                 ServiceLocator.smsPackingListDao.deleteById(packingListId)
 
@@ -410,7 +414,10 @@ class PackingListDetailFragment : Fragment() {
 
                 locallyDeletedPLIds.add(packingListId)
                 val spools = ServiceLocator.smsSpoolDao.getByPackingList(packingListId)
-                spools.forEach { ServiceLocator.smsSpoolDao.updatePackingList(it.spool_id, null) }
+                spools.forEach {
+                    ServiceLocator.smsSpoolDao.updatePackingList(it.spool_id, null)
+                    ServiceLocator.smsSpoolDao.updateInTransit(it.spool_id, false)
+                }
                 ServiceLocator.smsPackingListSpoolDao.deleteByPackingList(packingListId)
                 ServiceLocator.smsPackingListDao.deleteById(packingListId)
 

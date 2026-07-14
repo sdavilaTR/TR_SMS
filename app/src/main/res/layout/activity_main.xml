@@ -28,7 +28,20 @@
                 app:title="Smart Material System"
                 app:titleTextColor="@color/on_primary"
                 app:navigationIconTint="@color/on_primary"
-                app:navigationIcon="@drawable/ic_menu" />
+                app:navigationIcon="@drawable/ic_menu">
+
+                <ProgressBar
+                    android:id="@+id/syncProgressIndicator"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="end"
+                    android:layout_marginEnd="16dp"
+                    android:indeterminateTint="@color/on_primary"
+                    android:visibility="gone"
+                    android:contentDescription="@string/sync_in_progress_indicator" />
+
+            </com.google.android.material.appbar.MaterialToolbar>
 
             <!-- NavHost -->
             <androidx.fragment.app.FragmentContainerView

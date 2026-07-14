@@ -137,9 +137,11 @@ class SyncFragment : Fragment() {
             val packingListCount = ServiceLocator.smsPackingListDao.countByProject(projectId)
             val vehicleCount = ServiceLocator.smsVehicleDao.countByProject(projectId)
             val inTransitCount = ServiceLocator.smsSpoolDao.countInTransitByProject(projectId)
-            val pendingTotal = ServiceLocator.smsSpoolDao.getUnsynced().size +
-                    ServiceLocator.smsPackingListDao.getUnsynced().size +
-                    ServiceLocator.smsVehicleLoadingDao.getUnsynced().size
+            // Device-wide, not project-scoped — SyncService uploads unsynced rows across every
+            // locally-cached project, not just the one selected here, so the KPI must match.
+            val pendingTotal = ServiceLocator.smsSpoolDao.countUnsynced() +
+                    ServiceLocator.smsPackingListDao.countUnsynced() +
+                    ServiceLocator.smsVehicleLoadingDao.countUnsynced()
 
             val synced = if (apiReachable) getString(R.string.sync_kpi_workers_synced) else ""
 

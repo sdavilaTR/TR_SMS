@@ -789,8 +789,8 @@
     <string name="spool_detail_events_empty">Aucun événement enregistré</string>
     <string name="spool_detail_section_gps">LOCALISATION GPS</string>
     <string name="spool_detail_gps_no_data">Aucune donnée de localisation GPS</string>
-    <string name="spool_detail_gps_current">Actuelle : %.6f, %.6f (±%.0fm) · %s</string>
-    <string name="spool_detail_gps_previous">Précédente : %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_current">Actuelle : %1$.6f, %2$.6f (±%3$.0fm) · %4$s</string>
+    <string name="spool_detail_gps_previous">Précédente : %1$.6f, %2$.6f (±%3$.0fm) · %4$s</string>
     <string name="spool_detail_gps_current_no_acc">Actuelle : %1$.6f, %2$.6f · %3$s</string>
     <string name="spool_detail_gps_previous_no_acc">Précédente : %1$.6f, %2$.6f · %3$s</string>
     <string name="spool_detail_btn_update_gps">Mettre à jour GPS</string>

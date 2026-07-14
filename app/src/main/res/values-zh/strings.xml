@@ -789,8 +789,8 @@
     <string name="spool_detail_events_empty">暂无事件记录</string>
     <string name="spool_detail_section_gps">GPS 定位</string>
     <string name="spool_detail_gps_no_data">暂无 GPS 定位数据</string>
-    <string name="spool_detail_gps_current">当前：%.6f, %.6f (±%.0fm) · %s</string>
-    <string name="spool_detail_gps_previous">上次：%.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_current">当前：%1$.6f, %2$.6f (±%3$.0fm) · %4$s</string>
+    <string name="spool_detail_gps_previous">上次：%1$.6f, %2$.6f (±%3$.0fm) · %4$s</string>
     <string name="spool_detail_gps_current_no_acc">当前：%1$.6f, %2$.6f · %3$s</string>
     <string name="spool_detail_gps_previous_no_acc">上次：%1$.6f, %2$.6f · %3$s</string>
     <string name="spool_detail_btn_update_gps">更新 GPS</string>

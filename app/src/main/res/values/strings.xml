@@ -714,8 +714,8 @@
     <string name="spool_detail_events_empty">Sin eventos registrados</string>
     <string name="spool_detail_section_gps">UBICACIÓN GPS</string>
     <string name="spool_detail_gps_no_data">Sin datos de ubicación GPS</string>
-    <string name="spool_detail_gps_current">Actual: %.6f, %.6f (±%.0fm) · %s</string>
-    <string name="spool_detail_gps_previous">Anterior: %.6f, %.6f (±%.0fm) · %s</string>
+    <string name="spool_detail_gps_current">Actual: %1$.6f, %2$.6f (±%3$.0fm) · %4$s</string>
+    <string name="spool_detail_gps_previous">Anterior: %1$.6f, %2$.6f (±%3$.0fm) · %4$s</string>
     <string name="spool_detail_gps_current_no_acc">Actual: %1$.6f, %2$.6f · %3$s</string>
     <string name="spool_detail_gps_previous_no_acc">Anterior: %1$.6f, %2$.6f · %3$s</string>
     <string name="spool_detail_btn_update_gps">Actualizar GPS</string>
@@ -824,6 +824,9 @@
     <string name="transfer_receive_btn_confirm">Confirmar Recibo</string>
     <string name="transfer_receive_success_partial">%1$d spools recibidos en %2$s. Packing list pendiente — continúa con la siguiente sub-posición.</string>
     <string name="transfer_receive_success_complete">Entrega completada. Packing list eliminada.</string>
+    <string name="transfer_receive_success">Recepción registrada correctamente (pendiente de sincronizar)</string>
+    <string name="transfer_confirm_incomplete_title">Spools sin confirmar</string>
+    <string name="transfer_confirm_incomplete_msg">Hay %1$d spools sin escanear todavía. ¿Deseas continuar de todas formas?</string>
     <string name="transfer_receive_no_pls">No hay Packing Lists en tránsito para este vehículo.</string>
     <string name="transfer_receive_subposition_label">Sub-posición para este lote</string>
     <string name="transfer_receive_subposition_placeholder">— Selecciona sub-posición —</string>

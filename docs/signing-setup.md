@@ -14,7 +14,7 @@
 
 ## GitHub Actions Secrets
 
-Configurados en `sdavilaTR/HassiSiteApp` → Settings → Secrets → Actions:
+Configurados en `sdavilaTR/TR_SMS` → Settings → Secrets → Actions:
 
 | Secret | Descripción |
 |--------|-------------|
@@ -38,10 +38,10 @@ keytool -genkeypair \
   -dname "CN=ATLAS Dev, OU=Development, O=ATLAS Solutions, L=Madrid, ST=Madrid, C=ES"
 
 # 2. Subir los secrets a GitHub
-gh secret set KEYSTORE_BASE64 --repo sdavilaTR/HassiSiteApp < <(base64 -w 0 atlas-release.jks)
-gh secret set KEYSTORE_PASSWORD --repo sdavilaTR/HassiSiteApp --body 'Atlas.Dev.2026!'
-gh secret set KEY_ALIAS --repo sdavilaTR/HassiSiteApp --body 'atlas-release-key'
-gh secret set KEY_PASSWORD --repo sdavilaTR/HassiSiteApp --body 'Atlas.Dev.2026!'
+gh secret set KEYSTORE_BASE64 --repo sdavilaTR/TR_SMS < <(base64 -w 0 atlas-release.jks)
+gh secret set KEYSTORE_PASSWORD --repo sdavilaTR/TR_SMS --body 'Atlas.Dev.2026!'
+gh secret set KEY_ALIAS --repo sdavilaTR/TR_SMS --body 'atlas-release-key'
+gh secret set KEY_PASSWORD --repo sdavilaTR/TR_SMS --body 'Atlas.Dev.2026!'
 ```
 
 ## Flujo de release
@@ -57,12 +57,12 @@ gh secret set KEY_PASSWORD --repo sdavilaTR/HassiSiteApp --body 'Atlas.Dev.2026!
 Lo debe crear el propietario del repo (**sdavila**):
 
 1. GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens**
-2. Repository access: solo `sdavilaTR/HassiSiteApp`
+2. Repository access: solo `sdavilaTR/TR_SMS`
 3. Permissions → Repository permissions → **Contents: Read-only**
 4. Copiar el token generado y añadirlo como secret:
 
 ```bash
-gh secret set GITHUB_RELEASE_TOKEN --repo sdavilaTR/HassiSiteApp --body 'github_pat_XXXX...'
+gh secret set GITHUB_RELEASE_TOKEN --repo sdavilaTR/TR_SMS --body 'github_pat_XXXX...'
 ```
 
 ## Notas

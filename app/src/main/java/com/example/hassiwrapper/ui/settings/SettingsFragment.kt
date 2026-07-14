@@ -526,7 +526,7 @@ class SettingsFragment : Fragment() {
 
         view.findViewById<TextView>(R.id.txtInfoVersion).text = tag
         view.findViewById<TextView>(R.id.txtInfoBuildDate).text = parseBuildDate(tag)
-        view.findViewById<TextView>(R.id.txtInfoRepo).text = "sdavilaTR/HassiSiteApp"
+        view.findViewById<TextView>(R.id.txtInfoRepo).text = "sdavilaTR/TR_SMS"
         view.findViewById<TextView>(R.id.txtInfoDeployment).text =
             if (tag == "dev") getString(R.string.settings_info_build_local)
             else getString(R.string.settings_info_deployment_value)

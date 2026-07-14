@@ -67,6 +67,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -80,6 +82,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var navController: NavController
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var etGlobalWedge: EditText
+    private lateinit var syncProgressIndicator: android.widget.ProgressBar
     private var kioskModeEnabled = false
 
     private val globalWedgeHandler = Handler(Looper.getMainLooper())
@@ -105,6 +108,18 @@ class MainActivity : AppCompatActivity() {
     private var pendingUpdate: UpdateInfo? = null
     private var autoSyncJob: Job? = null
     private val smsSyncMutex = Mutex()
+    private val _isSmsSyncInProgress = MutableStateFlow(false)
+
+    /** True while a full/delta SMS sync (auto-loop or manual) is in flight — a spool scan
+     *  resolving to "not registered" during this window may just not be downloaded yet. */
+    internal val isSmsSyncInProgress: Boolean get() = _isSmsSyncInProgress.value
+
+    /** True while either SyncService.fullSync() or the SMS-specific sync is in flight — the
+     *  two run sequentially, not under a shared lock, so both must be checked: a spool scan
+     *  during fullSync() alone (before syncSmsData() starts) is still mid-sync. Single source
+     *  of truth for every "spool may not be downloaded yet" message; the toolbar spinner
+     *  collects the two backing StateFlows directly instead of polling this property. */
+    internal val isAnySyncInProgress: Boolean get() = ServiceLocator.syncService.isSyncing.value || isSmsSyncInProgress
 
     private var connectivityManager: ConnectivityManager? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
@@ -174,6 +189,7 @@ class MainActivity : AppCompatActivity() {
         val navView = findViewById<NavigationView>(R.id.navView)
 
         setSupportActionBar(toolbar)
+        syncProgressIndicator = findViewById(R.id.syncProgressIndicator)
 
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.navHostFragment) as NavHostFragment
@@ -257,6 +273,20 @@ class MainActivity : AppCompatActivity() {
                         handleGlobalScan(code)
                     }
                 }
+            }
+        }
+
+        // Observe both sync locks (SyncService.fullSync + this activity's SMS sync) so the
+        // toolbar spinner reflects any in-flight sync regardless of what triggered it
+        // (auto-loop, initial sync, or a manual sync from SyncFragment/CreateSpoolFragment).
+        // combine() only emits on an actual state change, so this is push-driven, not polled.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                combine(ServiceLocator.syncService.isSyncing, _isSmsSyncInProgress) { full, sms -> full || sms }
+                    .collect { syncing ->
+                        syncProgressIndicator.visibility =
+                            if (syncing) android.view.View.VISIBLE else android.view.View.GONE
+                    }
             }
         }
 
@@ -666,9 +696,11 @@ class MainActivity : AppCompatActivity() {
             Log.i(TAG, "syncSmsData: already in progress, skipping concurrent call")
             return
         }
+        _isSmsSyncInProgress.value = true
         try {
         doSyncSmsData(onProgress)
         } finally {
+            _isSmsSyncInProgress.value = false
             smsSyncMutex.unlock()
         }
     }
@@ -799,18 +831,16 @@ class MainActivity : AppCompatActivity() {
                         // Preserve locally-set fields that the /spools endpoint doesn't return
                         val localSpools = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
                             .associateBy { it.spool_id }
-                        // Spools that are SENT but not yet RECEIVED locally — these stay in_transit=true
+                        // in_transit is purely local (set by Send, cleared by Receive) — the
+                        // backend never returns it, so it's never taken from the server response.
+                        // Spools that are SENT but not yet RECEIVED locally stay in_transit=true
                         // regardless of upload status, until a local RECEIVE transfer confirms arrival.
                         val sentNotReceivedIds = ServiceLocator.smsTransferDao.getSpoolIdsInSentNotReceived().toSet()
                         val merged = toInsert.map { s ->
                             val local = localSpools[s.spool_id] ?: return@map s
                             val keepLocal = !local.synced
                             s.copy(
-                                in_transit = when {
-                                    s.spool_id in sentNotReceivedIds -> true
-                                    keepLocal -> local.in_transit
-                                    else -> s.in_transit
-                                },
+                                in_transit = if (s.spool_id in sentNotReceivedIds) true else local.in_transit,
                                 zone            = if (keepLocal) local.zone else (s.zone ?: local.zone),
                                 // QR-scan is still the only source on projects where the backend
                                 // hasn't backfilled ISO_rev_number yet — never let a null/blank
@@ -1184,7 +1214,11 @@ class MainActivity : AppCompatActivity() {
                     PositionHelper.applyTerminalPosition(spool.spool_id)
                     ServiceLocator.smsSpoolDao.backfillSitAndRevision(spool.spool_id, result.sitNumber, result.revision)
                 } else {
-                    showScanNotRegisteredDialog(getString(R.string.scan_result_spool_not_registered)) {
+                    val notFoundMsg = if (isAnySyncInProgress)
+                        getString(R.string.scan_result_spool_not_registered_syncing)
+                    else
+                        getString(R.string.scan_result_spool_not_registered)
+                    showScanNotRegisteredDialog(notFoundMsg) {
                         navController.navigate(R.id.action_global_newSpoolFragment,
                             Bundle().apply {
                                 putString("prefillSpoolCode", result.spoolCode)

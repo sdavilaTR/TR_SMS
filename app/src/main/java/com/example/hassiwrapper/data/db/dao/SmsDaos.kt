@@ -125,6 +125,11 @@ interface SmsPackingListDao {
     @Query("SELECT * FROM sms_packing_list WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsPackingListEntity>
 
+    // Device-wide, not project-scoped — matches SyncService's upload scope (it uploads
+    // unsynced rows for every locally-cached project, not just the selected one).
+    @Query("SELECT COUNT(*) FROM sms_packing_list WHERE synced = 0")
+    suspend fun countUnsynced(): Int
+
     @Query("UPDATE sms_packing_list SET synced = 1 WHERE packing_list_id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
 
@@ -418,6 +423,11 @@ interface SmsSpoolDao {
     @Query("SELECT * FROM sms_spool WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsSpoolEntity>
 
+    // Device-wide, not project-scoped — matches SyncService's upload scope (it uploads
+    // unsynced rows for every locally-cached project, not just the selected one).
+    @Query("SELECT COUNT(*) FROM sms_spool WHERE synced = 0")
+    suspend fun countUnsynced(): Int
+
     /** Spools modified offline via QR relocation / RECEIVE: position or sub-position set locally
      *  but not yet uploaded to the server as a status-flags PUT. Only positive IDs — temp local
      *  IDs (offline-created spools) are handled by the outbox, not status-flags. */
@@ -678,6 +688,11 @@ interface SmsVehicleLoadingDao {
 
     @Query("SELECT * FROM sms_vehicle_loading WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsVehicleLoadingEntity>
+
+    // Device-wide, not project-scoped — matches SyncService's upload scope (it uploads
+    // unsynced rows for every locally-cached project, not just the selected one).
+    @Query("SELECT COUNT(*) FROM sms_vehicle_loading WHERE synced = 0")
+    suspend fun countUnsynced(): Int
 
     @Query("SELECT * FROM sms_vehicle_loading_spool WHERE loading_id = :loadingId")
     suspend fun getSpoolsByLoading(loadingId: Long): List<SmsVehicleLoadingSpoolEntity>

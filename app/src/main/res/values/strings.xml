@@ -19,6 +19,7 @@
     <string name="qr_scanner_result_badge_unsupported">Badge UUID no está asociado a un vehículo SMS. Use el QR del vehículo en el sistema ATLAS.</string>
     <string name="qr_scanner_result_unknown">Código QR no reconocido</string>
     <string name="qr_scanner_result_id_detail">ID: %1$s</string>
+    <string name="qr_scanner_result_spool_syncing">Sincronización en curso — el spool puede no estar descargado aún. Espere a que termine e inténtelo de nuevo.</string>
 
     <!-- QR Scanner: relocate mode -->
     <string name="qr_scanner_btn_relocate">Relocalizar spools</string>
@@ -34,6 +35,7 @@
     <string name="qr_scanner_btn_finish_relocate">Finalizar relocalización</string>
     <string name="scan_result_spool_registered">Spool registrado: %1$s</string>
     <string name="scan_result_spool_not_registered">Spool no registrado en la base de datos</string>
+    <string name="scan_result_spool_not_registered_syncing">Sincronización en curso — el spool puede no estar descargado aún. Espere a que termine e inténtelo de nuevo.\n\n¿Desea crear un nuevo registro de todos modos?</string>
     <string name="scan_result_vehicle_registered">Vehículo registrado: %1$s</string>
     <string name="scan_result_vehicle_not_registered">Vehículo no registrado en la base de datos</string>
     <string name="scan_create_question">¿Desea crear un nuevo registro?</string>
@@ -855,6 +857,7 @@
 
     <!-- Auto-sync notifications -->
     <string name="auto_sync_completed">Sincronización automática completada</string>
+    <string name="sync_in_progress_indicator">Sincronización en curso</string>
 
     <!-- Settings: location config -->
     <string name="settings_location_config_title">Configuración de Ubicaciones</string>

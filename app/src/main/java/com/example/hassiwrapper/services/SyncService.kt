@@ -12,6 +12,9 @@ import com.example.hassiwrapper.network.AtlasApiService
 import com.example.hassiwrapper.network.dto.*
 import com.google.gson.JsonParser
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.MediaType.Companion.toMediaType
@@ -59,6 +62,10 @@ class SyncService(
 
     private val syncMutex = Mutex()
     private val smsUploadMutex = Mutex()
+
+    private val _isSyncing = MutableStateFlow(false)
+    /** True while [fullSync] is in flight — drives the toolbar sync indicator. */
+    val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
     // doSync (syncMutex) and doSmsUploads (smsUploadMutex) both call uploadSpoolLocations
     // and don't block each other, so this locks the upload itself to prevent both paths
     // reading the same unsynced rows before either has marked them synced.
@@ -104,9 +111,11 @@ class SyncService(
             Log.i(TAG, "Sync already in progress, skipping concurrent call")
             return SyncResult(success = true)
         }
+        _isSyncing.value = true
         try {
         return fullSyncLocked(onRetry, onProgress)
         } finally {
+            _isSyncing.value = false
             syncMutex.unlock()
         }
     }

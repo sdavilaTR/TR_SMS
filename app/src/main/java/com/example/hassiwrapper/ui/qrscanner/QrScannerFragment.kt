@@ -243,10 +243,11 @@ class QrScannerFragment : Fragment() {
                     PositionHelper.applyTerminalPosition(spool.spool_id)
                     ServiceLocator.smsSpoolDao.backfillSitAndRevision(spool.spool_id, sitNumber, revision)
                 } else {
-                    showError(
-                        getString(R.string.qr_scanner_result_spool_not_found),
+                    val detail = if ((requireActivity() as? MainActivity)?.isAnySyncInProgress == true)
+                        getString(R.string.qr_scanner_result_spool_syncing)
+                    else
                         getString(R.string.qr_scanner_result_id_detail, spoolCode)
-                    )
+                    showError(getString(R.string.qr_scanner_result_spool_not_found), detail)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "lookupSpool failed", e)
@@ -341,10 +342,11 @@ class QrScannerFragment : Fragment() {
                     spools.firstOrNull()
 
                 if (spool == null) {
-                    showError(
-                        getString(R.string.qr_scanner_result_spool_not_found),
+                    val detail = if ((requireActivity() as? MainActivity)?.isAnySyncInProgress == true)
+                        getString(R.string.qr_scanner_result_spool_syncing)
+                    else
                         getString(R.string.qr_scanner_result_id_detail, spoolCode)
-                    )
+                    showError(getString(R.string.qr_scanner_result_spool_not_found), detail)
                     return@launch
                 }
 

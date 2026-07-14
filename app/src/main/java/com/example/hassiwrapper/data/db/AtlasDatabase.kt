@@ -56,7 +56,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsAuditLogEntity::class,
         SmsSpoolLocationEntity::class
     ],
-    version = 36,
+    version = 37,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -884,6 +884,19 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v36 → v37: one-time cleanup for a since-fixed backend bug. GET /spools' `in_transit`
+        // field was accidentally aliased to the QC `hold` flag (unrelated to shipping status —
+        // see SmsRepository.cs), so every held-but-never-packed spool got pulled in as
+        // in_transit=true with no packing list. A spool can't legitimately be "in transit"
+        // without one, so this enforces that invariant once; going forward in_transit is
+        // purely local (set by Send, cleared by Receive) and never comes from the server.
+        private val MIGRATION_36_37 = object : Migration(36, 37) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 36 → 37: clear orphan in_transit flags (no packing list)")
+                db.execSQL("UPDATE `sms_spool` SET `in_transit` = 0 WHERE `packing_list_id` IS NULL AND `in_transit` = 1")
+            }
+        }
+
         // v27 → v28: link a spool to its sub-position (Laydown/Site sub-section).
         // Mirrors position_id: lives on sms_spool (bulk, for the zone chart) and on
         // sms_spool_status_flags (authoritative, read from GET status-flags in detail).
@@ -937,7 +950,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_32_33,
                         MIGRATION_33_34,
                         MIGRATION_34_35,
-                        MIGRATION_35_36
+                        MIGRATION_35_36,
+                        MIGRATION_36_37
                     )
                     .build()
                 INSTANCE = instance

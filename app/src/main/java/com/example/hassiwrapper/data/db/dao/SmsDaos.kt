@@ -263,8 +263,10 @@ private const val SPOOL_RESOLVED_POSITION = """
     )
 """
 
+// Only used by CreateSpoolFragment's Inventario Spools tab, which must show scanned-only
+// spools (see MIGRATION_35_36) — not shared with any full/unfiltered spool query.
 private const val SPOOL_LIST_FILTER = """
-    s.project_id = :projectId AND s.is_active = 1
+    s.project_id = :projectId AND s.is_active = 1 AND s.scanned = 1
     AND (:positionCode IS NULL OR $SPOOL_RESOLVED_POSITION = UPPER(:positionCode))
     AND (:subPositionId IS NULL OR s.sub_position_id = :subPositionId)
     AND (:query = '' OR s.spool_code LIKE '%' || :query || '%'
@@ -282,11 +284,12 @@ interface SmsSpoolDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(spools: List<SmsSpoolEntity>)
 
+    // Feeds CreateSpoolFragment's Inventario zone chart — scanned-only, same reasoning as SPOOL_LIST_FILTER.
     @Query("""
         SELECT s.packing_list_id AS plId, s.zone AS zone, s.position_id AS positionId,
                s.sub_position_id AS subId, COUNT(*) AS cnt
         FROM sms_spool s
-        WHERE s.project_id = :projectId AND s.is_active = 1
+        WHERE s.project_id = :projectId AND s.is_active = 1 AND s.scanned = 1
         GROUP BY plId, zone, positionId, subId
     """)
     suspend fun countByLocationCombo(projectId: Int): List<SpoolComboCount>
@@ -321,8 +324,20 @@ interface SmsSpoolDao {
     @Query("SELECT * FROM sms_spool WHERE spool_id = :id")
     suspend fun getById(id: Long): SmsSpoolEntity?
 
-    @Query("SELECT * FROM sms_spool WHERE spool_code = :code ORDER BY spool_suffix ASC")
-    suspend fun getByCode(code: String): List<SmsSpoolEntity>
+    // Some backends (e.g. JAFURAH) bake the suffix into spool_code itself
+    // ("774-BD-20005-101-SP03" with spool_suffix "SP03" too), while the physical
+    // QR tag regex derives a clean code without it ("774-BD-20005-101" + "SP03").
+    // The second OR clause matches that baked-in shape so scans still resolve.
+    // Scoped to project_id: the local mirror can hold rows from a previously-selected
+    // project (project switch doesn't purge them), and without this scope a scanned
+    // code could resolve to a different project's spool via the baked-in-suffix match.
+    @Query("""
+        SELECT * FROM sms_spool
+        WHERE project_id = :projectId
+        AND (spool_code = :code OR spool_code = :code || '-' || spool_suffix)
+        ORDER BY spool_suffix ASC
+    """)
+    suspend fun getByCode(projectId: Int, code: String): List<SmsSpoolEntity>
 
     @Query("SELECT * FROM sms_spool WHERE packing_list_id = :packingListId ORDER BY spool_code ASC, spool_suffix ASC")
     suspend fun getByPackingList(packingListId: Long): List<SmsSpoolEntity>
@@ -345,6 +360,18 @@ interface SmsSpoolDao {
 
     @Query("SELECT COUNT(*) FROM sms_spool WHERE project_id = :projectId AND is_active = 1")
     suspend fun countActiveByProject(projectId: Int): Int
+
+    // KPI tiles show scanned-only counts (see MIGRATION_35_36) — reads the local mirror,
+    // which the main sync keeps unfiltered/current, instead of a separate network fetch.
+    @Query("SELECT COUNT(*) FROM sms_spool WHERE project_id = :projectId AND is_active = 1 AND scanned = 1")
+    suspend fun countScannedByProject(projectId: Int): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM sms_spool
+        WHERE project_id = :projectId AND is_active = 1 AND scanned = 1
+        AND (UPPER(zone) = UPPER(:location) OR packing_list_id IN (SELECT packing_list_id FROM sms_packing_list WHERE UPPER(position) = UPPER(:location)))
+    """)
+    suspend fun countScannedByProjectAndZone(projectId: Int, location: String): Int
 
     @Query("SELECT COUNT(*) FROM sms_spool")
     suspend fun countAll(): Int
@@ -409,7 +436,18 @@ interface SmsSpoolDao {
     @Query("UPDATE sms_spool SET packing_list_id = :packingListId, synced = 0 WHERE spool_id = :spoolId")
     suspend fun updatePackingList(spoolId: Long, packingListId: Long?)
 
-    @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND UPPER(spool_code) = UPPER(:code) AND UPPER(COALESCE(spool_suffix,'')) = UPPER(:suffix) LIMIT 1")
+    // See getByCode() above re: the baked-in-suffix fallback (second OR clause).
+    // ORDER BY prefers the plain code+suffix match over the baked-in-code match so the
+    // pick is deterministic on the rare project that has both row shapes for one spool.
+    @Query("""
+        SELECT * FROM sms_spool
+        WHERE project_id = :projectId AND (
+            (UPPER(spool_code) = UPPER(:code) AND UPPER(COALESCE(spool_suffix,'')) = UPPER(:suffix))
+            OR UPPER(spool_code) = UPPER(:code || '-' || :suffix)
+        )
+        ORDER BY CASE WHEN UPPER(spool_code) = UPPER(:code) THEN 0 ELSE 1 END
+        LIMIT 1
+    """)
     suspend fun findByCodeAndSuffix(projectId: Int, code: String, suffix: String): SmsSpoolEntity?
 
     @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND UPPER(spool_code) = UPPER(:code) LIMIT 1")
@@ -426,6 +464,14 @@ interface SmsSpoolDao {
 
     @Query("UPDATE sms_spool SET sub_position_id = :subPositionId, synced = 0 WHERE spool_id = :spoolId")
     suspend fun updateSubPosition(spoolId: Long, subPositionId: Long?)
+
+    /** Atomic pair for a terminal move: new position always implies clearing the old
+     *  sub-position (it belongs to the previous parent position) — see PositionHelper. */
+    @Transaction
+    suspend fun setPositionClearingSubPosition(spoolId: Long, positionId: Int?) {
+        updatePosition(spoolId, positionId)
+        updateSubPosition(spoolId, null)
+    }
 
     @Query("UPDATE sms_spool SET area_id = :areaId, zone = :zone, synced = 0 WHERE spool_id = :spoolId")
     suspend fun updateArea(spoolId: Long, areaId: Long?, zone: String?)

@@ -56,7 +56,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsAuditLogEntity::class,
         SmsSpoolLocationEntity::class
     ],
-    version = 35,
+    version = 36,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -872,6 +872,18 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v35 → v36: mirror the backend's sms_spool.scanned flag (PCA scan — set server-side
+        // when a terminal uploads a spool location, see SyncService.uploadSmsSpoolLocations).
+        // Read locally so HomeFragment KPIs / CreateSpoolFragment's Inventario list can filter
+        // scanned-only spools without a separate destructive scannedOnly=true fetch that would
+        // wipe the full local mirror needed for scan-recognition (see MainActivity.syncSmsData).
+        private val MIGRATION_35_36 = object : Migration(35, 36) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 35 → 36: add scanned to sms_spool")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `scanned` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         // v27 → v28: link a spool to its sub-position (Laydown/Site sub-section).
         // Mirrors position_id: lives on sms_spool (bulk, for the zone chart) and on
         // sms_spool_status_flags (authoritative, read from GET status-flags in detail).
@@ -924,7 +936,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_31_32,
                         MIGRATION_32_33,
                         MIGRATION_33_34,
-                        MIGRATION_34_35
+                        MIGRATION_34_35,
+                        MIGRATION_35_36
                     )
                     .build()
                 INSTANCE = instance

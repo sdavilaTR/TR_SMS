@@ -40,6 +40,7 @@ import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.example.hassiwrapper.scanner.DataWedgeManager
 import com.example.hassiwrapper.services.GpsHelper
+import com.example.hassiwrapper.services.PositionHelper
 import com.example.hassiwrapper.ui.login.LoginActivity
 import com.example.hassiwrapper.update.UpdateChecker
 import com.example.hassiwrapper.update.UpdateInfo
@@ -730,6 +731,12 @@ class MainActivity : AppCompatActivity() {
                     suspend fun fetchPageWithRetry(page: Int): retrofit2.Response<okhttp3.ResponseBody>? {
                         repeat(3) { attempt ->
                             try {
+                                // Full/delta sync feeds the local sms_spool mirror that scan-lookup, search,
+                                // and packing-list pickers all depend on — it must stay unfiltered (scannedOnly
+                                // omitted) so any physical tag scan resolves. Every row already carries its own
+                                // `scanned` flag (SpoolDto.scanned), so HomeFragment's KPI tiles and
+                                // CreateSpoolFragment's Inventario picker filter scanned=1 locally in SQL
+                                // (see SPOOL_LIST_FILTER/countScannedByProject) — no separate filtered fetch exists.
                                 val resp = largeService.getSpools(projectCode, page, pageSize, updatedSince)
                                 if (resp.isSuccessful) return resp
                                 Log.w(TAG, "syncSmsData spools page=$page HTTP ${resp.code()} (attempt ${attempt + 1}/3)")
@@ -805,6 +812,10 @@ class MainActivity : AppCompatActivity() {
                                     else -> s.in_transit
                                 },
                                 zone            = if (keepLocal) local.zone else (s.zone ?: local.zone),
+                                // QR-scan is still the only source on projects where the backend
+                                // hasn't backfilled ISO_rev_number yet — never let a null/blank
+                                // server value overwrite a revision captured locally by a scan.
+                                revision        = if (keepLocal) local.revision else (s.revision ?: local.revision),
                                 packing_list_id = if (keepLocal) local.packing_list_id else (s.packing_list_id ?: local.packing_list_id),
                                 position_id     = if (keepLocal) local.position_id else (s.position_id ?: local.position_id),
                                 sub_position_id = if (keepLocal) local.sub_position_id else (s.sub_position_id ?: local.sub_position_id),
@@ -1161,7 +1172,8 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "handleGlobalScan: ${code.take(80)}")
         when (val result = parseQr(code)) {
             is QrResult.Spool -> {
-                val spools = ServiceLocator.smsSpoolDao.getByCode(result.spoolCode)
+                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                val spools = ServiceLocator.smsSpoolDao.getByCode(projectId, result.spoolCode)
                 val spool = if (result.spoolSuffix != null)
                     spools.find { it.spool_suffix == result.spoolSuffix } ?: spools.firstOrNull()
                 else
@@ -1169,6 +1181,7 @@ class MainActivity : AppCompatActivity() {
                 if (spool != null) {
                     showScanRegisteredDialog(getString(R.string.scan_result_spool_registered, spool.displayCode))
                     GpsHelper.captureAndSaveSpoolLocation(this@MainActivity, spool.spool_id)
+                    PositionHelper.applyTerminalPosition(spool.spool_id)
                     ServiceLocator.smsSpoolDao.backfillSitAndRevision(spool.spool_id, result.sitNumber, result.revision)
                 } else {
                     showScanNotRegisteredDialog(getString(R.string.scan_result_spool_not_registered)) {

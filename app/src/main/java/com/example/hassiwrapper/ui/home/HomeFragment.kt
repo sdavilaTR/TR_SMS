@@ -180,6 +180,9 @@ class HomeFragment : Fragment() {
             try {
                 val service = ServiceLocator.apiClient.getService()
 
+                // Unfiltered: this repopulates the shared local sms_spool mirror for the newly
+                // selected project, which scan-recognition/search/packing-list pickers depend on.
+                // KPI tiles filter to scanned=true locally instead (see loadStats/countScannedByProject).
                 val spoolResp = service.getSpools(projectCode)
                 if (spoolResp.isSuccessful) {
                     val entities = parseSpoolEntities(spoolResp.body()?.string().orEmpty(), projectId)
@@ -249,9 +252,9 @@ class HomeFragment : Fragment() {
                 val isPrivileged = ProfileManager.currentUserRole() != ProfileManager.UserRole.GUEST
                 val filterZone = if (isPrivileged) ServiceLocator.configRepo.get("device_location")?.takeIf { it.isNotBlank() } else null
                 val spoolCount = if (filterZone != null)
-                    ServiceLocator.smsSpoolDao.countActiveByProjectAndZone(projectId, filterZone)
+                    ServiceLocator.smsSpoolDao.countScannedByProjectAndZone(projectId, filterZone)
                 else
-                    ServiceLocator.smsSpoolDao.countActiveByProject(projectId)
+                    ServiceLocator.smsSpoolDao.countScannedByProject(projectId)
                 val packingListCount = ServiceLocator.smsPackingListDao.countByProject(projectId)
                 val vehicleCount = ServiceLocator.smsVehicleDao.countByProject(projectId)
                 val criticalIncidentCount = ServiceLocator.smsIncidentService.getCriticalCount(projectId)

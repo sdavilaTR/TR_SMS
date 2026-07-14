@@ -48,18 +48,27 @@ import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
+private val BAKED_IN_SUFFIX_SHAPE = Regex("""(?i)^SP\d+$""")
+
 class SendPackingListFragment : Fragment() {
 
     private data class ScannedSpool(
         val spoolId: Long,
         val spoolCode: String,
         val spoolSuffix: String?,
+        val revision: String? = null,
         val packingListId: Long?,
         val packingListName: String?,
         val weightKg: Double? = null
     ) {
         val displayCode: String
-            get() = if (spoolSuffix.isNullOrBlank()) spoolCode else "$spoolCode-$spoolSuffix"
+            get() {
+                val suffix = spoolSuffix?.takeIf { it.isNotBlank() }
+                val alreadyBaked = suffix != null && BAKED_IN_SUFFIX_SHAPE.matches(suffix) &&
+                    spoolCode.endsWith("-$suffix", ignoreCase = true)
+                val base = if (suffix == null || alreadyBaked) spoolCode else "$spoolCode-$suffix"
+                return if (revision.isNullOrBlank()) base else "$base-$revision"
+            }
     }
 
     private var selectedVehicle: SmsVehicleEntity? = null
@@ -346,6 +355,7 @@ class SendPackingListFragment : Fragment() {
             spoolId         = spool?.spool_id ?: 0L,
             spoolCode       = spool?.spool_code ?: fallbackCode,
             spoolSuffix     = spool?.spool_suffix ?: fallbackSuffix?.ifBlank { null },
+            revision        = spool?.revision,
             packingListId   = spool?.packing_list_id,
             packingListName = spool?.packing_list_name,
             weightKg        = weightKg

@@ -893,7 +893,9 @@ class SyncService(
                         longitude    = loc.longitude,
                         gpsAccuracyM = loc.gps_accuracy_m,
                         capturedAt   = loc.captured_at,
-                        capturedBy   = loc.captured_by
+                        capturedBy   = loc.captured_by,
+                        scannedBy    = configRepo.get("device_code")?.takeIf { it.isNotBlank() },
+                        scannedFrom  = configRepo.get("device_location")?.takeIf { it.isNotBlank() }
                     )
                     val response = api.postSpoolLocation(projectCode, loc.spool_id, body)
                     if (response.isSuccessful) {

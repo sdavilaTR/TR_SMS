@@ -31,6 +31,7 @@ import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.services.GpsHelper
+import com.example.hassiwrapper.services.PositionHelper
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
@@ -229,7 +230,8 @@ class QrScannerFragment : Fragment() {
     private fun lookupSpool(spoolCode: String, spoolSuffix: String?, sitNumber: String? = null, revision: String? = null) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val spools = ServiceLocator.smsSpoolDao.getByCode(spoolCode)
+                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                val spools = ServiceLocator.smsSpoolDao.getByCode(projectId, spoolCode)
                 val spool = if (spoolSuffix != null)
                     spools.find { it.spool_suffix == spoolSuffix } ?: spools.firstOrNull()
                 else
@@ -238,6 +240,7 @@ class QrScannerFragment : Fragment() {
                     txtScanStatus.text = getString(R.string.qr_scanner_status_spool_found, spool.displayCode)
                     showResult(spool.displayCode, buildSpoolDetail(spool))
                     GpsHelper.captureAndSaveSpoolLocation(requireContext(), spool.spool_id)
+                    PositionHelper.applyTerminalPosition(spool.spool_id)
                     ServiceLocator.smsSpoolDao.backfillSitAndRevision(spool.spool_id, sitNumber, revision)
                 } else {
                     showError(
@@ -330,7 +333,8 @@ class QrScannerFragment : Fragment() {
         }
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val spools = ServiceLocator.smsSpoolDao.getByCode(spoolCode)
+                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                val spools = ServiceLocator.smsSpoolDao.getByCode(projectId, spoolCode)
                 val spool = if (spoolSuffix != null)
                     spools.find { it.spool_suffix == spoolSuffix } ?: spools.firstOrNull()
                 else
@@ -358,7 +362,6 @@ class QrScannerFragment : Fragment() {
                 // Push position + sub-position to the server (authoritative PUT status-flags).
                 // Only when a real catalog sub-position is selected; best-effort, non-blocking.
                 relocateSubPositionId?.let { subId ->
-                    val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
                     val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
                     if (!projectCode.isNullOrBlank()) {
                         ServiceLocator.syncService.uploadSpoolStatusFlags(

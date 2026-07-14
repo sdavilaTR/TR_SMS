@@ -98,7 +98,15 @@ data class SpoolDto(
     @SerializedName(value = "in_transit",        alternate = ["inTransit"])         val inTransit: Boolean? = null,
     @SerializedName(value = "packing_list_name", alternate = ["packingListName"])   val packingListName: String? = null,
     @SerializedName(value = "sit_number",        alternate = ["sitNumber"])         val sitNumber: String? = null,
-    @SerializedName(value = "revision",          alternate = ["revisionCode", "fabRevision"]) val revision: String? = null
+    @SerializedName(value = "revision",          alternate = ["revisionCode", "fabRevision"]) val revision: String? = null,
+    // Backend column ISO_rev_number — e.g. "01A" trailing the JAFURAH physical tag
+    // (UNIT-SERVICE-LINE-SIT-SPOOLID-REVISION). Prefer this over the legacy `revision`
+    // aliases above when both are present; QR-scan parsing keeps writing `revision` locally.
+    @SerializedName(value = "ISO_rev_number",    alternate = ["iso_rev_number", "isoRevNumber"]) val isoRevNumber: String? = null,
+    // PCA scan flag (Tr.ATLAS.Domain.Models.Sms.SpoolDto.Scanned), present on every row
+    // of the unfiltered GET /spools response; null means never scanned. Local queries
+    // filter on this (scanned=1) instead of the API doing any server-side filtering.
+    @SerializedName(value = "scanned")                                               val scanned: Boolean? = null
 ) {
     private fun String?.toLongOrNullSafe(): Long? =
         this?.trim()?.takeIf { it.isNotEmpty() }?.toDoubleOrNull()?.toLong()
@@ -129,6 +137,9 @@ data class SpoolDto(
 
     private fun resolveService(): String? = service
 
+    private fun resolveRevision(): String? =
+        (isoRevNumber ?: revision)?.takeIf { it.isNotBlank() }
+
     fun toModel(): Spool = Spool(
         resolveSpoolId(),
         projectId.toIntOrNullSafe() ?: 0,
@@ -151,7 +162,7 @@ data class SpoolDto(
         updatedBy,
         packingListId,
         sitNumber?.takeIf { it.isNotBlank() },
-        revision?.takeIf { it.isNotBlank() }
+        resolveRevision()
     )
 
     fun toEntity(defaultPackingListId: Long? = null): SmsSpoolEntity = SmsSpoolEntity(
@@ -185,7 +196,8 @@ data class SpoolDto(
         packing_list_name = packingListName?.takeIf { it.isNotBlank() },
         in_transit      = inTransit ?: false,
         sit_number      = sitNumber?.takeIf { it.isNotBlank() },
-        revision        = revision?.takeIf { it.isNotBlank() }
+        revision        = resolveRevision(),
+        scanned         = scanned ?: false
     )
 }
 
@@ -194,7 +206,10 @@ data class SpoolLocationRequest(
     @SerializedName("longitude")     val longitude: Double,
     @SerializedName("gpsAccuracyM") val gpsAccuracyM: Float?,
     @SerializedName("capturedAt")   val capturedAt: String,
-    @SerializedName("capturedBy")   val capturedBy: String?
+    @SerializedName("capturedBy")   val capturedBy: String?,
+    // Marks this as a real scan on the backend: sms_spool.scanned/scanned_by/scanned_at/scanned_from.
+    @SerializedName("scannedBy")   val scannedBy: String? = null,
+    @SerializedName("scannedFrom") val scannedFrom: String? = null
 )
 
 data class SpoolLocationResponse(

@@ -131,7 +131,9 @@ class SyncFragment : Fragment() {
             val v = view ?: return@launch
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
 
-            val spoolCount = ServiceLocator.smsSpoolDao.countActiveByProject(projectId)
+            // Matches HomeFragment's "spool count" KPI (scanned-only) so the two screens
+            // don't show two different numbers for what looks like the same metric.
+            val spoolCount = ServiceLocator.smsSpoolDao.countScannedByProject(projectId)
             val packingListCount = ServiceLocator.smsPackingListDao.countByProject(projectId)
             val vehicleCount = ServiceLocator.smsVehicleDao.countByProject(projectId)
             val inTransitCount = ServiceLocator.smsSpoolDao.countInTransitByProject(projectId)

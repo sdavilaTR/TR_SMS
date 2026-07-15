@@ -37,6 +37,7 @@ jobs:
         run: |
           sed -i '/^org.gradle.java.home/d' gradle.properties
           sed -i '/^org.gradle.jvmargs/d' gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4096m" >> gradle.properties
 
       - name: Get current date
         id: date

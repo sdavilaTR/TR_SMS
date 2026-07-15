@@ -160,6 +160,14 @@
     <string name="sync_kpi_vehicles_synced">Actualizados</string>
     <string name="sync_kpi_in_transit_active">activos</string>
 
+    <!-- Outbox failed ops banner -->
+    <string name="sync_outbox_failed_banner">⚠ %1$d operación(es) no se pudieron sincronizar tras varios intentos — toca para ver detalles</string>
+    <string name="sync_outbox_failed_dialog_title">Operaciones fallidas</string>
+    <string name="sync_outbox_failed_dialog_item">%1$s %2$s (id %3$d): %4$s</string>
+
+    <!-- Delta-sync flag banner -->
+    <string name="sync_delta_active_banner">Sincronización delta activa en este dispositivo — modo experimental, contacta con soporte si no lo esperabas</string>
+
     <!-- Sync result structured -->
     <string name="sync_result_title_ok">Sincronización completada</string>
     <string name="sync_result_title_error">Error de sincronización</string>
@@ -266,8 +274,9 @@
     <!-- Update (Settings button) -->
     <string name="settings_check_updates">Buscar actualizaciones</string>
     <string name="settings_check_updates_searching">Buscando…</string>
+    <string name="settings_current_version">Versión actual: %1$s</string>
     <string name="update_up_to_date">Ya tienes la última versión instalada</string>
-    <string name="update_check_failed">No se pudo comprobar actualizaciones — revise la conexión</string>
+    <string name="update_check_failed">No se pudo comprobar actualizaciones — revise la conexión (%1$s)</string>
 
     <!-- Update -->
     <string name="update_title">Nueva actualización disponible</string>
@@ -630,6 +639,9 @@
     <string name="new_pl_scan_spool_already_selected">El spool %1$s ya está seleccionado</string>
     <string name="pl_detail_remove_spool_title">Quitar Spool</string>
     <string name="pl_detail_remove_spool_msg">¿Quitar %1$s de este Packing List?</string>
+    <string name="pl_move_spool_title">Mover Spool</string>
+    <string name="pl_move_spool_msg">El spool %1$s ya pertenece al Packing List %2$s. ¿Desea moverlo a este Packing List?</string>
+    <string name="pl_move_spool_done">Spool %1$s movido a este Packing List</string>
 
     <string name="new_spool_title">Nuevo Spool</string>
     <string name="new_spool_section_id">Identificación ({unidad}-{línea}-{código}-{tren})</string>
@@ -780,7 +792,7 @@
     <string name="load_spools_scan_spool">Escanear Spool</string>
     <string name="load_spools_add_spool">Añadir</string>
     <string name="load_spools_save">Guardar Carga</string>
-    <string name="load_spools_spool_not_found">Spool no encontrado en BD local. Se añadirá sin datos de packing list.</string>
+    <string name="load_spools_spool_not_found">Spool no encontrado en BD local. Sincroniza y vuelve a intentarlo.</string>
     <string name="load_spools_spools_count">Spools añadidos: %1$d</string>
     <string name="load_spools_warning_multi_pl">⚠ Atención: los spools pertenecen a %1$d Packing Lists diferentes.</string>
     <string name="load_spools_error_incomplete">Packing Lists incompletos:\n%1$s</string>

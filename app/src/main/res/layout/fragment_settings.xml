@@ -208,6 +208,15 @@
                 android:layout_marginTop="4dp"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
+            <TextView
+                android:id="@+id/txtCurrentVersion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textColor="@color/on_surface_variant"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
             <!-- Reinstall previous version (hidden when no previous APK) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnReinstallPrevious"

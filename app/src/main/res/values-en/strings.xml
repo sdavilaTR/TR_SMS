@@ -168,6 +168,7 @@
 
     <string name="settings_check_updates">Check for updates</string>
     <string name="settings_check_updates_searching">Searching…</string>
+    <string name="settings_current_version">Current version: %1$s</string>
     <string name="update_up_to_date">You already have the latest version installed</string>
 
     <!-- Settings -->
@@ -551,6 +552,14 @@
     <!-- Sync KPI vehicles -->
     <string name="sync_kpi_in_transit_active">active</string>
 
+    <!-- Outbox failed ops banner -->
+    <string name="sync_outbox_failed_banner">⚠ %1$d operation(s) could not sync after several attempts — tap for details</string>
+    <string name="sync_outbox_failed_dialog_title">Failed operations</string>
+    <string name="sync_outbox_failed_dialog_item">%1$s %2$s (id %3$d): %4$s</string>
+
+    <!-- Delta-sync flag banner -->
+    <string name="sync_delta_active_banner">Delta sync active on this device — experimental mode, contact support if unexpected</string>
+
     <!-- Vehicles -->
     <string name="menu_transfers">Shipments &amp; Receipts</string>
     <string name="menu_send_packing_list">Shipments</string>
@@ -702,6 +711,9 @@
     <string name="new_pl_scan_spool_already_selected">Spool %1$s is already selected</string>
     <string name="pl_detail_remove_spool_title">Remove Spool</string>
     <string name="pl_detail_remove_spool_msg">Remove %1$s from this Packing List?</string>
+    <string name="pl_move_spool_title">Move Spool</string>
+    <string name="pl_move_spool_msg">Spool %1$s already belongs to Packing List %2$s. Move it to this Packing List?</string>
+    <string name="pl_move_spool_done">Spool %1$s moved to this Packing List</string>
 
     <string name="new_spool_title">New Spool</string>
     <string name="new_spool_section_id">Identification ({unit}-{line}-{code}-{train})</string>
@@ -852,7 +864,7 @@
     <string name="load_spools_scan_spool">Scan Spool</string>
     <string name="load_spools_add_spool">Add</string>
     <string name="load_spools_save">Save Load</string>
-    <string name="load_spools_spool_not_found">Spool not found in local DB. It will be added without packing list data.</string>
+    <string name="load_spools_spool_not_found">Spool not found in local DB. Sync and try again.</string>
     <string name="load_spools_spools_count">Spools added: %1$d</string>
     <string name="load_spools_warning_multi_pl">⚠ Warning: the spools belong to %1$d different Packing Lists.</string>
     <string name="load_spools_error_incomplete">Incomplete Packing Lists:\n%1$s</string>

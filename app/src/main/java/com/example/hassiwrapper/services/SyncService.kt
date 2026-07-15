@@ -835,9 +835,13 @@ class SyncService(
                     api.setVehicleOffRoute(projectCode, vehicle.vehicle_id)
                 }
                 if (response.isSuccessful) {
-                    // Only mark route_synced=1 when going off-route: server doesn't persist on_route=true
-                    // in GET /vehicles, so trusting server after on-route upload would flip on_route=false.
-                    if (!vehicle.on_route) synced.add(vehicle.vehicle_id)
+                    // Mark route_synced=1 on either direction: GetVehiclesByProjectAsync reads on_route
+                    // straight from vw_asset_vehicle (the EAV view), so GET /vehicles correctly echoes
+                    // on_route=true post-upload — safe to stop re-sending it every cycle. Previously this
+                    // only synced on off-route, so a vehicle left on-route re-sent the identical
+                    // SetVehicleOnRoute MERGE every ~60s auto-sync cycle indefinitely, which is suspected
+                    // of causing SQL Server lock contention on that vehicle's EAV rows (see incident memory).
+                    synced.add(vehicle.vehicle_id)
                     Log.i(TAG, "Vehicle ${vehicle.vehicle_id} route state synced (on_route=${vehicle.on_route})")
                 } else {
                     Log.e(TAG, "Vehicle ${vehicle.vehicle_id} route state failed: HTTP ${response.code()}")

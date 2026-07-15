@@ -454,7 +454,9 @@ class CreateSpoolFragment : Fragment() {
             try {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
                 if (forceSync || ServiceLocator.smsSpoolDao.countActiveByProject(projectId) == 0) {
-                    (activity as? MainActivity)?.syncSmsData()
+                    // force=true: either an explicit pull-to-refresh or an empty local mirror —
+                    // both need real spool data now, not whatever the auto-sync throttle allows.
+                    (activity as? MainActivity)?.syncSmsData(force = true)
                 }
                 refreshPackingListMap(projectId)
                 refreshAllViews(projectId)

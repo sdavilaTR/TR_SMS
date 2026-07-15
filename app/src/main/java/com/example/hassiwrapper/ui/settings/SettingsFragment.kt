@@ -110,7 +110,11 @@ class SettingsFragment : Fragment() {
                     is UpdateCheckResult.UpToDate ->
                         Toast.makeText(requireContext(), R.string.update_up_to_date, Toast.LENGTH_SHORT).show()
                     is UpdateCheckResult.Error ->
-                        Toast.makeText(requireContext(), R.string.update_check_failed, Toast.LENGTH_LONG).show()
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.update_check_failed, result.message),
+                            Toast.LENGTH_LONG
+                        ).show()
                     is UpdateCheckResult.Available -> Unit // dialog shown by MainActivity
                 }
             }
@@ -530,6 +534,7 @@ class SettingsFragment : Fragment() {
         val tag = BuildConfig.BUILD_TAG
 
         view.findViewById<TextView>(R.id.txtInfoVersion).text = tag
+        view.findViewById<TextView>(R.id.txtCurrentVersion).text = getString(R.string.settings_current_version, tag)
         view.findViewById<TextView>(R.id.txtInfoBuildDate).text = parseBuildDate(tag)
         view.findViewById<TextView>(R.id.txtInfoRepo).text = "sdavilaTR/TR_SMS"
         view.findViewById<TextView>(R.id.txtInfoDeployment).text =

@@ -393,8 +393,8 @@ class OutboxService(
             onSuccess()
             return Outcome.DONE
         }
-        if (resp.code() >= 500) throw TransientFailure("HTTP ${resp.code()}")
         val body = resp.errorBody()?.string()?.take(200)
+        if (resp.code() >= 500) throw TransientFailure("HTTP ${resp.code()} $body")
         outboxDao.markFailed(op.op_id, "HTTP ${resp.code()} $body")
         Log.e(TAG, "op ${op.op_id} (${op.entity_type}/${op.op_type}) rejected: HTTP ${resp.code()} $body")
         return Outcome.FAILED

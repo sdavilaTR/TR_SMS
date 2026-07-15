@@ -23,6 +23,11 @@ private val STOP_WORDS = """Suffix:|Desc:|Diameter:|Lenght:|Length:|Priority:"""
 // Anchored on SPnn (unique to spool tags) so vehicle plates containing dashes aren't misclassified.
 private val JAFURAH_TAG = Regex("""(?i)^([A-Z0-9]+)-([A-Z]+)-([A-Z0-9]+)-([A-Z0-9]+)-(SP\d+)-([A-Z0-9]+)$""")
 
+// Loose JAFURAH shape (6 alnum dash-segments) but missing/malformed SPnn id — still a spool
+// tag (e.g. invented/test codes), not a vehicle plate. Route to spool lookup so the error
+// message stays in the right domain ("spool not found" instead of "vehicle not found").
+private val JAFURAH_SHAPE = Regex("""(?i)^[A-Z0-9]+-[A-Z]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+$""")
+
 internal fun parseQr(text: String): QrResult {
     val clean = text.trimStart('﻿').trim()
     val upper = clean.uppercase()
@@ -47,5 +52,14 @@ internal fun parseQr(text: String): QrResult {
     val urlVehicleId = Regex("""/vehicles?/(\d+)""").find(clean)
         ?.groupValues?.getOrNull(1)?.toLongOrNull()
     if (urlVehicleId != null) return QrResult.VehicleId(urlVehicleId)
+    if (JAFURAH_SHAPE.matches(clean)) {
+        val parts = clean.split("-")
+        return QrResult.Spool(
+            spoolCode = parts.take(4).joinToString("-"),
+            spoolSuffix = parts[4],
+            unitCode = parts[0], service = parts[1], lineCode = parts[2],
+            sitNumber = parts[3], revision = parts[5]
+        )
+    }
     return QrResult.VehiclePlate(clean)
 }

@@ -32,6 +32,9 @@ class SyncFragment : Fragment() {
         view.findViewById<MaterialButton>(R.id.btnFullSync).setOnClickListener {
             performSync()
         }
+        view.findViewById<View>(R.id.cardOutboxFailed).setOnClickListener {
+            showFailedOutboxDialog()
+        }
 
         loadKpis()
         loadLastSync()
@@ -177,6 +180,42 @@ class SyncFragment : Fragment() {
                 v.findViewById(R.id.txtKpiVehiclesLabel),
                 pendingTotal
             )
+
+            // Outbox ops that gave up permanently after MAX_ATTEMPTS — otherwise invisible to the user
+            val failedCount = ServiceLocator.smsOutboxDao.failedCount()
+            val cardFailed = v.findViewById<View>(R.id.cardOutboxFailed)
+            if (failedCount > 0) {
+                cardFailed.visibility = View.VISIBLE
+                v.findViewById<TextView>(R.id.txtOutboxFailed).text =
+                    getString(R.string.sync_outbox_failed_banner, failedCount)
+            } else {
+                cardFailed.visibility = View.GONE
+            }
+
+            // Delta-sync flag has no UI toggle — only a debug adb hook (see MainActivity
+            // DEBUG_SET_CONFIG). It stayed silently ON on a device for a full day in the past;
+            // this banner makes that state visible instead of invisible.
+            val deltaEnabled = ServiceLocator.configRepo.get("sms_delta_sync_enabled") == "true"
+            v.findViewById<View>(R.id.cardDeltaActive).visibility =
+                if (deltaEnabled) View.VISIBLE else View.GONE
+        }
+    }
+
+    private fun showFailedOutboxDialog() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val failed = ServiceLocator.smsOutboxDao.getFailed()
+            if (!isAdded || failed.isEmpty()) return@launch
+            val message = failed.joinToString("\n\n") { op ->
+                getString(
+                    R.string.sync_outbox_failed_dialog_item,
+                    op.entity_type, op.op_type, op.local_entity_id, op.last_error ?: ""
+                )
+            }
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.sync_outbox_failed_dialog_title)
+                .setMessage(message)
+                .setPositiveButton(R.string.scan_action_close, null)
+                .show()
         }
     }
 
@@ -242,12 +281,18 @@ class SyncFragment : Fragment() {
             if (result.success) {
                 appendLog(getString(R.string.sync_step_sms))
                 try {
-                    (requireActivity() as? com.example.hassiwrapper.MainActivity)?.syncSmsData(appendLog)
+                    // force=true: user explicitly asked for a sync, don't let the
+                    // auto-sync throttle (see MainActivity.doSyncSmsData) skip the spool fetch.
+                    (requireActivity() as? com.example.hassiwrapper.MainActivity)?.syncSmsData(appendLog, force = true)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.e("SyncSMS", "SMS sync failed", e)
                     appendLog(getString(R.string.sync_error, e.message))
                 }
             }
+
+            if (!isAdded) return@launch
 
             btn.isEnabled = true
             progress.visibility = View.GONE

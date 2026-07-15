@@ -56,8 +56,12 @@ class QrParserTest {
     }
 
     @Test
-    fun `malformed JAFURAH-shaped string missing SPnn falls back to plate`() {
+    fun `malformed JAFURAH-shaped string missing SPnn still classifies as spool`() {
         val result = parseQr("821-RP-25107-002-XX01-01A")
-        assertTrue(result is QrResult.VehiclePlate)
+        assertTrue(result is QrResult.Spool)
+        val spool = result as QrResult.Spool
+        assertEquals("821-RP-25107-002", spool.spoolCode)
+        assertEquals("XX01", spool.spoolSuffix)
+        assertEquals("01A", spool.revision)
     }
 }

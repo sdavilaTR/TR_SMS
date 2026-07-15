@@ -168,6 +168,7 @@
 
     <string name="settings_check_updates">Rechercher des mises à jour</string>
     <string name="settings_check_updates_searching">Recherche en cours…</string>
+    <string name="settings_current_version">Version actuelle : %1$s</string>
     <string name="update_up_to_date">Vous avez déjà la dernière version installée</string>
 
     <!-- Settings -->
@@ -551,6 +552,14 @@
     <!-- Sync KPI vehicles -->
     <string name="sync_kpi_in_transit_active">actifs</string>
 
+    <!-- Outbox failed ops banner -->
+    <string name="sync_outbox_failed_banner">⚠ %1$d opération(s) n\'ont pas pu être synchronisées après plusieurs tentatives — appuyez pour les détails</string>
+    <string name="sync_outbox_failed_dialog_title">Opérations échouées</string>
+    <string name="sync_outbox_failed_dialog_item">%1$s %2$s (id %3$d) : %4$s</string>
+
+    <!-- Delta-sync flag banner -->
+    <string name="sync_delta_active_banner">Synchronisation delta active sur cet appareil — mode expérimental, contactez le support si inattendu</string>
+
     <!-- Vehicles -->
     <string name="menu_transfers">Envois et Réceptions</string>
     <string name="menu_send_packing_list">Envois</string>
@@ -702,6 +711,9 @@
     <string name="new_pl_scan_spool_already_selected">Le spool %1$s est déjà sélectionné</string>
     <string name="pl_detail_remove_spool_title">Retirer le Spool</string>
     <string name="pl_detail_remove_spool_msg">Retirer %1$s de cette Packing List ?</string>
+    <string name="pl_move_spool_title">Déplacer le Spool</string>
+    <string name="pl_move_spool_msg">Le spool %1$s appartient déjà à la Packing List %2$s. Le déplacer vers cette Packing List ?</string>
+    <string name="pl_move_spool_done">Spool %1$s déplacé vers cette Packing List</string>
 
     <string name="new_spool_title">Nouveau Spool</string>
     <string name="new_spool_section_id">Identification ({unité}-{ligne}-{code}-{train})</string>
@@ -852,7 +864,7 @@
     <string name="load_spools_scan_spool">Scanner le Spool</string>
     <string name="load_spools_add_spool">Ajouter</string>
     <string name="load_spools_save">Enregistrer le Chargement</string>
-    <string name="load_spools_spool_not_found">Spool introuvable dans la base locale. Il sera ajouté sans données de packing list.</string>
+    <string name="load_spools_spool_not_found">Spool introuvable dans la base locale. Synchronisez et réessayez.</string>
     <string name="load_spools_spools_count">Spools ajoutés : %1$d</string>
     <string name="load_spools_warning_multi_pl">⚠ Attention : les spools appartiennent à %1$d Packing Lists différentes.</string>
     <string name="load_spools_error_incomplete">Packing Lists incomplètes :\n%1$s</string>

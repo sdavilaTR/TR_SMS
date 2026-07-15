@@ -303,6 +303,79 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
+        <!-- Failed outbox ops banner (shown only when there are any) -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardOutboxFailed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="@color/card_bg"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚠"
+                    android:textColor="@color/error"
+                    android:textSize="18sp"
+                    android:layout_marginEnd="8dp" />
+                <TextView
+                    android:id="@+id/txtOutboxFailed"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/error"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Delta-sync flag banner (read-only; flag has no UI toggle, only a debug adb hook) -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardDeltaActive"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="@color/card_bg"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚠"
+                    android:textColor="@color/warning"
+                    android:textSize="18sp"
+                    android:layout_marginEnd="8dp" />
+                <TextView
+                    android:id="@+id/txtDeltaActive"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/warning"
+                    android:textSize="13sp"
+                    android:text="@string/sync_delta_active_banner" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
         <!-- Sync button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnFullSync"

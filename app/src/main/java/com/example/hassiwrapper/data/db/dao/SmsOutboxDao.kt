@@ -19,6 +19,13 @@ interface SmsOutboxDao {
     @Query("SELECT COUNT(*) FROM sms_outbox WHERE status = 'PENDING'")
     suspend fun pendingCount(): Int
 
+    @Query("SELECT COUNT(*) FROM sms_outbox WHERE status = 'FAILED'")
+    suspend fun failedCount(): Int
+
+    /** Most recent gave-up ops, for surfacing to the user instead of failing silently. */
+    @Query("SELECT * FROM sms_outbox WHERE status = 'FAILED' ORDER BY op_id DESC LIMIT 20")
+    suspend fun getFailed(): List<SmsOutboxEntity>
+
     @Query("UPDATE sms_outbox SET status = 'DONE' WHERE op_id = :opId")
     suspend fun markDone(opId: Long)
 

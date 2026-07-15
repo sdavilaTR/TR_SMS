@@ -39,6 +39,7 @@ import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.network.dto.AssignSpoolRequest
 import com.example.hassiwrapper.network.dto.CreatePackingListRequest
+import com.example.hassiwrapper.network.dto.UpdatePackingListRequest
 import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.services.OutboxService
 import com.google.android.material.button.MaterialButton
@@ -99,6 +100,10 @@ class NewPackingListFragment : Fragment() {
 
     private var availableSpools: List<SmsSpoolEntity> = emptyList()
     private val selectedSpoolIds = mutableSetOf<Long>()
+    /** spoolId -> its current packing list, for spools scanned "move to this PL" during
+     *  creation. Detach from the old PL is deferred to [savePackingList] — if the user
+     *  cancels out of creating this PL, the spool stays untouched in its original one. */
+    private val movedFromPlIds = mutableMapOf<Long, Long>()
 
     private val notesHandler = Handler(Looper.getMainLooper())
     private var suppressNotesTrigger = false
@@ -249,21 +254,66 @@ class NewPackingListFragment : Fragment() {
                 Toast.makeText(requireContext(), getString(R.string.pl_scan_spool_not_found), Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            GpsHelper.captureAndSaveSpoolLocation(requireContext(), spool.spool_id)
-            if (spool.packing_list_id != null) {
-                val pl = ServiceLocator.smsPackingListDao.getById(spool.packing_list_id)
-                val plName = pl?.packing_list_name?.ifBlank { "PL ${spool.packing_list_id}" } ?: "PL ${spool.packing_list_id}"
-                showInfoDialog(getString(R.string.pl_scan_spool_already_in_pl, spool.displayCode, plName))
-                return@launch
-            }
             if (spool.spool_id in selectedSpoolIds) {
                 Toast.makeText(requireContext(), getString(R.string.new_pl_scan_spool_already_selected, spool.displayCode), Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            GpsHelper.captureAndSaveSpoolLocation(requireContext(), spool.spool_id)
+            if (spool.packing_list_id != null) {
+                val oldPlId = spool.packing_list_id
+                val pl = ServiceLocator.smsPackingListDao.getById(oldPlId)
+                val plName = pl?.packing_list_name?.ifBlank { "PL $oldPlId" } ?: "PL $oldPlId"
+                confirmMoveSpool(spool, oldPlId, plName)
                 return@launch
             }
             selectedSpoolIds.add(spool.spool_id)
             updateSpoolsButton()
             Toast.makeText(requireContext(), getString(R.string.new_pl_scan_spool_added, spool.displayCode), Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun confirmMoveSpool(spool: SmsSpoolEntity, oldPlId: Long, oldPlName: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.pl_move_spool_title))
+            .setMessage(getString(R.string.pl_move_spool_msg, spool.displayCode, oldPlName))
+            .setPositiveButton(android.R.string.ok) { _, _ -> markSpoolForMove(spool, oldPlId) }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /** Only records intent — no DB/outbox writes here. The actual detach from [oldPlId] happens
+     *  in [savePackingList], so cancelling out of this screen leaves the spool untouched in its
+     *  original Packing List instead of stranding it unassigned from both. */
+    private fun markSpoolForMove(spool: SmsSpoolEntity, oldPlId: Long) {
+        movedFromPlIds[spool.spool_id] = oldPlId
+        selectedSpoolIds.add(spool.spool_id)
+        updateSpoolsButton()
+        Toast.makeText(requireContext(), getString(R.string.pl_move_spool_done, spool.displayCode), Toast.LENGTH_SHORT).show()
+    }
+
+    /** Queue a PL UPDATE op carrying the old list's decremented spool count so the server total stays in sync. */
+    private suspend fun enqueueOldPlCountUpdate(oldPlId: Long, projId: Int, newCount: Int) {
+        val pl = ServiceLocator.smsPackingListDao.getById(oldPlId) ?: return
+        val projCode = ServiceLocator.projectDao.getById(projId)?.project_code.orEmpty()
+        val positionName = pl.position_id?.let { pid ->
+            ServiceLocator.smsPositionDao.getAll().find { it.position_id == pid }?.name
+        }
+        ServiceLocator.outboxService.enqueue(
+            OutboxService.Entity.PACKING_LIST, OutboxService.Op.UPDATE, oldPlId, projId,
+            payload = UpdatePackingListRequest(
+                packingListId    = oldPlId,
+                packingListName  = pl.packing_list_name,
+                vehicle          = pl.vehicle_plate,
+                position         = positionName,
+                positionId       = pl.position_id,
+                packingDate      = pl.packing_date.takeIf { it.isNotBlank() },
+                notes            = pl.notes,
+                createdBy        = pl.created_by,
+                updatedBy        = null,
+                projectCode      = projCode,
+                totalSpoolsCount = newCount
+            )
+        )
     }
 
     private fun launchCamera() {
@@ -467,6 +517,24 @@ class NewPackingListFragment : Fragment() {
                         refEntityId = plId,
                         payload = AssignSpoolRequest(spoolId, "API", index + 1)
                     )
+                    movedFromPlIds[spoolId]?.let { oldPlId ->
+                        ServiceLocator.smsSpoolDao.updateInTransit(spoolId, false)
+                        ServiceLocator.outboxService.enqueue(
+                            OutboxService.Entity.PL_ASSIGN, OutboxService.Op.UNASSIGN, spoolId, projectId,
+                            refEntityId = oldPlId
+                        )
+                    }
+                }
+
+                // Now that every moved spool has actually left its old PL locally, refresh
+                // each affected old PL's count once (not per-spool, in case several spools
+                // moved from the same one) and push it to the server.
+                movedFromPlIds.values.distinct().forEach { oldPlId ->
+                    val newOldPlCount = ServiceLocator.smsSpoolDao.getByPackingList(oldPlId).size
+                    ServiceLocator.smsPackingListDao.getById(oldPlId)?.let { oldPl ->
+                        ServiceLocator.smsPackingListDao.insertAll(listOf(oldPl.copy(total_spools_count = newOldPlCount, synced = false)))
+                    }
+                    enqueueOldPlCountUpdate(oldPlId, projectId, newOldPlCount)
                 }
 
                 ServiceLocator.auditLogService.log(

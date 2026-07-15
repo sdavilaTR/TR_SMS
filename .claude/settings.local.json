@@ -142,7 +142,11 @@
       "Bash(/c/Users/elopezs/AppData/Local/Android/Sdk/platform-tools/sqlite3 /c/Users/elopezs/AppData/Local/Temp/claude/C--TRAPP-AndroidStudio-TR-SMS/4242d2db-50a5-40e0-9fcc-a4694075ecc1/scratchpad/atlas.db 'SELECT value FROM config WHERE key='\\\\''user_token'\\\\'';')",
       "Bash(echo \"Exit: $?\")",
       "Bash(sqlite3 *)",
-      "PowerShell(az account show *)"
+      "PowerShell(az account show *)",
+      "Bash(unset MSYS_NO_PATHCONV)",
+      "Bash(sqlite3.exe /tmp/atlas.db \"SELECT key, value FROM config WHERE key IN \\('selected_project_id','device_code','device_location'\\);\")",
+      "Bash(sqlite3.exe /tmp/atlas.db \"SELECT project_id, project_code, project_name FROM projects;\")",
+      "Bash(sqlite3.exe /tmp/atlas.db \"SELECT project_id, COUNT\\(*\\) FROM sms_spool GROUP BY project_id;\")"
     ]
   }
 }

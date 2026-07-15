@@ -312,7 +312,7 @@ class SendPackingListFragment : Fragment() {
             }
 
             val weight = resolveSpoolWeight(spool)
-            addSpool(spool, code, suffix, weight)
+            addSpool(spool, weight)
         }
     }
 
@@ -332,32 +332,36 @@ class SendPackingListFragment : Fragment() {
                 ServiceLocator.smsSpoolDao.findByCode(projectId, code)
             }
             val weight = resolveSpoolWeight(spool)
-            addSpool(spool, code, suffix, weight)
+            addSpool(spool, weight)
             etSpoolCode.text?.clear()
             etSpoolSuffix.text?.clear()
         }
     }
 
-    private fun addSpool(spool: SmsSpoolEntity?, fallbackCode: String, fallbackSuffix: String?, weightKg: Double? = null) {
-        val displayCode = spool?.displayCode
-            ?: if (fallbackSuffix.isNullOrBlank()) fallbackCode else "$fallbackCode-$fallbackSuffix"
+    private fun addSpool(spool: SmsSpoolEntity?, weightKg: Double? = null) {
+        if (spool == null) {
+            // Not adding it: a phantom entry (spoolId=0) used to get added anyway and then
+            // silently dropped at confirm time (filtered by spoolId != 0L everywhere it's
+            // actually persisted) — spool looked "added" in the UI but never reached the
+            // packing list. Bail here instead, matching every other scan-to-PL flow.
+            Toast.makeText(requireContext(), getString(R.string.load_spools_spool_not_found), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val displayCode = spool.displayCode
 
         if (scannedSpools.any { it.displayCode.equals(displayCode, ignoreCase = true) }) {
             Toast.makeText(requireContext(), getString(R.string.load_spools_spool_duplicate), Toast.LENGTH_SHORT).show()
             return
         }
 
-        if (spool == null) {
-            Toast.makeText(requireContext(), getString(R.string.load_spools_spool_not_found), Toast.LENGTH_SHORT).show()
-        }
-
         val item = ScannedSpool(
-            spoolId         = spool?.spool_id ?: 0L,
-            spoolCode       = spool?.spool_code ?: fallbackCode,
-            spoolSuffix     = spool?.spool_suffix ?: fallbackSuffix?.ifBlank { null },
-            revision        = spool?.revision,
-            packingListId   = spool?.packing_list_id,
-            packingListName = spool?.packing_list_name,
+            spoolId         = spool.spool_id,
+            spoolCode       = spool.spool_code,
+            spoolSuffix     = spool.spool_suffix,
+            revision        = spool.revision,
+            packingListId   = spool.packing_list_id,
+            packingListName = spool.packing_list_name,
             weightKg        = weightKg
         )
         scannedSpools.add(item)
@@ -508,6 +512,8 @@ class SendPackingListFragment : Fragment() {
             return
         }
         val vehicle = selectedVehicle ?: return
+        if (!btnConfirmSend.isEnabled) return
+        btnConfirmSend.isEnabled = false
         Log.d("SendPL", "onConfirmSend start: vehicle=${vehicle.license_plate} spools=${scannedSpools.size} destination=$destination")
         viewLifecycleOwner.lifecycleScope.launch {
             try {
@@ -797,7 +803,11 @@ class SendPackingListFragment : Fragment() {
                 findNavController().navigateUp()
             } catch (e: Exception) {
                 Log.e("SendPL", "onConfirmSend FAILED", e)
-                if (isAdded) Toast.makeText(requireContext(), getString(R.string.transfer_send_error, e.message), Toast.LENGTH_LONG).show()
+                if (isAdded) {
+                    btnConfirmSend.isEnabled = true
+                    panelUploadProgress.visibility = android.view.View.GONE
+                    Toast.makeText(requireContext(), getString(R.string.transfer_send_error, e.message), Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

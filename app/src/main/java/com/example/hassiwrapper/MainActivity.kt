@@ -163,6 +163,9 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "MainActivity"
         private const val AUTO_SYNC_INTERVAL_MS = 60_000L // 1 minute
+        // Minimum gap between spool downloads on auto-sync ticks (see doSyncSmsData "spools"
+        // section) — spools only change via a daily server-side ETL, so this can be generous.
+        private const val SPOOLS_MIN_FETCH_INTERVAL_SEC = 600L // 10 minutes
     }
 
     override fun attachBaseContext(newBase: Context) {
@@ -313,7 +316,9 @@ class MainActivity : AppCompatActivity() {
                 }
                 if (ServiceLocator.authRepo.isAuthenticated()) {
                     ServiceLocator.syncService.fullSync()
-                    syncSmsData()
+                    // force=true: app just opened, scan-lookup/search must not run on
+                    // possibly-hours-stale spool data from the last throttled auto-sync tick.
+                    syncSmsData(force = true)
                 } else {
                     Log.w(TAG, "Initial sync: not authenticated after re-login attempt, skipping SMS sync")
                 }
@@ -692,21 +697,21 @@ class MainActivity : AppCompatActivity() {
         ServiceLocator.configRepo.set(storeKey, crc)
     }
 
-    internal suspend fun syncSmsData(onProgress: ((String) -> Unit)? = null) {
+    internal suspend fun syncSmsData(onProgress: ((String) -> Unit)? = null, force: Boolean = false) {
         if (!smsSyncMutex.tryLock()) {
             Log.i(TAG, "syncSmsData: already in progress, skipping concurrent call")
             return
         }
         _isSmsSyncInProgress.value = true
         try {
-        doSyncSmsData(onProgress)
+        doSyncSmsData(onProgress, force)
         } finally {
             _isSmsSyncInProgress.value = false
             smsSyncMutex.unlock()
         }
     }
 
-    private suspend fun doSyncSmsData(onProgress: ((String) -> Unit)? = null) {
+    private suspend fun doSyncSmsData(onProgress: ((String) -> Unit)? = null, force: Boolean = false) {
         val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
         // Cache the resolved code under its own config key so a later, unrelated full-sync
         // failure (e.g. an unrelated 500 on /sync/download) can't wipe our ability to resolve
@@ -747,6 +752,25 @@ class MainActivity : AppCompatActivity() {
 
             launch(Dispatchers.Default) {
                 syncSection("spools") {
+                    // The spool download (full-sync path especially, MERAM/JAFURAH scale) is
+                    // the single most expensive part of a cycle — up to ~9.5 min on a large
+                    // project. Since this whole section runs serially inside the 60 s auto-sync
+                    // loop (see MainActivity.runSyncCycle), an unthrottled fetch here stretches
+                    // every cycle to that length, which starves the outbox drain (new packing
+                    // lists, spool relocations, etc. — see SyncService.fullSync) of the frequent
+                    // 60 s cadence it needs. Spools only change via a daily ETL job server-side,
+                    // so skipping this section on most auto-sync ticks costs nothing in
+                    // freshness. `force=true` (manual "Sincronizar" button, first sync after
+                    // app open, pull-to-refresh) always bypasses the gate.
+                    val lastFetchKey = "sms_spools_last_fetch_$projectId"
+                    if (!force) {
+                        val lastFetchEpoch = ServiceLocator.configRepo.get(lastFetchKey)?.toLongOrNull()
+                        if (lastFetchEpoch != null && Instant.now().epochSecond - lastFetchEpoch < SPOOLS_MIN_FETCH_INTERVAL_SEC) {
+                            Log.d(TAG, "syncSmsData: skipping spool fetch, last one ${Instant.now().epochSecond - lastFetchEpoch}s ago")
+                            return@syncSection
+                        }
+                    }
+
                     val pageSize = 5000
                     // Delta sync: send the timestamp of the last successful spool sync so the
                     // server can return only rows changed since then. Gated on a per-project
@@ -873,6 +897,10 @@ class MainActivity : AppCompatActivity() {
                             // Only advance the delta cursor once we've actually caught up —
                             // a partial fetch must retry from page 1 next time, not skip ahead.
                             ServiceLocator.configRepo.set(lastSyncKey, syncStarted)
+                            // Also mark the throttle timestamp — a partial/failed fetch must NOT
+                            // set this, so the next auto-sync tick retries immediately instead of
+                            // waiting out the full interval on stale/missing data.
+                            ServiceLocator.configRepo.set(lastFetchKey, Instant.now().epochSecond.toString())
                         }
                         val status = if (!fetchOk) "PARTIAL" else if (isFullSync) "full" else "delta"
                         Log.d(TAG, "syncSmsData: $status sync — ${merged.size} spools written (page=$page)")

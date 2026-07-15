@@ -168,6 +168,7 @@
 
     <string name="settings_check_updates">检查更新</string>
     <string name="settings_check_updates_searching">正在搜索…</string>
+    <string name="settings_current_version">当前版本：%1$s</string>
     <string name="update_up_to_date">已是最新版本</string>
 
     <!-- Settings -->
@@ -551,6 +552,14 @@
     <!-- Sync KPI vehicles -->
     <string name="sync_kpi_in_transit_active">运输中</string>
 
+    <!-- Outbox failed ops banner -->
+    <string name="sync_outbox_failed_banner">⚠ %1$d 个操作多次尝试后仍无法同步 — 点击查看详情</string>
+    <string name="sync_outbox_failed_dialog_title">同步失败的操作</string>
+    <string name="sync_outbox_failed_dialog_item">%1$s %2$s（id %3$d）：%4$s</string>
+
+    <!-- Delta-sync flag banner -->
+    <string name="sync_delta_active_banner">此设备已启用增量同步 — 实验模式，如非预期请联系支持</string>
+
     <!-- Vehicles -->
     <string name="menu_transfers">发货与收货</string>
     <string name="menu_send_packing_list">发货</string>
@@ -702,6 +711,9 @@
     <string name="new_pl_scan_spool_already_selected">管段 %1$s 已被选择</string>
     <string name="pl_detail_remove_spool_title">移除管段</string>
     <string name="pl_detail_remove_spool_msg">是否将 %1$s 从此装箱单中移除？</string>
+    <string name="pl_move_spool_title">移动Spool</string>
+    <string name="pl_move_spool_msg">Spool %1$s 已属于装箱单 %2$s。是否将其移动到此装箱单？</string>
+    <string name="pl_move_spool_done">Spool %1$s 已移动到此装箱单</string>
 
     <string name="new_spool_title">新建管段</string>
     <string name="new_spool_section_id">标识 ({unit}-{line}-{code}-{train})</string>
@@ -852,7 +864,7 @@
     <string name="load_spools_scan_spool">扫描管段</string>
     <string name="load_spools_add_spool">添加</string>
     <string name="load_spools_save">保存装载</string>
-    <string name="load_spools_spool_not_found">本地数据库中未找到该管段，将不带装箱单数据添加。</string>
+    <string name="load_spools_spool_not_found">本地数据库中未找到该管段。请同步后重试。</string>
     <string name="load_spools_spools_count">已添加管段：%1$d</string>
     <string name="load_spools_warning_multi_pl">⚠ 警告：这些管段属于 %1$d 个不同的装箱单。</string>
     <string name="load_spools_error_incomplete">未完成装箱单：\n%1$s</string>

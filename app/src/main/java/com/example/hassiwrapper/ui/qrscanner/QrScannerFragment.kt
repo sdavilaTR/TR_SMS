@@ -361,13 +361,14 @@ class QrScannerFragment : Fragment() {
                 }
                 ServiceLocator.smsSpoolDao.updateSubPosition(spool.spool_id, relocateSubPositionId)
                 ServiceLocator.smsSpoolDao.backfillSitAndRevision(spool.spool_id, sitNumber, revision)
-                // Push position + sub-position to the server (authoritative PUT status-flags).
-                // Only when a real catalog sub-position is selected; best-effort, non-blocking.
-                relocateSubPositionId?.let { subId ->
+                // Push position + sub-position to the server (authoritative PUT status-flags),
+                // whenever a position was actually resolved — sub-position may legitimately be
+                // null (no catalog / not picked). Best-effort, non-blocking.
+                relocatePositionId?.let { posId ->
                     val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
                     if (!projectCode.isNullOrBlank()) {
                         ServiceLocator.syncService.uploadSpoolStatusFlags(
-                            projectCode, spool.spool_id, relocatePositionId, subId
+                            projectCode, spool.spool_id, posId, relocateSubPositionId
                         )
                     }
                 }

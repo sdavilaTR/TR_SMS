@@ -41,6 +41,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.example.hassiwrapper.scanner.DataWedgeManager
 import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.services.PositionHelper
+import com.example.hassiwrapper.services.SpoolDeltaGuard
 import com.example.hassiwrapper.ui.login.LoginActivity
 import com.example.hassiwrapper.update.UpdateChecker
 import com.example.hassiwrapper.update.UpdateCheckResult
@@ -838,17 +839,21 @@ class MainActivity : AppCompatActivity() {
                             val deactivatedIds = allEntities.filter { !it.is_active }.map { it.spool_id }
                             if (deactivatedIds.isNotEmpty()) {
                                 val localCount = ServiceLocator.smsSpoolDao.countByProject(projectId)
-                                val ratio = if (localCount > 0) deactivatedIds.size.toDouble() / localCount else 0.0
                                 // A delta batch legitimately deactivating a large slice of a project's
                                 // spools is implausible — a prior backend bug returned the ENTIRE
                                 // project as is_active=0 in one delta call and this client purged all
                                 // 139k MERAM spools before anyone noticed. Skip the purge and clear the
                                 // delta cursor so the next cycle falls back to a full sync (safe,
                                 // wipe-and-reinsert path) instead of trusting a suspicious payload.
-                                if (localCount > 200 && ratio > 0.2) {
+                                // Decision extracted to SpoolDeltaGuard so it's unit-testable without
+                                // Room/Retrofit — see SpoolDeltaGuardTest for the covered scenarios.
+                                val decision = SpoolDeltaGuard.evaluate(deactivatedIds.size, localCount)
+                                if (decision.shouldResetCursor) {
+                                    val ratio = if (localCount > 0) deactivatedIds.size.toDouble() / localCount else 0.0
                                     Log.e(TAG, "syncSmsData: delta anomaly — ${deactivatedIds.size}/$localCount spools marked inactive (${(ratio * 100).toInt()}%), skipping purge, forcing full sync next cycle")
                                     ServiceLocator.configRepo.remove(lastSyncKey)
-                                } else {
+                                }
+                                if (decision.shouldPurge) {
                                     deactivatedIds.chunked(800).forEach { ServiceLocator.smsSpoolDao.deleteByIds(it) }
                                 }
                             }
@@ -939,6 +944,23 @@ class MainActivity : AppCompatActivity() {
                         }
                         val newPLCount = mergedPLs.count { it.packing_list_id !in localPLs }
                         val updatedPLCount = mergedPLs.count { it.packing_list_id in localPLs }
+
+                        // PL removed server-side (deleted by someone else): free its spools
+                        // so they can be picked up by another PL, same as a local hard-delete does.
+                        val activeIds = activePLs.map { it.packing_list_id }.toSet()
+                        val removedPLIds = localPLs.values.filter {
+                            it.synced && it.packing_list_id !in activeIds && it.packing_list_id !in deletedPLs
+                        }.map { it.packing_list_id }
+                        if (removedPLIds.isNotEmpty()) {
+                            removedPLIds.forEach { removedId ->
+                                ServiceLocator.smsSpoolDao.getByPackingList(removedId).forEach { spool ->
+                                    ServiceLocator.smsSpoolDao.updatePackingList(spool.spool_id, null)
+                                    ServiceLocator.smsSpoolDao.updateInTransit(spool.spool_id, false)
+                                }
+                            }
+                            Log.d(TAG, "syncSmsData: freed spools from ${removedPLIds.size} server-deleted PLs")
+                        }
+
                         ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
                         if (mergedPLs.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(mergedPLs)
                         Log.d(TAG, "syncSmsData: inserted ${mergedPLs.size} packing lists (${entities.size - mergedPLs.size} inactive/deleted skipped)")

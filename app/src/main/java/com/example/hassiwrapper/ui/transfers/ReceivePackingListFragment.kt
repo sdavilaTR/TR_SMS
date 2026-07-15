@@ -446,11 +446,12 @@ class ReceivePackingListFragment : Fragment() {
                     ServiceLocator.smsSpoolDao.updatePosition(sr.spool.spool_id, receivePosition.position_id)
                 }
                 ServiceLocator.smsSpoolDao.updateSubPosition(sr.spool.spool_id, option?.subPositionId)
-                // Push position + sub-position to the server (authoritative PUT status-flags).
-                // Only when a real catalog sub-position was picked; best-effort, never blocks receive.
-                if (!projectCode.isNullOrBlank() && option?.subPositionId != null) {
+                // Push position + sub-position to the server (authoritative PUT status-flags),
+                // whenever a position was actually resolved — sub-position may legitimately be
+                // null (no catalog / not picked). Best-effort, never blocks receive.
+                if (!projectCode.isNullOrBlank() && receivePosition != null) {
                     ServiceLocator.syncService.uploadSpoolStatusFlags(
-                        projectCode, sr.spool.spool_id, receivePosition?.position_id, option.subPositionId
+                        projectCode, sr.spool.spool_id, receivePosition.position_id, option?.subPositionId
                     )
                 }
             }

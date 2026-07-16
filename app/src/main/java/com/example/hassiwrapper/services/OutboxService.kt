@@ -137,6 +137,8 @@ class OutboxService(
      * drain moves past it instead of blocking every later queued op forever.
      */
     suspend fun drain(api: AtlasApiService): DrainResult {
+        purgeStaleFailedOps()
+
         val pending = outboxDao.getPending()
         if (pending.isEmpty()) return DrainResult()
 
@@ -185,6 +187,29 @@ class OutboxService(
 
         outboxDao.pruneDone()
         return DrainResult(done, failed, transient = false)
+    }
+
+    /**
+     * A FAILED op (e.g. an edit that lost the 404 race against the entity being deleted
+     * elsewhere — see [Entity.PACKING_LIST] auto-delete-on-delivery in `ReceivePackingListFragment`)
+     * is permanently moot once its local entity is gone: retrying it can only ever 404 again.
+     * Sweeps those out so they stop haunting the "Operaciones fallidas" dialog forever.
+     * DELETE/HARD_DELETE ops are excluded — their target being gone locally is the point, not staleness.
+     */
+    private suspend fun purgeStaleFailedOps() {
+        for (op in outboxDao.getFailedNonDelete()) {
+            val stillExists = when (op.entity_type) {
+                Entity.SPOOL -> smsSpoolDao.getById(op.local_entity_id) != null
+                Entity.VEHICLE -> smsVehicleDao.getById(op.local_entity_id) != null
+                Entity.PACKING_LIST -> smsPackingListDao.getById(op.local_entity_id) != null
+                Entity.INCIDENT -> smsIncidentDao.getById(op.local_entity_id) != null
+                else -> true // unrecognized/relationship entity types: leave for the user to see
+            }
+            if (!stillExists) {
+                outboxDao.deleteOp(op.op_id)
+                Log.i(TAG, "purged stale FAILED op ${op.op_id} (${op.entity_type}/${op.op_type}): local entity ${op.local_entity_id} no longer exists")
+            }
+        }
     }
 
     // ── Dispatch ──────────────────────────────────────────────────────────────

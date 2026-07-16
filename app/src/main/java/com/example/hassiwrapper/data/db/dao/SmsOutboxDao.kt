@@ -26,6 +26,20 @@ interface SmsOutboxDao {
     @Query("SELECT * FROM sms_outbox WHERE status = 'FAILED' ORDER BY op_id DESC LIMIT 20")
     suspend fun getFailed(): List<SmsOutboxEntity>
 
+    /**
+     * All FAILED ops that aren't themselves a delete — candidates for [OutboxService]'s stale-op
+     * sweep, since a DELETE/HARD_DELETE row's local entity being gone is expected, not stale.
+     */
+    @Query("SELECT * FROM sms_outbox WHERE status = 'FAILED' AND op_type NOT IN ('DELETE', 'HARD_DELETE')")
+    suspend fun getFailedNonDelete(): List<SmsOutboxEntity>
+
+    @Query("DELETE FROM sms_outbox WHERE op_id = :opId")
+    suspend fun deleteOp(opId: Long)
+
+    /** Discards every currently-FAILED op (the "Descartar" action on the failed-ops dialog). */
+    @Query("DELETE FROM sms_outbox WHERE status = 'FAILED'")
+    suspend fun deleteAllFailed()
+
     @Query("UPDATE sms_outbox SET status = 'DONE' WHERE op_id = :opId")
     suspend fun markDone(opId: Long)
 

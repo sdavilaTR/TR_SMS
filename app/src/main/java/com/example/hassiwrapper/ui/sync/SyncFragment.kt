@@ -215,6 +215,27 @@ class SyncFragment : Fragment() {
                 .setTitle(R.string.sync_outbox_failed_dialog_title)
                 .setMessage(message)
                 .setPositiveButton(R.string.scan_action_close, null)
+                .setNegativeButton(R.string.sync_outbox_failed_dialog_discard) { _, _ ->
+                    confirmDiscardFailedOutbox()
+                }
+                .show()
+        }
+    }
+
+    private fun confirmDiscardFailedOutbox() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val count = ServiceLocator.smsOutboxDao.failedCount()
+            if (!isAdded || count == 0) return@launch
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.sync_outbox_failed_dialog_discard_confirm_title)
+                .setMessage(getString(R.string.sync_outbox_failed_dialog_discard_confirm_message, count))
+                .setPositiveButton(R.string.sync_outbox_failed_dialog_discard_confirm_yes) { _, _ ->
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        ServiceLocator.smsOutboxDao.deleteAllFailed()
+                        if (isAdded) loadKpis()
+                    }
+                }
+                .setNegativeButton(R.string.sync_outbox_failed_dialog_discard_confirm_no, null)
                 .show()
         }
     }

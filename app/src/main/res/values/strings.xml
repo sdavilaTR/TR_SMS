@@ -164,6 +164,11 @@
     <string name="sync_outbox_failed_banner">⚠ %1$d operación(es) no se pudieron sincronizar tras varios intentos — toca para ver detalles</string>
     <string name="sync_outbox_failed_dialog_title">Operaciones fallidas</string>
     <string name="sync_outbox_failed_dialog_item">%1$s %2$s (id %3$d): %4$s</string>
+    <string name="sync_outbox_failed_dialog_discard">Descartar</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_title">Descartar operaciones fallidas</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_message">Se descartarán %1$d operación(es) fallida(s). No se reintentarán ni afectarán a los datos ya sincronizados.</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_yes">Descartar</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_no">Cancelar</string>
 
     <!-- Delta-sync flag banner -->
     <string name="sync_delta_active_banner">Sincronización delta activa en este dispositivo — modo experimental, contacta con soporte si no lo esperabas</string>

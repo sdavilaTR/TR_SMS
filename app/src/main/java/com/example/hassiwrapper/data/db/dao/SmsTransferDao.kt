@@ -19,6 +19,10 @@ interface SmsTransferDao {
     @Query("SELECT * FROM sms_transfer WHERE vehicle_id = :vehicleId AND project_id = :projectId AND transfer_type = 'SEND'")
     suspend fun getSendByVehicle(vehicleId: Long, projectId: Int): List<SmsTransferEntity>
 
+    /** Used to clean up dangling SEND transfer records when a PL is deleted before being received. */
+    @Query("SELECT * FROM sms_transfer WHERE packing_list_id = :packingListId AND transfer_type = 'SEND'")
+    suspend fun getSendByPackingList(packingListId: Long): List<SmsTransferEntity>
+
     @Query("DELETE FROM sms_transfer_spool WHERE transfer_id IN (:ids)")
     suspend fun deleteSpoolsByTransferIds(ids: List<Long>)
 

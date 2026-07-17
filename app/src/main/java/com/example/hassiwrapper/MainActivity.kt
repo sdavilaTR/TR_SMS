@@ -809,6 +809,7 @@ class MainActivity : AppCompatActivity() {
                     val allEntities = mutableListOf<SmsSpoolEntity>()
                     var page = 1
                     var fetchOk = false
+                    var deltaAnomalyDetected = false
                     while (true) {
                         val spoolResp = fetchPageWithRetry(page) ?: break
                         val spoolRaw = spoolResp.body()?.string().orEmpty()
@@ -851,6 +852,7 @@ class MainActivity : AppCompatActivity() {
                                 if (decision.shouldResetCursor) {
                                     val ratio = if (localCount > 0) deactivatedIds.size.toDouble() / localCount else 0.0
                                     Log.e(TAG, "syncSmsData: delta anomaly — ${deactivatedIds.size}/$localCount spools marked inactive (${(ratio * 100).toInt()}%), skipping purge, forcing full sync next cycle")
+                                    deltaAnomalyDetected = true
                                     ServiceLocator.configRepo.remove(lastSyncKey)
                                 }
                                 if (decision.shouldPurge) {
@@ -898,9 +900,13 @@ class MainActivity : AppCompatActivity() {
                             ServiceLocator.smsSpoolDao.insertAll(merged)
                         }
                         ServiceLocator.smsSpoolDao.deleteInactive()
-                        if (fetchOk) {
+                        if (fetchOk && !deltaAnomalyDetected) {
                             // Only advance the delta cursor once we've actually caught up —
                             // a partial fetch must retry from page 1 next time, not skip ahead.
+                            // An anomalous batch must not advance it either: the cursor was already
+                            // cleared above so the next cycle falls back to a full sync — setting it
+                            // again here would silently undo that within this very same call and
+                            // strand the flagged-anomalous rows out of every future delta window.
                             ServiceLocator.configRepo.set(lastSyncKey, syncStarted)
                             // Also mark the throttle timestamp — a partial/failed fetch must NOT
                             // set this, so the next auto-sync tick retries immediately instead of

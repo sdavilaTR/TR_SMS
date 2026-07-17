@@ -60,6 +60,10 @@ private class FakeSmsOutboxDao : SmsOutboxDao {
     override suspend fun getFailed(): List<SmsOutboxEntity> =
         rows.values.filter { it.status == "FAILED" }.sortedByDescending { it.op_id }
 
+    override suspend fun getFailedNonDelete(): List<SmsOutboxEntity> =
+        rows.values.filter { it.status == "FAILED" && it.op_type !in setOf("DELETE", "HARD_DELETE") }
+            .sortedByDescending { it.op_id }
+
     override suspend fun markDone(opId: Long) {
         rows[opId] = rows[opId]!!.copy(status = "DONE")
     }
@@ -80,6 +84,14 @@ private class FakeSmsOutboxDao : SmsOutboxDao {
 
     override suspend fun pruneDone() {
         rows.values.filter { it.status == "DONE" }.map { it.op_id }.forEach { rows.remove(it) }
+    }
+
+    override suspend fun deleteAllFailed() {
+        rows.values.filter { it.status == "FAILED" }.map { it.op_id }.forEach { rows.remove(it) }
+    }
+
+    override suspend fun deleteOp(opId: Long) {
+        rows.remove(opId)
     }
 
     override suspend fun putMapping(mapping: SmsIdMapEntity) {

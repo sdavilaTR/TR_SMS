@@ -854,6 +854,12 @@ class MainActivity : AppCompatActivity() {
                                     Log.e(TAG, "syncSmsData: delta anomaly — ${deactivatedIds.size}/$localCount spools marked inactive (${(ratio * 100).toInt()}%), skipping purge, forcing full sync next cycle")
                                     deltaAnomalyDetected = true
                                     ServiceLocator.configRepo.remove(lastSyncKey)
+                                    // Also clear the throttle timestamp — otherwise the *next* auto-sync
+                                    // tick (unforced, force=false) sees a recent lastFetchKey from THIS
+                                    // sync's earlier successful sections and skips the spool fetch
+                                    // entirely, delaying the "full sync next cycle" promise above by up
+                                    // to the 10 min throttle window instead of retrying immediately.
+                                    ServiceLocator.configRepo.remove(lastFetchKey)
                                 }
                                 if (decision.shouldPurge) {
                                     deactivatedIds.chunked(800).forEach { ServiceLocator.smsSpoolDao.deleteByIds(it) }
@@ -920,6 +926,15 @@ class MainActivity : AppCompatActivity() {
                         withContext(Dispatchers.Main) { onProgress?.invoke(spoolMsg) }
                     } else {
                         Log.w(TAG, "syncSmsData: spools page 1 fetch failed after retries, skipping DB write")
+                        // A delta call can fail every retry because the backend's own anomaly guard
+                        // is refusing the batch (HTTP 500 — see SmsRepository.IsAnomalousDeltaBatch)
+                        // as much as from a transient network issue. Unlike the client-caught anomaly
+                        // above, this path never sees any data, so it can't tell which — but clearing
+                        // the cursor either way is safe: a real anomaly gets the same full-sync
+                        // fallback as the client-caught case, and a transient failure just costs one
+                        // extra full sync instead of quietly retrying the same failing delta call
+                        // forever with no error visible to the user.
+                        if (!isFullSync) ServiceLocator.configRepo.remove(lastSyncKey)
                     }
                 }
             }

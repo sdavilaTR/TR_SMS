@@ -934,7 +934,14 @@ class MainActivity : AppCompatActivity() {
                         // fallback as the client-caught case, and a transient failure just costs one
                         // extra full sync instead of quietly retrying the same failing delta call
                         // forever with no error visible to the user.
-                        if (!isFullSync) ServiceLocator.configRepo.remove(lastSyncKey)
+                        if (!isFullSync) {
+                            ServiceLocator.configRepo.remove(lastSyncKey)
+                            // Also clear the throttle timestamp, same reason as the anomaly branch
+                            // above: a stale-but-fresh lastFetchKey from an earlier successful tick
+                            // would make the next unforced auto-sync skip the fetch entirely and
+                            // silently delay this full-sync retry by up to the throttle window.
+                            ServiceLocator.configRepo.remove(lastFetchKey)
+                        }
                     }
                 }
             }

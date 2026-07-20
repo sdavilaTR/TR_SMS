@@ -30,9 +30,9 @@ object PositionHelper {
 
         val positionId = ServiceLocator.smsPositionDao.getByCode(location)?.position_id ?: return@withLock
         val spool = ServiceLocator.smsSpoolDao.getById(spoolId) ?: return@withLock
-        if (spool.position_id == positionId) return@withLock
+        if (spool.position_id == positionId && spool.zone?.uppercase() == location) return@withLock
 
-        ServiceLocator.smsSpoolDao.setPositionClearingSubPosition(spoolId, positionId)
+        ServiceLocator.smsSpoolDao.setPositionClearingSubPosition(spoolId, positionId, location)
         Log.d(TAG, "spool $spoolId position -> $location (id=$positionId)")
 
         val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6

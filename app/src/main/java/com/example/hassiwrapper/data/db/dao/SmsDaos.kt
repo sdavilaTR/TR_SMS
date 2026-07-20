@@ -472,14 +472,20 @@ interface SmsSpoolDao {
     @Query("UPDATE sms_spool SET position_id = :positionId, synced = 0 WHERE spool_id = :spoolId")
     suspend fun updatePosition(spoolId: Long, positionId: Int?)
 
+    // Keeps the legacy `zone` string in lockstep with position_id — zone-based aggregates
+    // (Inventario chart's SPOOL_RESOLVED_POSITION) prioritize `zone` over position_id, so a
+    // position-only write is invisible to them until the next full/delta sync overwrites it.
+    @Query("UPDATE sms_spool SET position_id = :positionId, zone = :zoneCode, synced = 0 WHERE spool_id = :spoolId")
+    suspend fun updatePositionAndZone(spoolId: Long, positionId: Int?, zoneCode: String?)
+
     @Query("UPDATE sms_spool SET sub_position_id = :subPositionId, synced = 0 WHERE spool_id = :spoolId")
     suspend fun updateSubPosition(spoolId: Long, subPositionId: Long?)
 
     /** Atomic pair for a terminal move: new position always implies clearing the old
      *  sub-position (it belongs to the previous parent position) — see PositionHelper. */
     @Transaction
-    suspend fun setPositionClearingSubPosition(spoolId: Long, positionId: Int?) {
-        updatePosition(spoolId, positionId)
+    suspend fun setPositionClearingSubPosition(spoolId: Long, positionId: Int?, zoneCode: String?) {
+        updatePositionAndZone(spoolId, positionId, zoneCode)
         updateSubPosition(spoolId, null)
     }
 

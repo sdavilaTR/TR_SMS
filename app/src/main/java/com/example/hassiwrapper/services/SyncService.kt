@@ -499,6 +499,17 @@ class SyncService(
                         synced.add(pl.packing_list_id)
                         Log.i(TAG, "PL ${pl.packing_list_id} uploaded")
                     }
+                } else if (response.code() == 409) {
+                    // Vehicle-conflict guard: another device's PL for this vehicle synced first while
+                    // this one was offline. It can never sync now — drop it instead of retrying (and
+                    // 409-ing) every cycle forever, and free the spools it locally claimed.
+                    val msg = com.example.hassiwrapper.network.dto.parsePackingListConflictMessage(409, response.errorBody()?.string())
+                    Log.e(TAG, "PL ${pl.packing_list_id} vehicle conflict, dropping local copy: $msg")
+                    smsSpoolDao?.getByPackingList(pl.packing_list_id)?.forEach {
+                        smsSpoolDao.updatePackingList(it.spool_id, null)
+                    }
+                    smsPackingListSpoolDao?.deleteByPackingList(pl.packing_list_id)
+                    dao.deleteById(pl.packing_list_id)
                 } else {
                     Log.e(TAG, "PL ${pl.packing_list_id} upload failed: HTTP ${response.code()}")
                 }

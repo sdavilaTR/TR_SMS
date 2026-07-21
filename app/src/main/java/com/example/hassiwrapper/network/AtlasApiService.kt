@@ -135,6 +135,12 @@ interface AtlasApiService {
     @GET("/api/atlas/projects/{projectCode}/packing-lists")
     suspend fun getPackingLists(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
 
+    @GET("/api/atlas/projects/{projectCode}/packing-lists/{id}")
+    suspend fun getPackingListById(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("id") packingListId: Long
+    ): Response<okhttp3.ResponseBody>
+
     @POST("/api/atlas/projects/{projectCode}/packing-lists")
     suspend fun createPackingList(
         @retrofit2.http.Path("projectCode") projectCode: String,

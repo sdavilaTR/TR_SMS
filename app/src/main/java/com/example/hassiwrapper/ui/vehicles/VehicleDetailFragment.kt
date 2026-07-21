@@ -19,6 +19,7 @@ import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.network.dto.UpdatePackingListRequest
+import com.example.hassiwrapper.network.dto.parsePackingListConflictMessage
 import com.example.hassiwrapper.services.OutboxService
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
@@ -199,7 +200,7 @@ class VehicleDetailFragment : Fragment() {
                     val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
                     if (!projectCode.isNullOrBlank()) {
                         val position = pl.position_id?.let { ServiceLocator.smsPositionDao.getById(it) }
-                        ServiceLocator.apiClient.getService().updatePackingList(
+                        val resp = ServiceLocator.apiClient.getService().updatePackingList(
                             projectCode,
                             UpdatePackingListRequest(
                                 packingListId   = pl.packing_list_id,
@@ -212,8 +213,22 @@ class VehicleDetailFragment : Fragment() {
                                 createdBy       = pl.created_by,
                                 updatedBy       = "APP",
                                 projectCode     = projectCode
+                                // rowVersion intentionally omitted — see EditPackingListFragment.saveEdits.
                             )
                         )
+                        if (!resp.isSuccessful) {
+                            if (resp.code() == 409) {
+                                // Another device already put this vehicle on a different active PL —
+                                // undo the optimistic local assignment instead of leaving it diverged
+                                // from the server.
+                                ServiceLocator.smsPackingListDao.insertAll(listOf(pl))
+                                val msg = parsePackingListConflictMessage(409, resp.errorBody()?.string())
+                                Toast.makeText(requireContext(), getString(R.string.pl_vehicle_conflict, msg), Toast.LENGTH_LONG).show()
+                                loadData()
+                                return@launch
+                            }
+                            Log.w(TAG, "updatePackingList API failed: HTTP ${resp.code()}")
+                        }
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "updatePackingList API failed", e)
@@ -260,6 +275,7 @@ class VehicleDetailFragment : Fragment() {
                                 createdBy       = pl.created_by,
                                 updatedBy       = "APP",
                                 projectCode     = projectCode
+                                // rowVersion intentionally omitted — see EditPackingListFragment.saveEdits.
                             )
                         )
                     }

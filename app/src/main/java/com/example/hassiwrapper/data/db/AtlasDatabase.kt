@@ -56,7 +56,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsAuditLogEntity::class,
         SmsSpoolLocationEntity::class
     ],
-    version = 37,
+    version = 38,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -897,6 +897,17 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v37 → v38: server-side optimistic concurrency for sms_packing_list (backend rv rowversion
+        // column). Stored as the base64 string the API sends/expects (System.Text.Json's default
+        // byte[] wire format) — no local encode/decode needed. Null on rows created before this
+        // migration or offline; the backend treats a null RowVersion as "skip the check".
+        private val MIGRATION_37_38 = object : Migration(37, 38) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 37 → 38: add row_version to sms_packing_list")
+                db.execSQL("ALTER TABLE `sms_packing_list` ADD COLUMN `row_version` TEXT")
+            }
+        }
+
         // v27 → v28: link a spool to its sub-position (Laydown/Site sub-section).
         // Mirrors position_id: lives on sms_spool (bulk, for the zone chart) and on
         // sms_spool_status_flags (authoritative, read from GET status-flags in detail).
@@ -951,7 +962,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_33_34,
                         MIGRATION_34_35,
                         MIGRATION_35_36,
-                        MIGRATION_36_37
+                        MIGRATION_36_37,
+                        MIGRATION_37_38
                     )
                     .build()
                 INSTANCE = instance

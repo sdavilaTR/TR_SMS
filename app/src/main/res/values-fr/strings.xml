@@ -841,6 +841,7 @@
     <string name="vehicle_detail_add_pl_title">Ajouter une Packing List au Véhicule</string>
     <string name="vehicle_detail_no_unassigned_pls">Aucune packing list sans véhicule assigné</string>
     <string name="vehicle_detail_pl_added">Packing List assignée au véhicule</string>
+    <string name="pl_vehicle_conflict">Échec de l\'assignation : %1$s</string>
     <string name="vehicle_detail_pl_removed">Packing List désassignée du véhicule</string>
     <string name="vehicle_detail_remove_pl_title">Désassigner la Packing List</string>
     <string name="vehicle_detail_remove_pl_msg">Désassigner %1$s de ce véhicule ?</string>

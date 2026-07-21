@@ -343,6 +343,7 @@ class PackingListDetailFragment : Fragment() {
                 updatedBy        = null,
                 projectCode      = projectCode,
                 totalSpoolsCount = newCount
+                // rowVersion intentionally omitted — see EditPackingListFragment.saveEdits.
             )
         )
     }

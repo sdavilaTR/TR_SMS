@@ -841,6 +841,7 @@
     <string name="vehicle_detail_add_pl_title">Add Packing List to Vehicle</string>
     <string name="vehicle_detail_no_unassigned_pls">No packing lists without an assigned vehicle</string>
     <string name="vehicle_detail_pl_added">Packing List assigned to vehicle</string>
+    <string name="pl_vehicle_conflict">Could not assign: %1$s</string>
     <string name="vehicle_detail_pl_removed">Packing List unassigned from vehicle</string>
     <string name="vehicle_detail_remove_pl_title">Unassign Packing List</string>
     <string name="vehicle_detail_remove_pl_msg">Unassign %1$s from this vehicle?</string>

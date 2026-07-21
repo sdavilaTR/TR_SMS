@@ -841,6 +841,7 @@
     <string name="vehicle_detail_add_pl_title">添加装箱单至车辆</string>
     <string name="vehicle_detail_no_unassigned_pls">没有未分配车辆的装箱单</string>
     <string name="vehicle_detail_pl_added">装箱单已分配至车辆</string>
+    <string name="pl_vehicle_conflict">无法分配：%1$s</string>
     <string name="vehicle_detail_pl_removed">装箱单已从车辆取消分配</string>
     <string name="vehicle_detail_remove_pl_title">取消分配装箱单</string>
     <string name="vehicle_detail_remove_pl_msg">是否取消该车辆与 %1$s 的分配？</string>

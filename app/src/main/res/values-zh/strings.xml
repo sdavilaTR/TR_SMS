@@ -635,6 +635,11 @@
     <string name="home_qa_new_spool">新建管段</string>
     <string name="home_qa_new_vehicle">新建车辆</string>
 
+    <!-- Guest home: zone spool KPIs -->
+    <string name="home_guest_zone_confirmed">区域内已确认</string>
+    <string name="home_guest_zone_pending">待同步</string>
+    <string name="home_guest_subpos_row">%1$s — 已确认 %2$d / 待同步 %3$d</string>
+
     <!-- Debug: Project Switcher -->
     <string name="home_btn_change_project">[调试] 切换项目</string>
     <string name="home_dialog_select_project">选择项目</string>

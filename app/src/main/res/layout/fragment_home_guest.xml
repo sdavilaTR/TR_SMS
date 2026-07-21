@@ -9,9 +9,16 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:clipToPadding="false"
+        android:clipChildren="false">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="14dp"
         android:clipToPadding="false"
@@ -60,11 +67,100 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- 3 action cards — equal weight, fill remaining space -->
+        <!-- Zone KPI row: confirmed (synced) vs pending (scanned, not yet synced) -->
+        <LinearLayout
+            android:id="@+id/guestZoneStatsRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="5dp"
+                app:cardBackgroundColor="@color/granted_bg"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="8dp">
+                    <TextView
+                        android:id="@+id/txtGuestZoneConfirmedCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="@color/green"
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:id="@+id/txtGuestZoneConfirmedLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_guest_zone_confirmed"
+                        android:textColor="@color/on_surface"
+                        android:textSize="12sp"
+                        android:gravity="center" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="5dp"
+                app:cardBackgroundColor="@color/surface_variant"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeColor="@color/primary"
+                app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="8dp">
+                    <TextView
+                        android:id="@+id/txtGuestZonePendingCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="@color/primary"
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_guest_zone_pending"
+                        android:textColor="@color/on_surface"
+                        android:textSize="12sp"
+                        android:gravity="center" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+
+        <!-- Per sub-position (GCP) breakdown — only populated/shown when the project defines them.
+             Row count is data-driven (however many sub-positions a project has), so this section
+             lives inside the ScrollView rather than competing with the action cards for a fixed
+             share of screen height. -->
+        <LinearLayout
+            android:id="@+id/guestSubPositionBreakdown"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone" />
+
+        <!-- 3 action cards — fixed comfortable min height each, not stretched/squeezed to fill -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
             android:orientation="vertical"
             android:clipChildren="false"
             android:clipToPadding="false">
@@ -73,9 +169,9 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardGuestSend"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
+                android:minHeight="96dp"
                 android:clickable="true"
                 android:focusable="true"
                 app:cardBackgroundColor="@color/surface_variant"
@@ -94,18 +190,18 @@
                         android:background="@color/primary" />
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="12dp">
+                        android:padding="10dp">
                         <LinearLayout
-                            android:layout_width="68dp"
-                            android:layout_height="68dp"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
                             android:background="@drawable/bg_kpi_primary"
                             android:gravity="center">
                             <ImageView
-                                android:layout_width="38dp"
-                                android:layout_height="38dp"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
                                 android:src="@drawable/ic_package_qr"
                                 app:tint="@color/primary"
                                 android:contentDescription="@null" />
@@ -113,7 +209,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
+                            android:layout_marginTop="6dp"
                             android:text="@string/home_qa_send"
                             android:textColor="@color/on_surface"
                             android:textSize="22sp"
@@ -128,9 +224,9 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardGuestReceive"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
+                android:minHeight="96dp"
                 android:clickable="true"
                 android:focusable="true"
                 app:cardBackgroundColor="@color/granted_bg"
@@ -149,18 +245,18 @@
                         android:background="@color/green" />
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="12dp">
+                        android:padding="10dp">
                         <LinearLayout
-                            android:layout_width="68dp"
-                            android:layout_height="68dp"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
                             android:background="@drawable/bg_kpi_green"
                             android:gravity="center">
                             <ImageView
-                                android:layout_width="38dp"
-                                android:layout_height="38dp"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
                                 android:src="@drawable/ic_download_24"
                                 app:tint="@color/green"
                                 android:contentDescription="@null" />
@@ -168,7 +264,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
+                            android:layout_marginTop="6dp"
                             android:text="@string/home_qa_transfers"
                             android:textColor="@color/on_surface"
                             android:textSize="22sp"
@@ -183,8 +279,8 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardGuestNewIncident"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:minHeight="96dp"
                 android:clickable="true"
                 android:focusable="true"
                 app:cardBackgroundColor="@color/denied_bg"
@@ -203,18 +299,18 @@
                         android:background="@color/error" />
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="12dp">
+                        android:padding="10dp">
                         <LinearLayout
-                            android:layout_width="68dp"
-                            android:layout_height="68dp"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
                             android:background="@drawable/bg_kpi_error"
                             android:gravity="center">
                             <ImageView
-                                android:layout_width="38dp"
-                                android:layout_height="38dp"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
                                 android:src="@drawable/ic_alert_24"
                                 app:tint="@color/error"
                                 android:contentDescription="@null" />
@@ -222,7 +318,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
+                            android:layout_marginTop="6dp"
                             android:text="@string/home_qa_new_incident"
                             android:textColor="@color/on_surface"
                             android:textSize="22sp"
@@ -290,4 +386,5 @@
         </LinearLayout>
 
     </LinearLayout>
+    </ScrollView>
 </FrameLayout>

@@ -252,6 +252,9 @@ interface SmsSpecDao {
  *  position code in Kotlin instead of paying per-row SQL subqueries over 100k+ rows. */
 data class SpoolComboCount(val plId: Long?, val zone: String?, val positionId: Int?, val subId: Long?, val cnt: Int)
 
+/** Per-sub-position synced/pending split, for the Guest home zone KPI breakdown. */
+data class SubPositionSyncCount(val subPositionId: Long?, val confirmed: Int, val pending: Int)
+
 /**
  * SQL twin of CreateSpoolFragment.spoolPositionCode() — resolves a spool's position code
  * (WORKSHOP/LAYDOWN/SITE) with the same 3-level fallback, uppercased:
@@ -377,6 +380,36 @@ interface SmsSpoolDao {
         AND (UPPER(zone) = UPPER(:location) OR packing_list_id IN (SELECT packing_list_id FROM sms_packing_list WHERE UPPER(position) = UPPER(:location)))
     """)
     suspend fun countScannedByProjectAndZone(projectId: Int, location: String): Int
+
+    // Guest home zone KPIs: splits spools resolved to this terminal's position into
+    // already server-confirmed (synced=1) vs locally scanned/moved but not yet uploaded
+    // (synced=0). Deliberately omits the scanned=1 filter used above — that flag is an
+    // unrelated backend PCA-import marker, not whether this terminal touched the spool.
+    @Query("""
+        SELECT COUNT(*) FROM sms_spool s
+        WHERE s.project_id = :projectId AND s.is_active = 1 AND s.synced = 1
+        AND $SPOOL_RESOLVED_POSITION = UPPER(:location)
+    """)
+    suspend fun countConfirmedByProjectAndZone(projectId: Int, location: String): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM sms_spool s
+        WHERE s.project_id = :projectId AND s.is_active = 1 AND s.synced = 0
+        AND $SPOOL_RESOLVED_POSITION = UPPER(:location)
+    """)
+    suspend fun countPendingByProjectAndZone(projectId: Int, location: String): Int
+
+    // Per-sub-position (GCP) breakdown within this zone, for projects that use them.
+    @Query("""
+        SELECT s.sub_position_id AS subPositionId,
+               SUM(CASE WHEN s.synced = 1 THEN 1 ELSE 0 END) AS confirmed,
+               SUM(CASE WHEN s.synced = 0 THEN 1 ELSE 0 END) AS pending
+        FROM sms_spool s
+        WHERE s.project_id = :projectId AND s.is_active = 1
+        AND $SPOOL_RESOLVED_POSITION = UPPER(:location)
+        GROUP BY s.sub_position_id
+    """)
+    suspend fun countByProjectZoneAndSubPosition(projectId: Int, location: String): List<SubPositionSyncCount>
 
     @Query("SELECT COUNT(*) FROM sms_spool")
     suspend fun countAll(): Int

@@ -239,6 +239,7 @@ class QrScannerFragment : Fragment() {
                 if (spool != null) {
                     txtScanStatus.text = getString(R.string.qr_scanner_status_spool_found, spool.displayCode)
                     showResult(spool.displayCode, buildSpoolDetail(spool))
+                    warnIfRevisionMismatch(revision, spool.revision)
                     GpsHelper.captureAndSaveSpoolLocation(requireContext(), spool.spool_id)
                     PositionHelper.applyTerminalPosition(spool.spool_id)
                     ServiceLocator.smsSpoolDao.backfillSitAndRevision(spool.spool_id, sitNumber, revision)
@@ -379,6 +380,7 @@ class QrScannerFragment : Fragment() {
                 updateRelocateCount()
                 txtScanStatus.text = getString(R.string.qr_scanner_status_waiting)
                 showResult(spool.displayCode, getString(R.string.qr_scanner_relocate_success, spool.displayCode, destName))
+                warnIfRevisionMismatch(revision, spool.revision)
                 (requireActivity() as? MainActivity)?.playSuccess()
             } catch (e: Exception) {
                 Log.e(TAG, "relocateSpool failed", e)
@@ -437,6 +439,19 @@ class QrScannerFragment : Fragment() {
         txtScanStatus.text = getString(R.string.qr_scanner_status_waiting)
         showResult(type, detail)
         Toast.makeText(requireContext(), "$type\n$detail", Toast.LENGTH_LONG).show()
+    }
+
+    /** `spool.revision` reflects the backend's current engineering revision once a sync has
+     *  landed it (JAFURAH PCA import) — it is NOT necessarily what's physically printed on the
+     *  spool tag. Compare it against the revision just parsed off the scanned tag so a spool
+     *  still carrying an old physical revision isn't silently treated as up to date. */
+    private fun warnIfRevisionMismatch(scannedRevision: String?, storedRevision: String?) {
+        val scanned = scannedRevision?.trim()?.takeIf { it.isNotEmpty() }
+        val stored = storedRevision?.trim()?.takeIf { it.isNotEmpty() }
+        if (scanned == null || stored == null || scanned.equals(stored, ignoreCase = true)) return
+        val warning = getString(R.string.qr_scanner_revision_mismatch, scanned, stored)
+        Toast.makeText(requireContext(), warning, Toast.LENGTH_LONG).show()
+        txtResultDetail.text = "${txtResultDetail.text}\n$warning".trim()
     }
 
     private fun buildSpoolDetail(spool: SmsSpoolEntity) = buildString {

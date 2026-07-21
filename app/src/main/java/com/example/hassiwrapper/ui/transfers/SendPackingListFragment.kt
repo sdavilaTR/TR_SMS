@@ -38,6 +38,7 @@ import com.example.hassiwrapper.jInt
 import com.example.hassiwrapper.jStr
 import com.example.hassiwrapper.network.dto.AssignSpoolRequest
 import com.example.hassiwrapper.network.dto.CreatePackingListRequest
+import com.example.hassiwrapper.network.dto.parsePackingListConflictMessage
 import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.ui.qrscanner.QrResult
 import com.example.hassiwrapper.ui.qrscanner.parseQr
@@ -49,6 +50,9 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
 private val BAKED_IN_SUFFIX_SHAPE = Regex("""(?i)^SP\d+$""")
+
+/** Another device already put this vehicle on a different active Packing List (409, layer-1 guard). */
+private class VehicleAlreadyLoadingException(message: String) : Exception(message)
 
 class SendPackingListFragment : Fragment() {
 
@@ -598,10 +602,20 @@ class SendPackingListFragment : Fragment() {
                                 } else {
                                     ServiceLocator.smsPackingListDao.markSynced(listOf(newPlId))
                                 }
+                            } else if (resp.code() == 409) {
+                                // Vehicle-conflict guard: this vehicle already has an active PL open
+                                // elsewhere. This local PL can never sync — drop it now instead of
+                                // leaving a ghost that the background upload retries forever.
+                                ServiceLocator.smsPackingListDao.deleteById(newPlId)
+                                val msg = parsePackingListConflictMessage(409, resp.errorBody()?.string())
+                                    ?: getString(R.string.pl_vehicle_conflict, "")
+                                throw VehicleAlreadyLoadingException(msg)
                             } else {
                                 Log.w("SendPL", "PL server create failed: HTTP ${resp.code()}")
                             }
                         }
+                    } catch (e: VehicleAlreadyLoadingException) {
+                        throw e
                     } catch (e: Exception) {
                         Log.w("SendPL", "PL server create error (offline?): ${e.message}")
                     }

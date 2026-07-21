@@ -81,7 +81,11 @@ data class SmsPackingListEntity(
     val created_by: String? = null,
     val updated_at: String? = null,
     val synced: Boolean = false,
-    val ready_to_send: Boolean = false
+    val ready_to_send: Boolean = false,
+    // Server rowversion (sms_packing_list.rv), base64 as sent/expected on the wire. Populated
+    // on download/create/update responses; sent back on the next UPDATE so the server can reject
+    // a lost update against another device's concurrent edit. Null = not yet known / skip check.
+    val row_version: String? = null
 )
 
 @Entity(tableName = "sms_packing_list_spool", indices = [Index(value = ["spool_id"], unique = true)])

@@ -187,6 +187,9 @@ class EditPackingListFragment : Fragment() {
                         updatedBy        = null,
                         projectCode      = projectCode,
                         totalSpoolsCount = pl.total_spools_count ?: 0
+                        // rowVersion intentionally omitted: local row_version doesn't advance after a
+                        // successful update yet (see OutboxService), so sending it would false-conflict
+                        // on the client's own very next edit. Re-arm once a refresh path exists.
                     )
                 )
 

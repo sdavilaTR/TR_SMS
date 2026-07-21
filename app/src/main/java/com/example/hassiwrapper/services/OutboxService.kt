@@ -317,6 +317,7 @@ class OutboxService(
     private suspend fun packingListCreate(api: AtlasApiService, op: SmsOutboxEntity, projectCode: String): Outcome {
         val payload = gson.fromJson(op.payload_json, CreatePackingListRequest::class.java)
         val resp = call { api.createPackingList(projectCode, payload) }
+        markPackingListConflict(api, op, projectCode, resp)?.let { return it }
         return onResponse(op, resp) {
             val serverId = parseServerId(resp, "packingListId", "packing_list_id")
             if (serverId != null) {
@@ -331,7 +332,62 @@ class OutboxService(
         val serverId = resolve(Entity.PACKING_LIST, op.local_entity_id) ?: return Outcome.SKIP
         val payload = gson.fromJson(op.payload_json, UpdatePackingListRequest::class.java).copy(packingListId = serverId)
         val resp = call { api.updatePackingList(projectCode, payload) }
+        markPackingListConflict(api, op, projectCode, resp)?.let { return it }
         return onResponse(op, resp) { smsPackingListDao.markSynced(listOf(op.local_entity_id)) }
+    }
+
+    /**
+     * 409 from the vehicle-conflict / rowversion-conflict guards carries a clean `message` field —
+     * surface that in the "Operaciones fallidas" dialog instead of the raw JSON body. Returns the
+     * terminal Outcome when this was a 409, null otherwise (caller falls through to [onResponse]).
+     *
+     * For UPDATE, the local row still holds the rejected write (e.g. an EditPackingListFragment
+     * vehicle reassignment that lost the race) — [reconcilePackingListFromServer] re-fetches the
+     * real row so local state doesn't keep claiming a change the server refused.
+     */
+    private suspend fun markPackingListConflict(
+        api: AtlasApiService,
+        op: SmsOutboxEntity,
+        projectCode: String,
+        resp: Response<ResponseBody>
+    ): Outcome? {
+        if (resp.code() != 409) return null
+        val msg = parsePackingListConflictMessage(409, resp.errorBody()?.string())
+        outboxDao.markFailed(op.op_id, msg ?: "HTTP 409")
+        Log.e(TAG, "op ${op.op_id} (${op.entity_type}/${op.op_type}) rejected: $msg")
+        if (op.op_type == Op.UPDATE) {
+            reconcilePackingListFromServer(api, op, projectCode)
+        }
+        return Outcome.FAILED
+    }
+
+    /** Overwrites the local row with the server's current state after a rejected UPDATE, so a lost
+     *  race (e.g. vehicle reassignment) doesn't leave the device silently diverged from the server. */
+    private suspend fun reconcilePackingListFromServer(api: AtlasApiService, op: SmsOutboxEntity, projectCode: String) {
+        try {
+            val serverId = resolve(Entity.PACKING_LIST, op.local_entity_id) ?: return
+            val resp = api.getPackingListById(projectCode, serverId)
+            if (!resp.isSuccessful) {
+                Log.w(TAG, "op ${op.op_id} reconcile-after-conflict: GET failed HTTP ${resp.code()}")
+                return
+            }
+            val raw = resp.body()?.string().orEmpty()
+            val el = JsonParser.parseString(raw)
+            val obj = when {
+                el.isJsonObject && el.asJsonObject.has("data") && !el.asJsonObject.get("data").isJsonNull ->
+                    el.asJsonObject.getAsJsonObject("data")
+                el.isJsonObject -> el.asJsonObject
+                else -> return
+            }
+            val dto = gson.fromJson(obj, SmsPackingListDto::class.java)
+            val entity = dto.toEntity(op.project_id)
+            if (entity.packing_list_id != 0L) {
+                smsPackingListDao.insertAll(listOf(entity))
+                Log.i(TAG, "op ${op.op_id} reconciled PL ${entity.packing_list_id} to server state after conflict")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "op ${op.op_id} reconcile-after-conflict failed: ${e.message}")
+        }
     }
 
     private suspend fun packingListDelete(api: AtlasApiService, op: SmsOutboxEntity, projectCode: String, hard: Boolean): Outcome {

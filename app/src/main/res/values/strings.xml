@@ -561,6 +561,11 @@
     <string name="home_qa_new_spool">Nuevo Spool</string>
     <string name="home_qa_new_vehicle">Nuevo Vehículo</string>
 
+    <!-- Guest home: zone spool KPIs -->
+    <string name="home_guest_zone_confirmed">Confirmados en zona</string>
+    <string name="home_guest_zone_pending">Sin sincronizar</string>
+    <string name="home_guest_subpos_row">%1$s — %2$d confirmados / %3$d sin sincronizar</string>
+
     <!-- Debug: Project Switcher -->
     <string name="home_btn_change_project">[DEBUG] Cambiar Proyecto</string>
     <string name="home_dialog_select_project">Seleccionar proyecto</string>

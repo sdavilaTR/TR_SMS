@@ -6,8 +6,11 @@ package com.example.hassiwrapper.services
  * Room/Retrofit/Activity — see the 2026-07-07 139k-spool purge incident this guards against
  * (a backend bug returned an entire project as is_active=0 in one delta call).
  *
- * minCount/maxRatio mirror the backend's SmsRepository.IsAnomalousDeltaBatch thresholds —
- * keep both sides in sync if either changes.
+ * minCount matches the backend's SmsRepository.IsAnomalousDeltaBatch floor (5), but maxRatio
+ * is intentionally stricter than the backend's thresholdRatio (0.2 here vs 0.8 there): a false
+ * trip here only costs a cheap full resync, while the backend rejecting a batch means a 500 to
+ * every client, so it only blocks truly extreme (>80%) ratios. This is a second, more paranoid
+ * layer behind the backend guard, not a mirror of it.
  */
 object SpoolDeltaGuard {
 

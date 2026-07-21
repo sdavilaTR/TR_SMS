@@ -809,6 +809,7 @@ class MainActivity : AppCompatActivity() {
                     val allEntities = mutableListOf<SmsSpoolEntity>()
                     var page = 1
                     var fetchOk = false
+                    var deltaAnomalyDetected = false
                     while (true) {
                         val spoolResp = fetchPageWithRetry(page) ?: break
                         val spoolRaw = spoolResp.body()?.string().orEmpty()
@@ -851,7 +852,14 @@ class MainActivity : AppCompatActivity() {
                                 if (decision.shouldResetCursor) {
                                     val ratio = if (localCount > 0) deactivatedIds.size.toDouble() / localCount else 0.0
                                     Log.e(TAG, "syncSmsData: delta anomaly — ${deactivatedIds.size}/$localCount spools marked inactive (${(ratio * 100).toInt()}%), skipping purge, forcing full sync next cycle")
+                                    deltaAnomalyDetected = true
                                     ServiceLocator.configRepo.remove(lastSyncKey)
+                                    // Also clear the throttle timestamp — otherwise the *next* auto-sync
+                                    // tick (unforced, force=false) sees a recent lastFetchKey from THIS
+                                    // sync's earlier successful sections and skips the spool fetch
+                                    // entirely, delaying the "full sync next cycle" promise above by up
+                                    // to the 10 min throttle window instead of retrying immediately.
+                                    ServiceLocator.configRepo.remove(lastFetchKey)
                                 }
                                 if (decision.shouldPurge) {
                                     deactivatedIds.chunked(800).forEach { ServiceLocator.smsSpoolDao.deleteByIds(it) }
@@ -898,9 +906,13 @@ class MainActivity : AppCompatActivity() {
                             ServiceLocator.smsSpoolDao.insertAll(merged)
                         }
                         ServiceLocator.smsSpoolDao.deleteInactive()
-                        if (fetchOk) {
+                        if (fetchOk && !deltaAnomalyDetected) {
                             // Only advance the delta cursor once we've actually caught up —
                             // a partial fetch must retry from page 1 next time, not skip ahead.
+                            // An anomalous batch must not advance it either: the cursor was already
+                            // cleared above so the next cycle falls back to a full sync — setting it
+                            // again here would silently undo that within this very same call and
+                            // strand the flagged-anomalous rows out of every future delta window.
                             ServiceLocator.configRepo.set(lastSyncKey, syncStarted)
                             // Also mark the throttle timestamp — a partial/failed fetch must NOT
                             // set this, so the next auto-sync tick retries immediately instead of
@@ -914,6 +926,22 @@ class MainActivity : AppCompatActivity() {
                         withContext(Dispatchers.Main) { onProgress?.invoke(spoolMsg) }
                     } else {
                         Log.w(TAG, "syncSmsData: spools page 1 fetch failed after retries, skipping DB write")
+                        // A delta call can fail every retry because the backend's own anomaly guard
+                        // is refusing the batch (HTTP 500 — see SmsRepository.IsAnomalousDeltaBatch)
+                        // as much as from a transient network issue. Unlike the client-caught anomaly
+                        // above, this path never sees any data, so it can't tell which — but clearing
+                        // the cursor either way is safe: a real anomaly gets the same full-sync
+                        // fallback as the client-caught case, and a transient failure just costs one
+                        // extra full sync instead of quietly retrying the same failing delta call
+                        // forever with no error visible to the user.
+                        if (!isFullSync) {
+                            ServiceLocator.configRepo.remove(lastSyncKey)
+                            // Also clear the throttle timestamp, same reason as the anomaly branch
+                            // above: a stale-but-fresh lastFetchKey from an earlier successful tick
+                            // would make the next unforced auto-sync skip the fetch entirely and
+                            // silently delay this full-sync retry by up to the throttle window.
+                            ServiceLocator.configRepo.remove(lastFetchKey)
+                        }
                     }
                 }
             }

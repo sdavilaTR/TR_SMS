@@ -17,14 +17,22 @@ import androidx.navigation.fragment.findNavController
 import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
+import com.example.hassiwrapper.normalizeDeviceLocation
 import com.example.hassiwrapper.parsePackingListEntities
 import com.example.hassiwrapper.parseSpoolEntities
 import com.example.hassiwrapper.parseVehicleEntities
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 class HomeFragment : Fragment() {
 
     private val isGuest get() = ProfileManager.currentUserRole() == ProfileManager.UserRole.GUEST
+
+    // onViewCreated + the immediately-following onResume both call loadGuestHeader() on
+    // initial fragment creation — without this guard, two concurrent coroutines each
+    // clear-then-repopulate guestSubPositionBreakdown, and their addView calls interleave
+    // into duplicate rows (observed on device 2026-07-20).
+    private var guestHeaderJob: Job? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val layoutRes = if (isGuest) R.layout.fragment_home_guest else R.layout.fragment_home
@@ -124,7 +132,8 @@ class HomeFragment : Fragment() {
     }
 
     private fun loadGuestHeader() {
-        viewLifecycleOwner.lifecycleScope.launch {
+        guestHeaderJob?.cancel()
+        guestHeaderJob = viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val terminalName     = ServiceLocator.configRepo.get("device_code")     ?: "—"
                 val terminalLocation = ServiceLocator.configRepo.get("device_location") ?: ""
@@ -138,10 +147,60 @@ class HomeFragment : Fragment() {
                         txtLoc.visibility = View.GONE
                     }
                 }
+                loadGuestZoneStats(terminalLocation)
             } catch (e: Exception) {
                 Log.e("HomeDebug", "loadGuestHeader failed", e)
             }
         }
+    }
+
+    /** Guest home zone KPIs: confirmed (synced) vs pending (scanned locally, not yet
+     *  uploaded) spool counts for this terminal's configured zone, plus a per-sub-position
+     *  (GCP) breakdown when the project defines any for that zone. Counts move themselves:
+     *  a spool packed into a PL headed to another zone resolves there instead (see
+     *  SPOOL_RESOLVED_POSITION), so no separate "deduct on transfer" step is needed. */
+    private suspend fun loadGuestZoneStats(rawLocation: String) {
+        val view = view ?: return
+        val row = view.findViewById<View>(R.id.guestZoneStatsRow)
+        val breakdown = view.findViewById<android.widget.LinearLayout>(R.id.guestSubPositionBreakdown)
+        val location = normalizeDeviceLocation(rawLocation)
+        if (location == null) {
+            row.visibility = View.GONE
+            breakdown.visibility = View.GONE
+            return
+        }
+
+        val projectId = getSelectedProjectId()
+        val confirmed = ServiceLocator.smsSpoolDao.countConfirmedByProjectAndZone(projectId, location)
+        val pending = ServiceLocator.smsSpoolDao.countPendingByProjectAndZone(projectId, location)
+        view.findViewById<TextView>(R.id.txtGuestZoneConfirmedCount).text = confirmed.toString()
+        view.findViewById<TextView>(R.id.txtGuestZonePendingCount).text = pending.toString()
+        row.visibility = View.VISIBLE
+
+        breakdown.removeAllViews()
+        val positionId = ServiceLocator.smsPositionDao.getByCode(location)?.position_id
+        val subPositions = positionId?.let { ServiceLocator.smsSubPositionDao.getByPosition(projectId, it) }.orEmpty()
+        if (subPositions.isEmpty()) {
+            breakdown.visibility = View.GONE
+            return
+        }
+        val labelById = subPositions.associateBy({ it.sub_position_id }, { it.full_path.ifBlank { it.name } })
+        val counts = ServiceLocator.smsSpoolDao.countByProjectZoneAndSubPosition(projectId, location)
+            .filter { it.subPositionId != null && (it.confirmed > 0 || it.pending > 0) }
+        if (counts.isEmpty()) {
+            breakdown.visibility = View.GONE
+            return
+        }
+        counts.forEach { c ->
+            val label = labelById[c.subPositionId] ?: return@forEach
+            val tv = TextView(requireContext())
+            tv.text = getString(R.string.home_guest_subpos_row, label, c.confirmed, c.pending)
+            tv.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.on_surface))
+            tv.textSize = 13f
+            tv.setPadding(4, 4, 4, 4)
+            breakdown.addView(tv)
+        }
+        breakdown.visibility = View.VISIBLE
     }
 
     private suspend fun getSelectedProjectId(): Int =

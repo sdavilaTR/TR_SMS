@@ -45,9 +45,11 @@ class PackingListsFragment : Fragment() {
         txtError = view.findViewById(R.id.txtError)
         txtCount = view.findViewById(R.id.txtCount)
         fab      = view.findViewById(R.id.fabNewPackingList)
-        fab.setOnClickListener {
-            findNavController().navigate(R.id.action_global_newPackingListFragment)
-        }
+        // Creación manual de PL deshabilitada: los PLs ahora se crean solo desde los envíos.
+        fab.visibility = View.GONE
+//        fab.setOnClickListener {
+//            findNavController().navigate(R.id.action_global_newPackingListFragment)
+//        }
 
         adapter = PLAdapter()
         rv.layoutManager = LinearLayoutManager(requireContext())

@@ -79,9 +79,11 @@ class HomeFragment : Fragment() {
         view.findViewById<View>(R.id.cardPackingLists).setOnClickListener {
             findNavController().navigate(R.id.action_homeFragment_to_inventarioFragment, bundleOf("initialTab" to 1))
         }
-        view.findViewById<View>(R.id.cardQuickNewPl).setOnClickListener {
-            findNavController().navigate(R.id.newPackingListFragment)
-        }
+        // Creación manual de PL deshabilitada: los PLs ahora se crean solo desde los envíos.
+        view.findViewById<View>(R.id.cardQuickNewPl).visibility = View.GONE
+//        view.findViewById<View>(R.id.cardQuickNewPl).setOnClickListener {
+//            findNavController().navigate(R.id.newPackingListFragment)
+//        }
         view.findViewById<View>(R.id.cardQuickSend).setOnClickListener {
             findNavController().navigate(R.id.action_global_sendPackingListFragment)
         }

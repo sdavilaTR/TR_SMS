@@ -7,5 +7,6 @@
     <item android:id="@+id/transfersFragment"  android:icon="@drawable/ic_truck_24"        android:title="@string/menu_transfers" />
     <item android:id="@+id/incidentsFragment"  android:icon="@drawable/ic_alert_24"        android:title="@string/menu_incidencias" />
     <item android:id="@+id/eventHistoryFragment" android:icon="@drawable/ic_history_24"     android:title="@string/menu_event_history" />
+    <item android:id="@+id/spoolMapFragment"   android:icon="@drawable/ic_map_24"          android:title="@string/menu_map" />
     <item android:id="@+id/settingsFragment"   android:icon="@drawable/ic_settings"        android:title="@string/menu_settings" />
 </menu>

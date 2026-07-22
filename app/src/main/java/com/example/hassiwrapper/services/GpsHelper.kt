@@ -58,9 +58,13 @@ object GpsHelper {
      * (silently a no-op if location is unavailable/denied). Single entry point for every
      * spool-scan flow across the app (QR Scanner, global scanner-button scan, packing-list
      * add/detail, new incident, send/receive batch) so a new scan flow can't forget it.
+     *
+     * Also checks the fix against any GEOLOCATION-mode area geofence for the selected project
+     * (see [GeofenceHelper]) and returns the result — current call sites ignore it (detection-only
+     * for now, no scan is blocked), but it's available for a future warning/incident UI.
      */
-    suspend fun captureAndSaveSpoolLocation(context: Context, spoolId: Long) {
-        val gps = getCurrentLocation(context) ?: return
+    suspend fun captureAndSaveSpoolLocation(context: Context, spoolId: Long): GeofenceHelper.CheckResult? {
+        val gps = getCurrentLocation(context) ?: return null
         val (lat, lon, acc) = gps
         val loc = SmsSpoolLocationEntity(
             spool_id       = spoolId,
@@ -73,6 +77,13 @@ object GpsHelper {
         ServiceLocator.smsSpoolLocationDao.insert(loc)
         ServiceLocator.smsSpoolLocationDao.pruneOldest(spoolId)
         Log.d(TAG, "GPS saved for spool $spoolId: lat=$lat lon=$lon acc=$acc")
+
+        val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+        val geofenceResult = GeofenceHelper.checkProjectGeofences(projectId, lat, lon)
+        if (geofenceResult is GeofenceHelper.CheckResult.Outside) {
+            Log.w(TAG, "Spool $spoolId scanned outside geofenced area(s): ${geofenceResult.areaNames.joinToString()}")
+        }
+        return geofenceResult
     }
 
     private suspend fun fusedLocation(context: Context, hasFine: Boolean): Triple<Double, Double, Float?>? {

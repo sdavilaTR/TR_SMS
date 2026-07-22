@@ -21,8 +21,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.hassiwrapper.MainActivity
+import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
+import com.example.hassiwrapper.DEFAULT_DEVICE_LOCATION
+import com.example.hassiwrapper.normalizeDeviceLocation
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
 import androidx.navigation.fragment.findNavController
@@ -119,6 +122,15 @@ class CreateSpoolFragment : Fragment() {
             findNavController().navigate(R.id.action_global_newSpoolFragment)
         }
 
+        // GUEST is pinned to its terminal's zone (device_location): no cross-zone browsing,
+        // no chart/list toggle (chart only ever shows the ALL-zones filter), no spool creation
+        // — mirrors the rest of the GUEST role, which has no creation entry points either.
+        val isGuest = ProfileManager.currentUserRole() == ProfileManager.UserRole.GUEST
+        if (isGuest) {
+            toggleFilter.visibility = View.GONE
+            fabNewSpool.visibility = View.GONE
+        }
+
         adapter = SpoolAdapter()
         rv.layoutManager = LinearLayoutManager(requireContext())
         rv.setHasFixedSize(true)
@@ -156,7 +168,15 @@ class CreateSpoolFragment : Fragment() {
         }
 
         swipe.setOnRefreshListener { loadSpools(forceSync = true) }
-        loadSpools()
+        if (isGuest) {
+            viewLifecycleOwner.lifecycleScope.launch {
+                val zone = normalizeDeviceLocation(ServiceLocator.configRepo.get("device_location")) ?: DEFAULT_DEVICE_LOCATION
+                filter = Filter.values().first { it.positionCode == zone }
+                loadSpools()
+            }
+        } else {
+            loadSpools()
+        }
     }
 
     private fun expandSelectedTab(selectedId: Int) {

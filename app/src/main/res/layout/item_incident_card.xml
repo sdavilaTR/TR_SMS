@@ -48,6 +48,21 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/txtIncidentReprintBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_ready_badge"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:text="@string/incident_status_reprint_approved"
+            android:textColor="@android:color/white"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.03"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/txtIncidentDescription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

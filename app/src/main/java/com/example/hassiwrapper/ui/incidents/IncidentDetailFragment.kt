@@ -13,6 +13,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.lifecycle.lifecycleScope
+import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsIncidentEntity
@@ -38,7 +39,8 @@ class IncidentDetailFragment : Fragment() {
 
     private val statusLabels = mapOf(
         "OPEN" to R.string.incident_status_open,
-        "CLOSED" to R.string.incident_status_closed
+        "CLOSED" to R.string.incident_status_closed,
+        SmsIncidentService.STATUS_REPRINT_APPROVED to R.string.incident_status_reprint_approved
     )
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
@@ -58,13 +60,37 @@ class IncidentDetailFragment : Fragment() {
         val txtDescription = view.findViewById<TextView>(R.id.txtIncidentDetailDescription)
         val rows = view.findViewById<LinearLayout>(R.id.layoutIncidentDetailFields)
         val btnClose = view.findViewById<MaterialButton>(R.id.btnCloseIncident)
+        val btnApproveReprint = view.findViewById<MaterialButton>(R.id.btnApproveReprint)
 
         fun reload() {
             viewLifecycleOwner.lifecycleScope.launch {
                 val incident = ServiceLocator.smsIncidentDao.getById(incidentId) ?: return@launch
                 val subPositionPath = incident.sub_position_id?.let { ServiceLocator.smsSubPositionDao.getById(it)?.full_path }
-                bind(incident, subPositionPath, imgPhoto, txtSpool, txtSeverity, txtDescription, rows, btnClose)
+                bind(incident, subPositionPath, imgPhoto, txtSpool, txtSeverity, txtDescription, rows, btnClose, btnApproveReprint)
             }
+        }
+
+        btnApproveReprint.setOnClickListener {
+            AlertDialog.Builder(requireContext())
+                .setTitle(R.string.incident_approve_reprint_confirm_title)
+                .setMessage(R.string.incident_approve_reprint_confirm_msg)
+                .setPositiveButton(R.string.incident_approve_reprint_confirm_yes) { _, _ ->
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val incident = ServiceLocator.smsIncidentDao.getById(incidentId)
+                        ServiceLocator.smsIncidentService.approveReprint(incidentId)
+                        if (incident != null) {
+                            ServiceLocator.auditLogService.log(
+                                com.example.hassiwrapper.services.AuditLogService.INCIDENCIA_REIMPRESION_APROBADA,
+                                com.example.hassiwrapper.services.AuditLogService.ENTITY_INCIDENCIA,
+                                incident.id, incident.spool_code, projectId = incident.project_id
+                            )
+                        }
+                        Toast.makeText(requireContext(), R.string.incident_reprint_approved_ok, Toast.LENGTH_SHORT).show()
+                        reload()
+                    }
+                }
+                .setNegativeButton(R.string.incident_approve_reprint_confirm_no, null)
+                .show()
         }
 
         btnClose.setOnClickListener {
@@ -101,7 +127,8 @@ class IncidentDetailFragment : Fragment() {
         txtSeverity: TextView,
         txtDescription: TextView,
         rows: LinearLayout,
-        btnClose: MaterialButton
+        btnClose: MaterialButton,
+        btnApproveReprint: MaterialButton
     ) {
         item.photo_path?.let { path ->
             val file = File(path)
@@ -132,6 +159,10 @@ class IncidentDetailFragment : Fragment() {
         subPositionPath?.takeIf { it.isNotBlank() }?.let {
             addRow(rows, R.string.incident_label_subposition, it)
         }
+        if (item.incident_type == SmsIncidentService.TYPE_REVISION_MISMATCH) {
+            item.scanned_revision?.let { addRow(rows, R.string.incident_label_scanned_revision, it) }
+            item.stored_revision?.let { addRow(rows, R.string.incident_label_stored_revision, it) }
+        }
         addRow(rows, R.string.incident_label_author, item.author_name?.takeIf { it.isNotBlank() } ?: getString(R.string.incident_value_unknown))
         addRow(rows, R.string.settings_device_code_label, item.device_code?.takeIf { it.isNotBlank() } ?: getString(R.string.incident_value_unknown))
         addRow(rows, R.string.incident_label_date, item.event_date.take(16).replace('T', ' '))
@@ -146,6 +177,13 @@ class IncidentDetailFragment : Fragment() {
         } else {
             btnClose.visibility = View.VISIBLE
         }
+
+        val isSupervisor = ProfileManager.currentUserRole() != ProfileManager.UserRole.GUEST
+        btnApproveReprint.visibility = if (
+            isSupervisor &&
+            item.incident_type == SmsIncidentService.TYPE_REVISION_MISMATCH &&
+            item.status == SmsIncidentService.STATUS_OPEN
+        ) View.VISIBLE else View.GONE
     }
 
     private fun addRow(parent: LinearLayout, labelRes: Int, value: String) {

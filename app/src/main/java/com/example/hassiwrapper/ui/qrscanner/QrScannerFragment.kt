@@ -20,6 +20,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -231,15 +232,14 @@ class QrScannerFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                val spools = ServiceLocator.smsSpoolDao.getByCode(projectId, spoolCode)
                 val spool = if (spoolSuffix != null)
-                    spools.find { it.spool_suffix == spoolSuffix } ?: spools.firstOrNull()
+                    ServiceLocator.smsSpoolDao.findByCodeAndSuffix(projectId, spoolCode, spoolSuffix)
                 else
-                    spools.firstOrNull()
+                    ServiceLocator.smsSpoolDao.getByCode(projectId, spoolCode).firstOrNull()
                 if (spool != null) {
                     txtScanStatus.text = getString(R.string.qr_scanner_status_spool_found, spool.displayCode)
                     showResult(spool.displayCode, buildSpoolDetail(spool))
-                    warnIfRevisionMismatch(revision, spool.revision)
+                    warnIfRevisionMismatch(spool.spool_code, spool.spool_suffix, revision, spool.revision)
                     GpsHelper.captureAndSaveSpoolLocation(requireContext(), spool.spool_id)
                     PositionHelper.applyTerminalPosition(spool.spool_id)
                     ServiceLocator.smsSpoolDao.backfillSitAndRevision(spool.spool_id, sitNumber, revision)
@@ -336,11 +336,10 @@ class QrScannerFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                val spools = ServiceLocator.smsSpoolDao.getByCode(projectId, spoolCode)
                 val spool = if (spoolSuffix != null)
-                    spools.find { it.spool_suffix == spoolSuffix } ?: spools.firstOrNull()
+                    ServiceLocator.smsSpoolDao.findByCodeAndSuffix(projectId, spoolCode, spoolSuffix)
                 else
-                    spools.firstOrNull()
+                    ServiceLocator.smsSpoolDao.getByCode(projectId, spoolCode).firstOrNull()
 
                 if (spool == null) {
                     val detail = if ((requireActivity() as? MainActivity)?.isAnySyncInProgress == true)
@@ -380,7 +379,7 @@ class QrScannerFragment : Fragment() {
                 updateRelocateCount()
                 txtScanStatus.text = getString(R.string.qr_scanner_status_waiting)
                 showResult(spool.displayCode, getString(R.string.qr_scanner_relocate_success, spool.displayCode, destName))
-                warnIfRevisionMismatch(revision, spool.revision)
+                warnIfRevisionMismatch(spool.spool_code, spool.spool_suffix, revision, spool.revision)
                 (requireActivity() as? MainActivity)?.playSuccess()
             } catch (e: Exception) {
                 Log.e(TAG, "relocateSpool failed", e)
@@ -444,14 +443,38 @@ class QrScannerFragment : Fragment() {
     /** `spool.revision` reflects the backend's current engineering revision once a sync has
      *  landed it (JAFURAH PCA import) — it is NOT necessarily what's physically printed on the
      *  spool tag. Compare it against the revision just parsed off the scanned tag so a spool
-     *  still carrying an old physical revision isn't silently treated as up to date. */
-    private fun warnIfRevisionMismatch(scannedRevision: String?, storedRevision: String?) {
+     *  still carrying an old physical revision isn't silently treated as up to date. On mismatch,
+     *  offer to raise an incidencia so it reaches supervisors (see [SmsIncidentService.createRevisionMismatchIncident]). */
+    private fun warnIfRevisionMismatch(spoolCode: String, spoolSuffix: String?, scannedRevision: String?, storedRevision: String?) {
         val scanned = scannedRevision?.trim()?.takeIf { it.isNotEmpty() }
         val stored = storedRevision?.trim()?.takeIf { it.isNotEmpty() }
         if (scanned == null || stored == null || scanned.equals(stored, ignoreCase = true)) return
         val warning = getString(R.string.qr_scanner_revision_mismatch, scanned, stored)
-        Toast.makeText(requireContext(), warning, Toast.LENGTH_LONG).show()
         txtResultDetail.text = "${txtResultDetail.text}\n$warning".trim()
+
+        if (!isAdded) return
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.revision_mismatch_dialog_title)
+            .setMessage(warning)
+            .setPositiveButton(R.string.revision_mismatch_dialog_create) { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val incident = ServiceLocator.smsIncidentService.createRevisionMismatchIncident(
+                        spoolCode, spoolSuffix, scanned, stored
+                    )
+                    if (incident != null) {
+                        ServiceLocator.auditLogService.log(
+                            com.example.hassiwrapper.services.AuditLogService.INCIDENCIA_CREADA,
+                            com.example.hassiwrapper.services.AuditLogService.ENTITY_INCIDENCIA,
+                            incident.id, incident.spool_code, projectId = incident.project_id
+                        )
+                        Toast.makeText(requireContext(), R.string.revision_mismatch_incident_created, Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(requireContext(), R.string.revision_mismatch_incident_exists, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .setNegativeButton(R.string.revision_mismatch_dialog_dismiss, null)
+            .show()
     }
 
     private fun buildSpoolDetail(spool: SmsSpoolEntity) = buildString {

@@ -961,13 +961,18 @@ class MainActivity : AppCompatActivity() {
                         val mergedPLs = activePLs.map { pl ->
                             val local = localPLs[pl.packing_list_id] ?: return@map pl
                             val keepLocal = !local.synced
+                            // Actual spool count from the local join table, not the server's
+                            // total_spools_count column — that field lags behind spool-link
+                            // calls and was stomping the correct local count on every auto-sync.
+                            val actualCount = ServiceLocator.smsSpoolDao.countByPackingList(pl.packing_list_id)
                             pl.copy(
-                                ready_to_send = local.ready_to_send,
-                                vehicle_id    = pl.vehicle_id ?: local.vehicle_id,
-                                vehicle_plate = pl.vehicle_plate ?: local.vehicle_plate,
-                                position_id   = if (keepLocal) local.position_id else (pl.position_id ?: local.position_id),
-                                position      = if (keepLocal) local.position else (pl.position ?: local.position),
-                                synced        = if (keepLocal) false else pl.synced
+                                ready_to_send      = local.ready_to_send,
+                                vehicle_id         = pl.vehicle_id ?: local.vehicle_id,
+                                vehicle_plate      = pl.vehicle_plate ?: local.vehicle_plate,
+                                position_id        = if (keepLocal) local.position_id else (pl.position_id ?: local.position_id),
+                                position           = if (keepLocal) local.position else (pl.position ?: local.position),
+                                total_spools_count = actualCount,
+                                synced             = if (keepLocal) false else pl.synced
                             )
                         }
                         val newPLCount = mergedPLs.count { it.packing_list_id !in localPLs }
@@ -1282,13 +1287,13 @@ class MainActivity : AppCompatActivity() {
         when (val result = parseQr(code)) {
             is QrResult.Spool -> {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                val spools = ServiceLocator.smsSpoolDao.getByCode(projectId, result.spoolCode)
                 val spool = if (result.spoolSuffix != null)
-                    spools.find { it.spool_suffix == result.spoolSuffix } ?: spools.firstOrNull()
+                    ServiceLocator.smsSpoolDao.findByCodeAndSuffix(projectId, result.spoolCode, result.spoolSuffix)
                 else
-                    spools.firstOrNull()
+                    ServiceLocator.smsSpoolDao.getByCode(projectId, result.spoolCode).firstOrNull()
                 if (spool != null) {
                     showScanRegisteredDialog(getString(R.string.scan_result_spool_registered, spool.displayCode))
+                    warnIfRevisionMismatch(spool.spool_code, spool.spool_suffix, result.revision, spool.revision)
                     GpsHelper.captureAndSaveSpoolLocation(this@MainActivity, spool.spool_id)
                     PositionHelper.applyTerminalPosition(spool.spool_id)
                     ServiceLocator.smsSpoolDao.backfillSitAndRevision(spool.spool_id, result.sitNumber, result.revision)
@@ -1333,6 +1338,39 @@ class MainActivity : AppCompatActivity() {
             }
             is QrResult.VehicleBadge, is QrResult.Unknown -> { /* ignore on non-scanner screens */ }
         }
+    }
+
+    /** Same check as [com.example.hassiwrapper.ui.qrscanner.QrScannerFragment.warnIfRevisionMismatch] —
+     *  the global scan handler bypasses that fragment, so it needs its own copy. On mismatch, offers
+     *  to raise an incidencia so it reaches supervisors. */
+    private fun warnIfRevisionMismatch(spoolCode: String, spoolSuffix: String?, scannedRevision: String?, storedRevision: String?) {
+        val scanned = scannedRevision?.trim()?.takeIf { it.isNotEmpty() }
+        val stored = storedRevision?.trim()?.takeIf { it.isNotEmpty() }
+        if (scanned == null || stored == null || scanned.equals(stored, ignoreCase = true)) return
+        val warning = getString(R.string.qr_scanner_revision_mismatch, scanned, stored)
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.revision_mismatch_dialog_title)
+            .setMessage(warning)
+            .setPositiveButton(R.string.revision_mismatch_dialog_create) { _, _ ->
+                lifecycleScope.launch {
+                    val incident = ServiceLocator.smsIncidentService.createRevisionMismatchIncident(
+                        spoolCode, spoolSuffix, scanned, stored
+                    )
+                    if (incident != null) {
+                        ServiceLocator.auditLogService.log(
+                            com.example.hassiwrapper.services.AuditLogService.INCIDENCIA_CREADA,
+                            com.example.hassiwrapper.services.AuditLogService.ENTITY_INCIDENCIA,
+                            incident.id, incident.spool_code, projectId = incident.project_id
+                        )
+                        Toast.makeText(this@MainActivity, R.string.revision_mismatch_incident_created, Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(this@MainActivity, R.string.revision_mismatch_incident_exists, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .setNegativeButton(R.string.revision_mismatch_dialog_dismiss, null)
+            .show()
     }
 
     private fun showScanRegisteredDialog(message: String) {

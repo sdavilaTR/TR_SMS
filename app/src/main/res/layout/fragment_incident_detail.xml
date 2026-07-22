@@ -75,6 +75,15 @@
         </androidx.cardview.widget.CardView>
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnApproveReprint"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginBottom="10dp"
+            android:text="@string/incident_btn_approve_reprint"
+            android:textAllCaps="false"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCloseIncident"
             android:layout_width="match_parent"
             android:layout_height="50dp"

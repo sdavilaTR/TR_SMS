@@ -247,10 +247,9 @@ interface SmsSpecDao {
     suspend fun deleteAll()
 }
 
-/** Spool count per raw location combo (packing list, zone, position, sub-position).
- *  Few distinct combos exist per project, so the caller resolves each combo to a
- *  position code in Kotlin instead of paying per-row SQL subqueries over 100k+ rows. */
-data class SpoolComboCount(val plId: Long?, val zone: String?, val positionId: Int?, val subId: Long?, val cnt: Int)
+/** Spool count per (scanned_from, sub_position) combo — the real scan location, not the
+ *  registered zone/position_id (see SPOOL_LIST_FILTER). */
+data class SpoolComboCount(val scannedFrom: String?, val subId: Long?, val cnt: Int)
 
 /** Per-sub-position synced/pending split, for the Guest home zone KPI breakdown. */
 data class SubPositionSyncCount(val subPositionId: Long?, val confirmed: Int, val pending: Int)
@@ -273,9 +272,14 @@ private const val SPOOL_RESOLVED_POSITION = """
 
 // Only used by CreateSpoolFragment's Inventario Spools tab, which must show scanned-only
 // spools (see MIGRATION_35_36) — not shared with any full/unfiltered spool query.
+// Position filter buckets by scanned_from (real GPS-capture scan location), not by
+// SPOOL_RESOLVED_POSITION (zone/position_id) — that "registered" position can be bulk-overwritten
+// by PCA reconciliation imports with no real scan behind it, which disagreed with ATLAS's own
+// scan-based zone counts. scanned=1 guarantees scanned_from is populated (written atomically), so
+// no fallback is needed or wanted here.
 private const val SPOOL_LIST_FILTER = """
     s.project_id = :projectId AND s.is_active = 1 AND s.scanned = 1
-    AND (:positionCode IS NULL OR $SPOOL_RESOLVED_POSITION = UPPER(:positionCode))
+    AND (:positionCode IS NULL OR UPPER(s.scanned_from) = UPPER(:positionCode))
     AND (:subPositionId IS NULL OR s.sub_position_id = :subPositionId)
     AND (:query = '' OR s.spool_code LIKE '%' || :query || '%'
          OR s.spool_suffix LIKE '%' || :query || '%'
@@ -294,11 +298,10 @@ interface SmsSpoolDao {
 
     // Feeds CreateSpoolFragment's Inventario zone chart — scanned-only, same reasoning as SPOOL_LIST_FILTER.
     @Query("""
-        SELECT s.packing_list_id AS plId, s.zone AS zone, s.position_id AS positionId,
-               s.sub_position_id AS subId, COUNT(*) AS cnt
+        SELECT UPPER(s.scanned_from) AS scannedFrom, s.sub_position_id AS subId, COUNT(*) AS cnt
         FROM sms_spool s
         WHERE s.project_id = :projectId AND s.is_active = 1 AND s.scanned = 1
-        GROUP BY plId, zone, positionId, subId
+        GROUP BY scannedFrom, subId
     """)
     suspend fun countByLocationCombo(projectId: Int): List<SpoolComboCount>
 
@@ -382,12 +385,14 @@ interface SmsSpoolDao {
     suspend fun countScannedByProjectAndZone(projectId: Int, location: String): Int
 
     // Guest home zone KPIs: splits spools resolved to this terminal's position into
-    // already server-confirmed (synced=1) vs locally scanned/moved but not yet uploaded
-    // (synced=0). Deliberately omits the scanned=1 filter used above — that flag is an
-    // unrelated backend PCA-import marker, not whether this terminal touched the spool.
+    // already server-confirmed (scanned=1 AND synced=1) vs locally scanned/moved but not yet
+    // uploaded (synced=0). `scanned` is set server-side only when a terminal uploads a spool
+    // location (SyncService.uploadSmsSpoolLocations, see MIGRATION_35_36) — it IS the real
+    // "this app scanned it" signal, not PCA master-data noise. Without it, "confirmados" counted
+    // every spool the backend/PCA already resolved to this zone, scanned or not.
     @Query("""
         SELECT COUNT(*) FROM sms_spool s
-        WHERE s.project_id = :projectId AND s.is_active = 1 AND s.synced = 1
+        WHERE s.project_id = :projectId AND s.is_active = 1 AND s.synced = 1 AND s.scanned = 1
         AND $SPOOL_RESOLVED_POSITION = UPPER(:location)
     """)
     suspend fun countConfirmedByProjectAndZone(projectId: Int, location: String): Int
@@ -402,7 +407,7 @@ interface SmsSpoolDao {
     // Per-sub-position (GCP) breakdown within this zone, for projects that use them.
     @Query("""
         SELECT s.sub_position_id AS subPositionId,
-               SUM(CASE WHEN s.synced = 1 THEN 1 ELSE 0 END) AS confirmed,
+               SUM(CASE WHEN s.synced = 1 AND s.scanned = 1 THEN 1 ELSE 0 END) AS confirmed,
                SUM(CASE WHEN s.synced = 0 THEN 1 ELSE 0 END) AS pending
         FROM sms_spool s
         WHERE s.project_id = :projectId AND s.is_active = 1
@@ -810,6 +815,12 @@ interface SmsIncidentDao {
 
     @Query("UPDATE sms_incident SET status = 'CLOSED', closed_by = :closedBy, closed_at = :closedAt, synced = 0 WHERE id = :id")
     suspend fun close(id: Long, closedBy: String?, closedAt: String)
+
+    @Query("UPDATE sms_incident SET status = :status, synced = 0 WHERE id = :id")
+    suspend fun setStatus(id: Long, status: String)
+
+    @Query("SELECT * FROM sms_incident WHERE project_id = :projectId AND spool_code = :spoolCode AND spool_suffix IS :spoolSuffix AND incident_type = 'REVISION_MISMATCH' AND status != 'CLOSED' LIMIT 1")
+    suspend fun getOpenRevisionMismatch(projectId: Int, spoolCode: String, spoolSuffix: String?): SmsIncidentEntity?
 
     @Query("DELETE FROM sms_incident WHERE id = :id")
     suspend fun deleteById(id: Long)

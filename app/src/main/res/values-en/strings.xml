@@ -577,6 +577,21 @@
     <string name="settings_kiosk_disabled">Kiosk Mode disabled</string>
     <string name="settings_close_app">Close application</string>
     <string name="settings_close_app_confirm">Do you want to close the application?</string>
+    <string name="settings_geofence_title">Area geofence (KML)</string>
+    <string name="settings_geofence_desc">Import an area boundary (workshop, laydown…) from a KML file and choose whether scanning inside it requires geolocation or is forced (no GPS check).</string>
+    <string name="settings_geofence_mode_geoloc">Geolocation</string>
+    <string name="settings_geofence_mode_forced">Forced</string>
+    <string name="settings_geofence_import_kml">Import KML…</string>
+    <string name="settings_geofence_save">Save</string>
+    <string name="settings_geofence_clear">Remove</string>
+    <string name="settings_geofence_status_none">No geofence configured for this area.</string>
+    <string name="settings_geofence_status_current">Current geofence: %1$d points, mode %2$s.</string>
+    <string name="settings_geofence_status_pending">KML imported: %1$d points (not saved yet).</string>
+    <string name="settings_geofence_no_areas">No areas synced for this project.</string>
+    <string name="settings_geofence_parse_error">Could not read the polygon from the KML file.</string>
+    <string name="settings_geofence_saved">Geofence saved.</string>
+    <string name="settings_geofence_cleared">Geofence removed.</string>
+    <string name="settings_geofence_pick_area_first">Select an area first.</string>
     <string name="vehicles_empty">No vehicles loaded.</string>
     <string name="vehicles_error_prefix">Error: %s</string>
     <string name="vehicles_error_http">HTTP %d</string>
@@ -969,4 +984,12 @@
     <string name="event_label_transfer_received">Receipt recorded</string>
     <string name="event_label_incident_created">Incident created</string>
     <string name="event_label_incident_closed">Incident closed</string>
+
+    <!-- Spool Map -->
+    <string name="menu_map">Map</string>
+    <string name="spool_map_empty">No spools with a recorded GPS location</string>
+    <string name="spool_map_refresh">Refresh map</string>
+    <string name="home_btn_map">View Spool Map</string>
+    <string name="home_qa_map">Spool Map</string>
+    <string name="home_btn_inventario">View my zone\'s inventory</string>
 </resources>

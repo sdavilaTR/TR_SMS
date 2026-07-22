@@ -21,7 +21,7 @@
     <string name="qr_scanner_result_id_detail">ID: %1$s</string>
     <string name="qr_scanner_result_spool_syncing">Sincronización en curso — el spool puede no estar descargado aún. Espere a que termine e inténtelo de nuevo.</string>
     <string name="qr_scanner_revision_mismatch">!!!Revisión física escaneada (%1$s) distinta a la registrada (%2$s)</string>
-    <string name="revision_mismatch_dialog_title">Revisión distinta detectada</string>
+    <string name="revision_mismatch_dialog_title">Revisión distinta detectada!!</string>
     <string name="revision_mismatch_dialog_create">Crear incidencia</string>
     <string name="revision_mismatch_dialog_dismiss">Descartar</string>
     <string name="revision_mismatch_incident_created">Incidencia creada y notificada a supervisores</string>
@@ -225,6 +225,21 @@
     <string name="settings_kiosk_disabled">Modo Kiosko desactivado</string>
     <string name="settings_close_app">Cerrar aplicación</string>
     <string name="settings_close_app_confirm">¿Desea cerrar la aplicación?</string>
+    <string name="settings_geofence_title">Geofence de área (KML)</string>
+    <string name="settings_geofence_desc">Importa el límite de un área (taller, laydown…) desde un archivo KML y define si el escaneo dentro de ella requiere geolocalización o es forzado (sin comprobación GPS).</string>
+    <string name="settings_geofence_mode_geoloc">Geolocalización</string>
+    <string name="settings_geofence_mode_forced">Forzado</string>
+    <string name="settings_geofence_import_kml">Importar KML…</string>
+    <string name="settings_geofence_save">Guardar</string>
+    <string name="settings_geofence_clear">Quitar</string>
+    <string name="settings_geofence_status_none">Sin geofence configurado para esta área.</string>
+    <string name="settings_geofence_status_current">Geofence actual: %1$d puntos, modo %2$s.</string>
+    <string name="settings_geofence_status_pending">KML importado: %1$d puntos (sin guardar).</string>
+    <string name="settings_geofence_no_areas">No hay áreas sincronizadas para este proyecto.</string>
+    <string name="settings_geofence_parse_error">No se pudo leer el polígono del archivo KML.</string>
+    <string name="settings_geofence_saved">Geofence guardado.</string>
+    <string name="settings_geofence_cleared">Geofence eliminado.</string>
+    <string name="settings_geofence_pick_area_first">Selecciona un área primero.</string>
     <string name="vehicles_hint_search">Buscar vehículo…</string>
     <string name="vehicles_count">%d vehículos</string>
     <string name="vehicles_packet_list_label">Packet List asociado</string>
@@ -993,5 +1008,13 @@
     <string name="event_label_transfer_received">Recepción registrada</string>
     <string name="event_label_incident_created">Incidencia creada</string>
     <string name="event_label_incident_closed">Incidencia cerrada</string>
+
+    <!-- Spool Map -->
+    <string name="menu_map">Mapa</string>
+    <string name="spool_map_empty">No hay spools con ubicación GPS registrada</string>
+    <string name="spool_map_refresh">Actualizar mapa</string>
+    <string name="home_btn_map">Ver Mapa de Spools</string>
+    <string name="home_qa_map">Mapa de Spools</string>
+    <string name="home_btn_inventario">Ver Inventario de mi zona</string>
 
 </resources>

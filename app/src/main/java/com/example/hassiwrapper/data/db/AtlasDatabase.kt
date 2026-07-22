@@ -56,7 +56,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsAuditLogEntity::class,
         SmsSpoolLocationEntity::class
     ],
-    version = 40,
+    version = 41,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -946,6 +946,17 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v40 → v41: geofence columns on sms_area (Sinopec X workshop KML, local-only for now —
+        // no backend endpoint yet, populated via KML import in-app; scan flow will validate GPS
+        // against polygon when geofence_mode = GEOLOCATION).
+        private val MIGRATION_40_41 = object : Migration(40, 41) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 40 → 41: add geofence_polygon/geofence_mode to sms_area")
+                db.execSQL("ALTER TABLE `sms_area` ADD COLUMN `geofence_polygon` TEXT")
+                db.execSQL("ALTER TABLE `sms_area` ADD COLUMN `geofence_mode` TEXT")
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -992,7 +1003,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_36_37,
                         MIGRATION_37_38,
                         MIGRATION_38_39,
-                        MIGRATION_39_40
+                        MIGRATION_39_40,
+                        MIGRATION_40_41
                     )
                     .build()
                 INSTANCE = instance

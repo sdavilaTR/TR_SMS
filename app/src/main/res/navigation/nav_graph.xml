@@ -171,6 +171,7 @@
         app:popExitAnim="@anim/nav_pop_exit" />
 
     <fragment android:id="@+id/eventHistoryFragment" android:name="com.example.hassiwrapper.ui.eventhistory.EventHistoryFragment" android:label="@string/menu_event_history" />
+    <fragment android:id="@+id/spoolMapFragment" android:name="com.example.hassiwrapper.ui.spoolmap.SpoolMapFragment" android:label="@string/menu_map" />
     <fragment android:id="@+id/settingsFragment"   android:name="com.example.hassiwrapper.ui.settings.SettingsFragment"   android:label="@string/menu_settings" />
     <fragment android:id="@+id/incidentsFragment" android:name="com.example.hassiwrapper.ui.incidents.IncidentsFragment" android:label="@string/menu_incidencias">
         <action android:id="@+id/action_incidentsFragment_to_newIncidentFragment" app:destination="@id/newIncidentFragment"

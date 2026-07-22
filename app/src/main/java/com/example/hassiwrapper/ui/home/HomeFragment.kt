@@ -67,6 +67,9 @@ class HomeFragment : Fragment() {
         syncBtn.setOnClickListener {
             findNavController().navigate(R.id.syncFragment)
         }
+        view.findViewById<View>(R.id.cardQuickMap).setOnClickListener {
+            findNavController().navigate(R.id.spoolMapFragment)
+        }
         view.findViewById<View>(R.id.cardSpools).setOnClickListener {
             findNavController().navigate(R.id.action_homeFragment_to_inventarioFragment, bundleOf("initialTab" to 0))
         }
@@ -124,6 +127,12 @@ class HomeFragment : Fragment() {
         }
         view.findViewById<View>(R.id.btnGuestSync).setOnClickListener {
             findNavController().navigate(R.id.syncFragment)
+        }
+        view.findViewById<View>(R.id.btnGuestMap).setOnClickListener {
+            findNavController().navigate(R.id.spoolMapFragment)
+        }
+        view.findViewById<View>(R.id.btnGuestInventario).setOnClickListener {
+            findNavController().navigate(R.id.action_homeFragment_to_inventarioFragment, bundleOf("initialTab" to 0))
         }
         view.findViewById<View>(R.id.btnGuestSettings).setOnClickListener {
             findNavController().navigate(R.id.settingsFragment)
@@ -194,12 +203,14 @@ class HomeFragment : Fragment() {
             return
         }
         counts.forEach { c ->
-            val label = labelById[c.subPositionId] ?: return@forEach
+            val subLabel = labelById[c.subPositionId] ?: return@forEach
+            val label = "$location/$subLabel"
             val tv = TextView(requireContext())
             tv.text = getString(R.string.home_guest_subpos_row, label, c.confirmed, c.pending)
             tv.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.on_surface))
-            tv.textSize = 13f
-            tv.setPadding(4, 4, 4, 4)
+            tv.textSize = 11f
+            tv.gravity = android.view.Gravity.CENTER
+            tv.setPadding(2, 2, 2, 2)
             breakdown.addView(tv)
         }
         breakdown.visibility = View.VISIBLE

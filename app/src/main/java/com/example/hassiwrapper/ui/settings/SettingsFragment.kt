@@ -5,9 +5,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.RadioGroup
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
@@ -22,6 +26,10 @@ import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
+import com.example.hassiwrapper.data.db.entities.SmsAreaEntity
+import com.example.hassiwrapper.services.GeoPolygonPoint
+import com.example.hassiwrapper.services.GeofenceHelper
+import com.example.hassiwrapper.services.KmlParser
 import com.example.hassiwrapper.update.UpdateCheckResult
 import com.example.hassiwrapper.update.UpdateInstaller
 import com.google.android.material.button.MaterialButton
@@ -33,6 +41,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class SettingsFragment : Fragment() {
+
+    private var geofenceAreas: List<SmsAreaEntity> = emptyList()
+    private var pendingKmlPoints: List<GeoPolygonPoint>? = null
+
+    private val kmlPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) handleKmlPicked(uri)
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return inflater.inflate(R.layout.fragment_settings, container, false)
@@ -56,6 +71,7 @@ class SettingsFragment : Fragment() {
         setupAssignedOperator(view)
         setupDebugLocationButton(view)
         setupKioskMode(view)
+        setupGeofenceImport(view)
 
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
@@ -467,6 +483,118 @@ class SettingsFragment : Fragment() {
                     }
                     .show()
             }
+        }
+    }
+
+    // ── Area geofence (KML import) ───────────────────────────────────────
+
+    private fun setupGeofenceImport(view: View) {
+        val spinner = view.findViewById<Spinner>(R.id.spinnerGeofenceArea)
+        val txtStatus = view.findViewById<TextView>(R.id.txtGeofenceStatus)
+        val radioGroup = view.findViewById<RadioGroup>(R.id.radioGeofenceMode)
+        val radioForced = view.findViewById<View>(R.id.radioGeofenceForced)
+        val btnImport = view.findViewById<MaterialButton>(R.id.btnImportKml)
+        val btnSave = view.findViewById<MaterialButton>(R.id.btnSaveGeofence)
+        val btnClear = view.findViewById<MaterialButton>(R.id.btnClearGeofence)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+            geofenceAreas = ServiceLocator.smsAreaDao.getByProject(projectId)
+
+            if (geofenceAreas.isEmpty()) {
+                txtStatus.text = getString(R.string.settings_geofence_no_areas)
+                spinner.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, emptyList<String>())
+                btnImport.isEnabled = false
+                btnSave.isEnabled = false
+                btnClear.isEnabled = false
+                return@launch
+            }
+
+            spinner.adapter = ArrayAdapter(
+                requireContext(), android.R.layout.simple_spinner_dropdown_item, geofenceAreas.map { it.full_path.ifBlank { it.name } }
+            )
+            spinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: android.widget.AdapterView<*>?, v: View?, position: Int, id: Long) {
+                    pendingKmlPoints = null
+                    refreshGeofenceStatus(txtStatus, radioGroup, geofenceAreas[position])
+                }
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            }
+            refreshGeofenceStatus(txtStatus, radioGroup, geofenceAreas[0])
+        }
+
+        btnImport.setOnClickListener {
+            kmlPickerLauncher.launch(arrayOf("*/*"))
+        }
+
+        btnSave.setOnClickListener {
+            val area = geofenceAreas.getOrNull(spinner.selectedItemPosition)
+            if (area == null) {
+                Toast.makeText(requireContext(), R.string.settings_geofence_pick_area_first, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val points = pendingKmlPoints
+            if (points == null) {
+                Toast.makeText(requireContext(), R.string.settings_geofence_parse_error, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val mode = if (radioGroup.checkedRadioButtonId == radioForced.id) GeofenceHelper.MODE_FORCED else GeofenceHelper.MODE_GEOLOCATION
+            viewLifecycleOwner.lifecycleScope.launch {
+                ServiceLocator.smsAreaDao.setGeofence(area.area_id, KmlParser.serialize(points), mode)
+                geofenceAreas = geofenceAreas.map {
+                    if (it.area_id == area.area_id) it.copy(geofence_polygon = KmlParser.serialize(points), geofence_mode = mode) else it
+                }
+                pendingKmlPoints = null
+                refreshGeofenceStatus(txtStatus, radioGroup, geofenceAreas[spinner.selectedItemPosition])
+                Toast.makeText(requireContext(), R.string.settings_geofence_saved, Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        btnClear.setOnClickListener {
+            val area = geofenceAreas.getOrNull(spinner.selectedItemPosition) ?: return@setOnClickListener
+            viewLifecycleOwner.lifecycleScope.launch {
+                ServiceLocator.smsAreaDao.setGeofence(area.area_id, null, null)
+                geofenceAreas = geofenceAreas.map {
+                    if (it.area_id == area.area_id) it.copy(geofence_polygon = null, geofence_mode = null) else it
+                }
+                pendingKmlPoints = null
+                refreshGeofenceStatus(txtStatus, radioGroup, geofenceAreas[spinner.selectedItemPosition])
+                Toast.makeText(requireContext(), R.string.settings_geofence_cleared, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun refreshGeofenceStatus(txtStatus: TextView, radioGroup: RadioGroup, area: SmsAreaEntity) {
+        val polygon = area.geofence_polygon
+        if (polygon == null) {
+            txtStatus.text = getString(R.string.settings_geofence_status_none)
+            radioGroup.check(R.id.radioGeofenceGeoloc)
+        } else {
+            val points = KmlParser.deserialize(polygon)
+            val modeLabel = if (area.geofence_mode == GeofenceHelper.MODE_FORCED)
+                getString(R.string.settings_geofence_mode_forced) else getString(R.string.settings_geofence_mode_geoloc)
+            txtStatus.text = getString(R.string.settings_geofence_status_current, points.size, modeLabel)
+            radioGroup.check(if (area.geofence_mode == GeofenceHelper.MODE_FORCED) R.id.radioGeofenceForced else R.id.radioGeofenceGeoloc)
+        }
+    }
+
+    private fun handleKmlPicked(uri: android.net.Uri) {
+        val view = view ?: return
+        val txtStatus = view.findViewById<TextView>(R.id.txtGeofenceStatus)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val points = withContext(Dispatchers.IO) {
+                try {
+                    requireContext().contentResolver.openInputStream(uri)?.use { KmlParser.parsePolygon(it) }
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            if (points == null || points.size < 3) {
+                Toast.makeText(requireContext(), R.string.settings_geofence_parse_error, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            pendingKmlPoints = points
+            txtStatus.text = getString(R.string.settings_geofence_status_pending, points.size)
         }
     }
 

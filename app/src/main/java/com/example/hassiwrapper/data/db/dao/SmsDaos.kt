@@ -3,6 +3,32 @@ package com.example.hassiwrapper.data.db.dao
 import androidx.room.*
 import com.example.hassiwrapper.data.db.entities.*
 
+/** Row shape for [SmsSpoolLocationDao.getLatestByProject] — one GPS pin per spool. */
+data class SmsSpoolMapMarker(
+    val spool_id: Long,
+    val latitude: Double,
+    val longitude: Double,
+    val captured_at: String,
+    val spool_code: String,
+    val spool_suffix: String?,
+    val revision: String?,
+    val status: String?
+) {
+    val displayCode: String
+        get() {
+            val suffix = spool_suffix?.takeIf { it.isNotBlank() }
+            val base = if (suffix == null || spool_code.endsWith("-$suffix", ignoreCase = true)) spool_code else "$spool_code-$suffix"
+            return if (revision.isNullOrBlank()) base else "$base-$revision"
+        }
+}
+
+/** Row shape for [SmsAreaDao.getGeofences] — used to carry local-only geofence data across an area resync. */
+data class SmsAreaGeofenceRow(
+    val area_id: Long,
+    val geofence_polygon: String?,
+    val geofence_mode: String?
+)
+
 @Dao
 interface SmsAreaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -19,6 +45,12 @@ interface SmsAreaDao {
 
     @Query("DELETE FROM sms_area WHERE project_id = :projectId")
     suspend fun deleteByProject(projectId: Int)
+
+    @Query("SELECT area_id, geofence_polygon, geofence_mode FROM sms_area WHERE project_id = :projectId AND geofence_polygon IS NOT NULL")
+    suspend fun getGeofences(projectId: Int): List<SmsAreaGeofenceRow>
+
+    @Query("UPDATE sms_area SET geofence_polygon = :polygon, geofence_mode = :mode WHERE area_id = :areaId")
+    suspend fun setGeofence(areaId: Long, polygon: String?, mode: String?)
 
     @Query("DELETE FROM sms_area")
     suspend fun deleteAll()
@@ -377,26 +409,33 @@ interface SmsSpoolDao {
     @Query("SELECT COUNT(*) FROM sms_spool WHERE project_id = :projectId AND is_active = 1 AND scanned = 1")
     suspend fun countScannedByProject(projectId: Int): Int
 
+    // scanned=1 guarantees scanned_from was written atomically by the same server round-trip
+    // (see SPOOL_LIST_FILTER) — no packing-list fallback needed, unlike the registered-position path.
     @Query("""
         SELECT COUNT(*) FROM sms_spool
         WHERE project_id = :projectId AND is_active = 1 AND scanned = 1
-        AND (UPPER(zone) = UPPER(:location) OR packing_list_id IN (SELECT packing_list_id FROM sms_packing_list WHERE UPPER(position) = UPPER(:location)))
+        AND UPPER(scanned_from) = UPPER(:location)
     """)
     suspend fun countScannedByProjectAndZone(projectId: Int, location: String): Int
 
     // Guest home zone KPIs: splits spools resolved to this terminal's position into
     // already server-confirmed (scanned=1 AND synced=1) vs locally scanned/moved but not yet
-    // uploaded (synced=0). `scanned` is set server-side only when a terminal uploads a spool
-    // location (SyncService.uploadSmsSpoolLocations, see MIGRATION_35_36) — it IS the real
-    // "this app scanned it" signal, not PCA master-data noise. Without it, "confirmados" counted
-    // every spool the backend/PCA already resolved to this zone, scanned or not.
+    // uploaded (synced=0). `scanned`/`scanned_from` are set server-side only (AddSpoolLocationAsync)
+    // and mirrored locally by the same sync download that clears `synced` — so a synced=1 row is
+    // guaranteed to carry a fresh scanned_from, same reasoning as SPOOL_LIST_FILTER. Buckets by
+    // scanned_from, not SPOOL_RESOLVED_POSITION (zone/position_id) — that "registered" position can
+    // be bulk-overwritten by PCA reconciliation imports with no real scan behind it.
     @Query("""
         SELECT COUNT(*) FROM sms_spool s
         WHERE s.project_id = :projectId AND s.is_active = 1 AND s.synced = 1 AND s.scanned = 1
-        AND $SPOOL_RESOLVED_POSITION = UPPER(:location)
+        AND UPPER(s.scanned_from) = UPPER(:location)
     """)
     suspend fun countConfirmedByProjectAndZone(projectId: Int, location: String): Int
 
+    // Pending = relocated locally (updatePosition/updatePositionAndZone/updateArea), synced=0,
+    // awaiting upload. scanned_from is a server-only field (never written by those local update
+    // paths), so it still reflects the PRE-move location here — must keep resolving position via
+    // SPOOL_RESOLVED_POSITION (zone/position_id, which IS written locally on relocate), not scanned_from.
     @Query("""
         SELECT COUNT(*) FROM sms_spool s
         WHERE s.project_id = :projectId AND s.is_active = 1 AND s.synced = 0
@@ -404,14 +443,20 @@ interface SmsSpoolDao {
     """)
     suspend fun countPendingByProjectAndZone(projectId: Int, location: String): Int
 
-    // Per-sub-position (GCP) breakdown within this zone, for projects that use them.
+    // Per-sub-position (GCP) breakdown within this zone, for projects that use them. Confirmed and
+    // pending intentionally resolve zone differently (see the two queries above): confirmed via
+    // scanned_from (server-authoritative once synced+scanned), pending via SPOOL_RESOLVED_POSITION
+    // (the only locally-fresh signal before the relocate round-trips through sync).
     @Query("""
         SELECT s.sub_position_id AS subPositionId,
-               SUM(CASE WHEN s.synced = 1 AND s.scanned = 1 THEN 1 ELSE 0 END) AS confirmed,
-               SUM(CASE WHEN s.synced = 0 THEN 1 ELSE 0 END) AS pending
+               SUM(CASE WHEN s.synced = 1 AND s.scanned = 1 AND UPPER(s.scanned_from) = UPPER(:location) THEN 1 ELSE 0 END) AS confirmed,
+               SUM(CASE WHEN s.synced = 0 AND $SPOOL_RESOLVED_POSITION = UPPER(:location) THEN 1 ELSE 0 END) AS pending
         FROM sms_spool s
         WHERE s.project_id = :projectId AND s.is_active = 1
-        AND $SPOOL_RESOLVED_POSITION = UPPER(:location)
+        AND (
+            (s.synced = 1 AND s.scanned = 1 AND UPPER(s.scanned_from) = UPPER(:location))
+            OR (s.synced = 0 AND $SPOOL_RESOLVED_POSITION = UPPER(:location))
+        )
         GROUP BY s.sub_position_id
     """)
     suspend fun countByProjectZoneAndSubPosition(projectId: Int, location: String): List<SubPositionSyncCount>
@@ -837,6 +882,22 @@ interface SmsSpoolLocationDao {
     /** Returns locations for a spool, newest first, capped at 2. */
     @Query("SELECT * FROM sms_spool_location WHERE spool_id = :spoolId ORDER BY captured_at DESC LIMIT 2")
     suspend fun getBySpool(spoolId: Long): List<SmsSpoolLocationEntity>
+
+    /** Latest GPS fix per spool for a project — feeds the project-wide spool map. */
+    @Query("""
+        SELECT l.spool_id AS spool_id, l.latitude AS latitude, l.longitude AS longitude,
+               l.captured_at AS captured_at, s.spool_code AS spool_code,
+               s.spool_suffix AS spool_suffix, s.revision AS revision, s.status AS status
+        FROM sms_spool_location l
+        INNER JOIN sms_spool s ON s.spool_id = l.spool_id
+        WHERE s.project_id = :projectId
+        AND l.location_id = (
+            SELECT l2.location_id FROM sms_spool_location l2
+            WHERE l2.spool_id = l.spool_id
+            ORDER BY l2.captured_at DESC LIMIT 1
+        )
+    """)
+    suspend fun getLatestByProject(projectId: Int): List<SmsSpoolMapMarker>
 
     @Query("SELECT * FROM sms_spool_location WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsSpoolLocationEntity>

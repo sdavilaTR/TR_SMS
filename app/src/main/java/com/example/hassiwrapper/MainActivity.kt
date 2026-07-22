@@ -212,6 +212,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.transfersFragment,
                 R.id.incidentsFragment,
                 R.id.eventHistoryFragment,
+                R.id.spoolMapFragment,
                 R.id.settingsFragment -> {
                     navController.navigate(item.itemId)
                 }
@@ -236,6 +237,14 @@ class MainActivity : AppCompatActivity() {
 
         navController.addOnDestinationChangedListener { _, dest, _ ->
             toolbar.title = dest.label
+            // Map screen needs full-width swipe-to-pan; the wide left-edge swipe-to-open-drawer
+            // zone (WideEdgeDrawerLayout, 30% of screen width) otherwise steals those gestures.
+            if (ProfileManager.currentUserRole() != ProfileManager.UserRole.GUEST) {
+                drawerLayout.setDrawerLockMode(
+                    if (dest.id == R.id.spoolMapFragment) DrawerLayout.LOCK_MODE_LOCKED_CLOSED
+                    else DrawerLayout.LOCK_MODE_UNLOCKED
+                )
+            }
             // newPackingListFragment manages its own wedge focus internally
             if (dest.id != R.id.qrScannerFragment && dest.id != R.id.newPackingListFragment) {
                 etGlobalWedge.post {
@@ -1043,7 +1052,15 @@ class MainActivity : AppCompatActivity() {
                         parseAreaEntities(raw, projectId).also { list ->
                             logLookup("areas", r, list.size)
                             if (list.isNotEmpty()) applyLookupIfChanged("areas_$projectId", raw) {
-                                ServiceLocator.smsAreaDao.deleteByProject(projectId); ServiceLocator.smsAreaDao.insertAll(list)
+                                // Geofence columns are local-only (no backend endpoint yet) — carry them
+                                // forward across the delete+reinsert or KML imports get wiped by the next sync.
+                                val geofences = ServiceLocator.smsAreaDao.getGeofences(projectId).associateBy { it.area_id }
+                                val merged = list.map { area ->
+                                    geofences[area.area_id]?.let {
+                                        area.copy(geofence_polygon = it.geofence_polygon, geofence_mode = it.geofence_mode)
+                                    } ?: area
+                                }
+                                ServiceLocator.smsAreaDao.deleteByProject(projectId); ServiceLocator.smsAreaDao.insertAll(merged)
                             }
                         }
                     }

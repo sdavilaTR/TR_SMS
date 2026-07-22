@@ -9,158 +9,171 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true"
-        android:clipToPadding="false"
-        android:clipChildren="false">
-
+    <!-- No ScrollView: the action-card section below shares whatever vertical space is left
+         over (layout_height=0dp + weight), so the whole screen always fits without scrolling. -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="14dp"
+        android:padding="12dp"
         android:clipToPadding="false"
         android:clipChildren="false">
 
-        <!-- Header card (gradient) -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/headerCard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp"
-            app:cardBackgroundColor="@color/primary"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="4dp">
-            <LinearLayout
-                android:id="@+id/headerContent"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_nav_header_gradient"
-                android:orientation="vertical"
-                android:paddingStart="18dp"
-                android:paddingEnd="18dp"
-                android:paddingTop="14dp"
-                android:paddingBottom="14dp">
-
-                <TextView
-                    android:id="@+id/txtGuestUserName"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="—"
-                    android:textColor="#FFFFFFFF"
-                    android:textSize="24sp"
-                    android:textStyle="bold"
-                    android:maxLines="1"
-                    android:ellipsize="end" />
-
-                <TextView
-                    android:id="@+id/txtGuestLocation"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=""
-                    android:textColor="#CCffffff"
-                    android:textSize="14sp"
-                    android:layout_marginTop="2dp"
-                    android:visibility="gone" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Zone KPI row: confirmed (synced) vs pending (scanned, not yet synced) -->
+        <!-- Header row: narrower terminal banner (+ sub-position breakdown filling the gap
+             below it) on the left, the two zone KPIs stacked on the right. -->
         <LinearLayout
-            android:id="@+id/guestZoneStatsRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="8dp"
-            android:visibility="gone">
+            android:layout_marginBottom="8dp">
 
-            <com.google.android.material.card.MaterialCardView
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="5dp"
-                app:cardBackgroundColor="@color/granted_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp">
+                android:layout_weight="3"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <!-- Header card (gradient) -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/headerCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardBackgroundColor="@color/primary"
+                    app:cardCornerRadius="18dp"
+                    app:cardElevation="4dp">
+                    <LinearLayout
+                        android:id="@+id/headerContent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_nav_header_gradient"
+                        android:orientation="vertical"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:paddingTop="12dp"
+                        android:paddingBottom="12dp">
+
+                        <TextView
+                            android:id="@+id/txtGuestUserName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="—"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            android:maxLines="1"
+                            android:ellipsize="end" />
+
+                        <TextView
+                            android:id="@+id/txtGuestLocation"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text=""
+                            android:textColor="#CCffffff"
+                            android:textSize="13sp"
+                            android:layout_marginTop="2dp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
+                <!-- Per sub-position (GCP) breakdown — only populated/shown when the project
+                     defines them. Sits in the gap left below the (shorter) banner, right next
+                     to the pending/blue KPI card in the column beside it. -->
                 <LinearLayout
+                    android:id="@+id/guestSubPositionBreakdown"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:padding="8dp">
-                    <TextView
-                        android:id="@+id/txtGuestZoneConfirmedCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="@color/green"
-                        android:textSize="24sp"
-                        android:textStyle="bold" />
-                    <TextView
-                        android:id="@+id/txtGuestZoneConfirmedLabel"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/home_guest_zone_confirmed"
-                        android:textColor="@color/on_surface"
-                        android:textSize="12sp"
-                        android:gravity="center" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                    android:paddingTop="4dp"
+                    android:visibility="gone" />
 
-            <com.google.android.material.card.MaterialCardView
+            </LinearLayout>
+
+            <!-- Zone KPI stack: confirmed (synced) on top, pending (scanned, not yet synced)
+                 below. Stretches to match the height of the banner+breakdown column. -->
+            <LinearLayout
+                android:id="@+id/guestZoneStatsRow"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="5dp"
-                app:cardBackgroundColor="@color/surface_variant"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/primary"
-                app:strokeWidth="1dp">
-                <LinearLayout
+                android:layout_height="match_parent"
+                android:layout_weight="2"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:padding="8dp">
-                    <TextView
-                        android:id="@+id/txtGuestZonePendingCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="@color/primary"
-                        android:textSize="24sp"
-                        android:textStyle="bold" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/home_guest_zone_pending"
-                        android:textColor="@color/on_surface"
-                        android:textSize="12sp"
-                        android:gravity="center" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginBottom="5dp"
+                    app:cardBackgroundColor="@color/granted_bg"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="2dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:gravity="center">
+                        <TextView
+                            android:id="@+id/txtGuestZoneConfirmedCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="@color/green"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/txtGuestZoneConfirmedLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/home_guest_zone_confirmed"
+                            android:textColor="@color/on_surface"
+                            android:textSize="10sp"
+                            android:gravity="center" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    app:cardBackgroundColor="@color/surface_variant"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="2dp"
+                    app:strokeColor="@color/primary"
+                    app:strokeWidth="1dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:gravity="center">
+                        <TextView
+                            android:id="@+id/txtGuestZonePendingCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="@color/primary"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/home_guest_zone_pending"
+                            android:textColor="@color/on_surface"
+                            android:textSize="10sp"
+                            android:gravity="center" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
 
         </LinearLayout>
 
-        <!-- Per sub-position (GCP) breakdown — only populated/shown when the project defines them.
-             Row count is data-driven (however many sub-positions a project has), so this section
-             lives inside the ScrollView rather than competing with the action cards for a fixed
-             share of screen height. -->
-        <LinearLayout
-            android:id="@+id/guestSubPositionBreakdown"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="8dp"
-            android:visibility="gone" />
-
-        <!-- 3 action cards — fixed comfortable min height each, not stretched/squeezed to fill -->
+        <!-- 3 action cards — share the remaining vertical space evenly (slightly smaller than
+             before, since the header row above now also competes for room). -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="0dp"
+            android:layout_weight="1"
             android:orientation="vertical"
             android:clipChildren="false"
             android:clipToPadding="false">
@@ -169,13 +182,13 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardGuestSend"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:minHeight="96dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginBottom="6dp"
                 android:clickable="true"
                 android:focusable="true"
                 app:cardBackgroundColor="@color/surface_variant"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="3dp"
                 app:strokeColor="@color/primary"
                 app:strokeWidth="2dp">
@@ -185,7 +198,7 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
                     <View
-                        android:layout_width="10dp"
+                        android:layout_width="8dp"
                         android:layout_height="match_parent"
                         android:background="@color/primary" />
                     <LinearLayout
@@ -193,15 +206,15 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="10dp">
+                        android:padding="8dp">
                         <LinearLayout
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:background="@drawable/bg_kpi_primary"
                             android:gravity="center">
                             <ImageView
-                                android:layout_width="28dp"
-                                android:layout_height="28dp"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
                                 android:src="@drawable/ic_package_qr"
                                 app:tint="@color/primary"
                                 android:contentDescription="@null" />
@@ -209,10 +222,10 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
+                            android:layout_marginTop="4dp"
                             android:text="@string/home_qa_send"
                             android:textColor="@color/on_surface"
-                            android:textSize="22sp"
+                            android:textSize="19sp"
                             android:textStyle="bold"
                             android:gravity="center"
                             android:maxLines="1" />
@@ -224,13 +237,13 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardGuestReceive"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:minHeight="96dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginBottom="6dp"
                 android:clickable="true"
                 android:focusable="true"
                 app:cardBackgroundColor="@color/granted_bg"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="3dp"
                 app:strokeColor="@color/green"
                 app:strokeWidth="2dp">
@@ -240,7 +253,7 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
                     <View
-                        android:layout_width="10dp"
+                        android:layout_width="8dp"
                         android:layout_height="match_parent"
                         android:background="@color/green" />
                     <LinearLayout
@@ -248,15 +261,15 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="10dp">
+                        android:padding="8dp">
                         <LinearLayout
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:background="@drawable/bg_kpi_green"
                             android:gravity="center">
                             <ImageView
-                                android:layout_width="28dp"
-                                android:layout_height="28dp"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
                                 android:src="@drawable/ic_download_24"
                                 app:tint="@color/green"
                                 android:contentDescription="@null" />
@@ -264,10 +277,10 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
+                            android:layout_marginTop="4dp"
                             android:text="@string/home_qa_transfers"
                             android:textColor="@color/on_surface"
-                            android:textSize="22sp"
+                            android:textSize="19sp"
                             android:textStyle="bold"
                             android:gravity="center"
                             android:maxLines="1" />
@@ -279,12 +292,12 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardGuestNewIncident"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="96dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
                 android:clickable="true"
                 android:focusable="true"
                 app:cardBackgroundColor="@color/denied_bg"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="3dp"
                 app:strokeColor="@color/error"
                 app:strokeWidth="2dp">
@@ -294,7 +307,7 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
                     <View
-                        android:layout_width="10dp"
+                        android:layout_width="8dp"
                         android:layout_height="match_parent"
                         android:background="@color/error" />
                     <LinearLayout
@@ -302,15 +315,15 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="10dp">
+                        android:padding="8dp">
                         <LinearLayout
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
                             android:background="@drawable/bg_kpi_error"
                             android:gravity="center">
                             <ImageView
-                                android:layout_width="28dp"
-                                android:layout_height="28dp"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
                                 android:src="@drawable/ic_alert_24"
                                 app:tint="@color/error"
                                 android:contentDescription="@null" />
@@ -318,10 +331,10 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
+                            android:layout_marginTop="4dp"
                             android:text="@string/home_qa_new_incident"
                             android:textColor="@color/on_surface"
-                            android:textSize="22sp"
+                            android:textSize="19sp"
                             android:textStyle="bold"
                             android:gravity="center"
                             android:maxLines="1" />
@@ -331,33 +344,74 @@
 
         </LinearLayout>
 
-        <!-- Bottom bar -->
+        <!-- Bottom bar: sync gets its own full-width row so its label never gets squeezed by
+             the icon buttons. Icon buttons share a second row, evenly spaced. -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGuestSync"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
+            android:text="@string/home_btn_sync"
+            android:textAllCaps="false"
+            android:textSize="15sp"
+            app:icon="@drawable/ic_sync"
+            app:iconGravity="textStart"
+            app:iconSize="22dp"
+            app:iconPadding="6dp"
+            app:cornerRadius="16dp" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="8dp"
             android:gravity="center_vertical">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnGuestSync"
+                android:id="@+id/btnGuestMap"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="0dp"
-                android:layout_height="56dp"
+                android:layout_height="52dp"
                 android:layout_weight="1"
-                android:text="@string/home_btn_sync"
-                android:textAllCaps="false"
-                android:textSize="15sp"
-                app:icon="@drawable/ic_sync"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
+                android:text=""
+                app:icon="@drawable/ic_map_24"
+                app:iconTint="@color/primary"
+                app:iconSize="24dp"
+                app:iconPadding="0dp"
                 app:iconGravity="textStart"
-                app:iconSize="22dp"
-                app:iconPadding="6dp"
-                app:cornerRadius="16dp" />
+                app:cornerRadius="16dp"
+                android:contentDescription="@string/home_btn_map" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGuestInventario"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
+                android:text=""
+                app:icon="@drawable/ic_clipboard_check"
+                app:iconTint="@color/primary"
+                app:iconSize="24dp"
+                app:iconPadding="0dp"
+                app:iconGravity="textStart"
+                app:cornerRadius="16dp"
+                android:contentDescription="@string/home_btn_inventario" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnGuestSettings"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
                 android:layout_marginStart="10dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
@@ -378,13 +432,12 @@
                 android:layout_marginStart="10dp"
                 android:src="@drawable/ic_qr_scan"
                 app:backgroundTint="@color/green"
-                app:fabCustomSize="56dp"
-                app:maxImageSize="28dp"
+                app:fabCustomSize="52dp"
+                app:maxImageSize="26dp"
                 app:elevation="4dp"
                 android:contentDescription="@string/qr_scan_button" />
 
         </LinearLayout>
 
     </LinearLayout>
-    </ScrollView>
 </FrameLayout>

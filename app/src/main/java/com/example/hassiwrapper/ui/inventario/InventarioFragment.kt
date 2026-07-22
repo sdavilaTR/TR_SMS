@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ui.common.SwipeTabContainer
 import com.example.hassiwrapper.ui.createspool.CreateSpoolFragment
@@ -21,6 +22,16 @@ class InventarioFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val tabLayout = view.findViewById<TabLayout>(R.id.tabInventario)
+
+        // GUEST only gets the terminal's zone-scoped spool list (see CreateSpoolFragment),
+        // never Packing Lists / Vehicles — hide the tab strip entirely and pin the Spools tab.
+        val isGuest = ProfileManager.currentUserRole() == ProfileManager.UserRole.GUEST
+        if (isGuest) {
+            tabLayout.visibility = View.GONE
+            if (savedInstanceState == null) showTab(0)
+            return
+        }
+
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) = showTab(tab.position)
             override fun onTabUnselected(tab: TabLayout.Tab) {}

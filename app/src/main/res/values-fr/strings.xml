@@ -577,6 +577,21 @@
     <string name="settings_kiosk_disabled">Mode Kiosque désactivé</string>
     <string name="settings_close_app">Fermer l\'application</string>
     <string name="settings_close_app_confirm">Voulez-vous fermer l\'application ?</string>
+    <string name="settings_geofence_title">Géorepérage de zone (KML)</string>
+    <string name="settings_geofence_desc">Importez la limite d\'une zone (atelier, laydown…) depuis un fichier KML et choisissez si le scan à l\'intérieur nécessite la géolocalisation ou est forcé (sans vérification GPS).</string>
+    <string name="settings_geofence_mode_geoloc">Géolocalisation</string>
+    <string name="settings_geofence_mode_forced">Forcé</string>
+    <string name="settings_geofence_import_kml">Importer KML…</string>
+    <string name="settings_geofence_save">Enregistrer</string>
+    <string name="settings_geofence_clear">Supprimer</string>
+    <string name="settings_geofence_status_none">Aucun géorepérage configuré pour cette zone.</string>
+    <string name="settings_geofence_status_current">Géorepérage actuel : %1$d points, mode %2$s.</string>
+    <string name="settings_geofence_status_pending">KML importé : %1$d points (non enregistré).</string>
+    <string name="settings_geofence_no_areas">Aucune zone synchronisée pour ce projet.</string>
+    <string name="settings_geofence_parse_error">Impossible de lire le polygone du fichier KML.</string>
+    <string name="settings_geofence_saved">Géorepérage enregistré.</string>
+    <string name="settings_geofence_cleared">Géorepérage supprimé.</string>
+    <string name="settings_geofence_pick_area_first">Sélectionnez d\'abord une zone.</string>
     <string name="vehicles_empty">Aucun véhicule chargé.</string>
     <string name="vehicles_error_prefix">Erreur : %s</string>
     <string name="vehicles_error_http">HTTP %d</string>
@@ -969,4 +984,12 @@
     <string name="event_label_transfer_received">Réception enregistrée</string>
     <string name="event_label_incident_created">Incident créé</string>
     <string name="event_label_incident_closed">Incident fermé</string>
+
+    <!-- Spool Map -->
+    <string name="menu_map">Carte</string>
+    <string name="spool_map_empty">Aucun spool avec une localisation GPS enregistrée</string>
+    <string name="spool_map_refresh">Actualiser la carte</string>
+    <string name="home_btn_map">Voir la carte des spools</string>
+    <string name="home_qa_map">Carte des spools</string>
+    <string name="home_btn_inventario">Voir l\'inventaire de ma zone</string>
 </resources>

@@ -24,6 +24,7 @@ class AuditLogService(
         const val TRANSFERENCIA_RECIBIDA = "TRANSFERENCIA_RECIBIDA"
         const val INCIDENCIA_CREADA      = "INCIDENCIA_CREADA"
         const val INCIDENCIA_CERRADA     = "INCIDENCIA_CERRADA"
+        const val INCIDENCIA_REIMPRESION_APROBADA = "INCIDENCIA_REIMPRESION_APROBADA"
 
         const val ENTITY_SPOOL         = "SPOOL"
         const val ENTITY_PL            = "PL"

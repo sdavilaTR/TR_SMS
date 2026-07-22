@@ -105,7 +105,11 @@ data class SpoolDto(
     // PCA scan flag (Tr.ATLAS.Domain.Models.Sms.SpoolDto.Scanned), present on every row
     // of the unfiltered GET /spools response; null means never scanned. Local queries
     // filter on this (scanned=1) instead of the API doing any server-side filtering.
-    @SerializedName(value = "scanned")                                               val scanned: Boolean? = null
+    @SerializedName(value = "scanned")                                               val scanned: Boolean? = null,
+    // Real scan location/time (sms_spool.scanned_from/scanned_at) — set server-side only by
+    // AddSpoolLocationAsync (GPS Spool Location capture), independent of `zone`/`position_id`.
+    @SerializedName(value = "scanned_from",      alternate = ["scannedFrom"])        val scannedFrom: String? = null,
+    @SerializedName(value = "scanned_at",        alternate = ["scannedAt"])          val scannedAt: String? = null
 ) {
     private fun String?.toLongOrNullSafe(): Long? =
         this?.trim()?.takeIf { it.isNotEmpty() }?.toDoubleOrNull()?.toLong()
@@ -195,7 +199,9 @@ data class SpoolDto(
         packing_list_name = packingListName?.takeIf { it.isNotBlank() },
         sit_number      = sitNumber?.takeIf { it.isNotBlank() },
         revision        = resolveRevision(),
-        scanned         = scanned ?: false
+        scanned         = scanned ?: false,
+        scanned_from    = scannedFrom?.takeIf { it.isNotBlank() },
+        scanned_at      = scannedAt
     )
 }
 

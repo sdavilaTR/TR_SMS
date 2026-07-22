@@ -163,7 +163,13 @@ data class SmsSpoolEntity(
     val sub_position_id: Long? = null,
     val sit_number: String? = null,   // JAFURAH "sit" number — sheet/page of the line drawing
     val revision: String? = null,     // fab/drawing revision code (e.g. "01A")
-    val scanned: Boolean = false      // backend PCA scan flag — drives KPI/Inventario scanned-only filtering
+    val scanned: Boolean = false,     // backend PCA scan flag — drives KPI/Inventario scanned-only filtering
+    // Real physical scan location (sms_spool.scanned_from/scanned_at), written server-side only
+    // by AddSpoolLocationAsync (GPS Spool Location capture) — independent of `zone`/`position_id`,
+    // which is the "registered" position and can be bulk-overwritten by PCA import/reconciliation
+    // without any real scan. Inventario's zone chart/filter bucket by this, not by zone/position_id.
+    val scanned_from: String? = null,
+    val scanned_at: String? = null
 ) {
     /** Full physical-tag style title: CODE[-SUFFIX][-REVISION], e.g. "774-BD-20041-008-SP03-01A".
      *  Some backends (e.g. JAFURAH) bake the suffix into spool_code itself
@@ -303,7 +309,13 @@ data class SmsIncidentEntity(
     /** Whether [photo_path] has been uploaded — tracked separately from [synced] since the photo upload is a second, independently-retried call. */
     val photo_synced: Boolean = false,
     /** Code of the terminal (device) that created the incident — from config `device_code` at creation time. */
-    val device_code: String? = null
+    val device_code: String? = null,
+    /** DAMAGE (manual, default) | REVISION_MISMATCH (auto-raised on scan). Local-only — backend has no column for it yet, so it never leaves the device; [description] carries the human-readable text server-side. */
+    val incident_type: String = "DAMAGE",
+    /** Revision read off the physical tag at scan time. Only set for REVISION_MISMATCH. */
+    val scanned_revision: String? = null,
+    /** Revision on record (sms_spool.revision) at scan time. Only set for REVISION_MISMATCH. */
+    val stored_revision: String? = null
 )
 
 @Entity(tableName = "sms_audit_log")

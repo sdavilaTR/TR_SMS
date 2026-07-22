@@ -64,7 +64,6 @@ class CreateSpoolFragment : Fragment() {
     private var searchQuery = ""
     private var showZonePct = false
     private val chartCountViews = mutableListOf<Triple<TextView, Int, Int>>()
-    private var plPositions: Map<Long, String?> = emptyMap()
     private var positionCodes: Map<Int, String> = emptyMap()
     private var subPositionLabels: Map<Long, String> = emptyMap()
     private var subPositionPositionIds: Map<Long, Int> = emptyMap()
@@ -183,7 +182,7 @@ class CreateSpoolFragment : Fragment() {
             // the SQL count (full scan with LIKEs) is only paid while searching.
             val total = if (searchQuery.isEmpty()) {
                 comboCounts.asSequence()
-                    .filter { code == null || resolveComboPosition(it) == code }
+                    .filter { code == null || it.scannedFrom == code }
                     .filter { subId == null || it.subId == subId }
                     .sumOf { it.cnt }
             } else {
@@ -383,8 +382,9 @@ class CreateSpoolFragment : Fragment() {
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    /** Loads chart aggregates from one GROUP BY over the raw location combos (covered by
-     *  index, few result rows) and resolves each combo to a position code in Kotlin. */
+    /** Loads chart aggregates from one GROUP BY over (scanned_from, sub_position) combos
+     *  (covered by index, few result rows) — bucketed by the real scan location, not by
+     *  registered zone/position_id (see SPOOL_LIST_FILTER). */
     private suspend fun refreshChartData(projectId: Int) {
         refreshSubPositionLabels(projectId)
         comboCounts = ServiceLocator.smsSpoolDao.countByLocationCombo(projectId)
@@ -392,7 +392,7 @@ class CreateSpoolFragment : Fragment() {
         val byCode = mutableMapOf<String?, Int>()
         val bySub = mutableMapOf<String, MutableMap<Long?, Int>>()
         comboCounts.forEach { combo ->
-            val code = resolveComboPosition(combo)
+            val code = combo.scannedFrom
             byCode.merge(code, combo.cnt, Int::plus)
             if (code == "LAYDOWN" || code == "SITE") {
                 bySub.getOrPut(code) { mutableMapOf() }.merge(combo.subId, combo.cnt, Int::plus)
@@ -400,22 +400,6 @@ class CreateSpoolFragment : Fragment() {
         }
         chartCounts = byCode
         subCountsRaw = bySub
-    }
-
-    /** Kotlin twin of the DAO's SPOOL_RESOLVED_POSITION SQL expression — same 3-level
-     *  fallback (PL position → zone exact/prefix match → position_id), uppercased.
-     *  Keep both in sync. */
-    private fun resolveComboPosition(combo: com.example.hassiwrapper.data.db.dao.SpoolComboCount): String? {
-        val fromPl = combo.plId?.let { plPositions[it] }
-        if (!fromPl.isNullOrBlank()) return fromPl.uppercase()
-        val zone = combo.zone
-        if (!zone.isNullOrBlank()) {
-            val zUp = zone.uppercase()
-            positionCodes.values.firstOrNull { code ->
-                zUp == code.uppercase() || zUp.startsWith("${code.uppercase()}/")
-            }?.let { return it.uppercase() }
-        }
-        return combo.positionId?.let { positionCodes[it]?.uppercase() }
     }
 
     /** Resolves the display label for every sub-position of the project (small table). */
@@ -435,7 +419,6 @@ class CreateSpoolFragment : Fragment() {
     private suspend fun refreshPackingListMap(projectId: Int) {
         val pls = ServiceLocator.smsPackingListDao.getByProject(projectId)
         adapter.packingLists = pls.associate { it.packing_list_id to it.packing_list_name }
-        plPositions = pls.associate { it.packing_list_id to it.position }
         positionCodes = ServiceLocator.smsPositionDao.getAll().associate { it.position_id to it.code }
     }
 

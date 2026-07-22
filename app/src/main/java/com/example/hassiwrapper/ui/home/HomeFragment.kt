@@ -156,8 +156,8 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /** Guest home zone KPIs: confirmed (synced) vs pending (scanned locally, not yet
-     *  uploaded) spool counts for this terminal's configured zone, plus a per-sub-position
+    /** Guest home zone KPIs: confirmed (scanned by a terminal AND synced) vs pending (scanned
+     *  locally, not yet uploaded) spool counts for this terminal's configured zone, plus a per-sub-position
      *  (GCP) breakdown when the project defines any for that zone. Counts move themselves:
      *  a spool packed into a PL headed to another zone resolves there instead (see
      *  SPOOL_RESOLVED_POSITION), so no separate "deduct on transfer" step is needed. */

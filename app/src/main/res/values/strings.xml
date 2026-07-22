@@ -20,7 +20,12 @@
     <string name="qr_scanner_result_unknown">Código QR no reconocido</string>
     <string name="qr_scanner_result_id_detail">ID: %1$s</string>
     <string name="qr_scanner_result_spool_syncing">Sincronización en curso — el spool puede no estar descargado aún. Espere a que termine e inténtelo de nuevo.</string>
-    <string name="qr_scanner_revision_mismatch">⚠ Revisión física escaneada (%1$s) distinta a la registrada (%2$s) — spool posiblemente en revisión antigua</string>
+    <string name="qr_scanner_revision_mismatch">!!!Revisión física escaneada (%1$s) distinta a la registrada (%2$s)</string>
+    <string name="revision_mismatch_dialog_title">Revisión distinta detectada</string>
+    <string name="revision_mismatch_dialog_create">Crear incidencia</string>
+    <string name="revision_mismatch_dialog_dismiss">Descartar</string>
+    <string name="revision_mismatch_incident_created">Incidencia creada y notificada a supervisores</string>
+    <string name="revision_mismatch_incident_exists">Ya existe una incidencia abierta para esta revisión</string>
 
     <!-- QR Scanner: relocate mode -->
     <string name="qr_scanner_btn_relocate">Relocalizar spools</string>
@@ -940,6 +945,15 @@
     <string name="incident_value_unknown">—</string>
     <string name="incident_status_open">Abierta</string>
     <string name="incident_status_closed">Cerrada</string>
+    <string name="incident_status_reprint_approved">Pendiente de reimpresión</string>
+    <string name="incident_label_scanned_revision">Revisión escaneada</string>
+    <string name="incident_label_stored_revision">Revisión registrada</string>
+    <string name="incident_btn_approve_reprint">Aprobar reimpresión</string>
+    <string name="incident_approve_reprint_confirm_title">Aprobar reimpresión</string>
+    <string name="incident_approve_reprint_confirm_msg">¿Confirma que esta incidencia queda pendiente de reimpresión? Se notificará para imprimir un tag nuevo con la revisión correcta.</string>
+    <string name="incident_approve_reprint_confirm_yes">Aprobar</string>
+    <string name="incident_approve_reprint_confirm_no">Cancelar</string>
+    <string name="incident_reprint_approved_ok">Reimpresión aprobada</string>
     <string name="incident_btn_close">Cerrar incidencia</string>
     <string name="incident_close_confirm_title">Cerrar incidencia</string>
     <string name="incident_close_confirm_msg">¿Confirma que desea cerrar esta incidencia? Se registrará quién y cuándo la cierra.</string>

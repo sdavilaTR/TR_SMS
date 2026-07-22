@@ -730,7 +730,7 @@ class SpoolDetailBottomSheet : BottomSheetDialogFragment() {
 
         btnOpenMaps.visibility = View.VISIBLE
         btnOpenMaps.setOnClickListener {
-            val uri = Uri.parse("geo:${current.latitude},${current.longitude}?q=${current.latitude},${current.longitude}")
+            val uri = Uri.parse("geo:0,0?q=${current.latitude},${current.longitude}")
             startActivity(Intent(Intent.ACTION_VIEW, uri))
         }
 

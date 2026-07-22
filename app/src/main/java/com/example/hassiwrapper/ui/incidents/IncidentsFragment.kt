@@ -139,7 +139,9 @@ class IncidentsFragment : Fragment() {
     private fun applyFilter() {
         items.clear()
         items += allIncidents
-            .filter { it.status == statusFilter }
+            // REPRINT_APPROVED is still unresolved (pending a physical reprint), so it belongs
+            // in the "Open" tab alongside OPEN — only CLOSED means the incident is done.
+            .filter { if (statusFilter == "CLOSED") it.status == "CLOSED" else it.status != "CLOSED" }
             .let { if (severityFilter == null) it else it.filter { inc -> inc.severity == severityFilter } }
         adapter.notifyDataSetChanged()
         txtCount.text = getString(R.string.incidents_title) + " (${items.size})"
@@ -159,6 +161,7 @@ class IncidentsFragment : Fragment() {
             val severity: TextView = view.findViewById(R.id.txtIncidentSeverity)
             val description: TextView = view.findViewById(R.id.txtIncidentDescription)
             val meta: TextView = view.findViewById(R.id.txtIncidentMeta)
+            val reprintBadge: TextView = view.findViewById(R.id.txtIncidentReprintBadge)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
@@ -174,6 +177,10 @@ class IncidentsFragment : Fragment() {
 
             h.severity.text = severityLabel(item.severity)
             h.severity.background.setTint(SmsIncidentService.getSeverityColor(item.severity))
+
+            val pendingReprint = item.status == SmsIncidentService.STATUS_REPRINT_APPROVED
+            h.reprintBadge.visibility = if (pendingReprint) View.VISIBLE else View.GONE
+            if (pendingReprint) h.reprintBadge.background.setTint(ContextCompat.getColor(requireContext(), R.color.primary_variant))
 
             h.description.text = item.description.ifBlank { getString(R.string.incident_card_no_description) }
 

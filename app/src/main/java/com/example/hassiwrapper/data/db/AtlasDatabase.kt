@@ -56,7 +56,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsAuditLogEntity::class,
         SmsSpoolLocationEntity::class
     ],
-    version = 38,
+    version = 40,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -919,6 +919,33 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v38 → v39: revision-mismatch incidents (auto-raised when a scanned spool tag's physical
+        // revision disagrees with sms_spool.revision) reuse sms_incident instead of a new table.
+        // incident_type distinguishes them from manual DAMAGE incidents; scanned/stored_revision
+        // are kept structured (not just folded into description) so the dedupe check and the
+        // detail-screen rows don't need to parse free text.
+        private val MIGRATION_38_39 = object : Migration(38, 39) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 38 → 39: add incident_type/scanned_revision/stored_revision to sms_incident")
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `incident_type` TEXT NOT NULL DEFAULT 'DAMAGE'")
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `scanned_revision` TEXT")
+                db.execSQL("ALTER TABLE `sms_incident` ADD COLUMN `stored_revision` TEXT")
+            }
+        }
+
+        // v39 → v40: mirror backend sms_spool.scanned_from/scanned_at (real GPS-capture scan
+        // location, set only by AddSpoolLocationAsync) so Inventario's zone chart/filter can
+        // bucket by actual scan location instead of zone/position_id — the latter is also
+        // written by bulk PCA reconciliation imports with no real scan behind it, which made
+        // Inventario disagree with ATLAS's own scan-based zone counts.
+        private val MIGRATION_39_40 = object : Migration(39, 40) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 39 → 40: add scanned_from/scanned_at to sms_spool")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `scanned_from` TEXT")
+                db.execSQL("ALTER TABLE `sms_spool` ADD COLUMN `scanned_at` TEXT")
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -963,7 +990,9 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_34_35,
                         MIGRATION_35_36,
                         MIGRATION_36_37,
-                        MIGRATION_37_38
+                        MIGRATION_37_38,
+                        MIGRATION_38_39,
+                        MIGRATION_39_40
                     )
                     .build()
                 INSTANCE = instance

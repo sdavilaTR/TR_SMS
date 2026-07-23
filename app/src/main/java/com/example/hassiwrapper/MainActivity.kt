@@ -1331,37 +1331,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Same check as [com.example.hassiwrapper.ui.qrscanner.QrScannerFragment.warnIfRevisionMismatch] —
-     *  the global scan handler bypasses that fragment, so it needs its own copy. On mismatch, offers
-     *  to raise an incidencia so it reaches supervisors. */
+    /** Global hardware-scan handler bypasses QrScannerFragment, so it calls the shared
+     *  [com.example.hassiwrapper.services.RevisionMismatchHelper] directly. */
     private fun warnIfRevisionMismatch(spoolCode: String, spoolSuffix: String?, scannedRevision: String?, storedRevision: String?) {
-        val scanned = scannedRevision?.trim()?.takeIf { it.isNotEmpty() }
-        val stored = storedRevision?.trim()?.takeIf { it.isNotEmpty() }
-        if (scanned == null || stored == null || scanned.equals(stored, ignoreCase = true)) return
-        val warning = getString(R.string.qr_scanner_revision_mismatch, scanned, stored)
-
-        AlertDialog.Builder(this)
-            .setTitle(R.string.revision_mismatch_dialog_title)
-            .setMessage(warning)
-            .setPositiveButton(R.string.revision_mismatch_dialog_create) { _, _ ->
-                lifecycleScope.launch {
-                    val incident = ServiceLocator.smsIncidentService.createRevisionMismatchIncident(
-                        spoolCode, spoolSuffix, scanned, stored
-                    )
-                    if (incident != null) {
-                        ServiceLocator.auditLogService.log(
-                            com.example.hassiwrapper.services.AuditLogService.INCIDENCIA_CREADA,
-                            com.example.hassiwrapper.services.AuditLogService.ENTITY_INCIDENCIA,
-                            incident.id, incident.spool_code, projectId = incident.project_id
-                        )
-                        Toast.makeText(this@MainActivity, R.string.revision_mismatch_incident_created, Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(this@MainActivity, R.string.revision_mismatch_incident_exists, Toast.LENGTH_LONG).show()
-                    }
-                }
-            }
-            .setNegativeButton(R.string.revision_mismatch_dialog_dismiss, null)
-            .show()
+        com.example.hassiwrapper.services.RevisionMismatchHelper.warnIfMismatch(
+            this, lifecycleScope, spoolCode, spoolSuffix, scannedRevision, storedRevision
+        )
     }
 
     private fun showScanRegisteredDialog(message: String) {

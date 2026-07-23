@@ -53,7 +53,8 @@ object ServiceLocator {
             db.smsIncidentDao(),
             outboxService,
             db.smsSpoolLocationDao(),
-            db.smsPackingListSpoolDao()
+            db.smsPackingListSpoolDao(),
+            auditLogService
         )
     }
 

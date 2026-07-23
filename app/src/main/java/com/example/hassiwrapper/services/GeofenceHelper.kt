@@ -2,7 +2,8 @@ package com.example.hassiwrapper.services
 
 import com.example.hassiwrapper.ServiceLocator
 
-/** Point-in-polygon check for area geofences (`sms_area.geofence_polygon` / `geofence_mode`). */
+/** Point-in-polygon check for area geofences (`sms_sub_position.geofence_polygon` / `geofence_mode` —
+ *  moved here from `sms_area` by MIGRATION_41_42 since sub-positions are the table actually synced live). */
 object GeofenceHelper {
 
     const val MODE_GEOLOCATION = "GEOLOCATION"

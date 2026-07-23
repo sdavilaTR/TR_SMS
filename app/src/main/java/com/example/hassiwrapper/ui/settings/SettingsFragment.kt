@@ -26,7 +26,7 @@ import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
-import com.example.hassiwrapper.data.db.entities.SmsAreaEntity
+import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
 import com.example.hassiwrapper.services.GeoPolygonPoint
 import com.example.hassiwrapper.services.GeofenceHelper
 import com.example.hassiwrapper.services.KmlParser
@@ -42,7 +42,7 @@ import kotlinx.coroutines.withContext
 
 class SettingsFragment : Fragment() {
 
-    private var geofenceAreas: List<SmsAreaEntity> = emptyList()
+    private var geofenceAreas: List<SmsSubPositionEntity> = emptyList()
     private var pendingKmlPoints: List<GeoPolygonPoint>? = null
 
     private val kmlPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -499,7 +499,7 @@ class SettingsFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-            geofenceAreas = ServiceLocator.smsAreaDao.getByProject(projectId)
+            geofenceAreas = ServiceLocator.smsSubPositionDao.getByProject(projectId)
 
             if (geofenceAreas.isEmpty()) {
                 txtStatus.text = getString(R.string.settings_geofence_no_areas)
@@ -540,9 +540,9 @@ class SettingsFragment : Fragment() {
             }
             val mode = if (radioGroup.checkedRadioButtonId == radioForced.id) GeofenceHelper.MODE_FORCED else GeofenceHelper.MODE_GEOLOCATION
             viewLifecycleOwner.lifecycleScope.launch {
-                ServiceLocator.smsAreaDao.setGeofence(area.area_id, KmlParser.serialize(points), mode)
+                ServiceLocator.smsSubPositionDao.setGeofence(area.sub_position_id, KmlParser.serialize(points), mode)
                 geofenceAreas = geofenceAreas.map {
-                    if (it.area_id == area.area_id) it.copy(geofence_polygon = KmlParser.serialize(points), geofence_mode = mode) else it
+                    if (it.sub_position_id == area.sub_position_id) it.copy(geofence_polygon = KmlParser.serialize(points), geofence_mode = mode) else it
                 }
                 pendingKmlPoints = null
                 refreshGeofenceStatus(txtStatus, radioGroup, geofenceAreas[spinner.selectedItemPosition])
@@ -553,9 +553,9 @@ class SettingsFragment : Fragment() {
         btnClear.setOnClickListener {
             val area = geofenceAreas.getOrNull(spinner.selectedItemPosition) ?: return@setOnClickListener
             viewLifecycleOwner.lifecycleScope.launch {
-                ServiceLocator.smsAreaDao.setGeofence(area.area_id, null, null)
+                ServiceLocator.smsSubPositionDao.setGeofence(area.sub_position_id, null, null)
                 geofenceAreas = geofenceAreas.map {
-                    if (it.area_id == area.area_id) it.copy(geofence_polygon = null, geofence_mode = null) else it
+                    if (it.sub_position_id == area.sub_position_id) it.copy(geofence_polygon = null, geofence_mode = null) else it
                 }
                 pendingKmlPoints = null
                 refreshGeofenceStatus(txtStatus, radioGroup, geofenceAreas[spinner.selectedItemPosition])
@@ -564,7 +564,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    private fun refreshGeofenceStatus(txtStatus: TextView, radioGroup: RadioGroup, area: SmsAreaEntity) {
+    private fun refreshGeofenceStatus(txtStatus: TextView, radioGroup: RadioGroup, area: SmsSubPositionEntity) {
         val polygon = area.geofence_polygon
         if (polygon == null) {
             txtStatus.text = getString(R.string.settings_geofence_status_none)

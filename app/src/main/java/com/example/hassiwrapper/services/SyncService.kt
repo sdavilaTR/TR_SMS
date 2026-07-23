@@ -49,7 +49,8 @@ class SyncService(
     private val smsIncidentDao: SmsIncidentDao? = null,
     private val outboxService: OutboxService? = null,
     private val smsSpoolLocationDao: SmsSpoolLocationDao? = null,
-    private val smsPackingListSpoolDao: SmsPackingListSpoolDao? = null
+    private val smsPackingListSpoolDao: SmsPackingListSpoolDao? = null,
+    private val auditLogService: AuditLogService? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -510,6 +511,12 @@ class SyncService(
                     }
                     smsPackingListSpoolDao?.deleteByPackingList(pl.packing_list_id)
                     dao.deleteById(pl.packing_list_id)
+                    auditLogService?.log(
+                        AuditLogService.PL_ELIMINADO,
+                        AuditLogService.ENTITY_PL,
+                        pl.packing_list_id, pl.packing_list_name,
+                        detail = msg, projectId = pl.project_id
+                    )
                 } else {
                     Log.e(TAG, "PL ${pl.packing_list_id} upload failed: HTTP ${response.code()}")
                 }

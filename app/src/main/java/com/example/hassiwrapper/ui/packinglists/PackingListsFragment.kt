@@ -47,9 +47,6 @@ class PackingListsFragment : Fragment() {
         fab      = view.findViewById(R.id.fabNewPackingList)
         // Creación manual de PL deshabilitada: los PLs ahora se crean solo desde los envíos.
         fab.visibility = View.GONE
-//        fab.setOnClickListener {
-//            findNavController().navigate(R.id.action_global_newPackingListFragment)
-//        }
 
         adapter = PLAdapter()
         rv.layoutManager = LinearLayoutManager(requireContext())

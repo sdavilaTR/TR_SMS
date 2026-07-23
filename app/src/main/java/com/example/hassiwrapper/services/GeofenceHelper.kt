@@ -17,13 +17,13 @@ object GeofenceHelper {
     }
 
     /**
-     * Checks (lat, lon) against every area in [projectId] with `geofence_mode = GEOLOCATION`.
+     * Checks (lat, lon) against every sub-position in [projectId] with `geofence_mode = GEOLOCATION`.
      * FORCED-mode areas are never checked (that mode means "accept without GPS validation").
      * A point counts as Inside if it falls in ANY geolocation-mode area — this is a project-wide
      * check for now (single active workshop), not a per-target-area rule.
      */
     suspend fun checkProjectGeofences(projectId: Int, lat: Double, lon: Double): CheckResult {
-        val areas = ServiceLocator.smsAreaDao.getByProject(projectId)
+        val areas = ServiceLocator.smsSubPositionDao.getByProject(projectId)
             .filter { it.geofence_mode == MODE_GEOLOCATION && !it.geofence_polygon.isNullOrBlank() }
         if (areas.isEmpty()) return CheckResult.NoGeofence
 

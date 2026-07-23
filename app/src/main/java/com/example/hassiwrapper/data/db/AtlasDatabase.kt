@@ -56,7 +56,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsAuditLogEntity::class,
         SmsSpoolLocationEntity::class
     ],
-    version = 41,
+    version = 42,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -957,6 +957,41 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v41 → v42: backend dropped GET .../areas in favor of a sub-positions hierarchy (confirmed
+        // 404 on dev, see project memory) — Android kept calling the dead endpoint, so sms_area was
+        // never actually populated. Move the v40→v41 geofence columns onto sms_sub_position (which
+        // *is* synced live) and drop them from sms_area. minSdk 26 can't rely on SQLite DROP COLUMN
+        // (needs 3.35+), so sms_area is rebuilt via the standard create/copy/drop/rename dance.
+        private val MIGRATION_41_42 = object : Migration(41, 42) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 41 → 42: move geofence columns from sms_area to sms_sub_position")
+                db.execSQL("""
+                    CREATE TABLE `sms_area_new` (
+                        `area_id` INTEGER NOT NULL PRIMARY KEY,
+                        `project_id` INTEGER NOT NULL,
+                        `parent_area_id` INTEGER,
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `full_path` TEXT NOT NULL DEFAULT '',
+                        `level` INTEGER NOT NULL DEFAULT 0,
+                        `is_active` INTEGER NOT NULL DEFAULT 1,
+                        `created_at` TEXT NOT NULL DEFAULT '',
+                        `created_by` TEXT NOT NULL DEFAULT '',
+                        `updated_at` TEXT,
+                        `updated_by` TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    INSERT INTO `sms_area_new` (area_id, project_id, parent_area_id, name, full_path, level, is_active, created_at, created_by, updated_at, updated_by)
+                    SELECT area_id, project_id, parent_area_id, name, full_path, level, is_active, created_at, created_by, updated_at, updated_by FROM `sms_area`
+                """.trimIndent())
+                db.execSQL("DROP TABLE `sms_area`")
+                db.execSQL("ALTER TABLE `sms_area_new` RENAME TO `sms_area`")
+
+                db.execSQL("ALTER TABLE `sms_sub_position` ADD COLUMN `geofence_polygon` TEXT")
+                db.execSQL("ALTER TABLE `sms_sub_position` ADD COLUMN `geofence_mode` TEXT")
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -1004,7 +1039,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_37_38,
                         MIGRATION_38_39,
                         MIGRATION_39_40,
-                        MIGRATION_40_41
+                        MIGRATION_40_41,
+                        MIGRATION_41_42
                     )
                     .build()
                 INSTANCE = instance

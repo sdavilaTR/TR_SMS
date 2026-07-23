@@ -9,7 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.dao.SmsSpoolMapMarker
-import com.example.hassiwrapper.data.db.entities.SmsAreaEntity
+import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
 import com.example.hassiwrapper.services.KmlParser
 import com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet
 import kotlinx.coroutines.launch
@@ -65,12 +65,12 @@ class SpoolMapFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
             val markers = ServiceLocator.smsSpoolLocationDao.getLatestByProject(projectId)
-            val geofences = ServiceLocator.smsAreaDao.getByProject(projectId).filter { !it.geofence_polygon.isNullOrBlank() }
+            val geofences = ServiceLocator.smsSubPositionDao.getByProject(projectId).filter { !it.geofence_polygon.isNullOrBlank() }
             renderMarkers(markers, geofences)
         }
     }
 
-    private fun renderMarkers(markers: List<SmsSpoolMapMarker>, geofences: List<SmsAreaEntity>) {
+    private fun renderMarkers(markers: List<SmsSpoolMapMarker>, geofences: List<SmsSubPositionEntity>) {
         val mv = mapView ?: return
         val isEmpty = markers.isEmpty() && geofences.isEmpty()
         txtEmpty.visibility = if (isEmpty) View.VISIBLE else View.GONE

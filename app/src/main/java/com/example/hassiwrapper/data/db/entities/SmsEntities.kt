@@ -16,11 +16,7 @@ data class SmsAreaEntity(
     val created_at: String = "",
     val created_by: String = "",
     val updated_at: String? = null,
-    val updated_by: String? = null,
-    /** Local-only: geofence boundary, "lon,lat|lon,lat|...". Not sent by backend yet — preserved across area resync in MainActivity.syncSmsData. */
-    val geofence_polygon: String? = null,
-    /** Local-only: "GEOLOCATION" (must be inside polygon) or "FORCED" (no GPS check). Null = no geofence. */
-    val geofence_mode: String? = null
+    val updated_by: String? = null
 )
 
 @Entity(tableName = "sms_sub_position")
@@ -37,7 +33,11 @@ data class SmsSubPositionEntity(
     val created_at: String = "",
     val created_by: String = "",
     val updated_at: String? = null,
-    val updated_by: String? = null
+    val updated_by: String? = null,
+    /** Local-only: geofence boundary, "lon,lat|lon,lat|...". Backend has no geofence concept yet — preserved across sub-position resync in MainActivity.syncSmsData. */
+    val geofence_polygon: String? = null,
+    /** Local-only: "GEOLOCATION" (must be inside polygon) or "FORCED" (no GPS check). Null = no geofence. */
+    val geofence_mode: String? = null
 )
 
 @Entity(tableName = "sms_bore_size")

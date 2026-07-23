@@ -243,10 +243,6 @@ interface AtlasApiService {
         @retrofit2.http.Path("vehicleId") vehicleId: Long
     ): Response<okhttp3.ResponseBody>
 
-    // ── SMS Areas ─────────────────────────────────────
-    @GET("/api/atlas/projects/{projectCode}/areas")
-    suspend fun getAreas(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>
-
     // ── SMS Specs ─────────────────────────────────────
     @GET("/api/atlas/projects/{projectCode}/specs")
     suspend fun getSpecs(@retrofit2.http.Path("projectCode") projectCode: String): Response<okhttp3.ResponseBody>

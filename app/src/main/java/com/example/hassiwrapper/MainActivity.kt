@@ -1046,28 +1046,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             launch(Dispatchers.Default) {
-                syncSection("areas") {
-                    service.getAreas(projectCode).let { r ->
-                        val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
-                        parseAreaEntities(raw, projectId).also { list ->
-                            logLookup("areas", r, list.size)
-                            if (list.isNotEmpty()) applyLookupIfChanged("areas_$projectId", raw) {
-                                // Geofence columns are local-only (no backend endpoint yet) — carry them
-                                // forward across the delete+reinsert or KML imports get wiped by the next sync.
-                                val geofences = ServiceLocator.smsAreaDao.getGeofences(projectId).associateBy { it.area_id }
-                                val merged = list.map { area ->
-                                    geofences[area.area_id]?.let {
-                                        area.copy(geofence_polygon = it.geofence_polygon, geofence_mode = it.geofence_mode)
-                                    } ?: area
-                                }
-                                ServiceLocator.smsAreaDao.deleteByProject(projectId); ServiceLocator.smsAreaDao.insertAll(merged)
-                            }
-                        }
-                    }
-                }
-            }
-
-            launch(Dispatchers.Default) {
                 syncSection("specs") {
                     service.getSpecs(projectCode).let { r ->
                         val raw = if (r.isSuccessful) r.body()?.string().orEmpty() else ""
@@ -1144,7 +1122,15 @@ class MainActivity : AppCompatActivity() {
                         parseSubPositions(raw, projectId).also { list ->
                             logLookup("sub-positions", r, list.size)
                             if (list.isNotEmpty()) applyLookupIfChanged("sub-positions_$projectId", raw) {
-                                ServiceLocator.smsSubPositionDao.deleteByProject(projectId); ServiceLocator.smsSubPositionDao.insertAll(list)
+                                // Geofence columns are local-only (no backend endpoint yet) — carry them
+                                // forward across the delete+reinsert or KML imports get wiped by the next sync.
+                                val geofences = ServiceLocator.smsSubPositionDao.getGeofences(projectId).associateBy { it.sub_position_id }
+                                val merged = list.map { sub ->
+                                    geofences[sub.sub_position_id]?.let {
+                                        sub.copy(geofence_polygon = it.geofence_polygon, geofence_mode = it.geofence_mode)
+                                    } ?: sub
+                                }
+                                ServiceLocator.smsSubPositionDao.deleteByProject(projectId); ServiceLocator.smsSubPositionDao.insertAll(merged)
                             }
                         }
                     }
@@ -1194,18 +1180,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-    private fun parseAreaEntities(raw: String, projectId: Int): List<SmsAreaEntity> =
-        smsJsonArray(raw).mapNotNull { el ->
-            if (!el.isJsonObject) null else el.asJsonObject.let { o ->
-                val id = o.jLong("areaId", "area_id", "id") ?: return@mapNotNull null
-                SmsAreaEntity(id, projectId, o.jLong("parentAreaId", "parent_area_id"),
-                    o.jStr("name").orEmpty(), o.jStr("fullPath", "full_path").orEmpty(),
-                    o.jInt("level") ?: 0, o.jBool("isActive", "is_active") ?: true,
-                    o.jStr("createdAt", "created_at").orEmpty(), o.jStr("createdBy", "created_by").orEmpty(),
-                    o.jStr("updatedAt", "updated_at"), o.jStr("updatedBy", "updated_by"))
-            }
-        }
 
     private fun parseSpecEntities(raw: String, projectId: Int): List<SmsSpecEntity> =
         smsJsonArray(raw).mapNotNull { el ->

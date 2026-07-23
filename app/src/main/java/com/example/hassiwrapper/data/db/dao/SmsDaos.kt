@@ -22,9 +22,9 @@ data class SmsSpoolMapMarker(
         }
 }
 
-/** Row shape for [SmsAreaDao.getGeofences] — used to carry local-only geofence data across an area resync. */
-data class SmsAreaGeofenceRow(
-    val area_id: Long,
+/** Row shape for [SmsSubPositionDao.getGeofences] — used to carry local-only geofence data across a sub-position resync. */
+data class SmsSubPositionGeofenceRow(
+    val sub_position_id: Long,
     val geofence_polygon: String?,
     val geofence_mode: String?
 )
@@ -45,12 +45,6 @@ interface SmsAreaDao {
 
     @Query("DELETE FROM sms_area WHERE project_id = :projectId")
     suspend fun deleteByProject(projectId: Int)
-
-    @Query("SELECT area_id, geofence_polygon, geofence_mode FROM sms_area WHERE project_id = :projectId AND geofence_polygon IS NOT NULL")
-    suspend fun getGeofences(projectId: Int): List<SmsAreaGeofenceRow>
-
-    @Query("UPDATE sms_area SET geofence_polygon = :polygon, geofence_mode = :mode WHERE area_id = :areaId")
-    suspend fun setGeofence(areaId: Long, polygon: String?, mode: String?)
 
     @Query("DELETE FROM sms_area")
     suspend fun deleteAll()
@@ -259,6 +253,12 @@ interface SmsSubPositionDao {
 
     @Query("DELETE FROM sms_sub_position WHERE project_id = :projectId")
     suspend fun deleteByProject(projectId: Int)
+
+    @Query("SELECT sub_position_id, geofence_polygon, geofence_mode FROM sms_sub_position WHERE project_id = :projectId AND geofence_polygon IS NOT NULL")
+    suspend fun getGeofences(projectId: Int): List<SmsSubPositionGeofenceRow>
+
+    @Query("UPDATE sms_sub_position SET geofence_polygon = :polygon, geofence_mode = :mode WHERE sub_position_id = :subPositionId")
+    suspend fun setGeofence(subPositionId: Long, polygon: String?, mode: String?)
 }
 
 @Dao

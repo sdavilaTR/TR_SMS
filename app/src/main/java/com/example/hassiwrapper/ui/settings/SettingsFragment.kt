@@ -43,7 +43,7 @@ import kotlinx.coroutines.withContext
 class SettingsFragment : Fragment() {
 
     private var geofenceAreas: List<SmsSubPositionEntity> = emptyList()
-    private var pendingKmlPoints: List<GeoPolygonPoint>? = null
+    private var pendingKmlPolygons: List<List<GeoPolygonPoint>>? = null
 
     private val kmlPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) handleKmlPicked(uri)
@@ -109,7 +109,15 @@ class SettingsFragment : Fragment() {
                 ServiceLocator.configRepo.set("device_name", name)
             }
 
-            val location = ServiceLocator.configRepo.get("device_location") ?: "—"
+            val locationCode = ServiceLocator.configRepo.get("device_location")
+            val pinnedSubId = ServiceLocator.configRepo.get("device_sub_position_id")?.toLongOrNull()
+            val pinnedLabel = pinnedSubId?.let { ServiceLocator.smsSubPositionDao.getById(it) }
+                ?.let { sp -> sp.full_path.ifBlank { sp.name } }
+            val location = when {
+                locationCode.isNullOrBlank() -> "—"
+                pinnedLabel != null -> "$locationCode / $pinnedLabel"
+                else -> locationCode
+            }
             view.findViewById<TextView>(R.id.txtDeviceName).text     = name
             view.findViewById<TextView>(R.id.txtDeviceId).text       = id ?: "—"
             view.findViewById<TextView>(R.id.txtDeviceLocation).text = location
@@ -145,7 +153,10 @@ class SettingsFragment : Fragment() {
                 .setTitle(R.string.settings_reinstall_previous_title)
                 .setMessage(R.string.settings_reinstall_previous_confirm)
                 .setPositiveButton(android.R.string.ok) { _, _ ->
-                    UpdateInstaller.reinstallPreviousVersion(requireContext())
+                    val ctx = requireContext()
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        UpdateInstaller.reinstallPreviousVersion(ctx)
+                    }
                 }
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()
@@ -240,7 +251,7 @@ class SettingsFragment : Fragment() {
 
     // ── Language selector ──────────────────────────────────────────────
 
-    private val languageFlags = mapOf("es" to "Español", "en" to "English", "fr" to "Français", "zh" to "中文")
+    private val languageFlags = mapOf("es" to "Español", "en" to "English", "ar" to "العربية", "hi" to "हिन्दी", "zh" to "中文")
 
     private lateinit var langButtons: Map<String, MaterialButton>
 
@@ -248,10 +259,11 @@ class SettingsFragment : Fragment() {
         val txtCurrent = view.findViewById<TextView>(R.id.txtCurrentLanguage)
         val btnEs = view.findViewById<MaterialButton>(R.id.btnLangEs)
         val btnEn = view.findViewById<MaterialButton>(R.id.btnLangEn)
-        val btnFr = view.findViewById<MaterialButton>(R.id.btnLangFr)
+        val btnAr = view.findViewById<MaterialButton>(R.id.btnLangAr)
+        val btnHi = view.findViewById<MaterialButton>(R.id.btnLangHi)
         val btnZh = view.findViewById<MaterialButton>(R.id.btnLangZh)
 
-        langButtons = mapOf("es" to btnEs, "en" to btnEn, "fr" to btnFr, "zh" to btnZh)
+        langButtons = mapOf("es" to btnEs, "en" to btnEn, "ar" to btnAr, "hi" to btnHi, "zh" to btnZh)
 
         val currentLang = LocaleHelper.getLanguage(requireContext())
         txtCurrent.text = languageFlags[currentLang] ?: languageFlags["es"]
@@ -259,7 +271,8 @@ class SettingsFragment : Fragment() {
 
         btnEs.setOnClickListener { changeLanguage("es") }
         btnEn.setOnClickListener { changeLanguage("en") }
-        btnFr.setOnClickListener { changeLanguage("fr") }
+        btnAr.setOnClickListener { changeLanguage("ar") }
+        btnHi.setOnClickListener { changeLanguage("hi") }
         btnZh.setOnClickListener { changeLanguage("zh") }
     }
 
@@ -473,17 +486,56 @@ class SettingsFragment : Fragment() {
                         val selected = options[which]
                         viewLifecycleOwner.lifecycleScope.launch {
                             ServiceLocator.configRepo.set("device_location", selected)
+                            ServiceLocator.configRepo.remove("device_sub_position_id")
                             txtLocation.text = selected
                             Toast.makeText(
                                 requireContext(),
                                 getString(R.string.settings_debug_location_changed, selected),
                                 Toast.LENGTH_SHORT
                             ).show()
+                            offerSubPositionPin(selected, txtLocation)
                         }
                     }
                     .show()
             }
         }
+    }
+
+    // Projects like JAFURAH split LAYDOWN/SITE into exclusive sub-zones (GCP 5/6/9): once a
+    // position with a seeded sub-position catalog is picked, pin the terminal to one of them so
+    // guest KPIs/map/inventory never merge sibling zones. Projects without a catalog for that
+    // position skip this silently — device_sub_position_id stays cleared, unchanged behavior.
+    // A position with exactly one sub-position row (e.g. WORKSHOP, which has no real subzones —
+    // that single row only exists to carry its combined geofence) auto-pins without prompting:
+    // there is nothing to choose between.
+    private suspend fun offerSubPositionPin(positionCode: String, txtLocation: TextView) {
+        val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+        val positionId = ServiceLocator.smsPositionDao.getByCode(positionCode)?.position_id ?: return
+        val subPositions = ServiceLocator.smsSubPositionDao.getByPosition(projectId, positionId)
+        if (subPositions.isEmpty()) return
+
+        if (subPositions.size == 1) {
+            val only = subPositions[0]
+            val label = only.full_path.ifBlank { only.name.ifBlank { only.code } }
+            ServiceLocator.configRepo.set("device_sub_position_id", only.sub_position_id.toString())
+            txtLocation.text = "$positionCode / $label"
+            Toast.makeText(requireContext(), getString(R.string.settings_debug_location_changed, label), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val labels = subPositions.map { it.full_path.ifBlank { it.name.ifBlank { it.code } } }.toTypedArray()
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.settings_debug_subposition_btn))
+            .setItems(labels) { _, which ->
+                val selected = subPositions[which]
+                viewLifecycleOwner.lifecycleScope.launch {
+                    ServiceLocator.configRepo.set("device_sub_position_id", selected.sub_position_id.toString())
+                    txtLocation.text = "$positionCode / ${labels[which]}"
+                    Toast.makeText(requireContext(), getString(R.string.settings_debug_location_changed, labels[which]), Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     // ── Area geofence (KML import) ───────────────────────────────────────
@@ -515,7 +567,7 @@ class SettingsFragment : Fragment() {
             )
             spinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(parent: android.widget.AdapterView<*>?, v: View?, position: Int, id: Long) {
-                    pendingKmlPoints = null
+                    pendingKmlPolygons = null
                     refreshGeofenceStatus(txtStatus, radioGroup, geofenceAreas[position])
                 }
                 override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
@@ -533,18 +585,19 @@ class SettingsFragment : Fragment() {
                 Toast.makeText(requireContext(), R.string.settings_geofence_pick_area_first, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val points = pendingKmlPoints
-            if (points == null) {
+            val polygons = pendingKmlPolygons
+            if (polygons == null) {
                 Toast.makeText(requireContext(), R.string.settings_geofence_parse_error, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             val mode = if (radioGroup.checkedRadioButtonId == radioForced.id) GeofenceHelper.MODE_FORCED else GeofenceHelper.MODE_GEOLOCATION
             viewLifecycleOwner.lifecycleScope.launch {
-                ServiceLocator.smsSubPositionDao.setGeofence(area.sub_position_id, KmlParser.serialize(points), mode)
+                val serialized = mergePolygons(area, polygons)
+                ServiceLocator.smsSubPositionDao.setGeofence(area.sub_position_id, serialized, mode)
                 geofenceAreas = geofenceAreas.map {
-                    if (it.sub_position_id == area.sub_position_id) it.copy(geofence_polygon = KmlParser.serialize(points), geofence_mode = mode) else it
+                    if (it.sub_position_id == area.sub_position_id) it.copy(geofence_polygon = serialized, geofence_mode = mode) else it
                 }
-                pendingKmlPoints = null
+                pendingKmlPolygons = null
                 refreshGeofenceStatus(txtStatus, radioGroup, geofenceAreas[spinner.selectedItemPosition])
                 Toast.makeText(requireContext(), R.string.settings_geofence_saved, Toast.LENGTH_SHORT).show()
             }
@@ -557,11 +610,17 @@ class SettingsFragment : Fragment() {
                 geofenceAreas = geofenceAreas.map {
                     if (it.sub_position_id == area.sub_position_id) it.copy(geofence_polygon = null, geofence_mode = null) else it
                 }
-                pendingKmlPoints = null
+                pendingKmlPolygons = null
                 refreshGeofenceStatus(txtStatus, radioGroup, geofenceAreas[spinner.selectedItemPosition])
                 Toast.makeText(requireContext(), R.string.settings_geofence_cleared, Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    /** Appends every polygon in [newPolygons] to whatever [area] already has saved. */
+    private fun mergePolygons(area: SmsSubPositionEntity, newPolygons: List<List<GeoPolygonPoint>>): String {
+        val existing = area.geofence_polygon?.let { KmlParser.deserializeMulti(it) }.orEmpty()
+        return KmlParser.serializeMulti(existing + newPolygons)
     }
 
     private fun refreshGeofenceStatus(txtStatus: TextView, radioGroup: RadioGroup, area: SmsSubPositionEntity) {
@@ -570,10 +629,14 @@ class SettingsFragment : Fragment() {
             txtStatus.text = getString(R.string.settings_geofence_status_none)
             radioGroup.check(R.id.radioGeofenceGeoloc)
         } else {
-            val points = KmlParser.deserialize(polygon)
+            val polygons = KmlParser.deserializeMulti(polygon)
+            val totalPoints = polygons.sumOf { it.size }
             val modeLabel = if (area.geofence_mode == GeofenceHelper.MODE_FORCED)
                 getString(R.string.settings_geofence_mode_forced) else getString(R.string.settings_geofence_mode_geoloc)
-            txtStatus.text = getString(R.string.settings_geofence_status_current, points.size, modeLabel)
+            txtStatus.text = if (polygons.size > 1)
+                getString(R.string.settings_geofence_status_current_multi, polygons.size, totalPoints, modeLabel)
+            else
+                getString(R.string.settings_geofence_status_current, totalPoints, modeLabel)
             radioGroup.check(if (area.geofence_mode == GeofenceHelper.MODE_FORCED) R.id.radioGeofenceForced else R.id.radioGeofenceGeoloc)
         }
     }
@@ -582,19 +645,25 @@ class SettingsFragment : Fragment() {
         val view = view ?: return
         val txtStatus = view.findViewById<TextView>(R.id.txtGeofenceStatus)
         viewLifecycleOwner.lifecycleScope.launch {
-            val points = withContext(Dispatchers.IO) {
+            val polygons = withContext(Dispatchers.IO) {
                 try {
-                    requireContext().contentResolver.openInputStream(uri)?.use { KmlParser.parsePolygon(it) }
+                    requireContext().contentResolver.openInputStream(uri)?.use { KmlParser.parseAllPolygons(it) } ?: emptyList()
                 } catch (_: Exception) {
-                    null
+                    emptyList()
                 }
             }
-            if (points == null || points.size < 3) {
+            if (polygons.isEmpty()) {
                 Toast.makeText(requireContext(), R.string.settings_geofence_parse_error, Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            pendingKmlPoints = points
-            txtStatus.text = getString(R.string.settings_geofence_status_pending, points.size)
+            // A KML may hold several placemarks (a zone's outer boundary plus separate subzone
+            // shapes) — all of them belong to whichever sub-position is selected in the spinner.
+            pendingKmlPolygons = polygons.map { it.points }
+            val totalPoints = polygons.sumOf { it.points.size }
+            txtStatus.text = if (polygons.size > 1)
+                getString(R.string.settings_geofence_status_pending_multi, polygons.size, totalPoints)
+            else
+                getString(R.string.settings_geofence_status_pending, totalPoints)
         }
     }
 

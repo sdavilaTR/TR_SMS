@@ -1,6 +1,7 @@
 package com.example.hassiwrapper
 
 import android.content.BroadcastReceiver
+import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -486,6 +487,10 @@ class MainActivity : AppCompatActivity() {
             kioskModeEnabled = kioskEnabled
             val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
             if (kioskEnabled) {
+                // Undo any temporary widening from allowLockTaskPackageTemporarily() —
+                // by the time we're back in foreground, whatever system UI needed the
+                // extra package (installer confirmation, Settings, etc.) is done with it.
+                com.example.hassiwrapper.admin.TracDeviceAdmin.applyOwnerDefaults(this@MainActivity)
                 if (am.lockTaskModeState == android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
                     startLockTask()
                 }
@@ -509,7 +514,7 @@ class MainActivity : AppCompatActivity() {
         // Safety net for Xiaomi HyperOS / MIUI: if the static receiver was suppressed
         // and a downloaded APK is sitting on disk, install it now.
         if (canInstallPackages()) {
-            UpdateInstaller.installPendingApkIfExists(this)
+            lifecycleScope.launch { UpdateInstaller.installPendingApkIfExists(this@MainActivity) }
         }
     }
 
@@ -582,10 +587,12 @@ class MainActivity : AppCompatActivity() {
             pendingUpdate = update
             Toast.makeText(this, R.string.update_permission_needed, Toast.LENGTH_LONG).show()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startActivity(
-                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
-                        .setData(Uri.parse("package:$packageName"))
-                )
+                val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                    .setData(Uri.parse("package:$packageName"))
+                settingsIntent.resolveActivity(packageManager)?.packageName?.let {
+                    com.example.hassiwrapper.admin.TracDeviceAdmin.allowLockTaskPackageTemporarily(this, it)
+                }
+                startActivity(settingsIntent)
             }
             return
         }
@@ -593,7 +600,17 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch { UpdateInstaller.downloadAndInstall(this@MainActivity, update) }
     }
 
+    /**
+     * Device Owner installs go through PackageInstaller.Session with
+     * USER_ACTION_NOT_REQUIRED (see UpdateInstaller.installApkViaSession) — that path
+     * installs silently and never needs the "unknown sources" grant this check guards.
+     * Skipping it here matters for kiosk terminals: the only fallback when this returns
+     * false is opening Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, which can't come to
+     * foreground under a single-package LockTask allowlist and leaves the terminal stuck.
+     */
     private fun canInstallPackages(): Boolean {
+        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
+        if (dpm?.isDeviceOwnerApp(packageName) == true) return true
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             packageManager.canRequestPackageInstalls()
         } else true
@@ -893,7 +910,13 @@ class MainActivity : AppCompatActivity() {
                                 // hasn't backfilled ISO_rev_number yet — never let a null/blank
                                 // server value overwrite a revision captured locally by a scan.
                                 revision        = if (keepLocal) local.revision else (s.revision ?: local.revision),
-                                packing_list_id = if (keepLocal) local.packing_list_id else (s.packing_list_id ?: local.packing_list_id),
+                                // A null packing_list_id from /spools is AUTHORITATIVE: the endpoint's
+                                // latest_pl CTE guards on pl.is_active=1, so null means "this spool has no
+                                // active packing list" (e.g. its PL was deleted on another terminal). The old
+                                // `?: local.packing_list_id` treated that null as "no info" and kept a stale
+                                // local link, leaving spools pointing at a destroyed PL (orphan FK). Take the
+                                // server value straight when the row isn't locally dirty.
+                                packing_list_id = if (keepLocal) local.packing_list_id else s.packing_list_id,
                                 position_id     = if (keepLocal) local.position_id else (s.position_id ?: local.position_id),
                                 sub_position_id = if (keepLocal) local.sub_position_id else (s.sub_position_id ?: local.sub_position_id),
                                 // Carry synced=false so the local override persists across multiple sync

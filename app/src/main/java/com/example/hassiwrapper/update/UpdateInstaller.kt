@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.example.hassiwrapper.BuildConfig
 import com.example.hassiwrapper.R
+import com.example.hassiwrapper.admin.TracDeviceAdmin
 import com.example.hassiwrapper.receiver.DownloadCompleteReceiver
 import com.example.hassiwrapper.receiver.InstallStatusReceiver
 import kotlinx.coroutines.Dispatchers
@@ -152,26 +153,31 @@ object UpdateInstaller {
     /**
      * Installs a previously-downloaded APK. Called by [DownloadCompleteReceiver] and by
      * MainActivity.onResume (safety net for devices where the receiver is suppressed).
+     * Heavy I/O (copyTo/fsync in [installApkViaSession]) runs on Dispatchers.IO — this must
+     * never be called from a BroadcastReceiver's onReceive without goAsync(), or the main
+     * thread blocks long enough to trip Android's broadcast-timeout ANR watchdog.
      */
-    fun installApk(context: Context, apkFile: File) {
+    suspend fun installApk(context: Context, apkFile: File) = withContext(Dispatchers.IO) {
         if (!apkFile.exists() || apkFile.length() == 0L) {
             Log.w(TAG, "APK not found or empty: ${apkFile.absolutePath}")
-            return
+            return@withContext
         }
         if (isSessionInFlight(context)) {
             Log.d(TAG, "Install session already in flight — skipping duplicate")
-            return
+            return@withContext
         }
         if (!isValidApk(apkFile)) {
             val preview = readFilePreview(apkFile, 200)
             Log.e(TAG, "Downloaded file is not a valid APK. First 200 bytes: $preview")
-            Toast.makeText(
-                context,
-                context.getString(R.string.update_invalid_apk),
-                Toast.LENGTH_LONG
-            ).show()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.update_invalid_apk),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
             apkFile.delete()
-            return
+            return@withContext
         }
         installApkViaSession(context, apkFile)
     }
@@ -181,7 +187,7 @@ object UpdateInstaller {
      * Called from MainActivity.onResume as a fallback for devices (Xiaomi HyperOS,
      * some Honeywell firmware) where the broadcast receiver may not fire reliably.
      */
-    fun installPendingApkIfExists(context: Context) {
+    suspend fun installPendingApkIfExists(context: Context) {
         val apkFile = getUpdateApkFile(context) ?: return
         if (!apkFile.exists() || apkFile.length() == 0L) return
         if (isSessionInFlight(context)) {
@@ -200,24 +206,28 @@ object UpdateInstaller {
      * Manually triggered from Settings. Re-installs the last successfully installed
      * APK (kept as rollback). No-op with a toast if there is no previous APK.
      */
-    fun reinstallPreviousVersion(context: Context) {
+    suspend fun reinstallPreviousVersion(context: Context) = withContext(Dispatchers.IO) {
         val previous = getPreviousApkFile(context)
         if (previous == null || !previous.exists() || previous.length() == 0L) {
-            Toast.makeText(
-                context,
-                context.getString(R.string.update_no_previous_version),
-                Toast.LENGTH_SHORT
-            ).show()
-            return
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.update_no_previous_version),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            return@withContext
         }
         if (!isValidApk(previous)) {
             Log.e(TAG, "Previous APK corrupt, refusing to install")
-            Toast.makeText(
-                context,
-                context.getString(R.string.update_previous_corrupt),
-                Toast.LENGTH_LONG
-            ).show()
-            return
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.update_previous_corrupt),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            return@withContext
         }
         Log.d(TAG, "Reinstalling previous APK: ${previous.absolutePath}")
         installApkViaSession(context, previous)
@@ -306,6 +316,9 @@ object UpdateInstaller {
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(apkUri, "application/vnd.android.package-archive")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        intent.resolveActivity(context.packageManager)?.packageName?.let {
+            TracDeviceAdmin.allowLockTaskPackageTemporarily(context, it)
         }
         context.startActivity(intent)
     }

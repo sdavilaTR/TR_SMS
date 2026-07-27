@@ -17,6 +17,7 @@ class AuditLogService(
         const val PL_EDITADO             = "PL_EDITADO"
         const val PL_ELIMINADO           = "PL_ELIMINADO"
         const val PL_ELIMINADO_HARD      = "PL_ELIMINADO_HARD"
+        const val PL_ENTREGADO           = "PL_ENTREGADO"
         const val VEHICULO_CREADO        = "VEHICULO_CREADO"
         const val VEHICULO_EDITADO       = "VEHICULO_EDITADO"
         const val VEHICULO_ELIMINADO     = "VEHICULO_ELIMINADO"

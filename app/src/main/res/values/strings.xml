@@ -219,6 +219,7 @@
     <string name="transfer_btn_manual_confirm">Confirmar entrada manual</string>
     <string name="settings_debug_location_btn">[DEBUG] Cambiar Posición Terminal</string>
     <string name="settings_debug_location_changed">Posición cambiada a: %s</string>
+    <string name="settings_debug_subposition_btn">Seleccione la sub-zona del terminal</string>
     <string name="settings_kiosk_title">Modo Kiosko</string>
     <string name="settings_kiosk_desc">Bloquea la app en pantalla completa (Screen Pinning). El dispositivo no podrá salir de la aplicación sin desactivar esta opción.</string>
     <string name="settings_kiosk_enabled">Modo Kiosko activado</string>
@@ -234,7 +235,9 @@
     <string name="settings_geofence_clear">Quitar</string>
     <string name="settings_geofence_status_none">Sin geofence configurado para esta área.</string>
     <string name="settings_geofence_status_current">Geofence actual: %1$d puntos, modo %2$s.</string>
+    <string name="settings_geofence_status_current_multi">Geofence actual: %1$d polígonos (%2$d puntos), modo %3$s.</string>
     <string name="settings_geofence_status_pending">KML importado: %1$d puntos (sin guardar).</string>
+    <string name="settings_geofence_status_pending_multi">KML importado: %1$d polígonos (%2$d puntos) (sin guardar).</string>
     <string name="settings_geofence_no_areas">No hay áreas sincronizadas para este proyecto.</string>
     <string name="settings_geofence_parse_error">No se pudo leer el polígono del archivo KML.</string>
     <string name="settings_geofence_saved">Geofence guardado.</string>
@@ -358,7 +361,8 @@
     <string name="settings_language_label">Idioma</string>
     <string name="language_es">Español</string>
     <string name="language_en">English</string>
-    <string name="language_fr">Français</string>
+    <string name="language_ar">العربية</string>
+    <string name="language_hi">हिन्दी</string>
 
     <!-- Observations -->
     <string name="obs_title">Observaci\u00f3n HSE</string>
@@ -896,6 +900,11 @@
     <string name="transfer_vehicle_not_on_route">El vehículo no está en ruta.</string>
     <string name="transfer_vehicle_wrong_destination">El vehículo no está dirigido a esta ubicación.</string>
     <string name="transfer_vehicle_wrong_project">El vehículo no pertenece al proyecto actual.</string>
+    <string name="transfer_unregistered_vehicle_title">Vehículo no registrado</string>
+    <string name="transfer_unregistered_vehicle_message">El vehículo con matrícula %1$s no está registrado en el sistema. ¿Desea crear una incidencia de \"Vehículo no registrado\"? El vehículo se puede registrar desde el módulo de Vehículos (disponible solo para perfiles ADMIN y DEV).</string>
+    <string name="transfer_unregistered_vehicle_create_incident">Crear incidencia</string>
+    <string name="transfer_unregistered_vehicle_incident_created">Incidencia de vehículo no registrado creada.</string>
+    <string name="incident_unregistered_vehicle_description">Vehículo con matrícula %1$s no está registrado en el sistema. Se puede registrar desde el módulo de Vehículos.</string>
     <string name="transfer_send_to">Vas a enviar a %s</string>
     <string name="transfer_pl_label">PL: %1$s</string>
     <string name="transfer_vehicle_label">Vehículo: %1$s</string>
@@ -1013,6 +1022,9 @@
     <string name="menu_map">Mapa</string>
     <string name="spool_map_empty">No hay spools con ubicación GPS registrada</string>
     <string name="spool_map_refresh">Actualizar mapa</string>
+    <string name="spool_map_center_geofence">Centrar en geofence</string>
+    <string name="spool_map_center_geofence_title">Seleccionar geofence</string>
+    <string name="spool_map_no_geofences">No hay geofences disponibles</string>
     <string name="home_btn_map">Ver Mapa de Spools</string>
     <string name="home_qa_map">Mapa de Spools</string>
     <string name="home_btn_inventario">Ver Inventario de mi zona</string>

@@ -148,6 +148,14 @@ interface SmsPackingListDao {
     @Query("UPDATE sms_packing_list SET vehicle_id = :vehicleId, vehicle_plate = :vehiclePlate WHERE packing_list_id = :id")
     suspend fun setVehicle(id: Long, vehicleId: Long, vehiclePlate: String)
 
+    /** Marks a PL as delivered on full receive: unassigns the vehicle (frees the truck for its
+     *  next load AND drops the PL out of the Receive screen, which resolves by vehicle) and clears
+     *  ready_to_send. Keeps is_active=1 and the spool links, so the PL survives as a delivery
+     *  record instead of being deleted (the reported "PL desaparece" bug). synced=0 so the
+     *  delivery state uploads. */
+    @Query("UPDATE sms_packing_list SET vehicle_id = NULL, vehicle_plate = NULL, ready_to_send = 0, synced = 0 WHERE packing_list_id = :id")
+    suspend fun clearVehicleAndDeliver(id: Long)
+
     @Query("SELECT * FROM sms_packing_list WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsPackingListEntity>
 
@@ -867,6 +875,9 @@ interface SmsIncidentDao {
     @Query("SELECT * FROM sms_incident WHERE project_id = :projectId AND spool_code = :spoolCode AND spool_suffix IS :spoolSuffix AND incident_type = 'REVISION_MISMATCH' AND status != 'CLOSED' LIMIT 1")
     suspend fun getOpenRevisionMismatch(projectId: Int, spoolCode: String, spoolSuffix: String?): SmsIncidentEntity?
 
+    @Query("SELECT * FROM sms_incident WHERE project_id = :projectId AND vehicle_plate = :plate AND incident_type = 'VEHICLE_NOT_REGISTERED' AND status != 'CLOSED' LIMIT 1")
+    suspend fun getOpenVehicleNotRegistered(projectId: Int, plate: String): SmsIncidentEntity?
+
     @Query("DELETE FROM sms_incident WHERE id = :id")
     suspend fun deleteById(id: Long)
 }
@@ -898,6 +909,43 @@ interface SmsSpoolLocationDao {
         )
     """)
     suspend fun getLatestByProject(projectId: Int): List<SmsSpoolMapMarker>
+
+    /** Same as [getLatestByProject] but pinned to one zone — feeds the GUEST spool map, which
+     *  must never reveal other zones' spool positions (see loadGuestZoneStats' scanned_from
+     *  reasoning in SmsSpoolDao). */
+    @Query("""
+        SELECT l.spool_id AS spool_id, l.latitude AS latitude, l.longitude AS longitude,
+               l.captured_at AS captured_at, s.spool_code AS spool_code,
+               s.spool_suffix AS spool_suffix, s.revision AS revision, s.status AS status
+        FROM sms_spool_location l
+        INNER JOIN sms_spool s ON s.spool_id = l.spool_id
+        WHERE s.project_id = :projectId AND UPPER(s.scanned_from) = UPPER(:location)
+        AND l.location_id = (
+            SELECT l2.location_id FROM sms_spool_location l2
+            WHERE l2.spool_id = l.spool_id
+            ORDER BY l2.captured_at DESC LIMIT 1
+        )
+    """)
+    suspend fun getLatestByProjectAndZone(projectId: Int, location: String): List<SmsSpoolMapMarker>
+
+    /** Same as [getLatestByProjectAndZone] but further pinned to one sub-position (e.g. a JAFURAH
+     *  "Laydown GCP 5" terminal) — a guest terminal pinned to a sub-position must never see
+     *  another sub-position's spools even within the same zone. */
+    @Query("""
+        SELECT l.spool_id AS spool_id, l.latitude AS latitude, l.longitude AS longitude,
+               l.captured_at AS captured_at, s.spool_code AS spool_code,
+               s.spool_suffix AS spool_suffix, s.revision AS revision, s.status AS status
+        FROM sms_spool_location l
+        INNER JOIN sms_spool s ON s.spool_id = l.spool_id
+        WHERE s.project_id = :projectId AND UPPER(s.scanned_from) = UPPER(:location)
+        AND s.sub_position_id = :subPositionId
+        AND l.location_id = (
+            SELECT l2.location_id FROM sms_spool_location l2
+            WHERE l2.spool_id = l.spool_id
+            ORDER BY l2.captured_at DESC LIMIT 1
+        )
+    """)
+    suspend fun getLatestByProjectZoneAndSubPosition(projectId: Int, location: String, subPositionId: Long): List<SmsSpoolMapMarker>
 
     @Query("SELECT * FROM sms_spool_location WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsSpoolLocationEntity>

@@ -62,5 +62,27 @@ class TracDeviceAdmin : DeviceAdminReceiver() {
                 Log.w(TAG, "setLockTaskFeatures failed: ${e.message}")
             }
         }
+
+        /**
+         * Widens the Lock Task allowlist to also let [extraPackage] come to foreground —
+         * e.g. the system install-confirmation UI, Settings' unknown-sources screen, or an
+         * external installer. Without this, launching those under a single-package
+         * allowlist can't come to foreground and the terminal appears frozen. No-op if not
+         * Device Owner or [extraPackage] is null. Narrowed back to just our own package by
+         * the next [applyOwnerDefaults] call (MainActivity.onResume, every time the user
+         * returns to the app).
+         */
+        fun allowLockTaskPackageTemporarily(context: Context, extraPackage: String?) {
+            if (extraPackage == null) return
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE)
+                as? DevicePolicyManager ?: return
+            if (!dpm.isDeviceOwnerApp(context.packageName)) return
+            val admin = ComponentName(context, TracDeviceAdmin::class.java)
+            try {
+                dpm.setLockTaskPackages(admin, arrayOf(context.packageName, extraPackage))
+            } catch (e: Exception) {
+                Log.w(TAG, "allowLockTaskPackageTemporarily failed: ${e.message}")
+            }
+        }
     }
 }

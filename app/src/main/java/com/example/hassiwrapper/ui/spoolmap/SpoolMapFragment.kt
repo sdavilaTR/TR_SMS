@@ -1,15 +1,20 @@
 package com.example.hassiwrapper.ui.spoolmap
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.dao.SmsSpoolMapMarker
+import com.example.hassiwrapper.data.db.entities.SmsPositionEntity
 import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
+import com.example.hassiwrapper.normalizeDeviceLocation
 import com.example.hassiwrapper.services.KmlParser
 import com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet
 import kotlinx.coroutines.launch
@@ -23,9 +28,19 @@ import org.osmdroid.views.overlay.Polygon
 
 class SpoolMapFragment : Fragment() {
 
+    private data class GeofenceInfo(
+        val positionName: String,
+        val subPositionName: String,
+        val polygons: List<List<GeoPoint>>
+    ) {
+        val label: String get() = "$positionName / $subPositionName"
+        val allPoints: List<GeoPoint> get() = polygons.flatten()
+    }
+
     private var mapView: MapView? = null
     private lateinit var txtEmpty: View
     private var hasCentered = false
+    private var currentGeofences: List<GeofenceInfo> = emptyList()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -40,8 +55,11 @@ class SpoolMapFragment : Fragment() {
         mapView = view.findViewById<MapView>(R.id.mapViewSpools).apply {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
+            // MAPNIK has no tiles past z19; cap zoom so pinch doesn't degrade into blank stretched tiles.
+            maxZoomLevel = 19.0
         }
         view.findViewById<View>(R.id.btnRefreshMap).setOnClickListener { load() }
+        view.findViewById<View>(R.id.btnCenterGeofence).setOnClickListener { showCenterGeofenceDialog() }
         load()
     }
 
@@ -64,13 +82,43 @@ class SpoolMapFragment : Fragment() {
     private fun load() {
         viewLifecycleOwner.lifecycleScope.launch {
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-            val markers = ServiceLocator.smsSpoolLocationDao.getLatestByProject(projectId)
-            val geofences = ServiceLocator.smsSubPositionDao.getByProject(projectId).filter { !it.geofence_polygon.isNullOrBlank() }
-            renderMarkers(markers, geofences)
+            val isGuest = ProfileManager.currentUserRole() == ProfileManager.UserRole.GUEST
+
+            // GUEST never sees other zones' spool positions or geofences — pin the map to the
+            // terminal's own zone (device_location), same scoping as CreateSpoolFragment/HomeFragment.
+            // A terminal further pinned to one sub-position (e.g. JAFURAH "Laydown GCP 5") is
+            // narrowed one level more — never shows sibling GCP zones either.
+            val zone = if (isGuest) normalizeDeviceLocation(ServiceLocator.configRepo.get("device_location")) else null
+            if (isGuest && zone == null) {
+                renderMarkers(emptyList(), emptyList(), emptyMap())
+                return@launch
+            }
+            val subPositionId = if (isGuest) ServiceLocator.configRepo.get("device_sub_position_id")?.toLongOrNull() else null
+
+            val markers = when {
+                subPositionId != null && zone != null -> ServiceLocator.smsSpoolLocationDao.getLatestByProjectZoneAndSubPosition(projectId, zone, subPositionId)
+                zone != null -> ServiceLocator.smsSpoolLocationDao.getLatestByProjectAndZone(projectId, zone)
+                else -> ServiceLocator.smsSpoolLocationDao.getLatestByProject(projectId)
+            }
+            val allGeofences = when {
+                subPositionId != null -> listOfNotNull(ServiceLocator.smsSubPositionDao.getById(subPositionId))
+                zone != null -> {
+                    val positionId = ServiceLocator.smsPositionDao.getByCode(zone)?.position_id
+                    positionId?.let { ServiceLocator.smsSubPositionDao.getByPosition(projectId, it) }.orEmpty()
+                }
+                else -> ServiceLocator.smsSubPositionDao.getByProject(projectId)
+            }
+            val geofences = allGeofences.filter { !it.geofence_polygon.isNullOrBlank() }
+            val positions = ServiceLocator.smsPositionDao.getAll().associateBy { it.position_id }
+            renderMarkers(markers, geofences, positions)
         }
     }
 
-    private fun renderMarkers(markers: List<SmsSpoolMapMarker>, geofences: List<SmsSubPositionEntity>) {
+    private fun renderMarkers(
+        markers: List<SmsSpoolMapMarker>,
+        geofences: List<SmsSubPositionEntity>,
+        positions: Map<Int, SmsPositionEntity>
+    ) {
         val mv = mapView ?: return
         val isEmpty = markers.isEmpty() && geofences.isEmpty()
         txtEmpty.visibility = if (isEmpty) View.VISIBLE else View.GONE
@@ -83,19 +131,30 @@ class SpoolMapFragment : Fragment() {
         }
 
         val geofencePoints = mutableListOf<GeoPoint>()
+        val geofenceInfos = mutableListOf<GeofenceInfo>()
         geofences.forEach { area ->
-            val polygon = area.geofence_polygon?.let { KmlParser.deserialize(it) } ?: return@forEach
-            val points = polygon.map { GeoPoint(it.lat, it.lon) }
-            if (points.size < 3) return@forEach
-            geofencePoints += points
-            mv.overlays.add(Polygon(mv).apply {
-                this.points = points
-                title = area.name
-                fillColor = 0x220D47A1
-                strokeColor = 0xFF0D47A1.toInt()
-                strokeWidth = 3f
-            })
+            val stored = area.geofence_polygon ?: return@forEach
+            val polygons = KmlParser.deserializeMulti(stored)
+                .map { polygon -> polygon.map { GeoPoint(it.lat, it.lon) } }
+                .filter { it.size >= 3 }
+            if (polygons.isEmpty()) return@forEach
+            geofencePoints += polygons.flatten()
+            val positionName = positions[area.position_id]?.name?.ifBlank { null }
+                ?: area.full_path.substringBefore("/")
+            val subPositionName = area.name.ifBlank { area.code }.ifBlank { area.full_path.substringAfterLast("/") }
+            val info = GeofenceInfo(positionName, subPositionName, polygons)
+            geofenceInfos += info
+            polygons.forEach { points ->
+                mv.overlays.add(Polygon(mv).apply {
+                    this.points = points
+                    title = info.label
+                    fillColor = 0x220D47A1
+                    strokeColor = 0xFF0D47A1.toInt()
+                    strokeWidth = 3f
+                })
+            }
         }
+        currentGeofences = geofenceInfos
 
         markers.forEach { m ->
             val point = GeoPoint(m.latitude, m.longitude)
@@ -128,5 +187,26 @@ class SpoolMapFragment : Fragment() {
             }
         }
         mv.invalidate()
+    }
+
+    private fun showCenterGeofenceDialog() {
+        val geofences = currentGeofences
+        if (geofences.isEmpty()) {
+            Toast.makeText(requireContext(), getString(R.string.spool_map_no_geofences), Toast.LENGTH_SHORT).show()
+            return
+        }
+        val labels = geofences.map { it.label }.toTypedArray()
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.spool_map_center_geofence_title)
+            .setItems(labels) { _, which ->
+                val mv = mapView ?: return@setItems
+                val points = geofences[which].allPoints
+                val lats = points.map { it.latitude }
+                val lons = points.map { it.longitude }
+                val box = BoundingBox(lats.max(), lons.max(), lats.min(), lons.min())
+                mv.post { mv.zoomToBoundingBox(box, true, 96) }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 }

@@ -172,6 +172,10 @@ class CreateSpoolFragment : Fragment() {
             viewLifecycleOwner.lifecycleScope.launch {
                 val zone = normalizeDeviceLocation(ServiceLocator.configRepo.get("device_location")) ?: DEFAULT_DEVICE_LOCATION
                 filter = Filter.values().first { it.positionCode == zone }
+                // A terminal pinned to one sub-position (device_sub_position_id — e.g. JAFURAH
+                // "Laydown GCP 5") must never browse sibling GCP zones: lock the filter, don't
+                // just default it, and never surface spinnerSubPos (stays hidden, see below).
+                selectedSubPositionId = ServiceLocator.configRepo.get("device_sub_position_id")?.toLongOrNull()
                 loadSpools()
             }
         } else {
@@ -247,6 +251,14 @@ class CreateSpoolFragment : Fragment() {
     }
 
     private suspend fun updateSubPositionSpinner() {
+        // GUEST is always pinned via device_sub_position_id (or unpinned, browsing its whole
+        // zone) — never let it drive the filter through this spinner, which would otherwise
+        // reset selectedSubPositionId to null (position 0) on every refreshAllViews() call,
+        // silently un-pinning a GCP-pinned terminal back to the full zone.
+        if (ProfileManager.currentUserRole() == ProfileManager.UserRole.GUEST) {
+            spinnerSubPos.visibility = View.GONE
+            return
+        }
         val code = filter.positionCode
         if (code == null) {
             spinnerSubPos.visibility = View.GONE

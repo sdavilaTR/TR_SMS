@@ -1,0 +1,1032 @@
+<resources>
+    <string name="app_name">Smart Material System</string>
+
+    <!-- QR Scanner FAB -->
+    <string name="qr_scan_button">क्यूआर कोड स्कैन करें</string>
+    <string name="qr_result_title">क्यूआर कोड मिला</string>
+
+    <!-- QR Scanner Fragment -->
+    <string name="menu_qr_scanner">क्यूआर स्कैनर</string>
+    <string name="qr_scanner_status_waiting">स्कैन की प्रतीक्षा में…\nलेज़र स्कैनर या कैमरा बटन का उपयोग करें</string>
+    <string name="qr_scanner_status_processing">कोड प्रोसेस हो रहा है…</string>
+    <string name="qr_scanner_status_spool_found">स्पूल मिला: %1$s</string>
+    <string name="qr_scanner_status_vehicle_found">वाहन मिला: %1$s</string>
+    <string name="qr_scanner_btn_camera">कैमरे से स्कैन करें</string>
+    <string name="qr_scanner_hint_laser">लेज़र से स्कैन करने के लिए टर्मिनल का साइड बटन दबाएं</string>
+    <string name="qr_scanner_result_spool_not_found">स्पूल स्थानीय डेटाबेस में नहीं मिला — पहले सिंक करें</string>
+    <string name="qr_scanner_result_vehicle_not_found">वाहन स्थानीय डेटाबेस में नहीं मिला — पहले सिंक करें</string>
+    <string name="qr_scanner_result_vehicle_badge">वाहन (बैज UUID)</string>
+    <string name="qr_scanner_result_badge_unsupported">बैज UUID किसी SMS वाहन से संबद्ध नहीं है। ATLAS सिस्टम में वाहन का क्यूआर कोड उपयोग करें।</string>
+    <string name="qr_scanner_result_unknown">क्यूआर कोड पहचाना नहीं गया</string>
+    <string name="qr_scanner_result_id_detail">ID: %1$s</string>
+    <string name="qr_scanner_result_spool_syncing">सिंक्रोनाइज़ेशन जारी है — हो सकता है स्पूल अभी डाउनलोड न हुआ हो। पूरा होने की प्रतीक्षा करें और फिर से प्रयास करें।</string>
+    <string name="qr_scanner_revision_mismatch">!!!स्कैन किया गया भौतिक रिवीज़न (%1$s) दर्ज रिवीज़न (%2$s) से भिन्न है</string>
+    <string name="revision_mismatch_dialog_title">भिन्न रिवीज़न मिला!!</string>
+    <string name="revision_mismatch_dialog_create">घटना बनाएं</string>
+    <string name="revision_mismatch_dialog_dismiss">खारिज करें</string>
+    <string name="revision_mismatch_incident_created">घटना बनाई गई और पर्यवेक्षकों को सूचित किया गया</string>
+    <string name="revision_mismatch_incident_exists">इस रिवीज़न के लिए पहले से ही एक खुली घटना मौजूद है</string>
+
+    <!-- QR Scanner: relocate mode -->
+    <string name="qr_scanner_btn_relocate">स्पूल स्थानांतरित करें</string>
+    <string name="qr_scanner_btn_relocate_active">स्थानांतरण रद्द करें</string>
+    <string name="qr_scanner_relocate_label_area">गंतव्य सेक्शन (Laydown)</string>
+    <string name="qr_scanner_relocate_label_unit">गंतव्य यूनिट (Site)</string>
+    <string name="qr_scanner_relocate_no_location">सेटिंग्स में टर्मिनल का स्थान (Laydown/Site) कॉन्फ़िगर करें</string>
+    <string name="qr_scanner_relocate_no_destinations">इस टर्मिनल के लिए कोई सेक्शन/यूनिट दर्ज नहीं है। सेटिंग्स में कॉन्फ़िगर करें</string>
+    <string name="qr_scanner_relocate_select_dest_first">स्कैन करने से पहले गंतव्य चुनें</string>
+    <string name="qr_scanner_relocate_count">%1$s में स्थानांतरित स्पूल: %2$d</string>
+    <string name="qr_scanner_relocate_success">%1$s → %2$s</string>
+    <string name="qr_scanner_relocate_only_spools">केवल स्पूल ही स्थानांतरित किए जा सकते हैं</string>
+    <string name="qr_scanner_btn_finish_relocate">स्थानांतरण समाप्त करें</string>
+    <string name="scan_result_spool_registered">स्पूल दर्ज: %1$s</string>
+    <string name="scan_result_spool_not_registered">स्पूल डेटाबेस में दर्ज नहीं है</string>
+    <string name="scan_result_spool_not_registered_syncing">सिंक्रोनाइज़ेशन जारी है — हो सकता है स्पूल अभी डाउनलोड न हुआ हो। पूरा होने की प्रतीक्षा करें और फिर से प्रयास करें।\n\nक्या फिर भी नया रिकॉर्ड बनाना चाहते हैं?</string>
+    <string name="scan_result_vehicle_registered">वाहन दर्ज: %1$s</string>
+    <string name="scan_result_vehicle_not_registered">वाहन डेटाबेस में दर्ज नहीं है</string>
+    <string name="scan_create_question">क्या नया रिकॉर्ड बनाना चाहते हैं?</string>
+    <string name="scan_action_create">बनाएं</string>
+    <string name="scan_action_close">बंद करें</string>
+
+    <!-- Navigation -->
+    <string name="nav_header_title">Smart Material System</string>
+    <string name="menu_home">होम</string>
+    <string name="menu_scanner">स्पूल सूची</string>
+    <string name="menu_passport">पैकिंग लिस्ट</string>
+    <string name="passport_screen_title">पासपोर्ट</string>
+    <string name="packing_lists_empty">कोई पैकिंग लिस्ट नहीं है।</string>
+    <string name="packing_lists_count">%1$d पैकिंग लिस्ट</string>
+    <string name="packing_lists_error_prefix">त्रुटि: %s</string>
+    <string name="packing_lists_error_http">HTTP त्रुटि %d</string>
+    <string name="packing_lists_error_project_code">project_id=%d के लिए projectCode खाली/शून्य है। क्या सिंक किया गया था?</string>
+    <string name="home_label_packing_lists">पैकिंग लिस्ट</string>
+    <string name="menu_attendance">स्पूल रिकॉर्ड</string>
+    <string name="menu_sync">सिंक्रोनाइज़ेशन</string>
+    <string name="menu_workers">स्पूल</string>
+    <string name="menu_settings">सेटिंग्स</string>
+
+    <!-- Home -->
+    <string name="home_label_terminal">टर्मिनल</string>
+    <string name="home_label_workers">कर्मचारी</string>
+    <string name="home_label_scans_today">आज के स्कैन</string>
+    <string name="home_label_pending">लंबित</string>
+    <string name="home_label_incidents">घटनाएं</string>
+    <string name="home_label_spools">स्पूल</string>
+    <string name="home_btn_access">Smart Material System</string>
+    <string name="home_btn_sync">सिंक करें</string>
+    <string name="home_last_sync_none">अंतिम सिंक: —</string>
+    <string name="home_last_sync_format">अंतिम सिंक: %s</string>
+
+    <!-- Scanner -->
+    <string name="scanner_label_direction">दिशा:</string>
+    <string name="scanner_status_waiting">स्कैन की प्रतीक्षा में…</string>
+    <string name="scanner_status_processing">प्रोसेस हो रहा है…</string>
+    <string name="scanner_hint_usage">टर्मिनल के लेज़र स्कैनर या कैमरा बटन का उपयोग करें</string>
+    <string name="scanner_btn_camera">कैमरा</string>
+    <string name="scanner_btn_laser">लेज़र</string>
+    <string name="scanner_laser_hint">लेज़र से स्कैन करने के लिए टर्मिनल का साइड बटन दबाएं</string>
+    <string name="scanner_label_recent">हाल की रीडिंग</string>
+    <string name="scanner_error_camera_permission">कैमरा अनुमति आवश्यक है</string>
+    <string name="scanner_camera_prompt">कर्मचारी के क्यूआर कोड / बारकोड पर निशाना लगाएं</string>
+    <string name="scanner_unknown">अज्ञात</string>
+    <string name="scanner_granted">स्वीकृत</string>
+    <string name="scanner_denied">अस्वीकृत</string>
+    <string name="scanner_result_error">त्रुटि</string>
+    <string name="scanner_worker">कर्मचारी</string>
+    <string name="scanner_entry">↑ प्रवेश</string>
+    <string name="scanner_exit">↓ निकास</string>
+
+    <!-- Passport -->
+    <string name="passport_waiting_title">स्पूल स्कैन करें</string>
+    <string name="passport_waiting_hint">स्कैन करने पर स्पूल की जानकारी यहां दिखाई देगी</string>
+    <string name="passport_card_title">UTE TR — SE HASSI MESSAOUD PROJECT</string>
+    <string name="passport_scanned_at">स्कैन किया गया: %s</string>
+    <string name="passport_label_family_name">उपनाम</string>
+    <string name="passport_label_given_name">नाम</string>
+    <string name="passport_label_position">पद / पदनाम</string>
+    <string name="passport_label_company">कंपनी / ठेकेदार</string>
+    <string name="passport_label_document">दस्तावेज़ संख्या</string>
+    <string name="passport_label_badge">बैज संख्या</string>
+    <string name="passport_label_category">श्रेणी</string>
+    <string name="passport_label_valid_from">प्रवेश तिथि</string>
+    <string name="passport_label_valid_to">इस तक मान्य</string>
+    <string name="passport_status_active">● सक्रिय</string>
+    <string name="passport_status_inactive">● निष्क्रिय</string>
+    <string name="passport_worker_not_found">कर्मचारी स्थानीय डेटाबेस में नहीं मिला</string>
+    <string name="passport_photo_tap">फोटो\nलें</string>
+    <string name="passport_photo_uploading">फोटो अपलोड हो रही है…</string>
+    <string name="passport_photo_uploaded">फोटो सफलतापूर्वक अपडेट हुई</string>
+    <string name="passport_photo_error">फोटो अपलोड करने में त्रुटि: %s</string>
+    <string name="passport_photo_no_connection">फोटो स्थानीय रूप से सहेजी गई। अगले सिंक में अपलोड होगी</string>
+
+    <!-- Attendance -->
+    <string name="attendance_title">स्पूल रिकॉर्ड</string>
+    <string name="attendance_filter_all">सभी</string>
+    <string name="attendance_filter_synced">सिंक हो चुके</string>
+    <string name="attendance_filter_pending">लंबित</string>
+
+    <!-- Sync -->
+    <string name="sync_title">सिंक्रोनाइज़ेशन</string>
+    <string name="sync_label_connection">कनेक्शन स्थिति</string>
+    <string name="sync_label_pending_data">लंबित डेटा</string>
+    <string name="sync_pending_logs">रिकॉर्ड: %d</string>
+    <string name="sync_pending_incidents">घटनाएं: %d</string>
+    <string name="sync_pending_sessions">सेशन: %d</string>
+    <string name="sync_pending_photos">फोटो: %d</string>
+    <string name="sync_btn">पूर्ण सिंक्रोनाइज़ेशन</string>
+    <string name="sync_last_none">अंतिम सिंक: —</string>
+    <string name="sync_last_format">अंतिम सिंक: %s</string>
+    <string name="sync_syncing">सिंक हो रहा है…</string>
+    <string name="sync_success">✓ सिंक पूरा: %1$d लॉग, %2$d नए, %3$d अपडेट किए गए</string>
+    <string name="sync_error">✕ त्रुटि: %s</string>
+    <string name="sync_photos_ok">%d फोटो अपलोड हुईं</string>
+    <string name="sync_photos_fail">%d फोटो अपलोड नहीं हो सकीं</string>
+    <string name="sync_photos_fail_detail">%1$d फोटो विफल:\n%2$s</string>
+    <string name="sync_status_checking">जांच हो रही है…</string>
+    <string name="sync_network_online">नेटवर्क: कनेक्टेड</string>
+    <string name="sync_network_offline">नेटवर्क: कनेक्ट नहीं है</string>
+    <string name="sync_api_ok">ATLAS API: उपलब्ध</string>
+    <string name="sync_api_fail">ATLAS API: उपलब्ध नहीं</string>
+    <string name="sync_auth_ok">सेशन: सक्रिय</string>
+    <string name="sync_auth_none">सेशन: शुरू नहीं हुआ</string>
+    <string name="sync_auth_required">सिंक करने के लिए लॉगिन करें</string>
+    <string name="sync_retrying">पुनः प्रयास (%1$d)… %2$d सेकंड प्रतीक्षा करें</string>
+
+    <!-- Sync KPIs -->
+    <string name="sync_kpi_records">स्पूल</string>
+    <string name="sync_kpi_photos">पैकिंग लिस्ट</string>
+    <string name="sync_kpi_observations">वाहन</string>
+    <string name="sync_kpi_workers">ट्रांज़िट में</string>
+    <string name="sync_kpi_synced">सिंक हुआ</string>
+    <string name="sync_kpi_pending">लंबित</string>
+    <string name="sync_kpi_workers_synced">अपडेट किए गए</string>
+
+    <!-- Sync KPI vehicles -->
+    <string name="sync_kpi_vehicles">सिंक लंबित</string>
+    <string name="sync_kpi_vehicles_synced">अपडेट किए गए</string>
+    <string name="sync_kpi_in_transit_active">सक्रिय</string>
+
+    <!-- Outbox failed ops banner -->
+    <string name="sync_outbox_failed_banner">⚠ %1$d ऑपरेशन कई प्रयासों के बाद भी सिंक नहीं हो सके — विवरण के लिए टैप करें</string>
+    <string name="sync_outbox_failed_dialog_title">विफल ऑपरेशन</string>
+    <string name="sync_outbox_failed_dialog_item">%1$s %2$s (id %3$d): %4$s</string>
+    <string name="sync_outbox_failed_dialog_discard">खारिज करें</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_title">विफल ऑपरेशन खारिज करें</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_message">%1$d विफल ऑपरेशन खारिज कर दिए जाएंगे। इनका फिर से प्रयास नहीं होगा और यह पहले से सिंक हुए डेटा को प्रभावित नहीं करेगा।</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_yes">खारिज करें</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_no">रद्द करें</string>
+
+    <!-- Delta-sync flag banner -->
+    <string name="sync_delta_active_banner">इस डिवाइस पर डेल्टा सिंक सक्रिय है — प्रायोगिक मोड, यदि यह अनपेक्षित है तो सपोर्ट से संपर्क करें</string>
+
+    <!-- Sync result structured -->
+    <string name="sync_result_title_ok">सिंक्रोनाइज़ेशन पूरा हुआ</string>
+    <string name="sync_result_title_error">सिंक्रोनाइज़ेशन त्रुटि</string>
+    <string name="sync_result_logs">अपलोड किए गए रिकॉर्ड: %d</string>
+    <string name="sync_result_workers">कर्मचारी: %1$d नए, %2$d अपडेट किए गए</string>
+    <string name="sync_result_vehicles">वाहन: %1$d नए, %2$d अपडेट किए गए</string>
+    <string name="sync_result_observations">अवलोकन: %d</string>
+    <string name="sync_result_photos_ok">अपलोड की गई फोटो: %d</string>
+    <string name="sync_result_photos_fail">विफल फोटो: %d</string>
+
+    <!-- Home vehicles -->
+    <string name="home_label_vehicles">वाहन</string>
+
+    <!-- Workers -->
+    <string name="workers_hint_search">कर्मचारी खोजें…</string>
+    <string name="workers_count">%d कर्मचारी</string>
+    <string name="workers_badge_format">बैज: %1$s | %2$s</string>
+
+    <!-- Spools sections -->
+    <string name="spools_section_workshop">Workshop</string>
+    <string name="spools_section_laydown">Laydown</string>
+    <string name="spools_section_site">Site</string>
+    <string name="spools_section_hint_workshop">निर्माण में स्पूल</string>
+    <string name="spools_section_hint_laydown">गोदाम / यार्ड में स्पूल</string>
+    <string name="spools_section_hint_site">साइट पर स्थापित स्पूल</string>
+    <string name="spools_empty_placeholder">कोई डेटा नहीं — ATLAS के साथ सिंक होना बाकी है</string>
+    <string name="spools_count_format">%d स्पूल</string>
+
+    <!-- Vehicles -->
+    <string name="menu_vehicles">वाहन</string>
+    <string name="menu_transfers">भेजना और प्राप्त करना</string>
+    <string name="menu_send_packing_list">भेजना</string>
+    <string name="menu_receive_packing_list">प्राप्त करना</string>
+    <string name="transfer_send_subtitle">इस टर्मिनल से पैकिंग लिस्ट भेजें</string>
+    <string name="transfer_receive_subtitle">इस टर्मिनल पर पैकिंग लिस्ट प्राप्त करें</string>
+    <string name="transfer_manual_vehicle_hint">नंबर प्लेट मैन्युअल रूप से दर्ज करें</string>
+    <string name="transfer_manual_spool_hint">स्पूल कोड मैन्युअल रूप से दर्ज करें</string>
+    <string name="transfer_btn_manual_confirm">मैन्युअल प्रविष्टि की पुष्टि करें</string>
+    <string name="settings_debug_location_btn">[DEBUG] टर्मिनल स्थान बदलें</string>
+    <string name="settings_debug_location_changed">स्थान बदला गया: %s</string>
+    <string name="settings_debug_subposition_btn">टर्मिनल का उप-क्षेत्र चुनें</string>
+    <string name="settings_kiosk_title">कियोस्क मोड</string>
+    <string name="settings_kiosk_desc">ऐप को फुल-स्क्रीन में लॉक करता है (स्क्रीन पिनिंग)। यह विकल्प बंद किए बिना डिवाइस इस ऐप से बाहर नहीं निकल पाएगा।</string>
+    <string name="settings_kiosk_enabled">कियोस्क मोड सक्रिय किया गया</string>
+    <string name="settings_kiosk_disabled">कियोस्क मोड निष्क्रिय किया गया</string>
+    <string name="settings_close_app">ऐप बंद करें</string>
+    <string name="settings_close_app_confirm">क्या आप ऐप बंद करना चाहते हैं?</string>
+    <string name="settings_geofence_title">क्षेत्र जियोफेंस (KML)</string>
+    <string name="settings_geofence_desc">KML फ़ाइल से किसी क्षेत्र (वर्कशॉप, लेडाउन…) की सीमा आयात करें और तय करें कि उसके अंदर स्कैन के लिए जियोलोकेशन आवश्यक है या यह फ़ोर्स्ड है (बिना GPS जांच के)।</string>
+    <string name="settings_geofence_mode_geoloc">जियोलोकेशन</string>
+    <string name="settings_geofence_mode_forced">फ़ोर्स्ड</string>
+    <string name="settings_geofence_import_kml">KML आयात करें…</string>
+    <string name="settings_geofence_save">सहेजें</string>
+    <string name="settings_geofence_clear">हटाएं</string>
+    <string name="settings_geofence_status_none">इस क्षेत्र के लिए कोई जियोफेंस कॉन्फ़िगर नहीं है।</string>
+    <string name="settings_geofence_status_current">वर्तमान जियोफेंस: %1$d बिंदु, मोड %2$s।</string>
+    <string name="settings_geofence_status_current_multi">वर्तमान जियोफेंस: %1$d बहुभुज (%2$d बिंदु), मोड %3$s।</string>
+    <string name="settings_geofence_status_pending">KML आयातित: %1$d बिंदु (सहेजा नहीं गया)।</string>
+    <string name="settings_geofence_status_pending_multi">KML आयातित: %1$d बहुभुज (%2$d बिंदु) (सहेजा नहीं गया)।</string>
+    <string name="settings_geofence_no_areas">इस प्रोजेक्ट के लिए कोई क्षेत्र सिंक नहीं हुआ है।</string>
+    <string name="settings_geofence_parse_error">KML फ़ाइल से बहुभुज नहीं पढ़ा जा सका।</string>
+    <string name="settings_geofence_saved">जियोफेंस सहेजा गया।</string>
+    <string name="settings_geofence_cleared">जियोफेंस हटाया गया।</string>
+    <string name="settings_geofence_pick_area_first">पहले एक क्षेत्र चुनें।</string>
+    <string name="vehicles_hint_search">वाहन खोजें…</string>
+    <string name="vehicles_count">%d वाहन</string>
+    <string name="vehicles_packet_list_label">संबद्ध पैकेट लिस्ट</string>
+    <string name="vehicles_packet_list_none">निर्दिष्ट नहीं</string>
+    <string name="vehicles_assign_packet_list">पैकेट लिस्ट संबद्ध करें</string>
+    <string name="vehicles_title">वाहन</string>
+    <string name="vehicles_empty_placeholder">कोई वाहन दर्ज नहीं है — ATLAS में बनाया जाना बाकी है</string>
+    <string name="vehicles_add">वाहन जोड़ें</string>
+    <string name="vehicles_item_format">%1$s | %2$s</string>
+    <string name="vehicles_plate_format">नंबर प्लेट: %s</string>
+    <string name="vehicles_empty">कोई वाहन लोड नहीं हुआ।</string>
+    <string name="vehicles_error_prefix">त्रुटि: %s</string>
+    <string name="vehicles_error_http">HTTP %d</string>
+    <string name="vehicles_error_project_code">project_id=%d के लिए projectCode खाली/शून्य है। क्या सिंक किया गया था?</string>
+    <string name="vehicles_label_fallback">वाहन %d</string>
+    <string name="vehicles_no_packing_lists">कोई पैकिंग लिस्ट निर्दिष्ट नहीं</string>
+    <string name="vehicles_packing_lists_label">पैकिंग लिस्ट</string>
+    <string name="vehicles_ready_to_send_badge">लोड हुआ · भेजने के लिए तैयार</string>
+    <string name="vehicles_origin_badge">से: %s</string>
+
+    <!-- New Vehicle -->
+    <string name="new_vehicle_title">नया वाहन</string>
+    <string name="new_vehicle_section_details">वाहन का विवरण</string>
+    <string name="new_vehicle_field_plate">नंबर प्लेट *</string>
+    <string name="new_vehicle_field_name">वाहन का नाम</string>
+    <string name="new_vehicle_field_company">कंपनी</string>
+    <string name="new_vehicle_field_type">वाहन का प्रकार</string>
+    <string name="new_vehicle_field_capacity">क्षमता (kg)</string>
+    <string name="new_vehicle_btn_save">वाहन सहेजें</string>
+    <string name="new_vehicle_error_plate_required">नंबर प्लेट आवश्यक है</string>
+    <string name="new_vehicle_success">वाहन सफलतापूर्वक बनाया गया</string>
+    <string name="new_vehicle_error_save">सहेजने में त्रुटि: %s</string>
+
+    <!-- Login -->
+    <string name="login_app_name">ATLAS</string>
+    <string name="login_subtitle">Smart Material System</string>
+    <string name="login_hint_email">ईमेल</string>
+    <string name="login_hint_password">पासवर्ड</string>
+    <string name="login_btn">लॉगिन करें</string>
+    <string name="login_label_or">या</string>
+    <string name="login_btn_microsoft">Microsoft से लॉगिन करें</string>
+    <string name="login_btn_config">API कॉन्फ़िगरेशन</string>
+    <string name="login_hint_api_url">API का URL</string>
+    <string name="login_btn_save_url">URL सहेजें</string>
+    <string name="login_url_saved">✓ URL सहेजा गया</string>
+    <string name="login_error_token">Microsoft से टोकन प्राप्त नहीं हो सका।</string>
+    <string name="login_error_empty">ईमेल और पासवर्ड दर्ज करें।</string>
+    <string name="login_error_auth">प्रमाणीकरण त्रुटि।</string>
+    <string name="login_error_format">त्रुटि: %s</string>
+    <string name="login_error_empty_code">त्रुटि: टर्मिनल कोड दर्ज करें।</string>
+
+    <string name="db_error_title">डेटाबेस त्रुटि</string>
+    <string name="db_error_message">स्थानीय डेटाबेस नहीं खुल सका (माइग्रेशन विफल)। ऐप इस तरह जारी नहीं रह सकता।\n\nविवरण: %s</string>
+    <string name="db_error_reset">डिवाइस का डेटा रीसेट करें</string>
+    <string name="db_error_reset_warning">इस टर्मिनल का सारा असिंक्ड स्थानीय डेटा मिटा दिया जाएगा। जारी रखें?</string>
+    <string name="db_error_close">ऐप बंद करें</string>
+
+    <!-- Update (Settings button) -->
+    <string name="settings_check_updates">अपडेट खोजें</string>
+    <string name="settings_check_updates_searching">खोज रहे हैं…</string>
+    <string name="settings_current_version">वर्तमान संस्करण: %1$s</string>
+    <string name="update_up_to_date">पहले से नवीनतम संस्करण इंस्टॉल है</string>
+    <string name="update_check_failed">अपडेट जांच नहीं हो सकी — कनेक्शन जांचें (%1$s)</string>
+
+    <!-- Update -->
+    <string name="update_title">नया अपडेट उपलब्ध है</string>
+    <string name="update_message">संस्करण %s उपलब्ध है।\nक्या अभी ऐप अपडेट करना चाहते हैं?</string>
+    <string name="update_btn_update">अपडेट करें</string>
+    <string name="update_btn_later">बाद में</string>
+    <string name="update_permission_needed">अपडेट जारी रखने के लिए अज्ञात स्रोतों से ऐप इंस्टॉल करने की अनुमति दें</string>
+    <string name="update_downloading">अपडेट डाउनलोड हो रहा है…</string>
+    <string name="update_downloading_version">संस्करण %s डाउनलोड हो रहा है…</string>
+    <string name="update_invalid_apk">डाउनलोड मान्य APK नहीं है — अपडेट टोकन जांचें</string>
+    <string name="update_no_previous_version">कोई पिछला संस्करण उपलब्ध नहीं है</string>
+    <string name="update_previous_corrupt">पिछला संस्करण खराब है</string>
+
+    <!-- Auth Repository -->
+    <string name="auth_error_invalid_credentials">गलत क्रेडेंशियल।</string>
+    <string name="auth_error_http">त्रुटि %d।</string>
+    <string name="auth_error_empty_response">सर्वर से खाली प्रतिक्रिया।</string>
+    <string name="auth_error_connection">सर्वर से कनेक्ट नहीं हो सका: %s</string>
+
+    <!-- Rollback -->
+    <string name="settings_reinstall_previous">पिछला संस्करण पुनः इंस्टॉल करें</string>
+    <string name="settings_reinstall_previous_title">पिछला संस्करण पुनः इंस्टॉल करें</string>
+    <string name="settings_reinstall_previous_confirm">बैकअप के रूप में सहेजा गया पिछला संस्करण इंस्टॉल किया जाएगा। जारी रखें?</string>
+
+    <!-- Settings -->
+    <string name="settings_title">सेटिंग्स</string>
+    <string name="settings_tab_basic">बेसिक</string>
+    <string name="settings_tab_dev">DEV</string>
+    <string name="settings_api_url_label">API का URL</string>
+    <string name="settings_save">सहेजें</string>
+    <string name="settings_device_label">डिवाइस</string>
+    <string name="settings_device_name_label">नाम</string>
+    <string name="settings_device_id_label">ID</string>
+    <string name="settings_device_location_label">स्थान</string>
+    <string name="settings_device_name_hint">डिवाइस का नाम</string>
+    <string name="settings_device_id_format">ID: %s</string>
+    <string name="settings_device_id_none">ID: —</string>
+    <string name="settings_save_device">डिवाइस सहेजें</string>
+    <string name="settings_logout">लॉगआउट करें</string>
+    <string name="settings_login">लॉगिन करें</string>
+    <string name="login_skip">बिना लॉगिन जारी रखें</string>
+    <string name="settings_info_title">ऐप की जानकारी</string>
+    <string name="settings_info_version">संस्करण</string>
+    <string name="settings_info_build_date">बिल्ड</string>
+    <string name="settings_info_repo">रिपॉज़िटरी</string>
+    <string name="settings_info_deployment">डिप्लॉयमेंट</string>
+    <string name="settings_info_package">पैकेज</string>
+    <string name="settings_info_deployment_value">GitHub Actions (स्वचालित)</string>
+    <string name="settings_info_build_local">स्थानीय बिल्ड</string>
+    <string name="settings_url_saved">URL सहेजा गया</string>
+    <string name="settings_name_required">एक नाम दर्ज करें</string>
+    <string name="settings_device_saved">डिवाइस सहेजा गया</string>
+    <string name="settings_language_label">भाषा</string>
+    <string name="language_es">स्पेनिश</string>
+    <string name="language_en">अंग्रेज़ी</string>
+    <string name="language_ar">अरबी</string>
+    <string name="language_hi">हिन्दी</string>
+
+    <!-- Observations -->
+    <string name="obs_title">HSE अवलोकन</string>
+    <string name="obs_open_observation">अवलोकन खोलें</string>
+    <string name="obs_worker_header">देखा गया कर्मचारी</string>
+    <string name="obs_location">स्थान</string>
+    <string name="obs_area_authority">क्षेत्र प्राधिकरण</string>
+    <string name="obs_description">अवलोकन का विवरण *</string>
+    <string name="obs_type_header">अवलोकन का प्रकार</string>
+    <string name="obs_condition">स्थिति</string>
+    <string name="obs_behaviour">व्यवहार</string>
+    <string name="obs_safety_header">सुरक्षा प्रकार</string>
+    <string name="obs_safe">सुरक्षित</string>
+    <string name="obs_unsafe">असुरक्षित</string>
+    <string name="obs_intervention_header">हस्तक्षेप</string>
+    <string name="obs_no_intervene">हस्तक्षेप नहीं किया</string>
+    <string name="obs_intervened">हस्तक्षेप किया / कार्रवाई की</string>
+    <string name="obs_spot_coaching">मौके पर कोचिंग</string>
+    <string name="obs_positive_reinforcement">सकारात्मक सुदृढ़ीकरण</string>
+    <string name="obs_positive_observation">सकारात्मक अवलोकन</string>
+    <string name="obs_non_peer">गैर-सहकर्मी हस्तक्षेप</string>
+    <string name="obs_outcome_header">परिणाम</string>
+    <string name="obs_corrected">सुधारा गया</string>
+    <string name="obs_partly_corrected">आंशिक रूप से सुधारा गया</string>
+    <string name="obs_not_corrected">सुधारा नहीं गया</string>
+    <string name="obs_outcome_positive">सकारात्मक सुदृढ़ीकरण</string>
+    <string name="obs_action_taken">की गई कार्रवाई</string>
+    <string name="obs_coaching_header">कोचिंग</string>
+    <string name="obs_coaching_not_required">आवश्यक नहीं</string>
+    <string name="obs_coaching_pending">करना लंबित है</string>
+    <string name="obs_coaching_done">पूरा हुआ</string>
+    <string name="obs_categories_header">श्रेणियां</string>
+    <string name="obs_cat_ppe">व्यक्तिगत सुरक्षा उपकरण</string>
+    <string name="obs_cat_situational_awareness">परिस्थितिजन्य जागरूकता</string>
+    <string name="obs_cat_safety_devices">सुरक्षा उपकरण</string>
+    <string name="obs_cat_isolation_lockout">आइसोलेशन/लॉकआउट</string>
+    <string name="obs_cat_safety_signage">सुरक्षा साइनेज</string>
+    <string name="obs_cat_tools_equipment">उपकरण/यंत्र</string>
+    <string name="obs_cat_line_of_fire">लाइन ऑफ फायर</string>
+    <string name="obs_cat_health_hygiene">स्वास्थ्य/स्वच्छता/पानी</string>
+    <string name="obs_cat_workplace_environment">कार्यस्थल वातावरण</string>
+    <string name="obs_cat_lifting">उठाना</string>
+    <string name="obs_cat_manual_handling">मैनुअल/मैकेनिकल हैंडलिंग</string>
+    <string name="obs_cat_housekeeping">साफ़-सफ़ाई और व्यवस्था</string>
+    <string name="obs_cat_toxic_flammable">विषैला/ज्वलनशील</string>
+    <string name="obs_cat_work_planning">योजना/अनुमति</string>
+    <string name="obs_cat_working_at_height">ऊंचाई पर काम</string>
+    <string name="obs_cat_confined_space">संकुचित स्थान</string>
+    <string name="obs_cat_hot_work">हॉट वर्क</string>
+    <string name="obs_cat_excavation">खुदाई</string>
+    <string name="obs_cat_driving_vehicles">वाहन चलाना</string>
+    <string name="obs_cat_supervision">पर्यवेक्षण</string>
+    <string name="obs_cat_procedures">प्रक्रियाएं</string>
+    <string name="obs_cat_security">सुरक्षा</string>
+    <string name="obs_cat_improvement_opportunity">सुधार का अवसर</string>
+    <string name="obs_cat_emergency_response">आपातकालीन प्रतिक्रिया</string>
+    <string name="obs_additional_comments">अतिरिक्त टिप्पणियां</string>
+    <string name="obs_save">अवलोकन सहेजें</string>
+    <string name="obs_back">वापस जाएं</string>
+    <string name="obs_saved">अवलोकन सफलतापूर्वक सहेजा गया</string>
+    <string name="obs_description_required">विवरण देना आवश्यक है</string>
+    <string name="obs_type_required">अवलोकन का प्रकार चुनें</string>
+    <string name="obs_safety_required">सुरक्षा प्रकार चुनें</string>
+
+    <!-- Observations hub -->
+    <string name="obs_hub_title">HSE अवलोकन</string>
+    <string name="obs_observer_label">HSE पर्यवेक्षक</string>
+    <string name="obs_observer_empty">दर्ज नहीं — सुपरवाइज़र का बैज स्कैन करें</string>
+    <string name="obs_observer_format">%1$s — %2$s</string>
+    <string name="obs_scan_observer">सुपरवाइज़र बैज स्कैन करें</string>
+    <string name="obs_scan_observer_laser">लेज़र</string>
+    <string name="obs_scan_observer_camera">कैमरा</string>
+    <string name="obs_scan_worker_title">कर्मचारी का बैज स्कैन करें</string>
+    <string name="obs_scan_vehicle_title">वाहन का क्यूआर स्कैन करें</string>
+    <string name="obs_scan_cancel">रद्द करें</string>
+    <string name="obs_step1_label">पर्यवेक्षक</string>
+    <string name="obs_step2_label">प्रकार</string>
+    <string name="obs_step3_label">लक्ष्य</string>
+    <string name="obs_scan_observer_prompt">अपना HSE बैज स्कैन करें</string>
+    <string name="obs_select_target">अवलोकन का प्रकार चुनें</string>
+    <string name="obs_not_hse_error">आप HSE नहीं हैं — आपको अवलोकन खोलने की अनुमति नहीं है</string>
+    <string name="obs_observer_not_found">पर्यवेक्षक स्थानीय डेटाबेस में नहीं मिला</string>
+    <string name="obs_observer_required">पहले HSE सुपरवाइज़र का बैज स्कैन करें</string>
+    <string name="obs_target_worker">कर्मचारी</string>
+    <string name="obs_target_vehicle">वाहन</string>
+    <string name="obs_target_site">साइट / ज़ोन</string>
+    <string name="obs_target_equipment">उपकरण</string>
+    <string name="obs_target_worker_banner">अवलोकन — कर्मचारी</string>
+    <string name="obs_target_vehicle_banner">अवलोकन — वाहन</string>
+    <string name="obs_target_site_banner">अवलोकन — साइट / ज़ोन</string>
+    <string name="obs_target_equipment_banner">अवलोकन — उपकरण</string>
+    <string name="obs_photos">फोटो (वैकल्पिक, अधिकतम 8)</string>
+    <string name="obs_photos_hint">आप बिना फोटो के भी सहेज सकते हैं। यदि जोड़ते हैं, तो टर्मिनल को कनेक्शन मिलते ही ये सिंक हो जाएंगी।</string>
+    <string name="obs_add_photo_camera">कैमरा</string>
+    <string name="obs_add_photo_gallery">गैलरी</string>
+    <string name="obs_photo_max">प्रति अवलोकन अधिकतम 8 फोटो</string>
+
+    <!-- Equipment / Vehicle labels -->
+    <string name="equipment_description">उपकरण का विवरण</string>
+    <string name="vehicle_info_format">%1$s — %2$s (%3$s)</string>
+
+    <!-- Menu: new sections -->
+    <string name="menu_observations_general">अवलोकन</string>
+    <string name="menu_inspections">निरीक्षण</string>
+
+    <!-- Passport: trainings & documentation sections -->
+    <string name="passport_section_trainings">प्रशिक्षण</string>
+    <string name="passport_section_docs">दस्तावेज़</string>
+    <string name="passport_training_completed">पूर्ण</string>
+    <string name="passport_training_pending">लंबित</string>
+    <string name="passport_training_expired">समाप्त</string>
+    <string name="passport_training_missing">अनुपस्थित</string>
+    <string name="passport_mandatory">अनिवार्य</string>
+    <string name="passport_no_trainings">कोई प्रशिक्षण दर्ज नहीं</string>
+    <string name="passport_no_docs">कोई दस्तावेज़ दर्ज नहीं</string>
+    <string name="passport_doc_valid">मान्य</string>
+    <string name="passport_doc_expiring">समाप्त होने वाला</string>
+    <string name="passport_doc_expired">समाप्त</string>
+    <string name="passport_doc_missing">अनुपस्थित</string>
+    <string name="passport_doc_no_connection">दस्तावेज़ डाउनलोड करने के लिए कनेक्शन नहीं है</string>
+    <string name="passport_doc_no_viewer">इस प्रकार की फ़ाइल खोलने के लिए कोई ऐप नहीं है</string>
+    <string name="passport_compliance">अनुपालन</string>
+    <string name="passport_of">में से</string>
+
+    <!-- Coming soon -->
+    <string name="coming_soon_title">जल्द आ रहा है</string>
+    <string name="coming_soon_observations">सामान्य अवलोकन मॉड्यूल किसी विशेष कर्मचारी से जुड़े बिना सुरक्षा अवलोकन दर्ज करने की अनुमति देगा।</string>
+    <string name="coming_soon_inspections">निरीक्षण मॉड्यूल साइट पर सुरक्षा निरीक्षणों की योजना बनाने, उन्हें करने और दस्तावेज़ीकृत करने की अनुमति देगा।</string>
+
+    <!-- Profiles -->
+    <string name="profile_label">प्रोफ़ाइल</string>
+    <string name="profile_user">USER</string>
+    <string name="profile_hse">HSE</string>
+    <string name="profile_admin">ADMIN</string>
+    <string name="profile_pre">PRE</string>
+    <string name="profile_dev">DEV</string>
+    <string name="profile_user_desc">बेसिक मोड — प्रोडक्शन (atlas.tecnicasreunidas.es)</string>
+    <string name="profile_hse_desc">HSE — पासपोर्ट + अवलोकन + निरीक्षण (प्रोडक्शन)</string>
+    <string name="profile_admin_desc">पूर्ण एक्सेस — प्रोडक्शन (atlas.tecnicasreunidas.es)</string>
+    <string name="profile_pre_desc">प्री-प्रोडक्शन — API: web-atlas-pre</string>
+    <string name="profile_dev_desc">डेवलपमेंट — API: web-atlas-dev</string>
+    <string name="profile_current">वर्तमान प्रोफ़ाइल: %s</string>
+    <string name="profile_access_code_title">एक्सेस कोड</string>
+    <string name="profile_access_code_hint">कोड दर्ज करें</string>
+    <string name="profile_access_code_error">गलत कोड</string>
+    <string name="profile_changed">प्रोफ़ाइल बदलकर %s की गई</string>
+    <string name="profile_dev_reset_warning">DEV में बदलने पर स्थानीय डेटाबेस रीसेट हो जाएगा</string>
+    <string name="profile_dev_db_cleared">डेटाबेस रीसेट किया गया</string>
+
+    <!-- API environment -->
+    <string name="settings_api_section_title">API कॉन्फ़िगरेशन</string>
+    <string name="env_pro">PRO</string>
+    <string name="env_pre">PRE</string>
+    <string name="env_dev">DEV</string>
+    <string name="env_pro_desc">प्रोडक्शन — atlas.tecnicasreunidas.es</string>
+    <string name="env_pre_desc">प्री-प्रोडक्शन — web-atlas-pre</string>
+    <string name="env_dev_desc">डेवलपमेंट — web-atlas-dev</string>
+    <string name="env_changed">API एनवायरनमेंट बदलकर %s किया गया</string>
+
+    <!-- User role -->
+    <string name="settings_role_section_title">उपयोगकर्ता प्रोफ़ाइल</string>
+    <string name="role_guest">GUEST</string>
+    <string name="role_admin">ADMIN</string>
+    <string name="role_dev">DEV</string>
+    <string name="role_guest_desc">बेसिक मोड — होम, स्कैनर, सिंक्रोनाइज़ेशन</string>
+    <string name="role_admin_desc">पूर्ण एक्सेस — इन्वेंटरी और स्थानांतरण</string>
+    <string name="role_dev_desc">पूर्ण एक्सेस + डेवलपमेंट टूल्स</string>
+    <string name="role_changed">प्रोफ़ाइल बदलकर %s की गई</string>
+
+    <!-- Device code (admin settings) -->
+    <string name="settings_device_code_label">टर्मिनल कोड</string>
+    <string name="settings_device_code_hint">उदा: HASSI01</string>
+    <string name="settings_device_code_desc">सिंक्रोनाइज़ेशन के दौरान स्वचालित लॉगिन के लिए उपयोग किया जाता है</string>
+    <string name="settings_device_code_save">कोड सहेजें</string>
+    <string name="settings_device_code_saved">टर्मिनल कोड सहेजा गया</string>
+    <string name="settings_device_code_empty">एक टर्मिनल कोड दर्ज करें</string>
+    <string name="sync_auto_relogin">स्वचालित रूप से पुनः प्रमाणित हो रहा है…</string>
+    <string name="sync_auto_relogin_ok">सेशन नवीनीकृत हुआ, सिंक्रोनाइज़ेशन का पुनः प्रयास हो रहा है</string>
+    <string name="sync_auto_relogin_fail">सेशन को स्वचालित रूप से नवीनीकृत नहीं किया जा सका</string>
+    <string name="sync_error_session_expired">सेशन समाप्त हो गया और स्वचालित रूप से नवीनीकृत नहीं हो सका</string>
+    <string name="sync_error_no_connection">सर्वर से कनेक्शन नहीं है</string>
+    <string name="sync_error_server_unavailable">सर्वर उपलब्ध नहीं (HTTP %d)</string>
+    <string name="sync_error_server_rejected">सर्वर ने कनेक्शन अस्वीकार किया (HTTP %d)</string>
+    <string name="sync_error_outbox_retry">परिवर्तन कतार: कनेक्शन नहीं, पुनः प्रयास हो रहा है</string>
+    <!-- Sync progress step messages -->
+    <string name="sync_log_start">सिंक्रोनाइज़ेशन शुरू हो रहा है…</string>
+    <string name="sync_step_session">सेशन की जांच हो रही है…</string>
+    <string name="sync_step_server">सर्वर से कनेक्ट हो रहा है…</string>
+    <string name="sync_step_register">डिवाइस दर्ज हो रहा है…</string>
+    <string name="sync_step_download">मास्टर डेटा डाउनलोड हो रहा है…</string>
+    <string name="sync_step_download_ok">✓ %1$d वाहन जोड़े गए, %2$d अपडेट किए गए</string>
+    <string name="sync_step_upload_pl">पैकिंग लिस्ट अपलोड हो रही हैं…</string>
+    <string name="sync_step_upload_loadings">वाहन लोडिंग अपलोड हो रही है…</string>
+    <string name="sync_step_upload_transfers">स्थानांतरण अपलोड हो रहे हैं…</string>
+    <string name="sync_step_upload_route">वाहन की स्थिति अपडेट हो रही है…</string>
+    <string name="sync_step_upload_incidents">घटनाएं अपलोड हो रही हैं…</string>
+    <string name="sync_step_outbox">परिवर्तन कतार प्रोसेस हो रही है…</string>
+    <string name="sync_step_heartbeat">टेलीमेट्री भेजी जा रही है…</string>
+    <string name="sync_step_sms">SMS डेटा डाउनलोड हो रहा है…</string>
+    <string name="sync_step_done">✓ आधार डेटा सिंक हो गया</string>
+    <string name="sync_sms_spools_page">स्पूल डाउनलोड हो रहे हैं… पृष्ठ %1$d (%2$d संचित)</string>
+    <string name="sync_sms_spools_ok">✓ स्पूल: %1$d नए, %2$d अपडेट किए गए (कुल %3$d)</string>
+    <string name="sync_sms_spools_partial">⚠ स्पूल: पृष्ठ %1$d तक आंशिक सिंक (%2$d सहेजे गए), पुनः प्रयास होगा</string>
+    <string name="sync_sms_pl_ok">✓ पैकिंग लिस्ट: %1$d नई, %2$d अपडेट की गई (कुल %3$d)</string>
+    <string name="sync_sms_vehicles_ok">✓ SMS वाहन: %1$d</string>
+    <string name="webview_login_error_network">सर्वर से कनेक्ट नहीं हो सका।\nअपना नेटवर्क कनेक्शन जांचें और फिर से प्रयास करें।</string>
+    <string name="webview_login_retry">पुनः प्रयास करें</string>
+
+    <!-- Inventario -->
+    <string name="menu_inventario">इन्वेंटरी</string>
+    <string name="inventario_tab_spools">स्पूल</string>
+    <string name="inventario_tab_pls">पैकिंग लिस्ट</string>
+    <string name="inventario_tab_vehicles">वाहन</string>
+
+    <!-- Quick Actions -->
+    <string name="home_quick_actions_title">त्वरित कार्रवाई</string>
+    <string name="home_qa_new_pl">पैकिंग लिस्ट बनाएं</string>
+    <string name="home_qa_send">स्पूल भेजें</string>
+    <string name="home_qa_transfers">स्पूल प्राप्त करें</string>
+    <string name="home_qa_new_incident">नई घटना</string>
+    <string name="home_qa_new_spool">नया स्पूल</string>
+    <string name="home_qa_new_vehicle">नया वाहन</string>
+
+    <!-- Guest home: zone spool KPIs -->
+    <string name="home_guest_zone_confirmed">ज़ोन में पुष्टि किए गए</string>
+    <string name="home_guest_zone_pending">सिंक नहीं हुए</string>
+    <string name="home_guest_subpos_row">%1$s — %2$d पुष्टि किए गए / %3$d सिंक नहीं हुए</string>
+
+    <!-- Debug: Project Switcher -->
+    <string name="home_btn_change_project">[DEBUG] प्रोजेक्ट बदलें</string>
+    <string name="home_dialog_select_project">प्रोजेक्ट चुनें</string>
+    <string name="home_syncing_project">सिंक हो रहा है…</string>
+    <string name="home_project_synced">प्रोजेक्ट अपडेट किया गया: %s</string>
+    <string name="home_project_label">प्रोजेक्ट: %s</string>
+
+    <!-- Spools List -->
+    <string name="spools_list_count">%1$d स्पूल</string>
+    <string name="spools_list_count_capped">%1$d स्पूल (पहले %2$d दिखाए जा रहे हैं)</string>
+    <string name="spools_search_hint">स्पूल खोजें (कोड, लाइन, PL…)</string>
+    <string name="spools_list_empty">इस प्रोजेक्ट के लिए ATLAS में कोई स्पूल नहीं है</string>
+    <string name="spools_list_error_prefix">त्रुटि: %1$s</string>
+    <string name="spools_list_error_http">HTTP %1$d</string>
+    <string name="spools_filter_all">सभी</string>
+    <string name="spools_filter_workshop">Workshop</string>
+    <string name="spools_filter_laydown">Laydown</string>
+    <string name="spools_filter_site">Site</string>
+    <string name="spools_subpos_all">सभी उप-स्थान</string>
+    <string name="spools_chart_title">ज़ोन के अनुसार स्पूल (%1$d)</string>
+    <string name="spools_chart_zone_unassigned">कोई ज़ोन नहीं</string>
+    <string name="spools_chart_subpos_none">(कोई उप नहीं)</string>
+    <string name="spools_view_action_list">सूची देखें</string>
+    <string name="spools_view_action_chart">चार्ट देखें</string>
+    <string name="spools_btn_load_more">और स्पूल लोड करें</string>
+    <string name="spools_btn_loading">लोड हो रहा है…</string>
+
+    <!-- New Spool -->
+    <!-- New Packing List -->
+    <string name="new_packing_list_title">नई पैकिंग लिस्ट</string>
+    <string name="new_packing_list_field_name">नाम *</string>
+    <string name="new_packing_list_field_vehicle">वाहन</string>
+    <string name="new_packing_list_field_position">स्थान *</string>
+    <string name="new_packing_list_field_notes">टिप्पणियां</string>
+    <string name="new_packing_list_btn_add_spools">बिना PL वाले स्पूल चुनें</string>
+    <string name="new_packing_list_spools_selected">%d स्पूल चुने गए</string>
+    <string name="new_packing_list_no_spools_available">इस प्रोजेक्ट में बिना PL वाला कोई स्पूल नहीं है</string>
+    <string name="new_packing_list_btn_save">पैकिंग लिस्ट सहेजें</string>
+    <string name="new_packing_list_btn_create">नई पैकिंग लिस्ट बनाएं</string>
+    <string name="new_packing_list_success">पैकिंग लिस्ट बनाई गई</string>
+    <string name="new_packing_list_error_field_required">आवश्यक</string>
+    <string name="new_packing_list_error_save">सहेजने में त्रुटि: %1$s</string>
+    <string name="new_packing_list_preview_label">नाम:</string>
+    <string name="new_packing_list_section_details">विवरण</string>
+    <string name="new_packing_list_section_spools">स्पूल</string>
+
+    <string name="pl_detail_title">पैकिंग लिस्ट का विवरण</string>
+    <string name="pl_detail_section_info">जानकारी</string>
+    <string name="pl_detail_section_spools">निर्धारित स्पूल</string>
+    <string name="pl_detail_label_date">तिथि</string>
+    <string name="pl_detail_label_position">स्थान</string>
+    <string name="pl_detail_label_vehicle">वाहन</string>
+    <string name="pl_detail_label_notes">टिप्पणियां</string>
+    <string name="pl_detail_label_ready_to_send">भेजने के लिए तैयार</string>
+    <string name="pl_detail_ready_yes">हां</string>
+    <string name="pl_detail_ready_no">नहीं</string>
+    <string name="pl_detail_loading_spools">स्पूल लोड हो रहे हैं…</string>
+    <string name="pl_detail_no_spools">कोई स्पूल निर्धारित नहीं</string>
+    <string name="pl_detail_btn_edit">संपादित करें</string>
+    <string name="pl_detail_btn_delete">हटाएं</string>
+    <string name="pl_detail_confirm_delete_title">पैकिंग लिस्ट हटाएं</string>
+    <string name="pl_detail_confirm_delete_msg">क्या आप वाकई इस पैकिंग लिस्ट को हटाना चाहते हैं?</string>
+    <string name="pl_detail_deleted">पैकिंग लिस्ट हटाई गई</string>
+    <string name="pl_detail_error_delete">हटाने में त्रुटि: %1$s</string>
+    <string name="pl_edit_title">पैकिंग लिस्ट संपादित करें</string>
+    <string name="pl_edit_current_name_label">नाम:</string>
+    <string name="pl_edit_btn_update">पैकिंग लिस्ट अपडेट करें</string>
+    <string name="pl_edit_success">पैकिंग लिस्ट अपडेट की गई</string>
+    <string name="pl_edit_error_save">अपडेट करने में त्रुटि: %1$s</string>
+    <string name="pl_edit_btn_cancel">रद्द करें</string>
+    <string name="pl_detail_btn_add_spool">स्पूल जोड़ें</string>
+    <string name="pl_detail_btn_remove_spool">हटाएं</string>
+    <string name="pl_detail_add_spool_title">पैकिंग लिस्ट में स्पूल जोड़ें</string>
+    <string name="pl_detail_no_available_spools">बिना पैकिंग लिस्ट वाला कोई स्पूल उपलब्ध नहीं है</string>
+    <string name="pl_detail_spool_added">स्पूल पैकिंग लिस्ट में जोड़ा गया</string>
+    <string name="pl_detail_spool_removed">स्पूल पैकिंग लिस्ट से हटाया गया</string>
+    <string name="pl_scan_hint">सीधे जोड़ने के लिए स्पूल का क्यूआर स्कैन करें</string>
+    <string name="pl_scan_spool_already_in_pl">स्पूल %1$s पहले से ही पैकिंग लिस्ट %2$s में है</string>
+    <string name="pl_scan_spool_not_found">स्पूल सिस्टम में नहीं मिला</string>
+    <string name="new_pl_scan_spool_added">स्पूल %1$s चयन में जोड़ा गया</string>
+    <string name="new_pl_scan_spool_already_selected">स्पूल %1$s पहले से चयनित है</string>
+    <string name="pl_detail_remove_spool_title">स्पूल हटाएं</string>
+    <string name="pl_detail_remove_spool_msg">क्या %1$s को इस पैकिंग लिस्ट से हटाना है?</string>
+    <string name="pl_move_spool_title">स्पूल स्थानांतरित करें</string>
+    <string name="pl_move_spool_msg">स्पूल %1$s पहले से ही पैकिंग लिस्ट %2$s में है। क्या इसे इस पैकिंग लिस्ट में ले जाना चाहते हैं?</string>
+    <string name="pl_move_spool_done">स्पूल %1$s इस पैकिंग लिस्ट में ले जाया गया</string>
+
+    <string name="new_spool_title">नया स्पूल</string>
+    <string name="new_spool_section_id">पहचान ({यूनिट}-{लाइन}-{कोड}-{ट्रेन})</string>
+    <string name="new_spool_section_property">गुण</string>
+    <string name="new_spool_field_unit">यूनिट *</string>
+    <string name="new_spool_field_line">लाइन *</string>
+    <string name="new_spool_field_code">कोड *</string>
+    <string name="new_spool_field_train">ट्रेन *</string>
+    <string name="new_spool_preview_label">कोड:</string>
+    <string name="new_spool_field_diameter_inches">व्यास (इंच)</string>
+    <string name="new_spool_field_diameter">व्यास</string>
+    <string name="new_spool_field_bore_size_id">बोर साइज़ ID</string>
+    <string name="new_spool_field_weight_kg">वज़न (kg)</string>
+    <string name="new_spool_section_classification">वर्गीकरण</string>
+    <string name="new_spool_field_iso_type">ISO प्रकार</string>
+    <string name="new_spool_field_status">स्थिति</string>
+    <string name="new_spool_field_position">स्थान</string>
+    <string name="new_spool_field_sub_position">उप-स्थान</string>
+    <string name="new_spool_field_incomplete_status">अपूर्ण स्थिति</string>
+    <string name="new_spool_field_bore_size">बोर साइज़</string>
+    <string name="new_spool_btn_save">स्पूल सहेजें</string>
+    <string name="new_spool_btn_create">नया स्पूल बनाएं</string>
+    <string name="new_spool_success">स्पूल सफलतापूर्वक बनाया गया</string>
+    <string name="new_spool_error_field_required">आवश्यक</string>
+    <string name="new_spool_error_save">सहेजने में त्रुटि: %1$s</string>
+    <string name="spool_item_pl_assigned">पैकिंग लिस्ट: %1$s</string>
+    <string name="spool_item_pl_none">कोई पैकिंग लिस्ट निर्दिष्ट नहीं</string>
+
+    <!-- Spool Detail Bottom Sheet -->
+    <string name="spool_detail_section_id">पहचान</string>
+    <string name="spool_detail_section_properties">भौतिक गुण</string>
+    <string name="spool_detail_section_status">स्थिति</string>
+    <string name="spool_detail_section_packing_list">पैकिंग लिस्ट</string>
+    <string name="spool_detail_section_events">घटनाओं का इतिहास</string>
+    <string name="spool_detail_field_code">कोड</string>
+    <string name="spool_detail_field_description">विवरण</string>
+    <string name="spool_detail_field_priority">प्राथमिकता</string>
+    <string name="spool_detail_field_zone">ज़ोन</string>
+    <string name="spool_detail_field_in_transit">ट्रांज़िट में</string>
+    <string name="spool_detail_field_line">लाइन</string>
+    <string name="spool_detail_field_service">सेवा</string>
+    <string name="spool_detail_field_sit_number">Sit संख्या</string>
+    <string name="spool_detail_field_revision">रिवीज़न</string>
+    <string name="spool_detail_field_train">ट्रेन</string>
+    <string name="spool_detail_field_module">मॉड्यूल</string>
+    <string name="spool_detail_field_unit">यूनिट</string>
+    <string name="spool_detail_field_iso_type">ISO प्रकार</string>
+    <string name="spool_detail_field_iso_date">ISO रिवीज़न</string>
+    <string name="spool_detail_field_area">क्षेत्र</string>
+    <string name="spool_detail_field_spec">स्पेसिफिकेशन</string>
+    <string name="spool_detail_field_subcontractor">उप-ठेकेदार</string>
+    <string name="spool_detail_field_active">सक्रिय</string>
+    <string name="spool_detail_field_created">बनाया गया</string>
+    <string name="spool_detail_field_updated">अपडेट किया गया</string>
+    <string name="spool_detail_field_diameter_in">व्यास (इंच)</string>
+    <string name="spool_detail_field_diameter">व्यास</string>
+    <string name="spool_detail_field_bore_size">बोर साइज़</string>
+    <string name="spool_detail_field_weight">वज़न</string>
+    <string name="spool_detail_field_status">स्थिति</string>
+    <string name="spool_detail_field_incomplete_status">अपूर्ण स्थिति</string>
+    <string name="spool_detail_field_position">स्थान</string>
+    <string name="spool_detail_field_sub_position">उप-स्थान</string>
+    <string name="spool_detail_field_hold">रोका गया</string>
+    <string name="spool_detail_field_damaged">क्षतिग्रस्त</string>
+    <string name="spool_detail_field_returned">फ़ैक्टरी को लौटाया गया</string>
+    <string name="spool_detail_field_pos_discrepancy">स्थान में अंतर</string>
+    <string name="spool_detail_field_review_discrepancy">रिवीज़न में अंतर</string>
+    <string name="spool_detail_field_last_event">अंतिम घटना</string>
+    <string name="spool_detail_field_pca_status">PCA स्थिति तिथि</string>
+    <string name="spool_detail_field_pca_entry">PCA प्रवेश तिथि</string>
+    <string name="spool_detail_btn_assign_pl">PL में निर्दिष्ट करें</string>
+    <string name="spool_detail_btn_remove_pl">PL से हटाएं</string>
+    <string name="spool_detail_btn_delete">स्पूल हटाएं</string>
+    <string name="spool_detail_confirm_delete_title">स्पूल हटाएं</string>
+    <string name="spool_detail_confirm_delete_msg">क्या इस स्पूल को स्थानीय डेटाबेस से हटाना है?</string>
+    <string name="spool_detail_deleted">स्पूल हटाया गया</string>
+    <string name="pl_detail_btn_hard_delete">[DEV] PL स्थायी रूप से हटाएं</string>
+    <string name="pl_detail_confirm_hard_delete_title">[DEV] PL स्थायी रूप से हटाएं</string>
+    <string name="pl_detail_confirm_hard_delete_msg">सर्वर पर स्थायी रूप से हटाया जाएगा। यह पूर्ववत नहीं किया जा सकता। जारी रखें?</string>
+    <string name="pl_detail_hard_deleted">पैकिंग लिस्ट सर्वर से स्थायी रूप से हटाई गई</string>
+    <string name="spool_detail_btn_hard_delete">[DEV] स्थायी रूप से हटाएं</string>
+    <string name="spool_detail_confirm_hard_delete_title">[DEV] स्थायी रूप से हटाएं</string>
+    <string name="spool_detail_confirm_hard_delete_msg">सर्वर पर स्थायी रूप से हटाया जाएगा। यह पूर्ववत नहीं किया जा सकता। जारी रखें?</string>
+    <string name="spool_detail_hard_deleted">स्पूल सर्वर से स्थायी रूप से हटाया गया</string>
+    <string name="spool_detail_events_empty">कोई घटना दर्ज नहीं</string>
+    <string name="spool_detail_section_gps">GPS स्थान</string>
+    <string name="spool_detail_gps_no_data">कोई GPS स्थान डेटा नहीं</string>
+    <string name="spool_detail_gps_current">वर्तमान: %1$.6f, %2$.6f (±%3$.0fm) · %4$s</string>
+    <string name="spool_detail_gps_previous">पिछला: %1$.6f, %2$.6f (±%3$.0fm) · %4$s</string>
+    <string name="spool_detail_gps_current_no_acc">वर्तमान: %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_gps_previous_no_acc">पिछला: %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_btn_update_gps">GPS अपडेट करें</string>
+    <string name="spool_detail_btn_open_maps">Maps में खोलें</string>
+    <string name="spool_detail_gps_capturing">GPS प्राप्त हो रहा है…</string>
+    <string name="spool_detail_gps_saved">स्थान सहेजा गया</string>
+    <string name="spool_detail_gps_unavailable">GPS उपलब्ध नहीं है</string>
+    <string name="spool_detail_assign_pl_title">पैकिंग लिस्ट चुनें</string>
+    <string name="spool_detail_assign_pl_remove">निर्धारण हटाएं</string>
+    <string name="spool_detail_yes">हां</string>
+    <string name="spool_detail_no">नहीं</string>
+    <string name="spool_detail_label_fallback">स्पूल %d</string>
+    <string name="spool_detail_error_delete">हटाने में त्रुटि: %s</string>
+    <string name="spool_detail_error_generic">त्रुटि: %s</string>
+
+    <!-- Vehicle Detail -->
+    <string name="vehicle_detail_title">वाहन का विवरण</string>
+    <string name="vehicle_detail_section_info">जानकारी</string>
+    <string name="vehicle_detail_section_packing_lists">निर्धारित पैकिंग लिस्ट</string>
+    <string name="vehicle_detail_label_plate">नंबर प्लेट</string>
+    <string name="vehicle_detail_label_name">नाम</string>
+    <string name="vehicle_detail_label_company">कंपनी</string>
+    <string name="vehicle_detail_label_type">प्रकार</string>
+    <string name="vehicle_detail_label_capacity">क्षमता</string>
+    <string name="vehicle_detail_loading_pls">पैकिंग लिस्ट लोड हो रही हैं…</string>
+    <string name="vehicle_detail_no_pls">कोई पैकिंग लिस्ट निर्दिष्ट नहीं</string>
+    <string name="vehicle_detail_btn_add_pl">वाहन रहित पैकिंग लिस्ट जोड़ें</string>
+    <string name="vehicle_detail_btn_edit">वाहन संपादित करें</string>
+    <string name="vehicle_detail_btn_hard_delete">वाहन स्थायी रूप से हटाएं</string>
+    <string name="vehicle_detail_btn_remove_pl">निर्धारण हटाएं</string>
+    <string name="vehicle_detail_add_pl_title">वाहन में पैकिंग लिस्ट जोड़ें</string>
+    <string name="vehicle_detail_no_unassigned_pls">बिना वाहन वाली कोई पैकिंग लिस्ट नहीं है</string>
+    <string name="vehicle_detail_pl_added">पैकिंग लिस्ट वाहन को निर्दिष्ट की गई</string>
+    <string name="pl_vehicle_conflict">निर्दिष्ट नहीं हो सका: %1$s</string>
+    <string name="vehicle_detail_pl_removed">पैकिंग लिस्ट वाहन से हटाई गई</string>
+    <string name="vehicle_detail_remove_pl_title">पैकिंग लिस्ट का निर्धारण हटाएं</string>
+    <string name="vehicle_detail_remove_pl_msg">क्या %1$s को इस वाहन से हटाना है?</string>
+    <string name="vehicle_detail_confirm_hard_delete_title">वाहन स्थायी रूप से हटाएं</string>
+    <string name="vehicle_detail_confirm_hard_delete_msg">सर्वर और स्थानीय डेटाबेस पर स्थायी रूप से हटाया जाएगा। यह पूर्ववत नहीं किया जा सकता। जारी रखें?</string>
+    <string name="vehicle_detail_hard_deleted">वाहन स्थायी रूप से हटाया गया</string>
+
+    <!-- Edit Vehicle -->
+    <string name="edit_vehicle_title">वाहन संपादित करें</string>
+    <string name="edit_vehicle_btn_update">बदलाव सहेजें</string>
+    <string name="edit_vehicle_btn_cancel">रद्द करें</string>
+    <string name="edit_vehicle_success">वाहन सफलतापूर्वक अपडेट किया गया</string>
+    <string name="edit_vehicle_error_not_found">वाहन नहीं मिला</string>
+    <string name="edit_vehicle_error_save">सहेजने में त्रुटि: %s</string>
+
+    <!-- Load Spools into Vehicle -->
+    <string name="load_spools_step1_title">चरण 1: वाहन चुनें</string>
+    <string name="load_spools_step2_title">चरण 2: स्पूल स्कैन करें</string>
+    <string name="load_spools_plate_hint">वाहन की नंबर प्लेट</string>
+    <string name="load_spools_scan_vehicle">वाहन का क्यूआर स्कैन करें</string>
+    <string name="load_spools_confirm_vehicle">वाहन की पुष्टि करें</string>
+    <string name="load_spools_vehicle_not_found">वाहन नहीं मिला। नंबर प्लेट जांचें या पहले सिंक करें।</string>
+    <string name="load_spools_vehicle_selected">चुना गया वाहन: %s</string>
+    <string name="load_spools_spool_code_hint">स्पूल का कोड</string>
+    <string name="load_spools_spool_suffix_hint">प्रत्यय (वैकल्पिक)</string>
+    <string name="load_spools_scan_spool">स्पूल स्कैन करें</string>
+    <string name="load_spools_add_spool">जोड़ें</string>
+    <string name="load_spools_save">लोडिंग सहेजें</string>
+    <string name="load_spools_spool_not_found">स्पूल स्थानीय डेटाबेस में नहीं मिला। सिंक करें और फिर से प्रयास करें।</string>
+    <string name="load_spools_spools_count">जोड़े गए स्पूल: %1$d</string>
+    <string name="load_spools_warning_multi_pl">⚠ ध्यान दें: ये स्पूल %1$d अलग-अलग पैकिंग लिस्ट के हैं।</string>
+    <string name="load_spools_error_incomplete">अपूर्ण पैकिंग लिस्ट:\n%1$s</string>
+    <string name="load_spools_confirm_incomplete_title">अपूर्ण पैकिंग लिस्ट</string>
+    <string name="load_spools_confirm_incomplete_msg">कुछ पैकिंग लिस्ट में सभी स्पूल लोड नहीं हुए हैं:\n\n%1$s\n\nक्या फिर भी जारी रखना चाहते हैं?</string>
+    <string name="load_spools_confirm_second_title">सहेजने की पुष्टि करें</string>
+    <string name="load_spools_confirm_second_msg">यह कार्रवाई अपूर्ण पैकिंग लिस्ट के साथ लोडिंग सहेज देगी। यह ऑपरेशन पूर्ववत नहीं किया जा सकता। पुष्टि करें?</string>
+    <string name="load_spools_pl_created">नई पैकिंग लिस्ट बनाई गई: %1$s</string>
+    <string name="load_spools_saved">लोडिंग सफलतापूर्वक सहेजी गई</string>
+    <string name="load_spools_spool_duplicate">यह स्पूल पहले ही जोड़ा जा चुका है।</string>
+    <string name="load_spools_enter_code">स्पूल का कोड दर्ज करें।</string>
+    <string name="load_spools_enter_plate">वाहन की नंबर प्लेट दर्ज करें या स्कैन करें।</string>
+    <string name="load_spools_spool_added">स्पूल %1$s जोड़ा गया।</string>
+    <string name="load_spools_no_pl">कोई पैकिंग लिस्ट नहीं</string>
+    <string name="load_spools_empty_error">सहेजने से पहले कम से कम एक स्पूल जोड़ें।</string>
+    <string name="load_spools_btn_continue">जारी रखें</string>
+    <string name="load_spools_btn_save_anyway">फिर भी सहेजें</string>
+    <string name="load_spools_qr_is_spool">यह क्यूआर एक स्पूल का है, वाहन का नहीं। वाहन का क्यूआर स्कैन करें।</string>
+    <string name="load_spools_weight_meter">लोड: %1$s / %2$s kg (%3$d%%)</string>
+    <string name="load_spools_weight_no_capacity">लोड: %1$s kg (वाहन की क्षमता निर्धारित नहीं है)</string>
+
+    <!-- Transfer: Send Packing List -->
+    <string name="transfer_send_title">पैकिंग लिस्ट भेजना</string>
+    <string name="transfer_send_step3_title">चरण 3: गंतव्य</string>
+    <string name="transfer_send_destination_label">भेजने का गंतव्य</string>
+    <string name="transfer_send_destination_required">पुष्टि करने से पहले गंतव्य चुनें</string>
+    <string name="transfer_send_dest_laydown">Laydown</string>
+    <string name="transfer_send_dest_site">Site (तत्काल)</string>
+    <string name="transfer_send_btn_confirm">भेजने की पुष्टि करें</string>
+    <string name="transfer_send_success">भेजना दर्ज हुआ और सफलतापूर्वक अपलोड हुआ</string>
+    <string name="transfer_send_success_partial">भेजना दर्ज हुआ (डेटा अपलोड होना लंबित है)</string>
+    <string name="transfer_send_uploading">सर्वर पर डेटा अपलोड हो रहा है…</string>
+    <string name="transfer_send_error">त्रुटि: %s</string>
+    <string name="transfer_send_location_blocked">इस स्थान से भेजा नहीं जा सकता।</string>
+    <string name="transfer_select_destination">भेजने का गंतव्य चुनें</string>
+    <string name="transfer_destination_laydown">Laydown</string>
+    <string name="transfer_destination_site">Site</string>
+
+    <!-- Transfer: Receive Packing List -->
+    <string name="transfer_receive_title">पैकिंग लिस्ट प्राप्त करना</string>
+    <string name="transfer_receive_step1_title">चरण 1: वाहन स्कैन करें</string>
+    <string name="transfer_receive_step2_title">चरण 2: पैकिंग लिस्ट चुनें</string>
+    <string name="transfer_receive_step3_title">चरण 3: स्पूल की पुष्टि करें</string>
+    <string name="transfer_receive_btn_confirm">प्राप्ति की पुष्टि करें</string>
+    <string name="transfer_receive_success_partial">%2$s में %1$d स्पूल प्राप्त हुए। पैकिंग लिस्ट लंबित है — अगले उप-स्थान के साथ जारी रखें।</string>
+    <string name="transfer_receive_success_complete">डिलीवरी पूरी हुई। पैकिंग लिस्ट हटाई गई।</string>
+    <string name="transfer_receive_success">प्राप्ति सफलतापूर्वक दर्ज हुई (सिंक होना लंबित है)</string>
+    <string name="transfer_confirm_incomplete_title">अपुष्ट स्पूल</string>
+    <string name="transfer_confirm_incomplete_msg">अभी भी %1$d स्पूल स्कैन नहीं हुए हैं। क्या फिर भी जारी रखना चाहते हैं?</string>
+    <string name="transfer_receive_no_pls">इस वाहन के लिए कोई पैकिंग लिस्ट ट्रांज़िट में नहीं है।</string>
+    <string name="transfer_receive_subposition_label">इस बैच के लिए उप-स्थान</string>
+    <string name="transfer_receive_subposition_placeholder">— उप-स्थान चुनें —</string>
+    <string name="transfer_receive_no_spools_scanned">पुष्टि करने से पहले कम से कम एक स्पूल स्कैन करें।</string>
+    <string name="transfer_receive_subposition_required">इस बैच का उप-स्थान चुनें।</string>
+
+    <!-- Transfer: Shared -->
+    <string name="transfer_spools_progress">%1$d / %2$d स्पूल पुष्ट किए गए</string>
+    <string name="transfer_vehicle_confirmed">✓ वाहन की पुष्टि हुई: %s</string>
+    <string name="transfer_spool_not_in_list">यह स्पूल चुनी गई पैकिंग लिस्ट का हिस्सा नहीं है।</string>
+    <string name="transfer_spool_already_confirmed">यह स्पूल पहले ही पुष्ट हो चुका है।</string>
+    <string name="transfer_spool_confirmed">✓ स्पूल %s पुष्ट हुआ।</string>
+    <string name="transfer_btn_scan_vehicle">वाहन का क्यूआर स्कैन करें</string>
+    <string name="transfer_btn_scan_spool">स्पूल स्कैन करें</string>
+    <string name="transfer_assign_section">सेक्शन</string>
+    <string name="transfer_assign_unit">यूनिट</string>
+    <string name="transfer_assign_hint_laydown">Laydown का एक सेक्शन निर्दिष्ट करें</string>
+    <string name="transfer_assign_hint_site">Site की एक यूनिट निर्दिष्ट करें</string>
+    <string name="transfer_vehicle_not_found">वाहन स्थानीय डेटाबेस में नहीं मिला।</string>
+    <string name="transfer_vehicle_not_on_route">वाहन मार्ग पर नहीं है।</string>
+    <string name="transfer_vehicle_wrong_destination">वाहन इस स्थान की ओर नहीं जा रहा है।</string>
+    <string name="transfer_vehicle_wrong_project">वाहन वर्तमान प्रोजेक्ट का नहीं है।</string>
+    <string name="transfer_unregistered_vehicle_title">अपंजीकृत वाहन</string>
+    <string name="transfer_unregistered_vehicle_message">नंबर प्लेट %1$s वाला वाहन सिस्टम में पंजीकृत नहीं है। क्या आप \"अपंजीकृत वाहन\" घटना बनाना चाहते हैं? वाहन को वाहन मॉड्यूल से पंजीकृत किया जा सकता है (केवल ADMIN और DEV प्रोफाइल के लिए उपलब्ध)।</string>
+    <string name="transfer_unregistered_vehicle_create_incident">घटना बनाएं</string>
+    <string name="transfer_unregistered_vehicle_incident_created">अपंजीकृत वाहन घटना बनाई गई।</string>
+    <string name="incident_unregistered_vehicle_description">नंबर प्लेट %1$s वाला वाहन सिस्टम में पंजीकृत नहीं है। इसे वाहन मॉड्यूल से पंजीकृत किया जा सकता है।</string>
+    <string name="transfer_send_to">आप %s को भेजने वाले हैं</string>
+    <string name="transfer_pl_label">PL: %1$s</string>
+    <string name="transfer_vehicle_label">वाहन: %1$s</string>
+
+    <!-- Auto-sync notifications -->
+    <string name="auto_sync_completed">स्वचालित सिंक्रोनाइज़ेशन पूरा हुआ</string>
+    <string name="sync_in_progress_indicator">सिंक्रोनाइज़ेशन जारी है</string>
+
+    <!-- Settings: location config -->
+    <string name="settings_location_config_title">स्थान कॉन्फ़िगरेशन</string>
+    <string name="settings_laydown_sections_label">Laydown सेक्शन</string>
+    <string name="settings_laydown_sections_hint">उदा: 1A,2A,1B,2B,1C,2C,1D,2D</string>
+    <string name="settings_site_units_label">Site यूनिट</string>
+    <string name="settings_site_units_hint">उदा: 1,2,3,4</string>
+    <string name="settings_location_config_save">सहेजें</string>
+    <string name="settings_location_config_saved">स्थान कॉन्फ़िगरेशन सहेजा गया</string>
+
+    <!-- Settings: assigned operator -->
+    <string name="settings_assigned_operator_title">निर्दिष्ट ऑपरेटर</string>
+    <string name="settings_assigned_operator_label">ऑपरेटर का नाम</string>
+    <string name="settings_assigned_operator_hint">उदा: राम कुमार</string>
+    <string name="settings_assigned_operator_save">सहेजें</string>
+    <string name="settings_assigned_operator_saved">निर्दिष्ट ऑपरेटर सहेजा गया</string>
+
+    <!-- Incidents -->
+    <string name="menu_incidencias">घटनाएं</string>
+    <string name="incidents_title">घटनाएं</string>
+    <string name="incidents_empty">कोई घटना दर्ज नहीं है</string>
+    <string name="incidents_btn_new">नई घटना</string>
+    <string name="incidents_tab_open">खुली हुई</string>
+    <string name="incidents_tab_closed">बंद हुई</string>
+    <string name="incident_filter_all">सभी</string>
+    <string name="incident_card_no_description">कोई विवरण नहीं</string>
+    <string name="new_incident_title">नई घटना</string>
+    <string name="incident_label_photo">नुकसान की फोटो</string>
+    <string name="incident_btn_take_photo">फोटो लें</string>
+    <string name="incident_btn_retake_photo">फोटो दोबारा लें</string>
+    <string name="incident_btn_scan">कोड स्कैन करें</string>
+    <string name="incident_scan_spool_filled">स्पूल %s जोड़ा गया</string>
+    <string name="incident_scan_vehicle_filled">वाहन %s जोड़ा गया</string>
+    <string name="incident_scan_vehicle_not_found">वाहन नहीं मिला</string>
+    <string name="incident_scan_not_recognized">कोड पहचाना नहीं गया</string>
+    <string name="incident_label_spool_code">स्पूल का कोड</string>
+    <string name="incident_hint_spool_code">उदा: SP-1234</string>
+    <string name="incident_label_spool_suffix">प्रत्यय</string>
+    <string name="incident_hint_spool_suffix">उदा: A</string>
+    <string name="incident_label_description">घटना का विवरण</string>
+    <string name="incident_hint_description">देखे गए नुकसान का वर्णन करें…</string>
+    <string name="incident_label_vehicle_plate">प्रभावित वाहन की नंबर प्लेट</string>
+    <string name="incident_hint_vehicle_plate">उदा: 1234-ABC</string>
+    <string name="incident_label_location">घटना का स्थान</string>
+    <string name="incident_label_location_detail">स्थान का विवरण</string>
+    <string name="incident_hint_location_detail">उदा: ज़ोन, यूनिट, शेल्फ़…</string>
+    <string name="incident_label_subposition">उप-सेक्शन</string>
+    <string name="incident_subposition_none">कोई उप-सेक्शन नहीं</string>
+    <string name="incident_label_severity">गंभीरता</string>
+    <string name="incident_label_position">स्थान (टर्मिनल)</string>
+    <string name="incident_label_author">लेखक</string>
+    <string name="incident_label_date">तिथि</string>
+    <string name="incident_label_status">स्थिति</string>
+    <string name="incident_detail_title">घटना का विवरण</string>
+    <string name="incident_value_unknown">—</string>
+    <string name="incident_status_open">खुली</string>
+    <string name="incident_status_closed">बंद</string>
+    <string name="incident_status_reprint_approved">पुनर्मुद्रण लंबित</string>
+    <string name="incident_label_scanned_revision">स्कैन किया गया रिवीज़न</string>
+    <string name="incident_label_stored_revision">दर्ज रिवीज़न</string>
+    <string name="incident_btn_approve_reprint">पुनर्मुद्रण स्वीकृत करें</string>
+    <string name="incident_approve_reprint_confirm_title">पुनर्मुद्रण स्वीकृत करें</string>
+    <string name="incident_approve_reprint_confirm_msg">क्या आप पुष्टि करते हैं कि यह घटना पुनर्मुद्रण के लिए लंबित रहेगी? सही रिवीज़न के साथ नया टैग छापने के लिए सूचित किया जाएगा।</string>
+    <string name="incident_approve_reprint_confirm_yes">स्वीकृत करें</string>
+    <string name="incident_approve_reprint_confirm_no">रद्द करें</string>
+    <string name="incident_reprint_approved_ok">पुनर्मुद्रण स्वीकृत हुआ</string>
+    <string name="incident_btn_close">घटना बंद करें</string>
+    <string name="incident_close_confirm_title">घटना बंद करें</string>
+    <string name="incident_close_confirm_msg">क्या आप इस घटना को बंद करने की पुष्टि करते हैं? कौन और कब बंद कर रहा है यह दर्ज किया जाएगा।</string>
+    <string name="incident_close_confirm_yes">बंद करें</string>
+    <string name="incident_close_confirm_no">रद्द करें</string>
+    <string name="incident_closed_ok">घटना बंद की गई</string>
+    <string name="incident_label_closed_by">बंद करने वाला</string>
+    <string name="incident_label_closed_at">बंद होने की तिथि</string>
+    <string name="incident_btn_save">घटना सहेजें</string>
+    <string name="incident_saved_ok">घटना दर्ज हुई</string>
+    <string name="incident_error_missing_spool_code">स्पूल का कोड दर्ज करें</string>
+    <string name="incident_error_missing_description">घटना का वर्णन करें</string>
+    <string name="incident_error_save">त्रुटि: %s</string>
+    <string name="incident_location_laydown">Laydown</string>
+    <string name="incident_location_site">Site</string>
+    <string name="incident_location_workshop">Workshop</string>
+    <string name="incident_severity_low">निम्न</string>
+    <string name="incident_severity_medium">मध्यम</string>
+    <string name="incident_severity_high">उच्च</string>
+    <string name="incident_severity_critical">गंभीर</string>
+    <string name="home_label_critical_incidents">गंभीर घटनाएं</string>
+
+    <!-- Event History -->
+    <string name="menu_event_history">घटनाओं का इतिहास</string>
+    <string name="event_history_empty">इस प्रोजेक्ट के लिए कोई घटना दर्ज नहीं है</string>
+    <string name="event_label_spool_created">स्पूल बनाया गया</string>
+    <string name="event_label_spool_deleted">स्पूल हटाया गया</string>
+    <string name="event_label_spool_deleted_hard">स्पूल हटाया गया (स्थायी)</string>
+    <string name="event_label_pl_created">पैकिंग लिस्ट बनाई गई</string>
+    <string name="event_label_pl_edited">पैकिंग लिस्ट संपादित की गई</string>
+    <string name="event_label_pl_deleted">पैकिंग लिस्ट हटाई गई</string>
+    <string name="event_label_pl_deleted_hard">पैकिंग लिस्ट हटाई गई (स्थायी)</string>
+    <string name="event_label_vehicle_created">वाहन बनाया गया</string>
+    <string name="event_label_vehicle_edited">वाहन संपादित किया गया</string>
+    <string name="event_label_vehicle_deleted">वाहन हटाया गया</string>
+    <string name="event_label_transfer_sent">भेजना दर्ज हुआ</string>
+    <string name="event_label_transfer_received">प्राप्ति दर्ज हुई</string>
+    <string name="event_label_incident_created">घटना बनाई गई</string>
+    <string name="event_label_incident_closed">घटना बंद की गई</string>
+
+    <!-- Spool Map -->
+    <string name="menu_map">मानचित्र</string>
+    <string name="spool_map_empty">GPS स्थान वाला कोई स्पूल दर्ज नहीं है</string>
+    <string name="spool_map_refresh">मानचित्र अपडेट करें</string>
+    <string name="spool_map_center_geofence">जियोफेंस पर केंद्रित करें</string>
+    <string name="spool_map_center_geofence_title">जियोफेंस चुनें</string>
+    <string name="spool_map_no_geofences">कोई जियोफेंस उपलब्ध नहीं है</string>
+    <string name="home_btn_map">स्पूल का मानचित्र देखें</string>
+    <string name="home_qa_map">स्पूल का मानचित्र</string>
+    <string name="home_btn_inventario">अपने ज़ोन की इन्वेंटरी देखें</string>
+
+</resources>

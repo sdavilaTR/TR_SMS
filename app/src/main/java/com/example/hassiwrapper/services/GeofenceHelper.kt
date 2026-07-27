@@ -30,8 +30,8 @@ object GeofenceHelper {
 
         val missed = mutableListOf<String>()
         for (area in areas) {
-            val polygon = KmlParser.deserialize(area.geofence_polygon!!)
-            if (isInside(lat, lon, polygon)) return CheckResult.Inside
+            val polygons = KmlParser.deserializeMulti(area.geofence_polygon!!)
+            if (polygons.any { isInside(lat, lon, it) }) return CheckResult.Inside
             missed += area.name
         }
         return CheckResult.Outside(missed)

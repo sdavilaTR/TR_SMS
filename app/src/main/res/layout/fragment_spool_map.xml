@@ -56,4 +56,18 @@
         app:elevation="4dp"
         android:contentDescription="@string/spool_map_refresh" />
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnCenterGeofence"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_margin="16dp"
+        android:src="@drawable/ic_center_geofence_24"
+        app:backgroundTint="@color/primary"
+        app:tint="@color/on_primary"
+        app:fabCustomSize="48dp"
+        app:maxImageSize="22dp"
+        app:elevation="4dp"
+        android:contentDescription="@string/spool_map_center_geofence" />
+
 </FrameLayout>

@@ -166,7 +166,12 @@ class HomeFragment : Fragment() {
      *  locally, not yet uploaded) spool counts for this terminal's configured zone, plus a per-sub-position
      *  (GCP) breakdown when the project defines any for that zone. Counts move themselves:
      *  a spool packed into a PL headed to another zone resolves there instead (see
-     *  SPOOL_RESOLVED_POSITION), so no separate "deduct on transfer" step is needed. */
+     *  SPOOL_RESOLVED_POSITION), so no separate "deduct on transfer" step is needed.
+     *
+     *  A terminal further pinned to one sub-position (device_sub_position_id — e.g. a JAFURAH
+     *  "Laydown GCP 5" terminal, where GCP5/6/9 are siblings under the same LAYDOWN zone) narrows
+     *  the top KPI to that sub-position alone and skips the breakdown list, which would otherwise
+     *  reveal the sibling GCP zones' counts. */
     private suspend fun loadGuestZoneStats(rawLocation: String) {
         val view = view ?: return
         val row = view.findViewById<View>(R.id.guestZoneStatsRow)
@@ -179,6 +184,17 @@ class HomeFragment : Fragment() {
         }
 
         val projectId = getSelectedProjectId()
+        val pinnedSubPositionId = ServiceLocator.configRepo.get("device_sub_position_id")?.toLongOrNull()
+        if (pinnedSubPositionId != null) {
+            val pinned = ServiceLocator.smsSpoolDao.countByProjectZoneAndSubPosition(projectId, location)
+                .firstOrNull { it.subPositionId == pinnedSubPositionId }
+            view.findViewById<TextView>(R.id.txtGuestZoneConfirmedCount).text = (pinned?.confirmed ?: 0).toString()
+            view.findViewById<TextView>(R.id.txtGuestZonePendingCount).text = (pinned?.pending ?: 0).toString()
+            row.visibility = View.VISIBLE
+            breakdown.visibility = View.GONE
+            return
+        }
+
         val confirmed = ServiceLocator.smsSpoolDao.countConfirmedByProjectAndZone(projectId, location)
         val pending = ServiceLocator.smsSpoolDao.countPendingByProjectAndZone(projectId, location)
         view.findViewById<TextView>(R.id.txtGuestZoneConfirmedCount).text = confirmed.toString()

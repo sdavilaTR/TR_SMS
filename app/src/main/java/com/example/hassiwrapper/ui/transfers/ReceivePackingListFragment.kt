@@ -58,7 +58,7 @@ class ReceivePackingListFragment : Fragment() {
 
     // Panel A
     private lateinit var txtScannedVehicle: TextView
-    private lateinit var etPlate: com.google.android.material.textfield.TextInputEditText
+    private lateinit var etPlate: android.widget.AutoCompleteTextView
     private lateinit var btnConfirmVehicle: MaterialButton
     private lateinit var btnScanVehicle: MaterialButton
 
@@ -173,13 +173,19 @@ class ReceivePackingListFragment : Fragment() {
             if (plate.isBlank()) {
                 Toast.makeText(requireContext(), getString(R.string.load_spools_enter_plate), Toast.LENGTH_SHORT).show()
             } else {
-                handleVehicleScan(plate)
+                handleVehicleScan(plate, isManualEntry = true)
             }
         }
         btnScanSpool.setOnClickListener {
             launchScannerWithPermission { spoolScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java)) }
         }
         btnConfirmReceive.setOnClickListener { onNextToConfirmReceive() }
+
+        etPlate.threshold = 1
+        etPlate.setOnItemClickListener { parent, _, pos, _ ->
+            handleVehicleScan(parent.getItemAtPosition(pos) as String)
+        }
+        setupVehicleAutocomplete()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -221,7 +227,15 @@ class ReceivePackingListFragment : Fragment() {
         }
     }
 
-    private fun handleVehicleScan(raw: String) {
+    private fun setupVehicleAutocomplete() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+            val plates = ServiceLocator.smsVehicleDao.getByProject(projectId).map { it.license_plate }
+            etPlate.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, plates))
+        }
+    }
+
+    private fun handleVehicleScan(raw: String, isManualEntry: Boolean = false) {
         viewLifecycleOwner.lifecycleScope.launch {
             val qr = parseQr(raw)
             val vehicle = when (qr) {
@@ -235,9 +249,13 @@ class ReceivePackingListFragment : Fragment() {
             }
 
             if (vehicle == null) {
-                Toast.makeText(requireContext(), getString(R.string.transfer_vehicle_not_found), Toast.LENGTH_LONG).show()
                 txtScannedVehicle.text = raw
                 txtScannedVehicle.visibility = View.VISIBLE
+                if (isManualEntry) {
+                    offerUnregisteredVehicleIncident(raw)
+                } else {
+                    Toast.makeText(requireContext(), getString(R.string.transfer_vehicle_not_found), Toast.LENGTH_LONG).show()
+                }
                 return@launch
             }
 
@@ -266,16 +284,38 @@ class ReceivePackingListFragment : Fragment() {
         }
     }
 
+    /** Manual plate entry didn't resolve to a known vehicle — offer to log it as an incident
+     *  so it can be picked up for registration, instead of silently rejecting the input. */
+    private fun offerUnregisteredVehicleIncident(plate: String) {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.transfer_unregistered_vehicle_title))
+            .setMessage(getString(R.string.transfer_unregistered_vehicle_message, plate))
+            .setPositiveButton(R.string.transfer_unregistered_vehicle_create_incident) { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    ServiceLocator.smsIncidentService.createVehicleNotRegisteredIncident(plate)
+                    Toast.makeText(requireContext(), getString(R.string.transfer_unregistered_vehicle_incident_created), Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     private fun loadPackingListsForVehicle(vehicle: SmsVehicleEntity) {
         viewLifecycleOwner.lifecycleScope.launch {
             android.util.Log.d("ReceiveDebug", "loadPackingListsForVehicle: vehicle_id=${vehicle.vehicle_id} plate=${vehicle.license_plate} on_route=${vehicle.on_route} destination=${vehicle.destination}")
 
-            // Same-device: PLs with in_transit spools (set by local Send confirmation)
-            // Cross-device: PLs with ready_to_send=true (server signal, no local Send transfer)
+            // Same-device: PLs with in_transit spools (set by local Send confirmation).
+            // Cross-device: EVERY active PL on this vehicle that still has spools — NOT filtered
+            // by ready_to_send. That flag was the cause of sent PLs not showing at receive time:
+            // it defaults to 0 on the server INSERT and is only flipped to 1 by a follow-up PUT
+            // that silently fails offline, so a real in-transit PL could arrive invisible. The
+            // 1-active-PL-per-vehicle rule (unique index) means getByVehicle returns at most one,
+            // and a fully-received PL is is_active=0 so it drops out on its own; the count guard
+            // is a belt-and-suspenders against a not-yet-cleaned empty PL.
             val byInTransit = ServiceLocator.smsPackingListDao.getWithInTransitSpoolsByVehicle(vehicle.vehicle_id)
-            val byReadyToSend = ServiceLocator.smsPackingListDao.getByVehicle(vehicle.vehicle_id)
-                .filter { it.ready_to_send }
-            val pls = (byInTransit + byReadyToSend).distinctBy { it.packing_list_id }
+            val byVehicle = ServiceLocator.smsPackingListDao.getByVehicle(vehicle.vehicle_id)
+                .filter { (it.total_spools_count ?: 0) > 0 }
+            val pls = (byInTransit + byVehicle).distinctBy { it.packing_list_id }
 
             panelScanVehicle.visibility = View.GONE
             panelSelectPl.visibility = View.VISIBLE
@@ -476,31 +516,55 @@ class ReceivePackingListFragment : Fragment() {
                 }
             }
 
-            // A truck can now unload in stages across several sub-positions — only auto-delete
-            // the PL / free the vehicle once nothing is left in transit for it, not after every batch.
+            // A truck can unload in stages across several sub-positions. Move the PL to the
+            // destination position on every batch; once nothing is left in transit for it, mark it
+            // DELIVERED instead of deleting it — the PL survives as a delivery record (deleting it
+            // was the reported "PL desaparece" bug, and nobody on the project wanted it gone).
+            if (receivePosition != null) {
+                ServiceLocator.smsPackingListDao.updatePosition(pl.packing_list_id, receivePosition.position_id, receivePosition.code)
+            }
+
             val remainingInPl = ServiceLocator.smsSpoolDao.getInTransitByPackingList(pl.packing_list_id)
             val plDelivered = remainingInPl.isEmpty()
 
             if (plDelivered) {
-                val plSpools = ServiceLocator.smsSpoolDao.getByPackingList(pl.packing_list_id)
-                plSpools.forEach { ServiceLocator.smsSpoolDao.updatePackingList(it.spool_id, null) }
-                ServiceLocator.smsPackingListSpoolDao.deleteByPackingList(pl.packing_list_id)
-                ServiceLocator.smsPackingListDao.deleteById(pl.packing_list_id)
-                com.example.hassiwrapper.ui.packinglists.PackingListDetailFragment.locallyDeletedPLIds.add(pl.packing_list_id)
+                // Keep the PL as a delivery record. Its spools STAY linked as the manifest — they're
+                // already positioned at destination + in_transit cleared above, so nothing is
+                // stranded (the PL is active and at destination, so its spools show there). Clearing
+                // the vehicle frees the truck for its next load AND drops the PL out of the Receive
+                // screen (resolved by vehicle), with no dependency on the fragile ready_to_send flag.
+                ServiceLocator.smsPackingListDao.clearVehicleAndDeliver(pl.packing_list_id)
                 if (pl.synced && !projectCode.isNullOrBlank()) {
+                    // Persist the delivery as a PL UPDATE (destination position + vehicle=null),
+                    // offline-safe via the outbox — same path as EditPackingListFragment.saveEdits.
+                    // Send the actual current count so the server's denormalised total_spools_count
+                    // isn't stomped to a stale value; empty `spools` is ignored by UpdatePackingListAsync
+                    // (it only writes the PL row), so the server-side manifest is preserved.
+                    val actualCount = ServiceLocator.smsSpoolDao.countByPackingList(pl.packing_list_id)
                     ServiceLocator.outboxService.enqueue(
                         com.example.hassiwrapper.services.OutboxService.Entity.PACKING_LIST,
-                        com.example.hassiwrapper.services.OutboxService.Op.DELETE,
-                        pl.packing_list_id, projectId
+                        com.example.hassiwrapper.services.OutboxService.Op.UPDATE,
+                        pl.packing_list_id, projectId,
+                        payload = com.example.hassiwrapper.network.dto.UpdatePackingListRequest(
+                            packingListId    = pl.packing_list_id,
+                            packingListName  = pl.packing_list_name,
+                            vehicle          = null,
+                            position         = receivePosition?.name,
+                            positionId       = receivePosition?.position_id,
+                            packingDate      = pl.packing_date.takeIf { it.isNotBlank() },
+                            notes            = pl.notes,
+                            createdBy        = pl.created_by,
+                            updatedBy        = null,
+                            projectCode      = projectCode,
+                            totalSpoolsCount = actualCount
+                        )
                     )
                 }
                 ServiceLocator.auditLogService.log(
-                    com.example.hassiwrapper.services.AuditLogService.PL_ELIMINADO,
+                    com.example.hassiwrapper.services.AuditLogService.PL_ENTREGADO,
                     com.example.hassiwrapper.services.AuditLogService.ENTITY_PL,
                     pl.packing_list_id, pl.packing_list_name, projectId = projectId
                 )
-            } else if (receivePosition != null) {
-                ServiceLocator.smsPackingListDao.updatePosition(pl.packing_list_id, receivePosition.position_id, receivePosition.code)
             }
 
             val remainingInVehicle = ServiceLocator.smsSpoolDao.countInTransitByVehicle(vehicle.vehicle_id)

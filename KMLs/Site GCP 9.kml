@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document id="document">
+	<name>Site GCP 9</name>
+	<gx:CascadingStyle kml:id="__managed_style_0F5295833140D820291C_highlight">
+		<styleUrl>https://earth.google.com/balloon_components/base/1.1.0.0/card_template.kml#main</styleUrl>
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>4</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_0F5295833140D820291C_normal">
+		<styleUrl>https://earth.google.com/balloon_components/base/1.1.0.0/card_template.kml#main</styleUrl>
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>2.66667</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_0F5295833140D820291C">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_0F5295833140D820291C_normal</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_0F5295833140D820291C_highlight</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Placemark id="057845394540D8253720">
+		<name>p1</name>
+		<LookAt>
+			<longitude>50.40932108655321</longitude>
+			<latitude>25.12557881471205</latitude>
+			<altitude>111.7962522171878</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>4746.219794912032</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0F5295833140D820291C</styleUrl>
+		<Point>
+			<coordinates>50.4157,25.1284,112.0333351425924</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark id="0AE7E13B7F40D8254A06">
+		<name>p4</name>
+		<LookAt>
+			<longitude>50.40932108655321</longitude>
+			<latitude>25.12557881471205</latitude>
+			<altitude>111.7962522171878</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>4746.219794912032</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0F5295833140D820291C</styleUrl>
+		<Point>
+			<coordinates>50.4208,25.1284,111.5521545497463</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark id="0B1B79272B40D82586B9">
+		<name>p2</name>
+		<LookAt>
+			<longitude>50.40932108655321</longitude>
+			<latitude>25.12557881471205</latitude>
+			<altitude>111.7962522171878</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>4746.219794912032</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0F5295833140D820291C</styleUrl>
+		<Point>
+			<coordinates>50.4157,25.133,115.3439900169028</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark id="03A7A0E24040D825A337">
+		<name>p3</name>
+		<LookAt>
+			<longitude>50.40932108655321</longitude>
+			<latitude>25.12557881471205</latitude>
+			<altitude>111.7962522171878</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>4746.219794912032</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0F5295833140D820291C</styleUrl>
+		<Point>
+			<coordinates>50.4208,25.133,115.3579410544789</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark id="0CD4ED8C5040D82811C9">
+		<name>Site GCP 9</name>
+		<LookAt>
+			<longitude>50.41791576291907</longitude>
+			<latitude>25.13193395034845</latitude>
+			<altitude>113.0005872006805</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>2073.639552960231</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0F5295833140D820291C</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						50.42078053002992,25.12839545484566,0 50.420760182829,25.13312862969206,0 50.41574338018995,25.13311519667926,0 50.41568103667848,25.12839945259485,0 50.42078053002992,25.12839545484566,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+</Document>
+</kml>

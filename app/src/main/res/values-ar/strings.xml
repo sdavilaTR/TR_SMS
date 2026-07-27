@@ -1,0 +1,1032 @@
+<resources>
+    <string name="app_name">Smart Material System</string>
+
+    <!-- QR Scanner FAB -->
+    <string name="qr_scan_button">مسح رمز QR</string>
+    <string name="qr_result_title">تم اكتشاف رمز QR</string>
+
+    <!-- QR Scanner Fragment -->
+    <string name="menu_qr_scanner">ماسح QR</string>
+    <string name="qr_scanner_status_waiting">في انتظار المسح…\nاستخدم الماسح الليزري أو زر الكاميرا</string>
+    <string name="qr_scanner_status_processing">جارٍ معالجة الرمز…</string>
+    <string name="qr_scanner_status_spool_found">تم العثور على Spool: %1$s</string>
+    <string name="qr_scanner_status_vehicle_found">تم العثور على المركبة: %1$s</string>
+    <string name="qr_scanner_btn_camera">المسح بالكاميرا</string>
+    <string name="qr_scanner_hint_laser">اضغط الزر الجانبي للجهاز للمسح بالليزر</string>
+    <string name="qr_scanner_result_spool_not_found">لم يتم العثور على Spool في قاعدة البيانات المحلية — قم بالمزامنة أولاً</string>
+    <string name="qr_scanner_result_vehicle_not_found">لم يتم العثور على المركبة في قاعدة البيانات المحلية — قم بالمزامنة أولاً</string>
+    <string name="qr_scanner_result_vehicle_badge">مركبة (شارة UUID)</string>
+    <string name="qr_scanner_result_badge_unsupported">شارة UUID غير مرتبطة بمركبة SMS. استخدم رمز QR الخاص بالمركبة في نظام ATLAS.</string>
+    <string name="qr_scanner_result_unknown">رمز QR غير معروف</string>
+    <string name="qr_scanner_result_id_detail">المعرف: %1$s</string>
+    <string name="qr_scanner_result_spool_syncing">المزامنة قيد التقدم — قد لا يكون الـ Spool قد نُزِّل بعد. انتظر حتى تنتهي ثم أعد المحاولة.</string>
+    <string name="qr_scanner_revision_mismatch">!!!المراجعة الفعلية الممسوحة (%1$s) مختلفة عن المسجلة (%2$s)</string>
+    <string name="revision_mismatch_dialog_title">تم اكتشاف مراجعة مختلفة!!</string>
+    <string name="revision_mismatch_dialog_create">إنشاء حادثة</string>
+    <string name="revision_mismatch_dialog_dismiss">تجاهل</string>
+    <string name="revision_mismatch_incident_created">تم إنشاء الحادثة وإخطار المشرفين</string>
+    <string name="revision_mismatch_incident_exists">توجد بالفعل حادثة مفتوحة لهذه المراجعة</string>
+
+    <!-- QR Scanner: relocate mode -->
+    <string name="qr_scanner_btn_relocate">نقل الـ Spools</string>
+    <string name="qr_scanner_btn_relocate_active">إلغاء النقل</string>
+    <string name="qr_scanner_relocate_label_area">القسم الوجهة (Laydown)</string>
+    <string name="qr_scanner_relocate_label_unit">الوحدة الوجهة (Site)</string>
+    <string name="qr_scanner_relocate_no_location">قم بتهيئة موقع الجهاز (Laydown/Site) في الإعدادات</string>
+    <string name="qr_scanner_relocate_no_destinations">لا توجد أقسام/وحدات مسجلة لهذا الجهاز. قم بتهيئتها في الإعدادات</string>
+    <string name="qr_scanner_relocate_select_dest_first">اختر الوجهة قبل المسح</string>
+    <string name="qr_scanner_relocate_count">عدد الـ Spools المنقولة إلى %1$s: %2$d</string>
+    <string name="qr_scanner_relocate_success">%1$s → %2$s</string>
+    <string name="qr_scanner_relocate_only_spools">يمكن نقل الـ Spools فقط</string>
+    <string name="qr_scanner_btn_finish_relocate">إنهاء النقل</string>
+    <string name="scan_result_spool_registered">Spool مسجل: %1$s</string>
+    <string name="scan_result_spool_not_registered">Spool غير مسجل في قاعدة البيانات</string>
+    <string name="scan_result_spool_not_registered_syncing">المزامنة قيد التقدم — قد لا يكون الـ Spool قد نُزِّل بعد. انتظر حتى تنتهي ثم أعد المحاولة.\n\nهل ترغب في إنشاء سجل جديد على أي حال؟</string>
+    <string name="scan_result_vehicle_registered">مركبة مسجلة: %1$s</string>
+    <string name="scan_result_vehicle_not_registered">المركبة غير مسجلة في قاعدة البيانات</string>
+    <string name="scan_create_question">هل ترغب في إنشاء سجل جديد؟</string>
+    <string name="scan_action_create">إنشاء</string>
+    <string name="scan_action_close">إغلاق</string>
+
+    <!-- Navigation -->
+    <string name="nav_header_title">Smart Material System</string>
+    <string name="menu_home">الرئيسية</string>
+    <string name="menu_scanner">Spools List</string>
+    <string name="menu_passport">Packing Lists</string>
+    <string name="passport_screen_title">جواز السفر</string>
+    <string name="packing_lists_empty">لا توجد Packing Lists.</string>
+    <string name="packing_lists_count">%1$d Packing Lists</string>
+    <string name="packing_lists_error_prefix">خطأ: %s</string>
+    <string name="packing_lists_error_http">خطأ HTTP %d</string>
+    <string name="packing_lists_error_project_code">projectCode فارغ/غير موجود لـ project_id=%d. هل تمت المزامنة؟</string>
+    <string name="home_label_packing_lists">Packing Lists</string>
+    <string name="menu_attendance">سجلات Spools</string>
+    <string name="menu_sync">المزامنة</string>
+    <string name="menu_workers">Spools</string>
+    <string name="menu_settings">الإعدادات</string>
+
+    <!-- Home -->
+    <string name="home_label_terminal">الجهاز</string>
+    <string name="home_label_workers">العمال</string>
+    <string name="home_label_scans_today">عمليات المسح اليوم</string>
+    <string name="home_label_pending">قيد الانتظار</string>
+    <string name="home_label_incidents">الحوادث</string>
+    <string name="home_label_spools">Spools</string>
+    <string name="home_btn_access">Smart Material System</string>
+    <string name="home_btn_sync">مزامنة</string>
+    <string name="home_last_sync_none">آخر مزامنة: —</string>
+    <string name="home_last_sync_format">آخر مزامنة: %s</string>
+
+    <!-- Scanner -->
+    <string name="scanner_label_direction">الاتجاه:</string>
+    <string name="scanner_status_waiting">في انتظار المسح…</string>
+    <string name="scanner_status_processing">جارٍ المعالجة…</string>
+    <string name="scanner_hint_usage">استخدم الماسح الليزري للجهاز أو زر الكاميرا</string>
+    <string name="scanner_btn_camera">الكاميرا</string>
+    <string name="scanner_btn_laser">الليزر</string>
+    <string name="scanner_laser_hint">اضغط الزر الجانبي للجهاز للمسح بالليزر</string>
+    <string name="scanner_label_recent">آخر القراءات</string>
+    <string name="scanner_error_camera_permission">إذن الكاميرا مطلوب</string>
+    <string name="scanner_camera_prompt">وجّه الكاميرا نحو رمز QR / الباركود الخاص بالعامل</string>
+    <string name="scanner_unknown">غير معروف</string>
+    <string name="scanner_granted">مسموح</string>
+    <string name="scanner_denied">مرفوض</string>
+    <string name="scanner_result_error">خطأ</string>
+    <string name="scanner_worker">العامل</string>
+    <string name="scanner_entry">↑ دخول</string>
+    <string name="scanner_exit">↓ خروج</string>
+
+    <!-- Passport -->
+    <string name="passport_waiting_title">مسح Spool</string>
+    <string name="passport_waiting_hint">ستظهر معلومات الـ Spool هنا عند المسح</string>
+    <string name="passport_card_title">UTE TR — SE HASSI MESSAOUD PROJECT</string>
+    <string name="passport_scanned_at">تم المسح: %s</string>
+    <string name="passport_label_family_name">اللقب</string>
+    <string name="passport_label_given_name">الاسم</string>
+    <string name="passport_label_position">الوظيفة / المسمى</string>
+    <string name="passport_label_company">الشركة / المقاول</string>
+    <string name="passport_label_document">رقم الوثيقة</string>
+    <string name="passport_label_badge">رقم الشارة</string>
+    <string name="passport_label_category">الفئة</string>
+    <string name="passport_label_valid_from">تاريخ الدخول</string>
+    <string name="passport_label_valid_to">صالح حتى</string>
+    <string name="passport_status_active">● نشط</string>
+    <string name="passport_status_inactive">● غير نشط</string>
+    <string name="passport_worker_not_found">العامل غير موجود في قاعدة البيانات المحلية</string>
+    <string name="passport_photo_tap">التقاط\nصورة</string>
+    <string name="passport_photo_uploading">جارٍ رفع الصورة…</string>
+    <string name="passport_photo_uploaded">تم تحديث الصورة بنجاح</string>
+    <string name="passport_photo_error">خطأ في رفع الصورة: %s</string>
+    <string name="passport_photo_no_connection">تم حفظ الصورة محلياً. سيتم رفعها في المزامنة القادمة</string>
+
+    <!-- Attendance -->
+    <string name="attendance_title">سجلات Spools</string>
+    <string name="attendance_filter_all">الكل</string>
+    <string name="attendance_filter_synced">مزامَن</string>
+    <string name="attendance_filter_pending">قيد الانتظار</string>
+
+    <!-- Sync -->
+    <string name="sync_title">المزامنة</string>
+    <string name="sync_label_connection">حالة الاتصال</string>
+    <string name="sync_label_pending_data">البيانات المعلقة</string>
+    <string name="sync_pending_logs">السجلات: %d</string>
+    <string name="sync_pending_incidents">الحوادث: %d</string>
+    <string name="sync_pending_sessions">الجلسات: %d</string>
+    <string name="sync_pending_photos">الصور: %d</string>
+    <string name="sync_btn">مزامنة كاملة</string>
+    <string name="sync_last_none">آخر مزامنة: —</string>
+    <string name="sync_last_format">آخر مزامنة: %s</string>
+    <string name="sync_syncing">جارٍ المزامنة…</string>
+    <string name="sync_success">✓ اكتملت المزامنة: %1$d سجل، %2$d جديد، %3$d محدَّث</string>
+    <string name="sync_error">✕ خطأ: %s</string>
+    <string name="sync_photos_ok">تم رفع %d صورة</string>
+    <string name="sync_photos_fail">فشل رفع %d صورة</string>
+    <string name="sync_photos_fail_detail">فشل رفع %1$d صورة:\n%2$s</string>
+    <string name="sync_status_checking">جارٍ التحقق…</string>
+    <string name="sync_network_online">الشبكة: متصل</string>
+    <string name="sync_network_offline">الشبكة: غير متصل</string>
+    <string name="sync_api_ok">واجهة ATLAS: متاحة</string>
+    <string name="sync_api_fail">واجهة ATLAS: غير متاحة</string>
+    <string name="sync_auth_ok">الجلسة: نشطة</string>
+    <string name="sync_auth_none">الجلسة: غير مسجَّلة</string>
+    <string name="sync_auth_required">سجّل الدخول للمزامنة</string>
+    <string name="sync_retrying">إعادة المحاولة (%1$d)… انتظر %2$d ث</string>
+
+    <!-- Sync KPIs -->
+    <string name="sync_kpi_records">Spools</string>
+    <string name="sync_kpi_photos">Packing Lists</string>
+    <string name="sync_kpi_observations">المركبات</string>
+    <string name="sync_kpi_workers">في الطريق</string>
+    <string name="sync_kpi_synced">مزامَن</string>
+    <string name="sync_kpi_pending">معلق</string>
+    <string name="sync_kpi_workers_synced">محدَّث</string>
+
+    <!-- Sync KPI vehicles -->
+    <string name="sync_kpi_vehicles">معلقة للمزامنة</string>
+    <string name="sync_kpi_vehicles_synced">محدَّثة</string>
+    <string name="sync_kpi_in_transit_active">نشطة</string>
+
+    <!-- Outbox failed ops banner -->
+    <string name="sync_outbox_failed_banner">⚠ تعذّرت مزامنة %1$d عملية بعد عدة محاولات — اضغط لعرض التفاصيل</string>
+    <string name="sync_outbox_failed_dialog_title">عمليات فاشلة</string>
+    <string name="sync_outbox_failed_dialog_item">%1$s %2$s (المعرف %3$d): %4$s</string>
+    <string name="sync_outbox_failed_dialog_discard">تجاهل</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_title">تجاهل العمليات الفاشلة</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_message">سيتم تجاهل %1$d عملية فاشلة. لن تتم إعادة المحاولة ولن تؤثر على البيانات المزامَنة بالفعل.</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_yes">تجاهل</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_no">إلغاء</string>
+
+    <!-- Delta-sync flag banner -->
+    <string name="sync_delta_active_banner">مزامنة تفاضلية نشطة على هذا الجهاز — وضع تجريبي، اتصل بالدعم إذا لم يكن هذا متوقعاً</string>
+
+    <!-- Sync result structured -->
+    <string name="sync_result_title_ok">اكتملت المزامنة</string>
+    <string name="sync_result_title_error">خطأ في المزامنة</string>
+    <string name="sync_result_logs">السجلات المرفوعة: %d</string>
+    <string name="sync_result_workers">الموظفون: %1$d جديد، %2$d محدَّث</string>
+    <string name="sync_result_vehicles">المركبات: %1$d جديدة، %2$d محدَّثة</string>
+    <string name="sync_result_observations">الملاحظات: %d</string>
+    <string name="sync_result_photos_ok">الصور المرفوعة: %d</string>
+    <string name="sync_result_photos_fail">الصور الفاشلة: %d</string>
+
+    <!-- Home vehicles -->
+    <string name="home_label_vehicles">المركبات</string>
+
+    <!-- Workers -->
+    <string name="workers_hint_search">البحث عن عامل…</string>
+    <string name="workers_count">%d عامل</string>
+    <string name="workers_badge_format">الشارة: %1$s | %2$s</string>
+
+    <!-- Spools sections -->
+    <string name="spools_section_workshop">Workshop</string>
+    <string name="spools_section_laydown">Laydown</string>
+    <string name="spools_section_site">Site</string>
+    <string name="spools_section_hint_workshop">Spools قيد التصنيع</string>
+    <string name="spools_section_hint_laydown">Spools في المستودع / الساحة</string>
+    <string name="spools_section_hint_site">Spools مركّبة في الموقع</string>
+    <string name="spools_empty_placeholder">لا توجد بيانات — بانتظار المزامنة مع ATLAS</string>
+    <string name="spools_count_format">%d Spools</string>
+
+    <!-- Vehicles -->
+    <string name="menu_vehicles">المركبات</string>
+    <string name="menu_transfers">الإرسال والاستلام</string>
+    <string name="menu_send_packing_list">الإرسال</string>
+    <string name="menu_receive_packing_list">الاستلام</string>
+    <string name="transfer_send_subtitle">إرسال Packing List من هذا الجهاز</string>
+    <string name="transfer_receive_subtitle">استلام Packing List في هذا الجهاز</string>
+    <string name="transfer_manual_vehicle_hint">إدخال رقم اللوحة يدوياً</string>
+    <string name="transfer_manual_spool_hint">إدخال رمز الـ Spool يدوياً</string>
+    <string name="transfer_btn_manual_confirm">تأكيد الإدخال اليدوي</string>
+    <string name="settings_debug_location_btn">[DEBUG] تغيير موضع الجهاز</string>
+    <string name="settings_debug_location_changed">تم تغيير الموضع إلى: %s</string>
+    <string name="settings_debug_subposition_btn">اختر المنطقة الفرعية للجهاز</string>
+    <string name="settings_kiosk_title">وضع الكشك</string>
+    <string name="settings_kiosk_desc">يقفل التطبيق في وضع ملء الشاشة (Screen Pinning). لن يتمكن الجهاز من الخروج من التطبيق دون تعطيل هذا الخيار.</string>
+    <string name="settings_kiosk_enabled">تم تفعيل وضع الكشك</string>
+    <string name="settings_kiosk_disabled">تم تعطيل وضع الكشك</string>
+    <string name="settings_close_app">إغلاق التطبيق</string>
+    <string name="settings_close_app_confirm">هل تريد إغلاق التطبيق؟</string>
+    <string name="settings_geofence_title">السياج الجغرافي للمنطقة (KML)</string>
+    <string name="settings_geofence_desc">استورد حدود منطقة (ورشة، Laydown…) من ملف KML وحدد ما إذا كان المسح داخلها يتطلب تحديد الموقع الجغرافي أو مفروضاً (بدون التحقق من GPS).</string>
+    <string name="settings_geofence_mode_geoloc">تحديد الموقع الجغرافي</string>
+    <string name="settings_geofence_mode_forced">مفروض</string>
+    <string name="settings_geofence_import_kml">استيراد KML…</string>
+    <string name="settings_geofence_save">حفظ</string>
+    <string name="settings_geofence_clear">إزالة</string>
+    <string name="settings_geofence_status_none">لا يوجد سياج جغرافي مهيأ لهذه المنطقة.</string>
+    <string name="settings_geofence_status_current">السياج الحالي: %1$d نقطة، الوضع %2$s.</string>
+    <string name="settings_geofence_status_current_multi">السياج الحالي: %1$d مضلعات (%2$d نقطة)، الوضع %3$s.</string>
+    <string name="settings_geofence_status_pending">تم استيراد KML: %1$d نقطة (غير محفوظة).</string>
+    <string name="settings_geofence_status_pending_multi">تم استيراد KML: %1$d مضلعات (%2$d نقطة) (غير محفوظة).</string>
+    <string name="settings_geofence_no_areas">لا توجد مناطق مزامَنة لهذا المشروع.</string>
+    <string name="settings_geofence_parse_error">تعذّر قراءة المضلع من ملف KML.</string>
+    <string name="settings_geofence_saved">تم حفظ السياج الجغرافي.</string>
+    <string name="settings_geofence_cleared">تم حذف السياج الجغرافي.</string>
+    <string name="settings_geofence_pick_area_first">اختر منطقة أولاً.</string>
+    <string name="vehicles_hint_search">البحث عن مركبة…</string>
+    <string name="vehicles_count">%d مركبة</string>
+    <string name="vehicles_packet_list_label">Packet List المرتبطة</string>
+    <string name="vehicles_packet_list_none">غير معيّن</string>
+    <string name="vehicles_assign_packet_list">ربط Packet List</string>
+    <string name="vehicles_title">المركبات</string>
+    <string name="vehicles_empty_placeholder">لا توجد مركبات مسجلة — بانتظار الإنشاء في ATLAS</string>
+    <string name="vehicles_add">إضافة مركبة</string>
+    <string name="vehicles_item_format">%1$s | %2$s</string>
+    <string name="vehicles_plate_format">رقم اللوحة: %s</string>
+    <string name="vehicles_empty">لا توجد مركبات محمّلة.</string>
+    <string name="vehicles_error_prefix">خطأ: %s</string>
+    <string name="vehicles_error_http">HTTP %d</string>
+    <string name="vehicles_error_project_code">projectCode فارغ/غير موجود لـ project_id=%d. هل تمت المزامنة؟</string>
+    <string name="vehicles_label_fallback">مركبة %d</string>
+    <string name="vehicles_no_packing_lists">لا توجد Packing Lists معيّنة</string>
+    <string name="vehicles_packing_lists_label">Packing Lists</string>
+    <string name="vehicles_ready_to_send_badge">محمّلة · جاهزة للإرسال</string>
+    <string name="vehicles_origin_badge">من: %s</string>
+
+    <!-- New Vehicle -->
+    <string name="new_vehicle_title">مركبة جديدة</string>
+    <string name="new_vehicle_section_details">بيانات المركبة</string>
+    <string name="new_vehicle_field_plate">رقم اللوحة *</string>
+    <string name="new_vehicle_field_name">اسم المركبة</string>
+    <string name="new_vehicle_field_company">الشركة</string>
+    <string name="new_vehicle_field_type">نوع المركبة</string>
+    <string name="new_vehicle_field_capacity">السعة (كجم)</string>
+    <string name="new_vehicle_btn_save">حفظ المركبة</string>
+    <string name="new_vehicle_error_plate_required">رقم اللوحة مطلوب</string>
+    <string name="new_vehicle_success">تم إنشاء المركبة بنجاح</string>
+    <string name="new_vehicle_error_save">خطأ في الحفظ: %s</string>
+
+    <!-- Login -->
+    <string name="login_app_name">ATLAS</string>
+    <string name="login_subtitle">Smart Material System</string>
+    <string name="login_hint_email">البريد الإلكتروني</string>
+    <string name="login_hint_password">كلمة المرور</string>
+    <string name="login_btn">تسجيل الدخول</string>
+    <string name="login_label_or">أو</string>
+    <string name="login_btn_microsoft">تسجيل الدخول عبر Microsoft</string>
+    <string name="login_btn_config">إعدادات API</string>
+    <string name="login_hint_api_url">رابط API</string>
+    <string name="login_btn_save_url">حفظ الرابط</string>
+    <string name="login_url_saved">✓ تم حفظ الرابط</string>
+    <string name="login_error_token">تعذّر الحصول على رمز Microsoft.</string>
+    <string name="login_error_empty">أدخل البريد الإلكتروني وكلمة المرور.</string>
+    <string name="login_error_auth">خطأ في المصادقة.</string>
+    <string name="login_error_format">خطأ: %s</string>
+    <string name="login_error_empty_code">خطأ: أدخل رمز الجهاز.</string>
+
+    <string name="db_error_title">خطأ في قاعدة البيانات</string>
+    <string name="db_error_message">تعذّر فتح قاعدة البيانات المحلية (فشل الترحيل). لا يمكن للتطبيق الاستمرار هكذا.\n\nالتفاصيل: %s</string>
+    <string name="db_error_reset">إعادة تعيين بيانات الجهاز</string>
+    <string name="db_error_reset_warning">سيتم حذف جميع البيانات المحلية غير المزامَنة لهذا الجهاز. هل تريد المتابعة؟</string>
+    <string name="db_error_close">إغلاق التطبيق</string>
+
+    <!-- Update (Settings button) -->
+    <string name="settings_check_updates">البحث عن تحديثات</string>
+    <string name="settings_check_updates_searching">جارٍ البحث…</string>
+    <string name="settings_current_version">الإصدار الحالي: %1$s</string>
+    <string name="update_up_to_date">لديك بالفعل أحدث إصدار مثبّت</string>
+    <string name="update_check_failed">تعذّر التحقق من التحديثات — تحقق من الاتصال (%1$s)</string>
+
+    <!-- Update -->
+    <string name="update_title">تحديث جديد متاح</string>
+    <string name="update_message">الإصدار %s متاح.\nهل تريد تحديث التطبيق الآن؟</string>
+    <string name="update_btn_update">تحديث</string>
+    <string name="update_btn_later">لاحقاً</string>
+    <string name="update_permission_needed">فعّل تثبيت التطبيقات من مصادر غير معروفة لمتابعة التحديث</string>
+    <string name="update_downloading">جارٍ تنزيل التحديث…</string>
+    <string name="update_downloading_version">جارٍ تنزيل الإصدار %s…</string>
+    <string name="update_invalid_apk">الملف المُنزَّل ليس APK صالحاً — تحقق من رمز التحديث</string>
+    <string name="update_no_previous_version">لا يوجد إصدار سابق متاح</string>
+    <string name="update_previous_corrupt">الإصدار السابق تالف</string>
+
+    <!-- Auth Repository -->
+    <string name="auth_error_invalid_credentials">بيانات الاعتماد غير صحيحة.</string>
+    <string name="auth_error_http">خطأ %d.</string>
+    <string name="auth_error_empty_response">استجابة فارغة من الخادم.</string>
+    <string name="auth_error_connection">تعذّر الاتصال بالخادم: %s</string>
+
+    <!-- Rollback -->
+    <string name="settings_reinstall_previous">إعادة تثبيت الإصدار السابق</string>
+    <string name="settings_reinstall_previous_title">إعادة تثبيت الإصدار السابق</string>
+    <string name="settings_reinstall_previous_confirm">سيتم تثبيت الإصدار السابق المحفوظ كنسخة احتياطية. هل تريد المتابعة؟</string>
+
+    <!-- Settings -->
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_tab_basic">أساسي</string>
+    <string name="settings_tab_dev">DEV</string>
+    <string name="settings_api_url_label">رابط API</string>
+    <string name="settings_save">حفظ</string>
+    <string name="settings_device_label">الجهاز</string>
+    <string name="settings_device_name_label">الاسم</string>
+    <string name="settings_device_id_label">المعرف</string>
+    <string name="settings_device_location_label">الموقع</string>
+    <string name="settings_device_name_hint">اسم الجهاز</string>
+    <string name="settings_device_id_format">المعرف: %s</string>
+    <string name="settings_device_id_none">المعرف: —</string>
+    <string name="settings_save_device">حفظ الجهاز</string>
+    <string name="settings_logout">تسجيل الخروج</string>
+    <string name="settings_login">تسجيل الدخول</string>
+    <string name="login_skip">المتابعة بدون تسجيل دخول</string>
+    <string name="settings_info_title">معلومات التطبيق</string>
+    <string name="settings_info_version">الإصدار</string>
+    <string name="settings_info_build_date">تاريخ البناء</string>
+    <string name="settings_info_repo">المستودع</string>
+    <string name="settings_info_deployment">النشر</string>
+    <string name="settings_info_package">الحزمة</string>
+    <string name="settings_info_deployment_value">GitHub Actions (تلقائي)</string>
+    <string name="settings_info_build_local">بناء محلي</string>
+    <string name="settings_url_saved">تم حفظ الرابط</string>
+    <string name="settings_name_required">أدخل اسماً</string>
+    <string name="settings_device_saved">تم حفظ الجهاز</string>
+    <string name="settings_language_label">اللغة</string>
+    <string name="language_es">الإسبانية</string>
+    <string name="language_en">الإنجليزية</string>
+    <string name="language_ar">العربية</string>
+    <string name="language_hi">الهندية</string>
+
+    <!-- Observations -->
+    <string name="obs_title">ملاحظة HSE</string>
+    <string name="obs_open_observation">فتح ملاحظة</string>
+    <string name="obs_worker_header">العامل الملاحَظ</string>
+    <string name="obs_location">الموقع</string>
+    <string name="obs_area_authority">مسؤول المنطقة</string>
+    <string name="obs_description">وصف الملاحظة *</string>
+    <string name="obs_type_header">نوع الملاحظة</string>
+    <string name="obs_condition">حالة</string>
+    <string name="obs_behaviour">سلوك</string>
+    <string name="obs_safety_header">نوع السلامة</string>
+    <string name="obs_safe">آمن</string>
+    <string name="obs_unsafe">غير آمن</string>
+    <string name="obs_intervention_header">التدخل</string>
+    <string name="obs_no_intervene">لم يتدخل</string>
+    <string name="obs_intervened">تدخّل / اتخذ إجراءً</string>
+    <string name="obs_spot_coaching">توجيه فوري</string>
+    <string name="obs_positive_reinforcement">تعزيز إيجابي</string>
+    <string name="obs_positive_observation">ملاحظة إيجابية</string>
+    <string name="obs_non_peer">تدخل من غير الأقران</string>
+    <string name="obs_outcome_header">النتيجة</string>
+    <string name="obs_corrected">تم التصحيح</string>
+    <string name="obs_partly_corrected">تم التصحيح جزئياً</string>
+    <string name="obs_not_corrected">لم يتم التصحيح</string>
+    <string name="obs_outcome_positive">تعزيز إيجابي</string>
+    <string name="obs_action_taken">الإجراء المتخذ</string>
+    <string name="obs_coaching_header">التوجيه</string>
+    <string name="obs_coaching_not_required">غير مطلوب</string>
+    <string name="obs_coaching_pending">قيد التنفيذ</string>
+    <string name="obs_coaching_done">تم التنفيذ</string>
+    <string name="obs_categories_header">الفئات</string>
+    <string name="obs_cat_ppe">معدات الحماية الشخصية</string>
+    <string name="obs_cat_situational_awareness">الوعي الظرفي</string>
+    <string name="obs_cat_safety_devices">أجهزة السلامة</string>
+    <string name="obs_cat_isolation_lockout">العزل/الإغلاق</string>
+    <string name="obs_cat_safety_signage">لافتات السلامة</string>
+    <string name="obs_cat_tools_equipment">الأدوات/المعدات</string>
+    <string name="obs_cat_line_of_fire">خط النيران</string>
+    <string name="obs_cat_health_hygiene">الصحة/النظافة/المياه</string>
+    <string name="obs_cat_workplace_environment">بيئة العمل</string>
+    <string name="obs_cat_lifting">الرفع</string>
+    <string name="obs_cat_manual_handling">المناولة اليدوية/الميكانيكية</string>
+    <string name="obs_cat_housekeeping">النظام والترتيب</string>
+    <string name="obs_cat_toxic_flammable">سام/قابل للاشتعال</string>
+    <string name="obs_cat_work_planning">التخطيط/التصريح بالعمل</string>
+    <string name="obs_cat_working_at_height">العمل في المرتفعات</string>
+    <string name="obs_cat_confined_space">المساحات المحصورة</string>
+    <string name="obs_cat_hot_work">العمل الساخن</string>
+    <string name="obs_cat_excavation">الحفر</string>
+    <string name="obs_cat_driving_vehicles">القيادة/المركبات</string>
+    <string name="obs_cat_supervision">الإشراف</string>
+    <string name="obs_cat_procedures">الإجراءات</string>
+    <string name="obs_cat_security">الأمن</string>
+    <string name="obs_cat_improvement_opportunity">فرصة تحسين</string>
+    <string name="obs_cat_emergency_response">الاستجابة للطوارئ</string>
+    <string name="obs_additional_comments">تعليقات إضافية</string>
+    <string name="obs_save">حفظ الملاحظة</string>
+    <string name="obs_back">رجوع</string>
+    <string name="obs_saved">تم حفظ الملاحظة بنجاح</string>
+    <string name="obs_description_required">الوصف مطلوب</string>
+    <string name="obs_type_required">اختر نوع الملاحظة</string>
+    <string name="obs_safety_required">اختر نوع السلامة</string>
+
+    <!-- Observations hub -->
+    <string name="obs_hub_title">ملاحظات HSE</string>
+    <string name="obs_observer_label">مراقب HSE</string>
+    <string name="obs_observer_empty">غير مسجَّل — امسح شارة المشرف</string>
+    <string name="obs_observer_format">%1$s — %2$s</string>
+    <string name="obs_scan_observer">مسح شارة المشرف</string>
+    <string name="obs_scan_observer_laser">ليزر</string>
+    <string name="obs_scan_observer_camera">كاميرا</string>
+    <string name="obs_scan_worker_title">مسح شارة العامل</string>
+    <string name="obs_scan_vehicle_title">مسح رمز QR الخاص بالمركبة</string>
+    <string name="obs_scan_cancel">إلغاء</string>
+    <string name="obs_step1_label">المراقب</string>
+    <string name="obs_step2_label">النوع</string>
+    <string name="obs_step3_label">الهدف</string>
+    <string name="obs_scan_observer_prompt">امسح شارتك الخاصة بـ HSE</string>
+    <string name="obs_select_target">اختر نوع الملاحظة</string>
+    <string name="obs_not_hse_error">أنت لست من HSE — لا تملك صلاحية فتح الملاحظات</string>
+    <string name="obs_observer_not_found">المراقب غير موجود في قاعدة البيانات المحلية</string>
+    <string name="obs_observer_required">امسح أولاً شارة مشرف HSE</string>
+    <string name="obs_target_worker">عامل</string>
+    <string name="obs_target_vehicle">مركبة</string>
+    <string name="obs_target_site">موقع / منطقة</string>
+    <string name="obs_target_equipment">معدة</string>
+    <string name="obs_target_worker_banner">ملاحظة — عامل</string>
+    <string name="obs_target_vehicle_banner">ملاحظة — مركبة</string>
+    <string name="obs_target_site_banner">ملاحظة — موقع / منطقة</string>
+    <string name="obs_target_equipment_banner">ملاحظة — معدة</string>
+    <string name="obs_photos">صور (اختياري، حتى 8)</string>
+    <string name="obs_photos_hint">يمكنك الحفظ بدون صور. في حال إضافتها، ستتم مزامنتها عند استعادة الجهاز للاتصال.</string>
+    <string name="obs_add_photo_camera">كاميرا</string>
+    <string name="obs_add_photo_gallery">المعرض</string>
+    <string name="obs_photo_max">حد أقصى 8 صور لكل ملاحظة</string>
+
+    <!-- Equipment / Vehicle labels -->
+    <string name="equipment_description">وصف المعدة</string>
+    <string name="vehicle_info_format">%1$s — %2$s (%3$s)</string>
+
+    <!-- Menu: new sections -->
+    <string name="menu_observations_general">الملاحظات</string>
+    <string name="menu_inspections">التفتيش</string>
+
+    <!-- Passport: trainings & documentation sections -->
+    <string name="passport_section_trainings">التدريبات</string>
+    <string name="passport_section_docs">الوثائق</string>
+    <string name="passport_training_completed">مكتمل</string>
+    <string name="passport_training_pending">قيد الانتظار</string>
+    <string name="passport_training_expired">منتهي الصلاحية</string>
+    <string name="passport_training_missing">غير موجود</string>
+    <string name="passport_mandatory">إلزامي</string>
+    <string name="passport_no_trainings">لا توجد تدريبات مسجلة</string>
+    <string name="passport_no_docs">لا توجد وثائق مسجلة</string>
+    <string name="passport_doc_valid">سارٍ</string>
+    <string name="passport_doc_expiring">قريب الانتهاء</string>
+    <string name="passport_doc_expired">منتهي الصلاحية</string>
+    <string name="passport_doc_missing">غير موجود</string>
+    <string name="passport_doc_no_connection">لا يوجد اتصال لتنزيل الوثيقة</string>
+    <string name="passport_doc_no_viewer">لا يوجد تطبيق لفتح هذا النوع من الملفات</string>
+    <string name="passport_compliance">الامتثال</string>
+    <string name="passport_of">من</string>
+
+    <!-- Coming soon -->
+    <string name="coming_soon_title">قريباً</string>
+    <string name="coming_soon_observations">ستتيح وحدة الملاحظات العامة تسجيل ملاحظات السلامة غير المرتبطة بعامل محدد.</string>
+    <string name="coming_soon_inspections">ستتيح وحدة التفتيش تخطيط وتنفيذ وتوثيق عمليات تفتيش السلامة في الموقع.</string>
+
+    <!-- Profiles -->
+    <string name="profile_label">الملف الشخصي</string>
+    <string name="profile_user">USER</string>
+    <string name="profile_hse">HSE</string>
+    <string name="profile_admin">ADMIN</string>
+    <string name="profile_pre">PRE</string>
+    <string name="profile_dev">DEV</string>
+    <string name="profile_user_desc">الوضع الأساسي — الإنتاج (atlas.tecnicasreunidas.es)</string>
+    <string name="profile_hse_desc">HSE — جواز السفر + الملاحظات + التفتيش (الإنتاج)</string>
+    <string name="profile_admin_desc">وصول كامل — الإنتاج (atlas.tecnicasreunidas.es)</string>
+    <string name="profile_pre_desc">ما قبل الإنتاج — API: web-atlas-pre</string>
+    <string name="profile_dev_desc">التطوير — API: web-atlas-dev</string>
+    <string name="profile_current">الملف الحالي: %s</string>
+    <string name="profile_access_code_title">رمز الوصول</string>
+    <string name="profile_access_code_hint">أدخل الرمز</string>
+    <string name="profile_access_code_error">رمز غير صحيح</string>
+    <string name="profile_changed">تم تغيير الملف الشخصي إلى %s</string>
+    <string name="profile_dev_reset_warning">سيتم إعادة تعيين قاعدة البيانات المحلية عند التبديل إلى DEV</string>
+    <string name="profile_dev_db_cleared">تم إعادة تعيين قاعدة البيانات</string>
+
+    <!-- API environment -->
+    <string name="settings_api_section_title">إعدادات API</string>
+    <string name="env_pro">PRO</string>
+    <string name="env_pre">PRE</string>
+    <string name="env_dev">DEV</string>
+    <string name="env_pro_desc">الإنتاج — atlas.tecnicasreunidas.es</string>
+    <string name="env_pre_desc">ما قبل الإنتاج — web-atlas-pre</string>
+    <string name="env_dev_desc">التطوير — web-atlas-dev</string>
+    <string name="env_changed">تم تغيير بيئة API إلى %s</string>
+
+    <!-- User role -->
+    <string name="settings_role_section_title">ملف المستخدم</string>
+    <string name="role_guest">GUEST</string>
+    <string name="role_admin">ADMIN</string>
+    <string name="role_dev">DEV</string>
+    <string name="role_guest_desc">الوضع الأساسي — الرئيسية، الماسح، المزامنة</string>
+    <string name="role_admin_desc">وصول كامل — المخزون والتحويلات</string>
+    <string name="role_dev_desc">وصول كامل + أدوات التطوير</string>
+    <string name="role_changed">تم تغيير الملف الشخصي إلى %s</string>
+
+    <!-- Device code (admin settings) -->
+    <string name="settings_device_code_label">رمز الجهاز</string>
+    <string name="settings_device_code_hint">مثال: HASSI01</string>
+    <string name="settings_device_code_desc">يُستخدم لتسجيل الدخول تلقائياً أثناء المزامنة</string>
+    <string name="settings_device_code_save">حفظ الرمز</string>
+    <string name="settings_device_code_saved">تم حفظ رمز الجهاز</string>
+    <string name="settings_device_code_empty">أدخل رمز جهاز</string>
+    <string name="sync_auto_relogin">إعادة المصادقة تلقائياً…</string>
+    <string name="sync_auto_relogin_ok">تم تجديد الجلسة، إعادة محاولة المزامنة</string>
+    <string name="sync_auto_relogin_fail">تعذّر تجديد الجلسة تلقائياً</string>
+    <string name="sync_error_session_expired">انتهت الجلسة وتعذّر تجديدها تلقائياً</string>
+    <string name="sync_error_no_connection">لا يوجد اتصال بالخادم</string>
+    <string name="sync_error_server_unavailable">الخادم غير متاح (HTTP %d)</string>
+    <string name="sync_error_server_rejected">رفض الخادم الاتصال (HTTP %d)</string>
+    <string name="sync_error_outbox_retry">قائمة انتظار التغييرات: بدون اتصال، إعادة المحاولة</string>
+    <!-- Sync progress step messages -->
+    <string name="sync_log_start">جارٍ بدء المزامنة…</string>
+    <string name="sync_step_session">جارٍ التحقق من الجلسة…</string>
+    <string name="sync_step_server">جارٍ الاتصال بالخادم…</string>
+    <string name="sync_step_register">جارٍ تسجيل الجهاز…</string>
+    <string name="sync_step_download">جارٍ تنزيل البيانات الرئيسية…</string>
+    <string name="sync_step_download_ok">✓ تمت إضافة %1$d مركبة، وتحديث %2$d</string>
+    <string name="sync_step_upload_pl">جارٍ رفع Packing Lists…</string>
+    <string name="sync_step_upload_loadings">جارٍ رفع حمولات المركبات…</string>
+    <string name="sync_step_upload_transfers">جارٍ رفع عمليات النقل…</string>
+    <string name="sync_step_upload_route">جارٍ تحديث حالة المركبات…</string>
+    <string name="sync_step_upload_incidents">جارٍ رفع الحوادث…</string>
+    <string name="sync_step_outbox">جارٍ معالجة قائمة انتظار التغييرات…</string>
+    <string name="sync_step_heartbeat">جارٍ إرسال بيانات القياس عن بُعد…</string>
+    <string name="sync_step_sms">جارٍ تنزيل بيانات SMS…</string>
+    <string name="sync_step_done">✓ تمت مزامنة البيانات الأساسية</string>
+    <string name="sync_sms_spools_page">جارٍ تنزيل Spools… صفحة %1$d (%2$d إجمالي حتى الآن)</string>
+    <string name="sync_sms_spools_ok">✓ Spools: %1$d جديد، %2$d محدَّث (%3$d إجمالي)</string>
+    <string name="sync_sms_spools_partial">⚠ Spools: مزامنة جزئية حتى الصفحة %1$d (%2$d محفوظ)، ستتم إعادة المحاولة</string>
+    <string name="sync_sms_pl_ok">✓ Packing Lists: %1$d جديد، %2$d محدَّث (%3$d إجمالي)</string>
+    <string name="sync_sms_vehicles_ok">✓ مركبات SMS: %1$d</string>
+    <string name="webview_login_error_network">تعذّر الاتصال بالخادم.\nتحقق من اتصال الشبكة وحاول مرة أخرى.</string>
+    <string name="webview_login_retry">إعادة المحاولة</string>
+
+    <!-- Inventario -->
+    <string name="menu_inventario">المخزون</string>
+    <string name="inventario_tab_spools">Spools</string>
+    <string name="inventario_tab_pls">Packing Lists</string>
+    <string name="inventario_tab_vehicles">المركبات</string>
+
+    <!-- Quick Actions -->
+    <string name="home_quick_actions_title">إجراءات سريعة</string>
+    <string name="home_qa_new_pl">إنشاء Packing List</string>
+    <string name="home_qa_send">إرسال Spools</string>
+    <string name="home_qa_transfers">استلام Spools</string>
+    <string name="home_qa_new_incident">حادثة جديدة</string>
+    <string name="home_qa_new_spool">Spool جديد</string>
+    <string name="home_qa_new_vehicle">مركبة جديدة</string>
+
+    <!-- Guest home: zone spool KPIs -->
+    <string name="home_guest_zone_confirmed">مؤكَّد في المنطقة</string>
+    <string name="home_guest_zone_pending">غير مزامَن</string>
+    <string name="home_guest_subpos_row">%1$s — %2$d مؤكَّد / %3$d غير مزامَن</string>
+
+    <!-- Debug: Project Switcher -->
+    <string name="home_btn_change_project">[DEBUG] تغيير المشروع</string>
+    <string name="home_dialog_select_project">اختر المشروع</string>
+    <string name="home_syncing_project">جارٍ المزامنة…</string>
+    <string name="home_project_synced">تم تحديث المشروع: %s</string>
+    <string name="home_project_label">المشروع: %s</string>
+
+    <!-- Spools List -->
+    <string name="spools_list_count">%1$d Spools</string>
+    <string name="spools_list_count_capped">%1$d Spools (عرض أول %2$d)</string>
+    <string name="spools_search_hint">البحث عن Spool (الرمز، الخط، PL…)</string>
+    <string name="spools_list_empty">لا توجد Spools في ATLAS لهذا المشروع</string>
+    <string name="spools_list_error_prefix">خطأ: %1$s</string>
+    <string name="spools_list_error_http">HTTP %1$d</string>
+    <string name="spools_filter_all">الكل</string>
+    <string name="spools_filter_workshop">Workshop</string>
+    <string name="spools_filter_laydown">Laydown</string>
+    <string name="spools_filter_site">Site</string>
+    <string name="spools_subpos_all">كل المواضع الفرعية</string>
+    <string name="spools_chart_title">Spools حسب المنطقة (%1$d)</string>
+    <string name="spools_chart_zone_unassigned">بدون منطقة</string>
+    <string name="spools_chart_subpos_none">(بدون فرعي)</string>
+    <string name="spools_view_action_list">عرض القائمة</string>
+    <string name="spools_view_action_chart">عرض الرسم البياني</string>
+    <string name="spools_btn_load_more">تحميل المزيد من Spools</string>
+    <string name="spools_btn_loading">جارٍ التحميل…</string>
+
+    <!-- New Spool -->
+    <!-- New Packing List -->
+    <string name="new_packing_list_title">Packing List جديد</string>
+    <string name="new_packing_list_field_name">الاسم *</string>
+    <string name="new_packing_list_field_vehicle">المركبة</string>
+    <string name="new_packing_list_field_position">الموضع *</string>
+    <string name="new_packing_list_field_notes">ملاحظات</string>
+    <string name="new_packing_list_btn_add_spools">اختيار Spools بدون PL</string>
+    <string name="new_packing_list_spools_selected">تم اختيار %d Spool</string>
+    <string name="new_packing_list_no_spools_available">لا توجد Spools بدون PL لهذا المشروع</string>
+    <string name="new_packing_list_btn_save">حفظ Packing List</string>
+    <string name="new_packing_list_btn_create">إنشاء Packing List جديد</string>
+    <string name="new_packing_list_success">تم إنشاء Packing List</string>
+    <string name="new_packing_list_error_field_required">مطلوب</string>
+    <string name="new_packing_list_error_save">خطأ في الحفظ: %1$s</string>
+    <string name="new_packing_list_preview_label">الاسم:</string>
+    <string name="new_packing_list_section_details">التفاصيل</string>
+    <string name="new_packing_list_section_spools">Spools</string>
+
+    <string name="pl_detail_title">تفاصيل Packing List</string>
+    <string name="pl_detail_section_info">المعلومات</string>
+    <string name="pl_detail_section_spools">Spools المعيّنة</string>
+    <string name="pl_detail_label_date">التاريخ</string>
+    <string name="pl_detail_label_position">الموضع</string>
+    <string name="pl_detail_label_vehicle">المركبة</string>
+    <string name="pl_detail_label_notes">ملاحظات</string>
+    <string name="pl_detail_label_ready_to_send">جاهز للإرسال</string>
+    <string name="pl_detail_ready_yes">نعم</string>
+    <string name="pl_detail_ready_no">لا</string>
+    <string name="pl_detail_loading_spools">جارٍ تحميل Spools…</string>
+    <string name="pl_detail_no_spools">لا توجد Spools معيّنة</string>
+    <string name="pl_detail_btn_edit">تعديل</string>
+    <string name="pl_detail_btn_delete">حذف</string>
+    <string name="pl_detail_confirm_delete_title">حذف Packing List</string>
+    <string name="pl_detail_confirm_delete_msg">هل أنت متأكد من حذف هذا الـ Packing List؟</string>
+    <string name="pl_detail_deleted">تم حذف Packing List</string>
+    <string name="pl_detail_error_delete">خطأ في الحذف: %1$s</string>
+    <string name="pl_edit_title">تعديل Packing List</string>
+    <string name="pl_edit_current_name_label">الاسم:</string>
+    <string name="pl_edit_btn_update">تحديث Packing List</string>
+    <string name="pl_edit_success">تم تحديث Packing List</string>
+    <string name="pl_edit_error_save">خطأ في التحديث: %1$s</string>
+    <string name="pl_edit_btn_cancel">إلغاء</string>
+    <string name="pl_detail_btn_add_spool">إضافة Spool</string>
+    <string name="pl_detail_btn_remove_spool">إزالة</string>
+    <string name="pl_detail_add_spool_title">إضافة Spool إلى Packing List</string>
+    <string name="pl_detail_no_available_spools">لا توجد Spools متاحة بدون Packing List</string>
+    <string name="pl_detail_spool_added">تمت إضافة Spool إلى Packing List</string>
+    <string name="pl_detail_spool_removed">تمت إزالة Spool من Packing List</string>
+    <string name="pl_scan_hint">امسح رمز QR الخاص بـ Spool لإضافته مباشرة</string>
+    <string name="pl_scan_spool_already_in_pl">الـ Spool %1$s ينتمي بالفعل إلى Packing List %2$s</string>
+    <string name="pl_scan_spool_not_found">Spool غير موجود في النظام</string>
+    <string name="new_pl_scan_spool_added">تمت إضافة Spool %1$s إلى الاختيار</string>
+    <string name="new_pl_scan_spool_already_selected">الـ Spool %1$s محدد بالفعل</string>
+    <string name="pl_detail_remove_spool_title">إزالة Spool</string>
+    <string name="pl_detail_remove_spool_msg">إزالة %1$s من هذا الـ Packing List؟</string>
+    <string name="pl_move_spool_title">نقل Spool</string>
+    <string name="pl_move_spool_msg">الـ Spool %1$s ينتمي بالفعل إلى Packing List %2$s. هل تريد نقله إلى هذا الـ Packing List؟</string>
+    <string name="pl_move_spool_done">تم نقل Spool %1$s إلى هذا الـ Packing List</string>
+
+    <string name="new_spool_title">Spool جديد</string>
+    <string name="new_spool_section_id">التعريف ({وحدة}-{خط}-{رمز}-{دفعة})</string>
+    <string name="new_spool_section_property">الخصائص</string>
+    <string name="new_spool_field_unit">الوحدة *</string>
+    <string name="new_spool_field_line">الخط *</string>
+    <string name="new_spool_field_code">الرمز *</string>
+    <string name="new_spool_field_train">الدفعة *</string>
+    <string name="new_spool_preview_label">الرمز:</string>
+    <string name="new_spool_field_diameter_inches">القطر (بوصة)</string>
+    <string name="new_spool_field_diameter">القطر</string>
+    <string name="new_spool_field_bore_size_id">معرف Bore Size</string>
+    <string name="new_spool_field_weight_kg">الوزن (كجم)</string>
+    <string name="new_spool_section_classification">التصنيف</string>
+    <string name="new_spool_field_iso_type">نوع ISO</string>
+    <string name="new_spool_field_status">الحالة</string>
+    <string name="new_spool_field_position">الموضع</string>
+    <string name="new_spool_field_sub_position">الموضع الفرعي</string>
+    <string name="new_spool_field_incomplete_status">حالة غير مكتملة</string>
+    <string name="new_spool_field_bore_size">Bore Size</string>
+    <string name="new_spool_btn_save">حفظ Spool</string>
+    <string name="new_spool_btn_create">إنشاء Spool جديد</string>
+    <string name="new_spool_success">تم إنشاء Spool بنجاح</string>
+    <string name="new_spool_error_field_required">مطلوب</string>
+    <string name="new_spool_error_save">خطأ في الحفظ: %1$s</string>
+    <string name="spool_item_pl_assigned">Packing List: %1$s</string>
+    <string name="spool_item_pl_none">بدون Packing List معيّن</string>
+
+    <!-- Spool Detail Bottom Sheet -->
+    <string name="spool_detail_section_id">التعريف</string>
+    <string name="spool_detail_section_properties">الخصائص الفيزيائية</string>
+    <string name="spool_detail_section_status">الحالة</string>
+    <string name="spool_detail_section_packing_list">Packing List</string>
+    <string name="spool_detail_section_events">سجل الأحداث</string>
+    <string name="spool_detail_field_code">الرمز</string>
+    <string name="spool_detail_field_description">الوصف</string>
+    <string name="spool_detail_field_priority">الأولوية</string>
+    <string name="spool_detail_field_zone">المنطقة</string>
+    <string name="spool_detail_field_in_transit">في الطريق</string>
+    <string name="spool_detail_field_line">الخط</string>
+    <string name="spool_detail_field_service">الخدمة</string>
+    <string name="spool_detail_field_sit_number">رقم sit</string>
+    <string name="spool_detail_field_revision">المراجعة</string>
+    <string name="spool_detail_field_train">الدفعة</string>
+    <string name="spool_detail_field_module">الموديول</string>
+    <string name="spool_detail_field_unit">الوحدة</string>
+    <string name="spool_detail_field_iso_type">نوع ISO</string>
+    <string name="spool_detail_field_iso_date">مراجعة ISO</string>
+    <string name="spool_detail_field_area">القطاع</string>
+    <string name="spool_detail_field_spec">المواصفة</string>
+    <string name="spool_detail_field_subcontractor">المقاول من الباطن</string>
+    <string name="spool_detail_field_active">نشط</string>
+    <string name="spool_detail_field_created">تاريخ الإنشاء</string>
+    <string name="spool_detail_field_updated">تاريخ التحديث</string>
+    <string name="spool_detail_field_diameter_in">القطر (بوصة)</string>
+    <string name="spool_detail_field_diameter">القطر</string>
+    <string name="spool_detail_field_bore_size">Bore Size</string>
+    <string name="spool_detail_field_weight">الوزن</string>
+    <string name="spool_detail_field_status">الحالة</string>
+    <string name="spool_detail_field_incomplete_status">حالة غير مكتملة</string>
+    <string name="spool_detail_field_position">الموضع</string>
+    <string name="spool_detail_field_sub_position">الموضع الفرعي</string>
+    <string name="spool_detail_field_hold">قيد الاحتجاز</string>
+    <string name="spool_detail_field_damaged">تالف</string>
+    <string name="spool_detail_field_returned">مُعاد إلى المصنع</string>
+    <string name="spool_detail_field_pos_discrepancy">تباين الموضع</string>
+    <string name="spool_detail_field_review_discrepancy">تباين المراجعة</string>
+    <string name="spool_detail_field_last_event">آخر حدث</string>
+    <string name="spool_detail_field_pca_status">تاريخ حالة PCA</string>
+    <string name="spool_detail_field_pca_entry">تاريخ دخول PCA</string>
+    <string name="spool_detail_btn_assign_pl">تعيين إلى PL</string>
+    <string name="spool_detail_btn_remove_pl">إزالة من PL</string>
+    <string name="spool_detail_btn_delete">حذف Spool</string>
+    <string name="spool_detail_confirm_delete_title">حذف Spool</string>
+    <string name="spool_detail_confirm_delete_msg">هل تريد حذف هذا الـ Spool من قاعدة البيانات المحلية؟</string>
+    <string name="spool_detail_deleted">تم حذف Spool</string>
+    <string name="pl_detail_btn_hard_delete">[DEV] حذف PL نهائياً</string>
+    <string name="pl_detail_confirm_hard_delete_title">[DEV] حذف PL نهائياً</string>
+    <string name="pl_detail_confirm_hard_delete_msg">حذف فعلي على الخادم. لا يمكن التراجع عنه. هل تريد المتابعة؟</string>
+    <string name="pl_detail_hard_deleted">تم حذف Packing List نهائياً من الخادم</string>
+    <string name="spool_detail_btn_hard_delete">[DEV] حذف نهائي</string>
+    <string name="spool_detail_confirm_hard_delete_title">[DEV] حذف نهائي</string>
+    <string name="spool_detail_confirm_hard_delete_msg">حذف فعلي على الخادم. لا يمكن التراجع عنه. هل تريد المتابعة؟</string>
+    <string name="spool_detail_hard_deleted">تم حذف Spool نهائياً من الخادم</string>
+    <string name="spool_detail_events_empty">لا توجد أحداث مسجلة</string>
+    <string name="spool_detail_section_gps">موقع GPS</string>
+    <string name="spool_detail_gps_no_data">لا توجد بيانات موقع GPS</string>
+    <string name="spool_detail_gps_current">الحالي: %1$.6f, %2$.6f (±%3$.0fm) · %4$s</string>
+    <string name="spool_detail_gps_previous">السابق: %1$.6f, %2$.6f (±%3$.0fm) · %4$s</string>
+    <string name="spool_detail_gps_current_no_acc">الحالي: %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_gps_previous_no_acc">السابق: %1$.6f, %2$.6f · %3$s</string>
+    <string name="spool_detail_btn_update_gps">تحديث GPS</string>
+    <string name="spool_detail_btn_open_maps">فتح في الخرائط</string>
+    <string name="spool_detail_gps_capturing">جارٍ الحصول على GPS…</string>
+    <string name="spool_detail_gps_saved">تم حفظ الموقع</string>
+    <string name="spool_detail_gps_unavailable">GPS غير متاح</string>
+    <string name="spool_detail_assign_pl_title">اختر Packing List</string>
+    <string name="spool_detail_assign_pl_remove">إزالة التعيين</string>
+    <string name="spool_detail_yes">نعم</string>
+    <string name="spool_detail_no">لا</string>
+    <string name="spool_detail_label_fallback">Spool %d</string>
+    <string name="spool_detail_error_delete">خطأ في الحذف: %s</string>
+    <string name="spool_detail_error_generic">خطأ: %s</string>
+
+    <!-- Vehicle Detail -->
+    <string name="vehicle_detail_title">تفاصيل المركبة</string>
+    <string name="vehicle_detail_section_info">المعلومات</string>
+    <string name="vehicle_detail_section_packing_lists">Packing Lists المعيّنة</string>
+    <string name="vehicle_detail_label_plate">رقم اللوحة</string>
+    <string name="vehicle_detail_label_name">الاسم</string>
+    <string name="vehicle_detail_label_company">الشركة</string>
+    <string name="vehicle_detail_label_type">النوع</string>
+    <string name="vehicle_detail_label_capacity">السعة</string>
+    <string name="vehicle_detail_loading_pls">جارٍ تحميل Packing Lists…</string>
+    <string name="vehicle_detail_no_pls">لا توجد Packing Lists معيّنة</string>
+    <string name="vehicle_detail_btn_add_pl">إضافة Packing List بدون مركبة</string>
+    <string name="vehicle_detail_btn_edit">تعديل المركبة</string>
+    <string name="vehicle_detail_btn_hard_delete">حذف المركبة نهائياً</string>
+    <string name="vehicle_detail_btn_remove_pl">إلغاء التعيين</string>
+    <string name="vehicle_detail_add_pl_title">إضافة Packing List إلى المركبة</string>
+    <string name="vehicle_detail_no_unassigned_pls">لا توجد Packing Lists بدون مركبة معيّنة</string>
+    <string name="vehicle_detail_pl_added">تم تعيين Packing List إلى المركبة</string>
+    <string name="pl_vehicle_conflict">تعذّر التعيين: %1$s</string>
+    <string name="vehicle_detail_pl_removed">تم إلغاء تعيين Packing List من المركبة</string>
+    <string name="vehicle_detail_remove_pl_title">إلغاء تعيين Packing List</string>
+    <string name="vehicle_detail_remove_pl_msg">هل تريد إلغاء تعيين %1$s من هذه المركبة؟</string>
+    <string name="vehicle_detail_confirm_hard_delete_title">حذف المركبة نهائياً</string>
+    <string name="vehicle_detail_confirm_hard_delete_msg">حذف فعلي على الخادم وفي قاعدة البيانات المحلية. لا يمكن التراجع عنه. هل تريد المتابعة؟</string>
+    <string name="vehicle_detail_hard_deleted">تم حذف المركبة نهائياً</string>
+
+    <!-- Edit Vehicle -->
+    <string name="edit_vehicle_title">تعديل المركبة</string>
+    <string name="edit_vehicle_btn_update">حفظ التغييرات</string>
+    <string name="edit_vehicle_btn_cancel">إلغاء</string>
+    <string name="edit_vehicle_success">تم تحديث المركبة بنجاح</string>
+    <string name="edit_vehicle_error_not_found">المركبة غير موجودة</string>
+    <string name="edit_vehicle_error_save">خطأ في الحفظ: %s</string>
+
+    <!-- Load Spools into Vehicle -->
+    <string name="load_spools_step1_title">الخطوة 1: اختيار المركبة</string>
+    <string name="load_spools_step2_title">الخطوة 2: مسح Spools</string>
+    <string name="load_spools_plate_hint">رقم لوحة المركبة</string>
+    <string name="load_spools_scan_vehicle">مسح رمز QR الخاص بالمركبة</string>
+    <string name="load_spools_confirm_vehicle">تأكيد المركبة</string>
+    <string name="load_spools_vehicle_not_found">المركبة غير موجودة. تحقق من رقم اللوحة أو قم بالمزامنة أولاً.</string>
+    <string name="load_spools_vehicle_selected">المركبة المختارة: %s</string>
+    <string name="load_spools_spool_code_hint">رمز الـ Spool</string>
+    <string name="load_spools_spool_suffix_hint">اللاحقة (اختياري)</string>
+    <string name="load_spools_scan_spool">مسح Spool</string>
+    <string name="load_spools_add_spool">إضافة</string>
+    <string name="load_spools_save">حفظ التحميل</string>
+    <string name="load_spools_spool_not_found">Spool غير موجود في قاعدة البيانات المحلية. قم بالمزامنة وأعد المحاولة.</string>
+    <string name="load_spools_spools_count">Spools المضافة: %1$d</string>
+    <string name="load_spools_warning_multi_pl">⚠ تنبيه: الـ Spools تنتمي إلى %1$d Packing Lists مختلفة.</string>
+    <string name="load_spools_error_incomplete">Packing Lists غير مكتملة:\n%1$s</string>
+    <string name="load_spools_confirm_incomplete_title">Packing Lists غير مكتملة</string>
+    <string name="load_spools_confirm_incomplete_msg">توجد Packing Lists لم يتم تحميل جميع Spools الخاصة بها:\n\n%1$s\n\nهل تريد المتابعة رغم ذلك؟</string>
+    <string name="load_spools_confirm_second_title">تأكيد الحفظ</string>
+    <string name="load_spools_confirm_second_msg">سيؤدي هذا الإجراء إلى حفظ التحميل مع Packing Lists غير مكتملة. لا يمكن التراجع عن هذه العملية. هل تؤكد؟</string>
+    <string name="load_spools_pl_created">تم إنشاء Packing List جديد: %1$s</string>
+    <string name="load_spools_saved">تم حفظ التحميل بنجاح</string>
+    <string name="load_spools_spool_duplicate">تمت إضافة هذا الـ Spool بالفعل.</string>
+    <string name="load_spools_enter_code">أدخل رمز Spool.</string>
+    <string name="load_spools_enter_plate">أدخل أو امسح رقم لوحة المركبة.</string>
+    <string name="load_spools_spool_added">تمت إضافة Spool %1$s.</string>
+    <string name="load_spools_no_pl">بدون Packing List</string>
+    <string name="load_spools_empty_error">أضف Spool واحداً على الأقل قبل الحفظ.</string>
+    <string name="load_spools_btn_continue">متابعة</string>
+    <string name="load_spools_btn_save_anyway">حفظ رغم ذلك</string>
+    <string name="load_spools_qr_is_spool">رمز QR هذا خاص بـ Spool وليس بمركبة. امسح رمز QR الخاص بالمركبة.</string>
+    <string name="load_spools_weight_meter">الحمولة: %1$s / %2$s كجم (%3$d%%)</string>
+    <string name="load_spools_weight_no_capacity">الحمولة: %1$s كجم (سعة المركبة غير محددة)</string>
+
+    <!-- Transfer: Send Packing List -->
+    <string name="transfer_send_title">إرسال Packing List</string>
+    <string name="transfer_send_step3_title">الخطوة 3: الوجهة</string>
+    <string name="transfer_send_destination_label">وجهة الإرسال</string>
+    <string name="transfer_send_destination_required">اختر الوجهة قبل التأكيد</string>
+    <string name="transfer_send_dest_laydown">Laydown</string>
+    <string name="transfer_send_dest_site">Site (عاجل)</string>
+    <string name="transfer_send_btn_confirm">تأكيد الإرسال</string>
+    <string name="transfer_send_success">تم تسجيل الإرسال ورفعه بنجاح</string>
+    <string name="transfer_send_success_partial">تم تسجيل الإرسال (البيانات بانتظار الرفع)</string>
+    <string name="transfer_send_uploading">جارٍ رفع البيانات إلى الخادم…</string>
+    <string name="transfer_send_error">خطأ: %s</string>
+    <string name="transfer_send_location_blocked">لا يمكن الإرسال من هذا الموقع.</string>
+    <string name="transfer_select_destination">اختر وجهة الإرسال</string>
+    <string name="transfer_destination_laydown">Laydown</string>
+    <string name="transfer_destination_site">Site</string>
+
+    <!-- Transfer: Receive Packing List -->
+    <string name="transfer_receive_title">استلام Packing List</string>
+    <string name="transfer_receive_step1_title">الخطوة 1: مسح المركبة</string>
+    <string name="transfer_receive_step2_title">الخطوة 2: اختيار Packing List</string>
+    <string name="transfer_receive_step3_title">الخطوة 3: تأكيد Spools</string>
+    <string name="transfer_receive_btn_confirm">تأكيد الاستلام</string>
+    <string name="transfer_receive_success_partial">تم استلام %1$d Spool في %2$s. الـ Packing List معلقة — تابع مع الموضع الفرعي التالي.</string>
+    <string name="transfer_receive_success_complete">اكتمل التسليم. تم حذف الـ Packing List.</string>
+    <string name="transfer_receive_success">تم تسجيل الاستلام بنجاح (بانتظار المزامنة)</string>
+    <string name="transfer_confirm_incomplete_title">Spools غير مؤكَّدة</string>
+    <string name="transfer_confirm_incomplete_msg">توجد %1$d Spools لم يتم مسحها بعد. هل تريد المتابعة رغم ذلك؟</string>
+    <string name="transfer_receive_no_pls">لا توجد Packing Lists في الطريق لهذه المركبة.</string>
+    <string name="transfer_receive_subposition_label">الموضع الفرعي لهذه الدفعة</string>
+    <string name="transfer_receive_subposition_placeholder">— اختر موضعاً فرعياً —</string>
+    <string name="transfer_receive_no_spools_scanned">امسح Spool واحداً على الأقل قبل التأكيد.</string>
+    <string name="transfer_receive_subposition_required">اختر الموضع الفرعي لهذه الدفعة.</string>
+
+    <!-- Transfer: Shared -->
+    <string name="transfer_spools_progress">%1$d / %2$d Spools مؤكَّدة</string>
+    <string name="transfer_vehicle_confirmed">✓ تم تأكيد المركبة: %s</string>
+    <string name="transfer_spool_not_in_list">هذا الـ Spool لا ينتمي إلى الـ Packing List المحدد.</string>
+    <string name="transfer_spool_already_confirmed">تم تأكيد هذا الـ Spool بالفعل.</string>
+    <string name="transfer_spool_confirmed">✓ تم تأكيد Spool %s.</string>
+    <string name="transfer_btn_scan_vehicle">مسح رمز QR الخاص بالمركبة</string>
+    <string name="transfer_btn_scan_spool">مسح Spool</string>
+    <string name="transfer_assign_section">القسم</string>
+    <string name="transfer_assign_unit">الوحدة</string>
+    <string name="transfer_assign_hint_laydown">عيّن قسماً من Laydown</string>
+    <string name="transfer_assign_hint_site">عيّن وحدة من Site</string>
+    <string name="transfer_vehicle_not_found">المركبة غير موجودة في قاعدة البيانات المحلية.</string>
+    <string name="transfer_vehicle_not_on_route">المركبة ليست في الطريق.</string>
+    <string name="transfer_vehicle_wrong_destination">المركبة غير متجهة إلى هذا الموقع.</string>
+    <string name="transfer_vehicle_wrong_project">المركبة لا تنتمي إلى المشروع الحالي.</string>
+    <string name="transfer_unregistered_vehicle_title">مركبة غير مسجلة</string>
+    <string name="transfer_unregistered_vehicle_message">المركبة التي تحمل لوحة %1$s غير مسجلة في النظام. هل تريد إنشاء بلاغ "مركبة غير مسجلة"؟ يمكن تسجيل المركبة من وحدة المركبات (متاحة فقط لملفي ADMIN وDEV).</string>
+    <string name="transfer_unregistered_vehicle_create_incident">إنشاء بلاغ</string>
+    <string name="transfer_unregistered_vehicle_incident_created">تم إنشاء بلاغ مركبة غير مسجلة.</string>
+    <string name="incident_unregistered_vehicle_description">المركبة التي تحمل لوحة %1$s غير مسجلة في النظام. يمكن تسجيلها من وحدة المركبات.</string>
+    <string name="transfer_send_to">ستُرسل إلى %s</string>
+    <string name="transfer_pl_label">PL: %1$s</string>
+    <string name="transfer_vehicle_label">المركبة: %1$s</string>
+
+    <!-- Auto-sync notifications -->
+    <string name="auto_sync_completed">اكتملت المزامنة التلقائية</string>
+    <string name="sync_in_progress_indicator">المزامنة قيد التقدم</string>
+
+    <!-- Settings: location config -->
+    <string name="settings_location_config_title">إعدادات المواقع</string>
+    <string name="settings_laydown_sections_label">أقسام Laydown</string>
+    <string name="settings_laydown_sections_hint">مثال: 1A,2A,1B,2B,1C,2C,1D,2D</string>
+    <string name="settings_site_units_label">وحدات Site</string>
+    <string name="settings_site_units_hint">مثال: 1,2,3,4</string>
+    <string name="settings_location_config_save">حفظ</string>
+    <string name="settings_location_config_saved">تم حفظ إعدادات المواقع</string>
+
+    <!-- Settings: assigned operator -->
+    <string name="settings_assigned_operator_title">المشغّل المعيّن</string>
+    <string name="settings_assigned_operator_label">اسم المشغّل</string>
+    <string name="settings_assigned_operator_hint">مثال: Juan Pérez</string>
+    <string name="settings_assigned_operator_save">حفظ</string>
+    <string name="settings_assigned_operator_saved">تم حفظ المشغّل المعيّن</string>
+
+    <!-- Incidents -->
+    <string name="menu_incidencias">الحوادث</string>
+    <string name="incidents_title">الحوادث</string>
+    <string name="incidents_empty">لا توجد حوادث مسجلة</string>
+    <string name="incidents_btn_new">حادثة جديدة</string>
+    <string name="incidents_tab_open">مفتوحة</string>
+    <string name="incidents_tab_closed">مغلقة</string>
+    <string name="incident_filter_all">الكل</string>
+    <string name="incident_card_no_description">بدون وصف</string>
+    <string name="new_incident_title">حادثة جديدة</string>
+    <string name="incident_label_photo">صورة الضرر</string>
+    <string name="incident_btn_take_photo">التقاط صورة</string>
+    <string name="incident_btn_retake_photo">إعادة التقاط الصورة</string>
+    <string name="incident_btn_scan">مسح الرمز</string>
+    <string name="incident_scan_spool_filled">تمت إضافة Spool %s</string>
+    <string name="incident_scan_vehicle_filled">تمت إضافة المركبة %s</string>
+    <string name="incident_scan_vehicle_not_found">المركبة غير موجودة</string>
+    <string name="incident_scan_not_recognized">الرمز غير معروف</string>
+    <string name="incident_label_spool_code">رمز الـ Spool</string>
+    <string name="incident_hint_spool_code">مثال: SP-1234</string>
+    <string name="incident_label_spool_suffix">اللاحقة</string>
+    <string name="incident_hint_spool_suffix">مثال: A</string>
+    <string name="incident_label_description">وصف الحادثة</string>
+    <string name="incident_hint_description">صف الضرر الملاحَظ…</string>
+    <string name="incident_label_vehicle_plate">رقم لوحة المركبة المتأثرة</string>
+    <string name="incident_hint_vehicle_plate">مثال: 1234-ABC</string>
+    <string name="incident_label_location">مكان الحادثة</string>
+    <string name="incident_label_location_detail">تفاصيل المكان</string>
+    <string name="incident_hint_location_detail">مثال: المنطقة، الوحدة، الرف…</string>
+    <string name="incident_label_subposition">القسم الفرعي</string>
+    <string name="incident_subposition_none">بدون قسم فرعي</string>
+    <string name="incident_label_severity">الخطورة</string>
+    <string name="incident_label_position">الموضع (الجهاز)</string>
+    <string name="incident_label_author">المُنشئ</string>
+    <string name="incident_label_date">التاريخ</string>
+    <string name="incident_label_status">الحالة</string>
+    <string name="incident_detail_title">تفاصيل الحادثة</string>
+    <string name="incident_value_unknown">—</string>
+    <string name="incident_status_open">مفتوحة</string>
+    <string name="incident_status_closed">مغلقة</string>
+    <string name="incident_status_reprint_approved">بانتظار إعادة الطباعة</string>
+    <string name="incident_label_scanned_revision">المراجعة الممسوحة</string>
+    <string name="incident_label_stored_revision">المراجعة المسجلة</string>
+    <string name="incident_btn_approve_reprint">الموافقة على إعادة الطباعة</string>
+    <string name="incident_approve_reprint_confirm_title">الموافقة على إعادة الطباعة</string>
+    <string name="incident_approve_reprint_confirm_msg">هل تؤكد أن هذه الحادثة ستبقى بانتظار إعادة الطباعة؟ سيتم الإخطار لطباعة علامة جديدة بالمراجعة الصحيحة.</string>
+    <string name="incident_approve_reprint_confirm_yes">موافقة</string>
+    <string name="incident_approve_reprint_confirm_no">إلغاء</string>
+    <string name="incident_reprint_approved_ok">تمت الموافقة على إعادة الطباعة</string>
+    <string name="incident_btn_close">إغلاق الحادثة</string>
+    <string name="incident_close_confirm_title">إغلاق الحادثة</string>
+    <string name="incident_close_confirm_msg">هل تؤكد رغبتك في إغلاق هذه الحادثة؟ سيتم تسجيل من ومتى يتم إغلاقها.</string>
+    <string name="incident_close_confirm_yes">إغلاق</string>
+    <string name="incident_close_confirm_no">إلغاء</string>
+    <string name="incident_closed_ok">تم إغلاق الحادثة</string>
+    <string name="incident_label_closed_by">أُغلقت بواسطة</string>
+    <string name="incident_label_closed_at">تاريخ الإغلاق</string>
+    <string name="incident_btn_save">حفظ الحادثة</string>
+    <string name="incident_saved_ok">تم تسجيل الحادثة</string>
+    <string name="incident_error_missing_spool_code">أدخل رمز الـ Spool</string>
+    <string name="incident_error_missing_description">صف الحادثة</string>
+    <string name="incident_error_save">خطأ: %s</string>
+    <string name="incident_location_laydown">Laydown</string>
+    <string name="incident_location_site">Site</string>
+    <string name="incident_location_workshop">Workshop</string>
+    <string name="incident_severity_low">منخفضة</string>
+    <string name="incident_severity_medium">متوسطة</string>
+    <string name="incident_severity_high">عالية</string>
+    <string name="incident_severity_critical">حرجة</string>
+    <string name="home_label_critical_incidents">الحوادث الحرجة</string>
+
+    <!-- Event History -->
+    <string name="menu_event_history">سجل الأحداث</string>
+    <string name="event_history_empty">لا توجد أحداث مسجلة لهذا المشروع</string>
+    <string name="event_label_spool_created">تم إنشاء Spool</string>
+    <string name="event_label_spool_deleted">تم حذف Spool</string>
+    <string name="event_label_spool_deleted_hard">تم حذف Spool (نهائي)</string>
+    <string name="event_label_pl_created">تم إنشاء Packing List</string>
+    <string name="event_label_pl_edited">تم تعديل Packing List</string>
+    <string name="event_label_pl_deleted">تم حذف Packing List</string>
+    <string name="event_label_pl_deleted_hard">تم حذف Packing List (نهائي)</string>
+    <string name="event_label_vehicle_created">تم إنشاء المركبة</string>
+    <string name="event_label_vehicle_edited">تم تعديل المركبة</string>
+    <string name="event_label_vehicle_deleted">تم حذف المركبة</string>
+    <string name="event_label_transfer_sent">تم تسجيل الإرسال</string>
+    <string name="event_label_transfer_received">تم تسجيل الاستلام</string>
+    <string name="event_label_incident_created">تم إنشاء الحادثة</string>
+    <string name="event_label_incident_closed">تم إغلاق الحادثة</string>
+
+    <!-- Spool Map -->
+    <string name="menu_map">الخريطة</string>
+    <string name="spool_map_empty">لا توجد Spools بموقع GPS مسجل</string>
+    <string name="spool_map_refresh">تحديث الخريطة</string>
+    <string name="spool_map_center_geofence">التركيز على السياج الجغرافي</string>
+    <string name="spool_map_center_geofence_title">اختر السياج الجغرافي</string>
+    <string name="spool_map_no_geofences">لا توجد أسيجة جغرافية متاحة</string>
+    <string name="home_btn_map">عرض خريطة Spools</string>
+    <string name="home_qa_map">خريطة Spools</string>
+    <string name="home_btn_inventario">عرض مخزون منطقتي</string>
+
+</resources>

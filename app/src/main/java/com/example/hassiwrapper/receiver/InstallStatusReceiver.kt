@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.util.Log
 import android.widget.Toast
+import com.example.hassiwrapper.admin.TracDeviceAdmin
 import com.example.hassiwrapper.update.UpdateInstaller
 
 /**
@@ -34,6 +35,9 @@ class InstallStatusReceiver : BroadcastReceiver() {
                 val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
                 if (confirm != null) {
                     confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    val targetPkg = confirm.component?.packageName
+                        ?: confirm.resolveActivity(context.packageManager)?.packageName
+                    TracDeviceAdmin.allowLockTaskPackageTemporarily(context, targetPkg)
                     context.startActivity(confirm)
                     Log.d(TAG, "Launched system install confirmation")
                 } else {

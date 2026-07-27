@@ -26,6 +26,7 @@ class SmsIncidentService(
 
         const val TYPE_DAMAGE = "DAMAGE"
         const val TYPE_REVISION_MISMATCH = "REVISION_MISMATCH"
+        const val TYPE_VEHICLE_NOT_REGISTERED = "VEHICLE_NOT_REGISTERED"
 
         const val STATUS_OPEN = "OPEN"
         const val STATUS_REPRINT_APPROVED = "REPRINT_APPROVED"
@@ -151,5 +152,39 @@ class SmsIncidentService(
      *  print happens outside the app (office/print station), so this is a status flag, not a print job. */
     suspend fun approveReprint(incidentId: Long) {
         incidentDao.setStatus(incidentId, STATUS_REPRINT_APPROVED)
+    }
+
+    /**
+     * Auto-raises a VEHICLE_NOT_REGISTERED incident when the operator types a plate that isn't in
+     * the local vehicle catalog (Envíos/Recibos). spool_code has no real spool to reference here, so
+     * it's set to the plate as well, matching what vehicle_plate carries.
+     * Idempotent: returns null without inserting if this plate already has one open.
+     */
+    suspend fun createVehicleNotRegisteredIncident(plate: String): SmsIncidentEntity? {
+        val projectId = configRepo.getInt("selected_project_id") ?: 6
+        if (incidentDao.getOpenVehicleNotRegistered(projectId, plate) != null) return null
+
+        val position = getCurrentPosition()
+        val incident = SmsIncidentEntity(
+            uuid = UUID.randomUUID().toString(),
+            project_id = projectId,
+            spool_code = plate,
+            description = com.example.hassiwrapper.AtlasApp.instance.getString(
+                com.example.hassiwrapper.R.string.incident_unregistered_vehicle_description, plate
+            ),
+            vehicle_plate = plate,
+            location_type = LOCATION_TYPES.first(),
+            severity = "HIGH",
+            position_id = position?.position_id,
+            position_code = position?.code,
+            author_name = getAssignedOperatorName(),
+            event_date = Instant.now().toString(),
+            status = STATUS_OPEN,
+            synced = false,
+            device_code = configRepo.get("device_code")?.takeIf { it.isNotBlank() },
+            incident_type = TYPE_VEHICLE_NOT_REGISTERED
+        )
+        val id = incidentDao.insert(incident)
+        return incident.copy(id = id)
     }
 }

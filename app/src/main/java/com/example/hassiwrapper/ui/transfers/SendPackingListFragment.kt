@@ -7,6 +7,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.ImageButton
 import android.widget.RadioGroup
 import android.widget.TextView
@@ -85,7 +87,7 @@ class SendPackingListFragment : Fragment() {
 
     // Step 1: vehicle
     private lateinit var panelVehicle: View
-    private lateinit var etPlate: TextInputEditText
+    private lateinit var etPlate: AutoCompleteTextView
     private lateinit var btnScanVehicle: MaterialButton
     private lateinit var btnConfirmVehicle: MaterialButton
 
@@ -205,6 +207,11 @@ class SendPackingListFragment : Fragment() {
             launchScannerWithPermission { vehicleScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java)) }
         }
         btnConfirmVehicle.setOnClickListener { confirmVehicle() }
+        etPlate.threshold = 1
+        etPlate.setOnItemClickListener { parent, _, pos, _ ->
+            resolveAndSelectVehicle(parent.getItemAtPosition(pos) as String)
+        }
+        setupVehicleAutocomplete()
 
         btnScanSpool.setOnClickListener {
             launchScannerWithPermission { spoolScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java)) }
@@ -244,6 +251,14 @@ class SendPackingListFragment : Fragment() {
     }
 
     // ───────────────────────── Step 1: Vehicle ─────────────────────────
+
+    private fun setupVehicleAutocomplete() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+            val plates = ServiceLocator.smsVehicleDao.getByProject(projectId).map { it.license_plate }
+            etPlate.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, plates))
+        }
+    }
 
     private fun resolveAndSelectVehicle(raw: String) {
         if (parseQr(raw) is QrResult.Spool) {
@@ -285,11 +300,27 @@ class SendPackingListFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val vehicle = ServiceLocator.smsVehicleDao.getByLicensePlate(plate)
             if (vehicle == null) {
-                Toast.makeText(requireContext(), getString(R.string.load_spools_vehicle_not_found), Toast.LENGTH_LONG).show()
+                offerUnregisteredVehicleIncident(plate)
                 return@launch
             }
             selectVehicle(vehicle)
         }
+    }
+
+    /** Manual plate entry didn't resolve to a known vehicle — offer to log it as an incident
+     *  so it can be picked up for registration, instead of silently rejecting the input. */
+    private fun offerUnregisteredVehicleIncident(plate: String) {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.transfer_unregistered_vehicle_title))
+            .setMessage(getString(R.string.transfer_unregistered_vehicle_message, plate))
+            .setPositiveButton(R.string.transfer_unregistered_vehicle_create_incident) { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    ServiceLocator.smsIncidentService.createVehicleNotRegisteredIncident(plate)
+                    Toast.makeText(requireContext(), getString(R.string.transfer_unregistered_vehicle_incident_created), Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     // ───────────────────────── Step 2: Spools ─────────────────────────

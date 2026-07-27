@@ -170,6 +170,7 @@
     <string name="settings_check_updates_searching">正在搜索…</string>
     <string name="settings_current_version">当前版本：%1$s</string>
     <string name="update_up_to_date">已是最新版本</string>
+    <string name="update_check_failed">无法检查更新——请检查网络连接（%1$s）</string>
 
     <!-- Settings -->
     <string name="settings_title">设置</string>
@@ -202,7 +203,8 @@
     <string name="settings_language_label">语言</string>
     <string name="language_es">Español</string>
     <string name="language_en">English</string>
-    <string name="language_fr">Français</string>
+    <string name="language_ar">العربية</string>
+    <string name="language_hi">हिन्दी</string>
 
     <!-- Observations -->
     <string name="obs_title">HSE 观察记录</string>
@@ -485,6 +487,15 @@
     <string name="incident_value_unknown">—</string>
     <string name="incident_status_open">进行中</string>
     <string name="incident_status_closed">已关闭</string>
+    <string name="incident_status_reprint_approved">待补印</string>
+    <string name="incident_label_scanned_revision">扫描版本</string>
+    <string name="incident_label_stored_revision">登记版本</string>
+    <string name="incident_btn_approve_reprint">批准补印</string>
+    <string name="incident_approve_reprint_confirm_title">批准补印</string>
+    <string name="incident_approve_reprint_confirm_msg">确认将该事件标记为待补印？系统将通知打印正确版本的新标签。</string>
+    <string name="incident_approve_reprint_confirm_yes">批准</string>
+    <string name="incident_approve_reprint_confirm_no">取消</string>
+    <string name="incident_reprint_approved_ok">补印已批准</string>
     <string name="incident_btn_close">关闭事件</string>
     <string name="incident_close_confirm_title">关闭事件</string>
     <string name="incident_close_confirm_msg">确定要关闭此事件吗？系统将记录关闭人及关闭时间。</string>
@@ -525,6 +536,13 @@
     <string name="qr_scanner_result_badge_unsupported">该工牌 UUID 未关联 SMS 车辆。请使用 ATLAS 系统中的车辆二维码。</string>
     <string name="qr_scanner_result_unknown">无法识别二维码</string>
     <string name="qr_scanner_result_id_detail">ID：%1$s</string>
+    <string name="qr_scanner_result_spool_syncing">同步进行中——该管段可能尚未下载。请等待同步完成后重试。</string>
+    <string name="qr_scanner_revision_mismatch">!!!扫描到的实物版本（%1$s）与登记版本（%2$s）不一致</string>
+    <string name="revision_mismatch_dialog_title">检测到版本不一致！！</string>
+    <string name="revision_mismatch_dialog_create">创建事件</string>
+    <string name="revision_mismatch_dialog_dismiss">忽略</string>
+    <string name="revision_mismatch_incident_created">事件已创建并通知主管</string>
+    <string name="revision_mismatch_incident_exists">该版本已存在未关闭的事件</string>
 
     <!-- QR Scanner: relocate mode -->
     <string name="qr_scanner_btn_relocate">转移管段</string>
@@ -540,6 +558,7 @@
     <string name="qr_scanner_btn_finish_relocate">完成转移</string>
     <string name="scan_result_spool_registered">已登记管段：%1$s</string>
     <string name="scan_result_spool_not_registered">数据库中未登记该管段</string>
+    <string name="scan_result_spool_not_registered_syncing">同步进行中——该管段可能尚未下载。请等待同步完成后重试。\n\n是否仍要新建记录？</string>
     <string name="scan_result_vehicle_registered">已登记车辆：%1$s</string>
     <string name="scan_result_vehicle_not_registered">数据库中未登记该车辆</string>
     <string name="scan_create_question">是否要新建记录？</string>
@@ -556,6 +575,11 @@
     <string name="sync_outbox_failed_banner">⚠ %1$d 个操作多次尝试后仍无法同步 — 点击查看详情</string>
     <string name="sync_outbox_failed_dialog_title">同步失败的操作</string>
     <string name="sync_outbox_failed_dialog_item">%1$s %2$s（id %3$d）：%4$s</string>
+    <string name="sync_outbox_failed_dialog_discard">丢弃</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_title">丢弃失败的操作</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_message">将丢弃 %1$d 个失败的操作。这些操作不会重试，也不会影响已同步的数据。</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_yes">丢弃</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_no">取消</string>
 
     <!-- Delta-sync flag banner -->
     <string name="sync_delta_active_banner">此设备已启用增量同步 — 实验模式，如非预期请联系支持</string>
@@ -571,12 +595,30 @@
     <string name="transfer_btn_manual_confirm">确认手动输入</string>
     <string name="settings_debug_location_btn">[调试] 更改终端位置</string>
     <string name="settings_debug_location_changed">位置已更改为：%s</string>
+    <string name="settings_debug_subposition_btn">选择终端的子区域</string>
     <string name="settings_kiosk_title">单一应用模式</string>
     <string name="settings_kiosk_desc">将应用锁定为全屏模式（屏幕固定）。在关闭此选项前，设备将无法退出该应用。</string>
     <string name="settings_kiosk_enabled">单一应用模式已启用</string>
     <string name="settings_kiosk_disabled">单一应用模式已关闭</string>
     <string name="settings_close_app">关闭应用</string>
     <string name="settings_close_app_confirm">是否要关闭应用？</string>
+    <string name="settings_geofence_title">区域地理围栏（KML）</string>
+    <string name="settings_geofence_desc">从 KML 文件导入区域（车间、堆场等）边界，并设置该区域内的扫描是否需要定位或强制跳过 GPS 检查。</string>
+    <string name="settings_geofence_mode_geoloc">定位模式</string>
+    <string name="settings_geofence_mode_forced">强制模式</string>
+    <string name="settings_geofence_import_kml">导入 KML…</string>
+    <string name="settings_geofence_save">保存</string>
+    <string name="settings_geofence_clear">移除</string>
+    <string name="settings_geofence_status_none">该区域尚未配置地理围栏。</string>
+    <string name="settings_geofence_status_current">当前地理围栏：%1$d 个点，模式为 %2$s。</string>
+    <string name="settings_geofence_status_current_multi">当前地理围栏：%1$d 个多边形（%2$d 个点），模式为 %3$s。</string>
+    <string name="settings_geofence_status_pending">已导入 KML：%1$d 个点（尚未保存）。</string>
+    <string name="settings_geofence_status_pending_multi">已导入 KML：%1$d 个多边形（%2$d 个点）（尚未保存）。</string>
+    <string name="settings_geofence_no_areas">该项目没有已同步的区域。</string>
+    <string name="settings_geofence_parse_error">无法读取 KML 文件中的多边形。</string>
+    <string name="settings_geofence_saved">地理围栏已保存。</string>
+    <string name="settings_geofence_cleared">地理围栏已删除。</string>
+    <string name="settings_geofence_pick_area_first">请先选择一个区域。</string>
     <string name="vehicles_empty">暂无车辆数据。</string>
     <string name="vehicles_error_prefix">错误：%s</string>
     <string name="vehicles_error_http">HTTP %d</string>
@@ -915,8 +957,14 @@
     <string name="transfer_receive_step2_title">第二步：选择装箱单</string>
     <string name="transfer_receive_step3_title">第三步：确认管段</string>
     <string name="transfer_receive_btn_confirm">确认收货</string>
+    <string name="transfer_receive_success_partial">已在%2$s接收 %1$d 个管段。装箱单尚未清空——请继续下一个子位置。</string>
+    <string name="transfer_receive_success_complete">交付已完成。装箱单已删除。</string>
     <string name="transfer_receive_success">收货已记录成功（待同步）</string>
     <string name="transfer_receive_no_pls">该车辆没有运输中的装箱单。</string>
+    <string name="transfer_receive_subposition_label">本批次的子位置</string>
+    <string name="transfer_receive_subposition_placeholder">— 选择子位置 —</string>
+    <string name="transfer_receive_no_spools_scanned">确认前请至少扫描一个管段。</string>
+    <string name="transfer_receive_subposition_required">请选择本批次的子位置。</string>
 
     <!-- Transfer: Shared -->
     <string name="transfer_spools_progress">已确认 %1$d / %2$d 个管段</string>
@@ -936,12 +984,18 @@
     <string name="transfer_vehicle_not_on_route">该车辆不在运输途中。</string>
     <string name="transfer_vehicle_wrong_destination">该车辆并非前往此位置。</string>
     <string name="transfer_vehicle_wrong_project">该车辆不属于当前项目。</string>
+    <string name="transfer_unregistered_vehicle_title">未注册车辆</string>
+    <string name="transfer_unregistered_vehicle_message">车牌号为 %1$s 的车辆未在系统中注册。是否要创建一条"未注册车辆"事件记录？可在车辆模块中注册该车辆（仅 ADMIN 和 DEV 权限可用）。</string>
+    <string name="transfer_unregistered_vehicle_create_incident">创建事件</string>
+    <string name="transfer_unregistered_vehicle_incident_created">已创建未注册车辆事件。</string>
+    <string name="incident_unregistered_vehicle_description">车牌号为 %1$s 的车辆未在系统中注册。可在车辆模块中注册该车辆。</string>
     <string name="transfer_send_to">您即将发送至 %s</string>
     <string name="transfer_pl_label">装箱单：%1$s</string>
     <string name="transfer_vehicle_label">车辆：%1$s</string>
 
     <!-- Auto-sync notifications -->
     <string name="auto_sync_completed">自动同步已完成</string>
+    <string name="sync_in_progress_indicator">同步进行中</string>
 
     <!-- Settings: location config -->
     <string name="settings_location_config_title">位置设置</string>
@@ -969,4 +1023,15 @@
     <string name="event_label_transfer_received">收货已记录</string>
     <string name="event_label_incident_created">事件已创建</string>
     <string name="event_label_incident_closed">事件已关闭</string>
+
+    <!-- Spool Map -->
+    <string name="menu_map">地图</string>
+    <string name="spool_map_empty">没有登记 GPS 位置的管段</string>
+    <string name="spool_map_refresh">刷新地图</string>
+    <string name="spool_map_center_geofence">定位到地理围栏</string>
+    <string name="spool_map_center_geofence_title">选择地理围栏</string>
+    <string name="spool_map_no_geofences">没有可用的地理围栏</string>
+    <string name="home_btn_map">查看管段地图</string>
+    <string name="home_qa_map">管段地图</string>
+    <string name="home_btn_inventario">查看本区域库存</string>
 </resources>

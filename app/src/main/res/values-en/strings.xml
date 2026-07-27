@@ -170,6 +170,7 @@
     <string name="settings_check_updates_searching">Searching…</string>
     <string name="settings_current_version">Current version: %1$s</string>
     <string name="update_up_to_date">You already have the latest version installed</string>
+    <string name="update_check_failed">Could not check for updates — check your connection (%1$s)</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
@@ -202,7 +203,8 @@
     <string name="settings_language_label">Language</string>
     <string name="language_es">Español</string>
     <string name="language_en">English</string>
-    <string name="language_fr">Français</string>
+    <string name="language_ar">العربية</string>
+    <string name="language_hi">हिन्दी</string>
 
     <!-- Observations -->
     <string name="obs_title">HSE Observation</string>
@@ -485,6 +487,15 @@
     <string name="incident_value_unknown">—</string>
     <string name="incident_status_open">Open</string>
     <string name="incident_status_closed">Closed</string>
+    <string name="incident_status_reprint_approved">Pending reprint</string>
+    <string name="incident_label_scanned_revision">Scanned revision</string>
+    <string name="incident_label_stored_revision">Registered revision</string>
+    <string name="incident_btn_approve_reprint">Approve reprint</string>
+    <string name="incident_approve_reprint_confirm_title">Approve reprint</string>
+    <string name="incident_approve_reprint_confirm_msg">Confirm this incident is marked pending reprint? A notification to print a new tag with the correct revision will be sent.</string>
+    <string name="incident_approve_reprint_confirm_yes">Approve</string>
+    <string name="incident_approve_reprint_confirm_no">Cancel</string>
+    <string name="incident_reprint_approved_ok">Reprint approved</string>
     <string name="incident_btn_close">Close incident</string>
     <string name="incident_close_confirm_title">Close incident</string>
     <string name="incident_close_confirm_msg">Are you sure you want to close this incident? Who closes it and when will be recorded.</string>
@@ -525,6 +536,13 @@
     <string name="qr_scanner_result_badge_unsupported">Badge UUID is not linked to an SMS vehicle. Use the vehicle QR from the ATLAS system.</string>
     <string name="qr_scanner_result_unknown">QR code not recognized</string>
     <string name="qr_scanner_result_id_detail">ID: %1$s</string>
+    <string name="qr_scanner_result_spool_syncing">Sync in progress — the spool may not be downloaded yet. Wait for it to finish and try again.</string>
+    <string name="qr_scanner_revision_mismatch">!!!Scanned physical revision (%1$s) differs from the registered one (%2$s)</string>
+    <string name="revision_mismatch_dialog_title">Different revision detected!!</string>
+    <string name="revision_mismatch_dialog_create">Create incident</string>
+    <string name="revision_mismatch_dialog_dismiss">Dismiss</string>
+    <string name="revision_mismatch_incident_created">Incident created and supervisors notified</string>
+    <string name="revision_mismatch_incident_exists">An open incident already exists for this revision</string>
 
     <!-- QR Scanner: relocate mode -->
     <string name="qr_scanner_btn_relocate">Relocate spools</string>
@@ -540,6 +558,7 @@
     <string name="qr_scanner_btn_finish_relocate">Finish relocation</string>
     <string name="scan_result_spool_registered">Spool registered: %1$s</string>
     <string name="scan_result_spool_not_registered">Spool not registered in the database</string>
+    <string name="scan_result_spool_not_registered_syncing">Sync in progress — the spool may not be downloaded yet. Wait for it to finish and try again.\n\nDo you want to create a new record anyway?</string>
     <string name="scan_result_vehicle_registered">Vehicle registered: %1$s</string>
     <string name="scan_result_vehicle_not_registered">Vehicle not registered in the database</string>
     <string name="scan_create_question">Do you want to create a new record?</string>
@@ -556,6 +575,11 @@
     <string name="sync_outbox_failed_banner">⚠ %1$d operation(s) could not sync after several attempts — tap for details</string>
     <string name="sync_outbox_failed_dialog_title">Failed operations</string>
     <string name="sync_outbox_failed_dialog_item">%1$s %2$s (id %3$d): %4$s</string>
+    <string name="sync_outbox_failed_dialog_discard">Discard</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_title">Discard failed operations</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_message">%1$d failed operation(s) will be discarded. They will not be retried and will not affect data already synced.</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_yes">Discard</string>
+    <string name="sync_outbox_failed_dialog_discard_confirm_no">Cancel</string>
 
     <!-- Delta-sync flag banner -->
     <string name="sync_delta_active_banner">Delta sync active on this device — experimental mode, contact support if unexpected</string>
@@ -571,6 +595,7 @@
     <string name="transfer_btn_manual_confirm">Confirm manual entry</string>
     <string name="settings_debug_location_btn">[DEBUG] Change Terminal Position</string>
     <string name="settings_debug_location_changed">Position changed to: %s</string>
+    <string name="settings_debug_subposition_btn">Select the terminal\'s sub-zone</string>
     <string name="settings_kiosk_title">Kiosk Mode</string>
     <string name="settings_kiosk_desc">Locks the app in full screen (Screen Pinning). The device won\'t be able to leave the app without disabling this option.</string>
     <string name="settings_kiosk_enabled">Kiosk Mode enabled</string>
@@ -586,7 +611,9 @@
     <string name="settings_geofence_clear">Remove</string>
     <string name="settings_geofence_status_none">No geofence configured for this area.</string>
     <string name="settings_geofence_status_current">Current geofence: %1$d points, mode %2$s.</string>
+    <string name="settings_geofence_status_current_multi">Current geofence: %1$d polygons (%2$d points), mode %3$s.</string>
     <string name="settings_geofence_status_pending">KML imported: %1$d points (not saved yet).</string>
+    <string name="settings_geofence_status_pending_multi">KML imported: %1$d polygons (%2$d points) (not saved yet).</string>
     <string name="settings_geofence_no_areas">No areas synced for this project.</string>
     <string name="settings_geofence_parse_error">Could not read the polygon from the KML file.</string>
     <string name="settings_geofence_saved">Geofence saved.</string>
@@ -930,8 +957,14 @@
     <string name="transfer_receive_step2_title">Step 2: Select Packing List</string>
     <string name="transfer_receive_step3_title">Step 3: Confirm Spools</string>
     <string name="transfer_receive_btn_confirm">Confirm Receipt</string>
+    <string name="transfer_receive_success_partial">%1$d spools received at %2$s. Packing list pending — continue with the next sub-position.</string>
+    <string name="transfer_receive_success_complete">Delivery complete. Packing list removed.</string>
     <string name="transfer_receive_success">Receipt recorded successfully (pending sync)</string>
     <string name="transfer_receive_no_pls">No Packing Lists in transit for this vehicle.</string>
+    <string name="transfer_receive_subposition_label">Sub-position for this batch</string>
+    <string name="transfer_receive_subposition_placeholder">— Select sub-position —</string>
+    <string name="transfer_receive_no_spools_scanned">Scan at least one spool before confirming.</string>
+    <string name="transfer_receive_subposition_required">Select the sub-position for this batch.</string>
 
     <!-- Transfer: Shared -->
     <string name="transfer_spools_progress">%1$d / %2$d spools confirmed</string>
@@ -951,12 +984,18 @@
     <string name="transfer_vehicle_not_on_route">The vehicle is not on route.</string>
     <string name="transfer_vehicle_wrong_destination">The vehicle is not headed to this location.</string>
     <string name="transfer_vehicle_wrong_project">The vehicle does not belong to the current project.</string>
+    <string name="transfer_unregistered_vehicle_title">Unregistered vehicle</string>
+    <string name="transfer_unregistered_vehicle_message">The vehicle with plate %1$s is not registered in the system. Do you want to create an \"Unregistered vehicle\" incident? The vehicle can be registered from the Vehicles module (available only for ADMIN and DEV profiles).</string>
+    <string name="transfer_unregistered_vehicle_create_incident">Create incident</string>
+    <string name="transfer_unregistered_vehicle_incident_created">Unregistered vehicle incident created.</string>
+    <string name="incident_unregistered_vehicle_description">Vehicle with plate %1$s is not registered in the system. It can be registered from the Vehicles module.</string>
     <string name="transfer_send_to">You are about to send to %s</string>
     <string name="transfer_pl_label">PL: %1$s</string>
     <string name="transfer_vehicle_label">Vehicle: %1$s</string>
 
     <!-- Auto-sync notifications -->
     <string name="auto_sync_completed">Automatic synchronization completed</string>
+    <string name="sync_in_progress_indicator">Sync in progress</string>
 
     <!-- Settings: location config -->
     <string name="settings_location_config_title">Location Settings</string>
@@ -989,6 +1028,9 @@
     <string name="menu_map">Map</string>
     <string name="spool_map_empty">No spools with a recorded GPS location</string>
     <string name="spool_map_refresh">Refresh map</string>
+    <string name="spool_map_center_geofence">Center on geofence</string>
+    <string name="spool_map_center_geofence_title">Select geofence</string>
+    <string name="spool_map_no_geofences">No geofences available</string>
     <string name="home_btn_map">View Spool Map</string>
     <string name="home_qa_map">Spool Map</string>
     <string name="home_btn_inventario">View my zone\'s inventory</string>

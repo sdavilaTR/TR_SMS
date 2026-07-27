@@ -7,6 +7,9 @@ import android.content.Intent
 import android.os.Environment
 import android.util.Log
 import com.example.hassiwrapper.update.UpdateInstaller
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.File
 
 /**
@@ -54,31 +57,42 @@ class DownloadCompleteReceiver : BroadcastReceiver() {
         Log.d(TAG, "Download $completedId completed, verifying status…")
         clearPendingDownloadId(context)
 
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val query = DownloadManager.Query().setFilterById(completedId)
-        val cursor = dm.query(query)
+        // installApk does synchronous copyTo/fsync disk I/O (PackageInstaller.Session) —
+        // running that inline on this thread risks tripping Android's ~10s broadcast-timeout
+        // ANR watchdog under storage pressure. goAsync() + Dispatchers.IO keeps the process
+        // alive while the work happens off the main thread.
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                val query = DownloadManager.Query().setFilterById(completedId)
+                val cursor = dm.query(query)
 
-        try {
-            if (cursor.moveToFirst()) {
-                val status = cursor.getInt(
-                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)
-                )
-                if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                    val apkFile = File(
-                        context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
-                        UpdateInstaller.APK_FILENAME
-                    )
-                    Log.d(TAG, "Download successful, launching install for ${apkFile.absolutePath}")
-                    UpdateInstaller.installApk(context, apkFile)
-                } else {
-                    val reason = cursor.getInt(
-                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)
-                    )
-                    Log.e(TAG, "Download failed — status=$status reason=$reason")
+                try {
+                    if (cursor.moveToFirst()) {
+                        val status = cursor.getInt(
+                            cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)
+                        )
+                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                            val apkFile = File(
+                                context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+                                UpdateInstaller.APK_FILENAME
+                            )
+                            Log.d(TAG, "Download successful, launching install for ${apkFile.absolutePath}")
+                            UpdateInstaller.installApk(context, apkFile)
+                        } else {
+                            val reason = cursor.getInt(
+                                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)
+                            )
+                            Log.e(TAG, "Download failed — status=$status reason=$reason")
+                        }
+                    }
+                } finally {
+                    cursor.close()
                 }
+            } finally {
+                pendingResult.finish()
             }
-        } finally {
-            cursor.close()
         }
     }
 }

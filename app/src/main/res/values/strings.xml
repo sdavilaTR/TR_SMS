@@ -850,6 +850,7 @@
     <string name="load_spools_weight_meter">Carga: %1$s / %2$s kg (%3$d%%)</string>
     <string name="load_spools_weight_no_capacity">Carga: %1$s kg (capacidad del vehículo no definida)</string>
     <string name="load_spools_weight_missing"> · %1$d sin peso (toca para reintentar)</string>
+    <string name="load_spools_weight_retrying">Recuperando pesos…</string>
 
     <!-- Transfer: Send Packing List -->
     <string name="transfer_send_title">Envío de Packing List</string>

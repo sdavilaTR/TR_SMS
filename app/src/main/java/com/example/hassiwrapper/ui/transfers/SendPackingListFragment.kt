@@ -91,6 +91,7 @@ class SendPackingListFragment : Fragment() {
 
     private var selectedVehicle: SmsVehicleEntity? = null
     private val scannedSpools = mutableListOf<ScannedSpool>()
+    private var weightRetryInFlight = false
     private lateinit var adapter: ScannedSpoolAdapter
     private var destination = ""
 
@@ -489,20 +490,26 @@ class SendPackingListFragment : Fragment() {
      *  Deliberately not called per-add: on a 30-spool load that is O(n²) requests racing the 60 s
      *  auto-sync, which is the very contention that makes the first attempt fail. */
     private suspend fun retryPendingWeights() {
+        if (weightRetryInFlight) return   // repeated meter taps must not stack overlapping loops
         val pendingIds = scannedSpools.filter { it.weightRetryable }.map { it.spoolId }
         if (pendingIds.isEmpty()) return
-        Log.d("SendPL", "retrying weight for ${pendingIds.size} spool(s)")
-        for (spoolId in pendingIds) {
-            val spool = ServiceLocator.smsSpoolDao.getById(spoolId) ?: continue
-            val result = resolveSpoolWeight(spool)
-            // Re-find by id rather than reusing an index: the user can remove a row while the
-            // request is in flight, which would otherwise write this weight onto another spool.
-            val idx = scannedSpools.indexOfFirst { it.spoolId == spoolId }
-            if (idx < 0) continue
-            scannedSpools[idx] = scannedSpools[idx].copy(
-                weightKg        = (result as? WeightResult.Ok)?.kg,
-                weightRetryable = result is WeightResult.Failed
-            )
+        weightRetryInFlight = true
+        try {
+            Log.d("SendPL", "retrying weight for ${pendingIds.size} spool(s)")
+            for (spoolId in pendingIds) {
+                val spool = ServiceLocator.smsSpoolDao.getById(spoolId) ?: continue
+                val result = resolveSpoolWeight(spool)
+                // Re-find by id rather than reusing an index: the user can remove a row while the
+                // request is in flight, which would otherwise write this weight onto another spool.
+                val idx = scannedSpools.indexOfFirst { it.spoolId == spoolId }
+                if (idx < 0) continue
+                scannedSpools[idx] = scannedSpools[idx].copy(
+                    weightKg        = (result as? WeightResult.Ok)?.kg,
+                    weightRetryable = result is WeightResult.Failed
+                )
+            }
+        } finally {
+            weightRetryInFlight = false
         }
         updateWeightMeter()
     }
@@ -574,10 +581,6 @@ class SendPackingListFragment : Fragment() {
             val location = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: ""
             if (location != "WORKSHOP" && location != "LAYDOWN") return@launch
 
-            // Last chance to recover weights that failed at scan time — after this the total is
-            // baked into the Packing List and uploaded.
-            retryPendingWeights()
-
             panelSpools.visibility = View.GONE
             panelDestination.visibility = View.VISIBLE
 
@@ -619,6 +622,16 @@ class SendPackingListFragment : Fragment() {
             try {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
                 val now = LocalDateTime.now()
+
+                // Last chance to recover weights that failed at scan time — below, total_weight_kg
+                // is baked into the Packing List and uploaded. Done here rather than on
+                // "Continuar" because each failed spool can burn a full 10 s connect timeout, and
+                // this screen already has a progress panel to show for it.
+                if (scannedSpools.any { it.weightRetryable }) {
+                    panelUploadProgress.visibility = View.VISIBLE
+                    txtUploadStatus.text = getString(R.string.load_spools_weight_retrying)
+                    retryPendingWeights()
+                }
 
                 // ───── Part 1: load spools onto vehicle → resolve/create the Packing List ─────
                 val distinctPlIds = scannedSpools.mapNotNull { it.packingListId }.distinct()

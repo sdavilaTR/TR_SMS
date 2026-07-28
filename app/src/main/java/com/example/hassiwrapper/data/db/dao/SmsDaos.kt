@@ -103,6 +103,24 @@ interface SmsPackingListDao {
     @Query("SELECT * FROM sms_packing_list WHERE project_id = :projectId AND is_active = 1 ORDER BY packing_date DESC")
     suspend fun getByProject(projectId: Int): List<SmsPackingListEntity>
 
+    /** "Actuales" — everything getByProject returns minus PLs marked historical (delivered). */
+    @Query("""
+        SELECT * FROM sms_packing_list
+        WHERE project_id = :projectId AND is_active = 1
+          AND packing_list_id NOT IN (SELECT packing_list_id FROM sms_packing_list_historical)
+        ORDER BY packing_date DESC
+    """)
+    suspend fun getCurrentByProject(projectId: Int): List<SmsPackingListEntity>
+
+    /** "Históricos" — PLs marked delivered, kept around as a delivery record. */
+    @Query("""
+        SELECT * FROM sms_packing_list
+        WHERE project_id = :projectId AND is_active = 1
+          AND packing_list_id IN (SELECT packing_list_id FROM sms_packing_list_historical)
+        ORDER BY packing_date DESC
+    """)
+    suspend fun getHistoricalByProject(projectId: Int): List<SmsPackingListEntity>
+
     @Query("SELECT * FROM sms_packing_list WHERE vehicle_id = :vehicleId AND is_active = 1 ORDER BY packing_date DESC")
     suspend fun getByVehicle(vehicleId: Long): List<SmsPackingListEntity>
 
@@ -225,6 +243,15 @@ interface SmsPackingListSpoolDao {
 
     @Query("DELETE FROM sms_packing_list_spool")
     suspend fun deleteAll()
+}
+
+@Dao
+interface SmsPackingListHistoricalDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun markHistorical(item: SmsPackingListHistoricalEntity)
+
+    @Query("DELETE FROM sms_packing_list_historical WHERE packing_list_id = :id")
+    suspend fun unmark(id: Long)
 }
 
 @Dao
@@ -572,12 +599,20 @@ interface SmsSpoolDao {
     @Query("UPDATE sms_spool SET sub_position_id = :subPositionId, synced = 0 WHERE spool_id = :spoolId")
     suspend fun updateSubPosition(spoolId: Long, subPositionId: Long?)
 
-    /** Atomic pair for a terminal move: new position always implies clearing the old
-     *  sub-position (it belongs to the previous parent position) — see PositionHelper. */
+    /** Atomic triple for a terminal move. [subPositionId] must belong to [positionId] — passing
+     *  null clears the old sub-position, which is the right default since a sub-position belongs
+     *  to a specific parent position. PositionHelper passes the terminal's own pin when it matches
+     *  the destination, so a sub-position-pinned terminal (JAFURAH GCP 5) stamps its scans instead
+     *  of leaving them unattributed. */
     @Transaction
-    suspend fun setPositionClearingSubPosition(spoolId: Long, positionId: Int?, zoneCode: String?) {
+    suspend fun setPositionClearingSubPosition(
+        spoolId: Long,
+        positionId: Int?,
+        zoneCode: String?,
+        subPositionId: Long? = null
+    ) {
         updatePositionAndZone(spoolId, positionId, zoneCode)
-        updateSubPosition(spoolId, null)
+        updateSubPosition(spoolId, subPositionId)
     }
 
     @Query("UPDATE sms_spool SET area_id = :areaId, zone = :zone, synced = 0 WHERE spool_id = :spoolId")
@@ -947,8 +982,45 @@ interface SmsSpoolLocationDao {
     """)
     suspend fun getLatestByProjectZoneAndSubPosition(projectId: Int, location: String, subPositionId: Long): List<SmsSpoolMapMarker>
 
-    @Query("SELECT * FROM sms_spool_location WHERE synced = 0")
-    suspend fun getUnsynced(): List<SmsSpoolLocationEntity>
+    /** Pending uploads whose spool belongs to [projectId]. The upload POSTs to a per-project route
+     *  resolved from `selected_project_id`, so an unscoped list would send another project's rows
+     *  to the wrong `projectCode` — the server resolves the spool within the project and 404s, the
+     *  row never flips to synced, and it retries every 60 s forever. Temp spool ids (<= 0, offline
+     *  creates awaiting their outbox CREATE) are excluded: they'd 404 legitimately until
+     *  OutboxService.remapSpoolId rewrites them to the server id, after which they're picked up. */
+    @Query("""
+        SELECT l.* FROM sms_spool_location l
+        INNER JOIN sms_spool s ON s.spool_id = l.spool_id
+        WHERE l.synced = 0 AND l.spool_id > 0 AND s.project_id = :projectId
+    """)
+    suspend fun getUnsyncedByProject(projectId: Int): List<SmsSpoolLocationEntity>
+
+    /** Pending rows whose spool no longer exists locally — nothing can ever resolve their project,
+     *  so [getUnsyncedByProject] would skip them forever. Purged rather than uploaded blind. */
+    @Query("""
+        DELETE FROM sms_spool_location
+        WHERE synced = 0
+        AND spool_id NOT IN (SELECT spool_id FROM sms_spool)
+    """)
+    suspend fun deleteUnsyncedOrphans(): Int
+
+    // No unscoped getUnsynced() on purpose — see getUnsyncedByProject above. The upload route is
+    // per-project, so every caller must scope its query.
+
+    /** Spools carrying a fix that hasn't been uploaded yet. The project-wide download skips these
+     *  so the server's (older) copy can't push a spool past the 2-row cap or outrank the pending
+     *  local fix — they come back from the server on the cycle after their upload lands. */
+    @Query("SELECT DISTINCT spool_id FROM sms_spool_location WHERE synced = 0")
+    suspend fun getSpoolIdsWithUnsynced(): List<Long>
+
+    /** Clears server-sourced fixes for a project before re-inserting the downloaded payload.
+     *  Locally captured, not-yet-uploaded rows (`synced = 0`) are deliberately left alone. */
+    @Query("""
+        DELETE FROM sms_spool_location
+        WHERE synced = 1
+        AND spool_id IN (SELECT spool_id FROM sms_spool WHERE project_id = :projectId)
+    """)
+    suspend fun deleteSyncedByProject(projectId: Int)
 
     @Query("UPDATE sms_spool_location SET synced = 1 WHERE location_id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)

@@ -62,6 +62,13 @@ android {
     testOptions {
         unitTests.returnDefaultValues = true
     }
+    sourceSets {
+        // Bundles the repo's KMLs/ dir as APK assets so geofence source-of-truth data ships
+        // with the app build (see GeofenceSeeder) instead of living only in checked-in files.
+        main {
+            assets.srcDirs += ['../KMLs']
+        }
+    }
 }
 
 dependencies {

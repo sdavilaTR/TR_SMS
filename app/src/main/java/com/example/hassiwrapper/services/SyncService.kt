@@ -503,13 +503,20 @@ class SyncService(
                 } else if (response.code() == 409) {
                     // Vehicle-conflict guard: another device's PL for this vehicle synced first while
                     // this one was offline. It can never sync now — drop it instead of retrying (and
-                    // 409-ing) every cycle forever, and free the spools it locally claimed.
+                    // 409-ing) every cycle forever. This PL may already have been sent locally (spools
+                    // marked in_transit, vehicle marked on_route, SEND transfer recorded) before this
+                    // upload attempt ran, so unwind all of that too — otherwise the vehicle is stuck
+                    // "on route" forever and the transfer is left pointing at a PL that no longer exists.
                     val msg = com.example.hassiwrapper.network.dto.parsePackingListConflictMessage(409, response.errorBody()?.string())
                     Log.e(TAG, "PL ${pl.packing_list_id} vehicle conflict, dropping local copy: $msg")
-                    smsSpoolDao?.getByPackingList(pl.packing_list_id)?.forEach {
-                        smsSpoolDao.updatePackingList(it.spool_id, null)
+                    if (smsSpoolDao != null && smsPackingListSpoolDao != null && smsTransferDao != null && smsVehicleDao != null) {
+                        releaseDanglingSendForPackingList(pl.packing_list_id, pl.vehicle_id, smsSpoolDao, smsPackingListSpoolDao, smsTransferDao, smsVehicleDao)
+                    } else {
+                        smsSpoolDao?.getByPackingList(pl.packing_list_id)?.forEach {
+                            smsSpoolDao.updatePackingList(it.spool_id, null)
+                        }
+                        smsPackingListSpoolDao?.deleteByPackingList(pl.packing_list_id)
                     }
-                    smsPackingListSpoolDao?.deleteByPackingList(pl.packing_list_id)
                     dao.deleteById(pl.packing_list_id)
                     auditLogService?.log(
                         AuditLogService.PL_ELIMINADO,
@@ -905,11 +912,21 @@ class SyncService(
         if (!spoolLocationUploadMutex.tryLock()) return
         try {
             val dao = smsSpoolLocationDao ?: return
-            val unsynced = dao.getUnsynced()
+            val projectId = configRepo.getInt("selected_project_id") ?: 6
+
+            // Rows whose spool was deleted locally can never resolve a project, so the scoped
+            // query below would leave them pending forever. Drop them before it runs.
+            val orphans = dao.deleteUnsyncedOrphans()
+            if (orphans > 0) Log.w(TAG, "uploadSpoolLocations: purged $orphans pending fix(es) with no local spool")
+
+            // Scoped to the selected project: postSpoolLocation resolves the spool *within*
+            // projectCode, so a row from another project (project switched without a DB reset)
+            // would 404 on every cycle and retry forever. It stays pending here and uploads
+            // normally once that project is selected again.
+            val unsynced = dao.getUnsyncedByProject(projectId)
             if (unsynced.isEmpty()) return
 
             Log.i(TAG, "Uploading ${unsynced.size} spool location(s)")
-            val projectId = configRepo.getInt("selected_project_id") ?: 6
             val projectCode = projectDao.getById(projectId)?.project_code
             if (projectCode.isNullOrBlank()) {
                 Log.w(TAG, "uploadSpoolLocations: no project code for id=$projectId, skipping")
@@ -929,14 +946,27 @@ class SyncService(
                         scannedFrom  = configRepo.get("device_location")?.takeIf { it.isNotBlank() }
                     )
                     val response = api.postSpoolLocation(projectCode, loc.spool_id, body)
-                    if (response.isSuccessful) {
-                        // location_id is a local-only autoincrement key (nothing else references it
-                        // as a FK); just mark synced rather than remapping it to the server-assigned
-                        // id, which risked colliding with an existing local PK.
-                        synced.add(loc.location_id)
-                        Log.i(TAG, "Spool location ${loc.location_id} → spool ${loc.spool_id} uploaded")
-                    } else {
-                        Log.w(TAG, "Spool location ${loc.location_id} upload HTTP ${response.code()}")
+                    when {
+                        response.isSuccessful -> {
+                            // location_id is a local-only autoincrement key (nothing else references it
+                            // as a FK); just mark synced rather than remapping it to the server-assigned
+                            // id, which risked colliding with an existing local PK.
+                            synced.add(loc.location_id)
+                            Log.i(TAG, "Spool location ${loc.location_id} → spool ${loc.spool_id} uploaded")
+                        }
+                        // Only codes that mean "this row will never be accepted" are dropped:
+                        // 400 malformed body, 404 spool unknown in this project, 422 rejected
+                        // payload. Marking synced here is destructive (no FAILED state to fall
+                        // back on, unlike OutboxService.markFailed), so the rest of 4xx must NOT
+                        // land here — 401 (session expired mid-drain, recovered by
+                        // reLoginWithStoredCode), 403 (Azure IP-allowlist miss after the device's
+                        // public IP rotates — routine on DEV), 408/429 are all retryable, and
+                        // dropping them would silently destroy every queued fix.
+                        response.code() in setOf(400, 404, 422) -> {
+                            synced.add(loc.location_id)
+                            Log.e(TAG, "Spool location ${loc.location_id} → spool ${loc.spool_id} rejected: HTTP ${response.code()}, dropping")
+                        }
+                        else -> Log.w(TAG, "Spool location ${loc.location_id} upload HTTP ${response.code()}, will retry")
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Spool location ${loc.location_id} upload error: ${e.message}")

@@ -33,6 +33,26 @@ object GpsHelper {
     fun capturedAtNow(): String = ISO_MILLIS.format(Instant.now())
 
     /**
+     * Re-formats a server timestamp into the exact shape [capturedAtNow] produces, so downloaded
+     * fixes and locally captured ones stay comparable under the string `ORDER BY captured_at`
+     * every location query uses. The backend serializes a .NET `DateTime` — variable fractional
+     * digits, and no `Z` when the column's Kind is Unspecified — which would otherwise sort
+     * inconsistently against the fixed-width local format. Returns the input unchanged if it
+     * can't be parsed (better a slightly mis-sorted pin than a dropped one).
+     */
+    fun normalizeCapturedAt(raw: String): String {
+        val trimmed = raw.trim().ifEmpty { return raw }
+        return try {
+            val instant = try {
+                Instant.parse(trimmed)
+            } catch (_: Exception) {
+                java.time.LocalDateTime.parse(trimmed).toInstant(ZoneOffset.UTC)
+            }
+            ISO_MILLIS.format(instant)
+        } catch (_: Exception) { raw }
+    }
+
+    /**
      * Returns (latitude, longitude, accuracy_m) or null if location unavailable.
      * Tries FusedLocationProvider first; falls back to LocationManager (like HeartbeatManager).
      */

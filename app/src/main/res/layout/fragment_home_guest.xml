@@ -91,28 +91,32 @@
             </LinearLayout>
 
             <!-- Zone KPI stack: confirmed (synced) on top, pending (scanned, not yet synced)
-                 below. Stretches to match the height of the banner+breakdown column. -->
+                 below. wrap_content, not match_parent: the sibling column is also wrap_content,
+                 so match_parent here would collapse to the banner's own (shorter) height instead
+                 of sizing off its own content, squeezing/clipping the two cards' labels. -->
             <LinearLayout
                 android:id="@+id/guestZoneStatsRow"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_weight="2"
                 android:orientation="vertical"
                 android:visibility="gone">
 
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
                     android:layout_marginBottom="5dp"
                     app:cardBackgroundColor="@color/granted_bg"
                     app:cardCornerRadius="14dp"
                     app:cardElevation="2dp">
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="64dp"
                         android:orientation="vertical"
-                        android:gravity="center">
+                        android:gravity="center"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp">
                         <TextView
                             android:id="@+id/txtGuestZoneConfirmedCount"
                             android:layout_width="wrap_content"
@@ -125,6 +129,7 @@
                             android:id="@+id/txtGuestZoneConfirmedLabel"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
                             android:text="@string/home_guest_zone_confirmed"
                             android:textColor="@color/on_surface"
                             android:textSize="10sp"
@@ -134,8 +139,7 @@
 
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
                     app:cardBackgroundColor="@color/surface_variant"
                     app:cardCornerRadius="14dp"
                     app:cardElevation="2dp"
@@ -143,9 +147,12 @@
                     app:strokeWidth="1dp">
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="64dp"
                         android:orientation="vertical"
-                        android:gravity="center">
+                        android:gravity="center"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp">
                         <TextView
                             android:id="@+id/txtGuestZonePendingCount"
                             android:layout_width="wrap_content"
@@ -157,6 +164,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
                             android:text="@string/home_guest_zone_pending"
                             android:textColor="@color/on_surface"
                             android:textSize="10sp"

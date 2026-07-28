@@ -8,6 +8,8 @@
     <string name="menu_passport">装箱单</string>
     <string name="packing_lists_empty">暂无装箱单。</string>
     <string name="packing_lists_count">%1$d 个装箱单</string>
+    <string name="packing_lists_tab_current">当前</string>
+    <string name="packing_lists_tab_historical">历史</string>
     <string name="packing_lists_error_prefix">错误：%s</string>
     <string name="packing_lists_error_http">HTTP %d</string>
     <string name="packing_lists_error_project_code">projectCode 为空，project_id=%d。是否已同步？</string>
@@ -884,6 +886,8 @@
     <string name="vehicle_detail_no_unassigned_pls">没有未分配车辆的装箱单</string>
     <string name="vehicle_detail_pl_added">装箱单已分配至车辆</string>
     <string name="pl_vehicle_conflict">无法分配：%1$s</string>
+    <string name="pl_vehicle_conflict_title">车辆已装载</string>
+    <string name="pl_vehicle_conflict_warning">车辆 %1$s 已有一份未送达的装箱单 (%2$s)。如果您要向同一批货添加线盘，请照常继续；如果这是另一批货，请选择其他车辆。</string>
     <string name="vehicle_detail_pl_removed">装箱单已从车辆取消分配</string>
     <string name="vehicle_detail_remove_pl_title">取消分配装箱单</string>
     <string name="vehicle_detail_remove_pl_msg">是否取消该车辆与 %1$s 的分配？</string>
@@ -933,6 +937,8 @@
     <string name="load_spools_qr_is_spool">该二维码属于管段，而非车辆。请扫描车辆二维码。</string>
     <string name="load_spools_weight_meter">装载：%1$s / %2$s 公斤 (%3$d%%)</string>
     <string name="load_spools_weight_no_capacity">装载：%1$s 公斤（未设置车辆载重）</string>
+    <string name="load_spools_weight_missing"> · %1$d 无重量（点击重试）</string>
+    <string name="load_spools_weight_retrying">正在获取重量…</string>
 
     <!-- Transfer: Send Packing List -->
     <string name="transfer_send_title">发送装箱单</string>
@@ -946,6 +952,7 @@
     <string name="transfer_send_success_partial">发货已记录（数据待上传）</string>
     <string name="transfer_send_uploading">正在上传数据到服务器…</string>
     <string name="transfer_send_error">错误：%s</string>
+    <string name="transfer_send_conflict_dropped">发送失败：另一台设备已将车辆 %1$s 发送到另一份装箱单。请重试。</string>
     <string name="transfer_send_location_blocked">无法从该位置发货。</string>
     <string name="transfer_select_destination">选择发货目的地</string>
     <string name="transfer_destination_laydown">堆场</string>

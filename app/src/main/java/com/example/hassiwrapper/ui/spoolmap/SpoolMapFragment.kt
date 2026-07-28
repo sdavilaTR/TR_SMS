@@ -60,12 +60,18 @@ class SpoolMapFragment : Fragment() {
         }
         view.findViewById<View>(R.id.btnRefreshMap).setOnClickListener { load() }
         view.findViewById<View>(R.id.btnCenterGeofence).setOnClickListener { showCenterGeofenceDialog() }
-        load()
+        // First load comes from onResume (which always follows onViewCreated) — calling it here
+        // too would just run the whole query twice on every open.
     }
 
     override fun onResume() {
         super.onResume()
         mapView?.onResume()
+        // Pins now arrive from other terminals via the auto-sync download (syncSmsData's
+        // "spool-locations" section), so a map left open would keep showing the snapshot it
+        // loaded at onViewCreated until the user hit refresh. `hasCentered` stays true across
+        // reloads, so re-rendering never re-zooms — the user's pan/zoom survives.
+        load()
     }
 
     override fun onPause() {
@@ -93,7 +99,18 @@ class SpoolMapFragment : Fragment() {
                 renderMarkers(emptyList(), emptyList(), emptyMap())
                 return@launch
             }
-            val subPositionId = if (isGuest) ServiceLocator.configRepo.get("device_sub_position_id")?.toLongOrNull() else null
+            val zoneSubPositions = zone?.let { z ->
+                ServiceLocator.smsPositionDao.getByCode(z)?.position_id
+                    ?.let { ServiceLocator.smsSubPositionDao.getByPosition(projectId, it) }
+            }.orEmpty()
+            // Same rule as HomeFragment.loadGuestZoneStats: narrow to the pinned sub-position only
+            // when it actually has siblings under the zone (JAFURAH GCP5/6/9), which is the only
+            // case where showing the whole zone would leak another sub-position's spools. A lone
+            // sub-position (an auto-seeded "WORKSHOP/WORKSHOP") has nothing to hide, and narrowing
+            // there dropped every pin whose spool predates PositionHelper's sub-position stamping
+            // (or was scanned by an unpinned terminal) — those rows still carry a null.
+            val subPositionId = if (isGuest && zoneSubPositions.size > 1)
+                ServiceLocator.configRepo.get("device_sub_position_id")?.toLongOrNull() else null
 
             val markers = when {
                 subPositionId != null && zone != null -> ServiceLocator.smsSpoolLocationDao.getLatestByProjectZoneAndSubPosition(projectId, zone, subPositionId)
@@ -101,11 +118,8 @@ class SpoolMapFragment : Fragment() {
                 else -> ServiceLocator.smsSpoolLocationDao.getLatestByProject(projectId)
             }
             val allGeofences = when {
-                subPositionId != null -> listOfNotNull(ServiceLocator.smsSubPositionDao.getById(subPositionId))
-                zone != null -> {
-                    val positionId = ServiceLocator.smsPositionDao.getByCode(zone)?.position_id
-                    positionId?.let { ServiceLocator.smsSubPositionDao.getByPosition(projectId, it) }.orEmpty()
-                }
+                subPositionId != null -> zoneSubPositions.filter { it.sub_position_id == subPositionId }
+                zone != null -> zoneSubPositions
                 else -> ServiceLocator.smsSubPositionDao.getByProject(projectId)
             }
             val geofences = allGeofences.filter { !it.geofence_polygon.isNullOrBlank() }

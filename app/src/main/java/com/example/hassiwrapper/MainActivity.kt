@@ -40,6 +40,7 @@ import androidx.navigation.ui.setupWithNavController
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.example.hassiwrapper.scanner.DataWedgeManager
+import com.example.hassiwrapper.services.GeofenceSeeder
 import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.services.PositionHelper
 import com.example.hassiwrapper.services.SpoolDeltaGuard
@@ -990,6 +991,7 @@ class MainActivity : AppCompatActivity() {
                         // Preserve locally-set ready_to_send and vehicle assignment so API sync doesn't wipe them
                         val localPLs = ServiceLocator.smsPackingListDao.getByProject(projectId)
                             .associateBy { it.packing_list_id }
+                        val ghostPlIds = mutableListOf<Long>()
                         val mergedPLs = activePLs.map { pl ->
                             val local = localPLs[pl.packing_list_id] ?: return@map pl
                             val keepLocal = !local.synced
@@ -997,14 +999,21 @@ class MainActivity : AppCompatActivity() {
                             // total_spools_count column — that field lags behind spool-link
                             // calls and was stomping the correct local count on every auto-sync.
                             val actualCount = ServiceLocator.smsSpoolDao.countByPackingList(pl.packing_list_id)
+                            val mergedVehicleId = pl.vehicle_id ?: local.vehicle_id
+                            // A PL that lost every spool (re-scanned onto another load) but still
+                            // carries a vehicle looks like a perpetual transit (bug: PL 5922).
+                            // Release it here too — not just at send-time — so this also heals
+                            // ghost PLs already sitting on the server from before that fix shipped.
+                            val isGhost = actualCount == 0 && mergedVehicleId != null
+                            if (isGhost) ghostPlIds += pl.packing_list_id
                             pl.copy(
-                                ready_to_send      = local.ready_to_send,
-                                vehicle_id         = pl.vehicle_id ?: local.vehicle_id,
-                                vehicle_plate      = pl.vehicle_plate ?: local.vehicle_plate,
+                                ready_to_send      = if (isGhost) false else local.ready_to_send,
+                                vehicle_id         = if (isGhost) null else mergedVehicleId,
+                                vehicle_plate      = if (isGhost) null else (pl.vehicle_plate ?: local.vehicle_plate),
                                 position_id        = if (keepLocal) local.position_id else (pl.position_id ?: local.position_id),
                                 position           = if (keepLocal) local.position else (pl.position ?: local.position),
                                 total_spools_count = actualCount,
-                                synced             = if (keepLocal) false else pl.synced
+                                synced             = if (isGhost) false else (if (keepLocal) false else pl.synced)
                             )
                         }
                         val newPLCount = mergedPLs.count { it.packing_list_id !in localPLs }
@@ -1028,11 +1037,53 @@ class MainActivity : AppCompatActivity() {
 
                         ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
                         if (mergedPLs.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(mergedPLs)
+                        if (ghostPlIds.isNotEmpty()) {
+                            Log.d(TAG, "syncSmsData: releasing ${ghostPlIds.size} vehicle-attached 0-spool PL(s): $ghostPlIds")
+                            val markedAt = java.time.LocalDateTime.now().toString()
+                            ghostPlIds.forEach { id ->
+                                ServiceLocator.smsPackingListHistoricalDao.markHistorical(
+                                    SmsPackingListHistoricalEntity(packing_list_id = id, marked_at = markedAt)
+                                )
+                            }
+                        }
                         Log.d(TAG, "syncSmsData: inserted ${mergedPLs.size} packing lists (${entities.size - mergedPLs.size} inactive/deleted skipped)")
                         val plMsg = getString(R.string.sync_sms_pl_ok, newPLCount, updatedPLCount, mergedPLs.size)
                         withContext(Dispatchers.Main) { onProgress?.invoke(plMsg) }
                     }
                     ServiceLocator.smsPackingListDao.deleteInactive()
+                }
+            }
+
+            launch(Dispatchers.Default) {
+                syncSection("spool-locations") {
+                    // Latest GPS fix per spool for the whole project — without this the Map tab
+                    // only ever showed pins this very terminal captured, since captures upload
+                    // (SyncService.uploadSpoolLocations) but nothing ever downloaded them back.
+                    // Runs after SyncService.fullSync() in every cycle (see runSyncCycle), so a
+                    // fix captured locally this cycle is already on the server by the time we ask.
+                    val locResp = service.getProjectSpoolLocations(projectCode)
+                    if (!locResp.isSuccessful) {
+                        Log.w(TAG, "syncSmsData spool-locations: HTTP ${locResp.code()}")
+                        return@syncSection
+                    }
+                    val raw = locResp.body()?.string().orEmpty()
+                    val entities = parseSpoolLocationEntities(raw)
+                    if (entities.isEmpty()) {
+                        // Never let an empty/unparseable payload wipe pins that are on the map:
+                        // an older backend without this route, or a 200 with an error body, would
+                        // otherwise clear every downloaded fix. Pins are additive in practice.
+                        Log.d(TAG, "syncSmsData spool-locations: empty payload, keeping local pins")
+                        return@syncSection
+                    }
+                    // CRC key is project-scoped — a project switch without a DB reset would
+                    // otherwise match the previous project's CRC and strand its pins on the map.
+                    applyLookupIfChanged("spool_locations_$projectId", raw) {
+                        val pendingSpoolIds = ServiceLocator.smsSpoolLocationDao.getSpoolIdsWithUnsynced().toSet()
+                        val toInsert = entities.filter { it.spool_id !in pendingSpoolIds }
+                        ServiceLocator.smsSpoolLocationDao.deleteSyncedByProject(projectId)
+                        if (toInsert.isNotEmpty()) ServiceLocator.smsSpoolLocationDao.insertAll(toInsert)
+                        Log.d(TAG, "syncSmsData: ${toInsert.size} spool GPS pins downloaded (${entities.size - toInsert.size} skipped, local fix pending upload)")
+                    }
                 }
             }
 
@@ -1202,6 +1253,10 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        // Runs after every table above has settled — needs sub-positions already synced to
+        // find its targets. Cheap no-op once a sub-position's stored polygon already matches.
+        GeofenceSeeder.seed(applicationContext, projectId)
     }
 
     private fun parseSpecEntities(raw: String, projectId: Int): List<SmsSpecEntity> =
@@ -1476,6 +1531,27 @@ internal fun parseVehicleEntities(raw: String, projectId: Int): List<SmsVehicleE
                 val dto = gson.fromJson(element, SmsVehicleDto::class.java)
                 val entity = dto.toEntity(projectId)
                 if (entity.vehicle_id == 0L) null else entity
+            } catch (e: Exception) { null }
+        }
+    } catch (e: Exception) { emptyList() }
+}
+
+internal fun parseSpoolLocationEntities(raw: String): List<SmsSpoolLocationEntity> {
+    val gson = Gson()
+    return try {
+        val el = JsonParser.parseString(raw)
+        val array = when {
+            el.isJsonArray -> el.asJsonArray
+            el.isJsonObject -> listOf("data", "items", "results", "locations").asSequence()
+                .mapNotNull { el.asJsonObject.get(it) }.firstOrNull { it.isJsonArray }?.asJsonArray
+            else -> null
+        } ?: return emptyList()
+        array.mapNotNull { element ->
+            if (!element.isJsonObject) return@mapNotNull null
+            try {
+                val dto = gson.fromJson(element, com.example.hassiwrapper.network.dto.SpoolMapPointDto::class.java)
+                val entity = dto.toEntity()
+                if (entity.spool_id == 0L || entity.captured_at.isBlank()) null else entity
             } catch (e: Exception) { null }
         }
     } catch (e: Exception) { emptyList() }

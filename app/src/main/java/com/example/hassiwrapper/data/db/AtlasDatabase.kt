@@ -36,6 +36,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsIsoTypeEntity::class,
         SmsPackingListEntity::class,
         SmsPackingListSpoolEntity::class,
+        SmsPackingListHistoricalEntity::class,
         SmsPositionEntity::class,
         SmsSpecEntity::class,
         SmsSpoolEntity::class,
@@ -56,7 +57,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsAuditLogEntity::class,
         SmsSpoolLocationEntity::class
     ],
-    version = 42,
+    version = 43,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -84,6 +85,7 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun smsIsoTypeDao(): SmsIsoTypeDao
     abstract fun smsPackingListDao(): SmsPackingListDao
     abstract fun smsPackingListSpoolDao(): SmsPackingListSpoolDao
+    abstract fun smsPackingListHistoricalDao(): SmsPackingListHistoricalDao
     abstract fun smsPositionDao(): SmsPositionDao
     abstract fun smsSubPositionDao(): SmsSubPositionDao
     abstract fun smsSpecDao(): SmsSpecDao
@@ -992,6 +994,23 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v42 → v43: sms_packing_list_historical — app-local marker table for "PL actual" vs "PL
+        // histórico" (see ReceivePackingListFragment / PackingListsFragment). Kept as a separate
+        // table, not a column on sms_packing_list, because that table is fully REPLACEd from the
+        // server on every sync (parsePackingListEntities/insertAll) and would silently wipe a flag
+        // column back to its default on the next 60 s auto-sync.
+        private val MIGRATION_42_43 = object : Migration(42, 43) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 42 → 43: create sms_packing_list_historical")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_packing_list_historical` (
+                        `packing_list_id` INTEGER NOT NULL PRIMARY KEY,
+                        `marked_at` TEXT NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -1040,7 +1059,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_38_39,
                         MIGRATION_39_40,
                         MIGRATION_40_41,
-                        MIGRATION_41_42
+                        MIGRATION_41_42,
+                        MIGRATION_42_43
                     )
                     .build()
                 INSTANCE = instance

@@ -534,6 +534,15 @@ class ReceivePackingListFragment : Fragment() {
                 // the vehicle frees the truck for its next load AND drops the PL out of the Receive
                 // screen (resolved by vehicle), with no dependency on the fragile ready_to_send flag.
                 ServiceLocator.smsPackingListDao.clearVehicleAndDeliver(pl.packing_list_id)
+                // App-local only — never touched by server sync, so it survives the 60 s auto-sync
+                // REPLACE of sms_packing_list. Drives the Actuales/Históricos split in
+                // PackingListsFragment: without this the delivered PL kept showing as "current".
+                ServiceLocator.smsPackingListHistoricalDao.markHistorical(
+                    com.example.hassiwrapper.data.db.entities.SmsPackingListHistoricalEntity(
+                        packing_list_id = pl.packing_list_id,
+                        marked_at = now
+                    )
+                )
                 if (pl.synced && !projectCode.isNullOrBlank()) {
                     // Persist the delivery as a PL UPDATE (destination position + vehicle=null),
                     // offline-safe via the outbox — same path as EditPackingListFragment.saveEdits.

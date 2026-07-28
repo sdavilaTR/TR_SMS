@@ -69,6 +69,7 @@ object ServiceLocator {
     val smsSpoolDao get() = db.smsSpoolDao()
     val smsPackingListDao get() = db.smsPackingListDao()
     val smsPackingListSpoolDao get() = db.smsPackingListSpoolDao()
+    val smsPackingListHistoricalDao get() = db.smsPackingListHistoricalDao()
     val smsAreaDao get() = db.smsAreaDao()
     val smsBoreSizeDao get() = db.smsBoreSizeDao()
     val smsIncompleteStatusDao get() = db.smsIncompleteStatusDao()

@@ -8,6 +8,8 @@
     <string name="menu_passport">Packing List</string>
     <string name="packing_lists_empty">No packing lists.</string>
     <string name="packing_lists_count">%1$d packing lists</string>
+    <string name="packing_lists_tab_current">Current</string>
+    <string name="packing_lists_tab_historical">Historical</string>
     <string name="packing_lists_error_prefix">Error: %s</string>
     <string name="packing_lists_error_http">HTTP %d</string>
     <string name="packing_lists_error_project_code">projectCode null/empty for project_id=%d. Did you sync?</string>
@@ -884,6 +886,8 @@
     <string name="vehicle_detail_no_unassigned_pls">No packing lists without an assigned vehicle</string>
     <string name="vehicle_detail_pl_added">Packing List assigned to vehicle</string>
     <string name="pl_vehicle_conflict">Could not assign: %1$s</string>
+    <string name="pl_vehicle_conflict_title">Vehicle already loaded</string>
+    <string name="pl_vehicle_conflict_warning">Vehicle %1$s already has an undelivered Packing List (%2$s). If you\'re adding spools to that same shipment, continue as normal; if this is a different load, pick another vehicle.</string>
     <string name="vehicle_detail_pl_removed">Packing List unassigned from vehicle</string>
     <string name="vehicle_detail_remove_pl_title">Unassign Packing List</string>
     <string name="vehicle_detail_remove_pl_msg">Unassign %1$s from this vehicle?</string>
@@ -933,6 +937,8 @@
     <string name="load_spools_qr_is_spool">This QR belongs to a spool, not a vehicle. Scan the vehicle QR.</string>
     <string name="load_spools_weight_meter">Load: %1$s / %2$s kg (%3$d%%)</string>
     <string name="load_spools_weight_no_capacity">Load: %1$s kg (vehicle capacity not defined)</string>
+    <string name="load_spools_weight_missing"> · %1$d without weight (tap to retry)</string>
+    <string name="load_spools_weight_retrying">Retrieving weights…</string>
 
     <!-- Transfer: Send Packing List -->
     <string name="transfer_send_title">Send Packing List</string>
@@ -946,6 +952,7 @@
     <string name="transfer_send_success_partial">Shipment recorded (data pending upload)</string>
     <string name="transfer_send_uploading">Uploading data to server…</string>
     <string name="transfer_send_error">Error: %s</string>
+    <string name="transfer_send_conflict_dropped">Could not send: another device already sent vehicle %1$s on a different Packing List. Please try again.</string>
     <string name="transfer_send_location_blocked">Cannot send from this location.</string>
     <string name="transfer_select_destination">Select shipment destination</string>
     <string name="transfer_destination_laydown">Laydown</string>

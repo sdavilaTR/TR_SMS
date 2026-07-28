@@ -317,6 +317,13 @@ interface AtlasApiService {
         @retrofit2.http.Path("spoolId") spoolId: Long
     ): Response<okhttp3.ResponseBody>
 
+    /** Bulk, project-scoped: latest GPS fix per spool. Feeds the Map tab with pins captured by
+     *  *other* terminals — the per-spool route above only ever returns one spool's history. */
+    @GET("/api/atlas/projects/{projectCode}/spools/locations")
+    suspend fun getProjectSpoolLocations(
+        @retrofit2.http.Path("projectCode") projectCode: String
+    ): Response<okhttp3.ResponseBody>
+
     @POST("/api/atlas/projects/{projectCode}/spools/{spoolId}/location")
     suspend fun postSpoolLocation(
         @retrofit2.http.Path("projectCode") projectCode: String,

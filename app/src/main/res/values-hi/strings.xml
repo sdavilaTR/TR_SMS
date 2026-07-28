@@ -56,6 +56,8 @@
     <string name="passport_screen_title">पासपोर्ट</string>
     <string name="packing_lists_empty">कोई पैकिंग लिस्ट नहीं है।</string>
     <string name="packing_lists_count">%1$d पैकिंग लिस्ट</string>
+    <string name="packing_lists_tab_current">वर्तमान</string>
+    <string name="packing_lists_tab_historical">ऐतिहासिक</string>
     <string name="packing_lists_error_prefix">त्रुटि: %s</string>
     <string name="packing_lists_error_http">HTTP त्रुटि %d</string>
     <string name="packing_lists_error_project_code">project_id=%d के लिए projectCode खाली/शून्य है। क्या सिंक किया गया था?</string>
@@ -800,6 +802,8 @@
     <string name="vehicle_detail_no_unassigned_pls">बिना वाहन वाली कोई पैकिंग लिस्ट नहीं है</string>
     <string name="vehicle_detail_pl_added">पैकिंग लिस्ट वाहन को निर्दिष्ट की गई</string>
     <string name="pl_vehicle_conflict">निर्दिष्ट नहीं हो सका: %1$s</string>
+    <string name="pl_vehicle_conflict_title">वाहन पहले से लोड है</string>
+    <string name="pl_vehicle_conflict_warning">वाहन %1$s में पहले से ही एक अनडिलीवर पैकिंग लिस्ट है (%2$s)। यदि आप उसी शिपमेंट में स्पूल जोड़ रहे हैं, तो सामान्य रूप से जारी रखें; यदि यह एक अलग लोड है, तो कोई दूसरा वाहन चुनें।</string>
     <string name="vehicle_detail_pl_removed">पैकिंग लिस्ट वाहन से हटाई गई</string>
     <string name="vehicle_detail_remove_pl_title">पैकिंग लिस्ट का निर्धारण हटाएं</string>
     <string name="vehicle_detail_remove_pl_msg">क्या %1$s को इस वाहन से हटाना है?</string>
@@ -864,6 +868,7 @@
     <string name="transfer_send_success_partial">भेजना दर्ज हुआ (डेटा अपलोड होना लंबित है)</string>
     <string name="transfer_send_uploading">सर्वर पर डेटा अपलोड हो रहा है…</string>
     <string name="transfer_send_error">त्रुटि: %s</string>
+    <string name="transfer_send_conflict_dropped">भेजा नहीं जा सका: किसी दूसरे डिवाइस ने वाहन %1$s को पहले ही एक अलग पैकिंग लिस्ट में भेज दिया है। कृपया फिर से प्रयास करें।</string>
     <string name="transfer_send_location_blocked">इस स्थान से भेजा नहीं जा सकता।</string>
     <string name="transfer_select_destination">भेजने का गंतव्य चुनें</string>
     <string name="transfer_destination_laydown">Laydown</string>

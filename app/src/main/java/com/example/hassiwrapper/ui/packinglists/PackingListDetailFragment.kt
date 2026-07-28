@@ -348,24 +348,6 @@ class PackingListDetailFragment : Fragment() {
         )
     }
 
-    /** Deleting a PL that was already sent leaves its vehicle stuck "on route" forever, since
-     *  only a receive confirms that flag off. Clean up the dangling SEND transfer and free the
-     *  vehicle here if nothing else is still in transit for it. */
-    private suspend fun releaseVehicleForDeletedPL(pl: SmsPackingListEntity?) {
-        if (pl == null) return
-        val sendTransfers = ServiceLocator.smsTransferDao.getSendByPackingList(pl.packing_list_id)
-        if (sendTransfers.isEmpty()) return
-        val transferIds = sendTransfers.map { it.transfer_id }
-        ServiceLocator.smsTransferDao.deleteSpoolsByTransferIds(transferIds)
-        ServiceLocator.smsTransferDao.deleteByIds(transferIds)
-
-        val vehicleId = pl.vehicle_id ?: return
-        val stillInTransit = ServiceLocator.smsSpoolDao.countInTransitByVehicle(vehicleId)
-        if (stillInTransit == 0) {
-            ServiceLocator.smsVehicleDao.setOffRoute(vehicleId)
-        }
-    }
-
     private fun confirmHardDelete() {
         AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.pl_detail_confirm_hard_delete_title))
@@ -384,14 +366,11 @@ class PackingListDetailFragment : Fragment() {
                 val projectId = pl?.project_id ?: (ServiceLocator.configRepo.getInt("selected_project_id") ?: 6)
 
                 locallyDeletedPLIds.add(packingListId)
-                val spools = ServiceLocator.smsSpoolDao.getByPackingList(packingListId)
-                spools.forEach {
-                    ServiceLocator.smsSpoolDao.updatePackingList(it.spool_id, null)
-                    ServiceLocator.smsSpoolDao.updateInTransit(it.spool_id, false)
-                }
-                ServiceLocator.smsPackingListSpoolDao.deleteByPackingList(packingListId)
+                com.example.hassiwrapper.services.releaseDanglingSendForPackingList(
+                    packingListId, pl?.vehicle_id, ServiceLocator.smsSpoolDao, ServiceLocator.smsPackingListSpoolDao,
+                    ServiceLocator.smsTransferDao, ServiceLocator.smsVehicleDao
+                )
                 ServiceLocator.smsPackingListDao.deleteById(packingListId)
-                releaseVehicleForDeletedPL(pl)
 
                 // Queue the server hard-delete for synced PLs so it survives offline + restart.
                 if (isSynced) {
@@ -433,14 +412,11 @@ class PackingListDetailFragment : Fragment() {
                 val projectId = pl?.project_id ?: (ServiceLocator.configRepo.getInt("selected_project_id") ?: 6)
 
                 locallyDeletedPLIds.add(packingListId)
-                val spools = ServiceLocator.smsSpoolDao.getByPackingList(packingListId)
-                spools.forEach {
-                    ServiceLocator.smsSpoolDao.updatePackingList(it.spool_id, null)
-                    ServiceLocator.smsSpoolDao.updateInTransit(it.spool_id, false)
-                }
-                ServiceLocator.smsPackingListSpoolDao.deleteByPackingList(packingListId)
+                com.example.hassiwrapper.services.releaseDanglingSendForPackingList(
+                    packingListId, pl?.vehicle_id, ServiceLocator.smsSpoolDao, ServiceLocator.smsPackingListSpoolDao,
+                    ServiceLocator.smsTransferDao, ServiceLocator.smsVehicleDao
+                )
                 ServiceLocator.smsPackingListDao.deleteById(packingListId)
-                releaseVehicleForDeletedPL(pl)
 
                 // Queue the server delete for synced PLs so it survives offline + restart.
                 if (isSynced) {

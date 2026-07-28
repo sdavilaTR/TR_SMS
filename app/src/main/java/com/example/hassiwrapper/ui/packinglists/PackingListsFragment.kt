@@ -16,8 +16,10 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
+import com.example.hassiwrapper.data.db.entities.SmsPackingListHistoricalEntity
 import com.example.hassiwrapper.parsePackingListEntities
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.launch
 
 class PackingListsFragment : Fragment() {
@@ -32,6 +34,11 @@ class PackingListsFragment : Fragment() {
     private lateinit var txtError: TextView
     private lateinit var txtCount: TextView
     private lateinit var fab: FloatingActionButton
+    private lateinit var tabLayout: TabLayout
+
+    /** Tab 0 = Actuales (open/in-flow PLs), tab 1 = Históricos (delivered, see
+     *  ReceivePackingListFragment/sms_packing_list_historical). */
+    private var showHistorical = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         inflater.inflate(R.layout.fragment_packing_lists, container, false)
@@ -45,6 +52,7 @@ class PackingListsFragment : Fragment() {
         txtError = view.findViewById(R.id.txtError)
         txtCount = view.findViewById(R.id.txtCount)
         fab      = view.findViewById(R.id.fabNewPackingList)
+        tabLayout = view.findViewById(R.id.tabLayoutPlStatus)
         // Creación manual de PL deshabilitada: los PLs ahora se crean solo desde los envíos.
         fab.visibility = View.GONE
 
@@ -52,11 +60,50 @@ class PackingListsFragment : Fragment() {
         rv.layoutManager = LinearLayoutManager(requireContext())
         rv.adapter = adapter
         swipe.setOnRefreshListener { load(forceRefresh = true) }
+
+        tabLayout.addTab(tabLayout.newTab().setText(getString(R.string.packing_lists_tab_current)))
+        tabLayout.addTab(tabLayout.newTab().setText(getString(R.string.packing_lists_tab_historical)))
+        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                showHistorical = tab.position == 1
+                load(forceRefresh = false)
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab) {}
+            override fun onTabReselected(tab: TabLayout.Tab) {}
+        })
     }
 
     override fun onResume() {
         super.onResume()
         load(forceRefresh = false)
+    }
+
+    private suspend fun displayList(projectId: Int): List<SmsPackingListEntity> =
+        if (showHistorical) ServiceLocator.smsPackingListDao.getHistoricalByProject(projectId)
+        else ServiceLocator.smsPackingListDao.getCurrentByProject(projectId)
+
+    /** Self-heal ghost PLs: a vehicle still attached but zero actual spools left on it (bug:
+     *  spools all got re-scanned onto another load, e.g. PL 5922, and nothing ever released the
+     *  vehicle). New sends already avoid creating these (see SendPackingListFragment's
+     *  vacatedPlIds handling), but this sweeps up ones that already exist in the DB/server —
+     *  runs on every load() so it also catches ones written before that fix shipped. Reuses
+     *  clearVehicleAndDeliver (sets synced=false, so the release uploads) + markHistorical so the
+     *  PL survives as a record instead of vanishing, same treatment as a normal delivery.
+     */
+    private suspend fun reconcileGhostPls(projectId: Int) {
+        val current = ServiceLocator.smsPackingListDao.getCurrentByProject(projectId)
+        val ghosts = current.filter { pl ->
+            pl.vehicle_id != null && ServiceLocator.smsSpoolDao.countByPackingList(pl.packing_list_id) == 0
+        }
+        if (ghosts.isEmpty()) return
+        Log.d("PackingListsDebug", "reconcileGhostPls: releasing ${ghosts.size} vehicle-attached 0-spool PL(s): ${ghosts.map { it.packing_list_id }}")
+        val markedAt = java.time.LocalDateTime.now().toString()
+        ghosts.forEach { pl ->
+            ServiceLocator.smsPackingListDao.clearVehicleAndDeliver(pl.packing_list_id)
+            ServiceLocator.smsPackingListHistoricalDao.markHistorical(
+                SmsPackingListHistoricalEntity(packing_list_id = pl.packing_list_id, marked_at = markedAt)
+            )
+        }
     }
 
     private fun load(forceRefresh: Boolean) {
@@ -65,12 +112,18 @@ class PackingListsFragment : Fragment() {
             txtError.visibility = View.GONE
             try {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                Log.d("PackingListsDebug", "load() forceRefresh=$forceRefresh projectId=$projectId")
+                Log.d("PackingListsDebug", "load() forceRefresh=$forceRefresh projectId=$projectId showHistorical=$showHistorical")
 
-                val cached = ServiceLocator.smsPackingListDao.getByProject(projectId)
-                Log.d("PackingListsDebug", "DB cache: ${cached.size} packing lists for project $projectId")
+                reconcileGhostPls(projectId)
 
-                if (cached.isNotEmpty() && !forceRefresh) {
+                // Gate on the project's total local PL count, not this tab's — otherwise an empty
+                // Históricos tab (the common case right after this feature ships) would re-hit the
+                // network on every open/onResume even though Actuales already has a fresh cache.
+                val hasLocalCache = ServiceLocator.smsPackingListDao.countByProject(projectId) > 0
+                val cached = displayList(projectId)
+                Log.d("PackingListsDebug", "DB cache: ${cached.size} packing lists for project $projectId (hasLocalCache=$hasLocalCache)")
+
+                if (hasLocalCache && !forceRefresh) {
                     items.clear()
                     items += cached
                     adapter.notifyDataSetChanged()
@@ -102,7 +155,7 @@ class PackingListsFragment : Fragment() {
                     inactive.forEach { ServiceLocator.smsPackingListDao.deleteById(it.packing_list_id) }
                     if (active.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(active)
                     items.clear()
-                    items += ServiceLocator.smsPackingListDao.getByProject(projectId)
+                    items += displayList(projectId)
                     Log.d("PackingListsDebug", "Displaying ${items.size} packing lists after insert")
                     adapter.notifyDataSetChanged()
                 } else {
@@ -110,7 +163,7 @@ class PackingListsFragment : Fragment() {
                     Log.e("PackingListsDebug", "HTTP error ${resp.code()}: $errBody")
                     showError(getString(R.string.packing_lists_error_http, resp.code()))
                     if (items.isEmpty()) {
-                        items += ServiceLocator.smsPackingListDao.getByProject(projectId)
+                        items += displayList(projectId)
                         adapter.notifyDataSetChanged()
                     }
                 }
@@ -120,7 +173,7 @@ class PackingListsFragment : Fragment() {
                 if (items.isEmpty()) {
                     try {
                         val fallbackId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                        items += ServiceLocator.smsPackingListDao.getByProject(fallbackId)
+                        items += displayList(fallbackId)
                         adapter.notifyDataSetChanged()
                     } catch (e2: Exception) {
                         Log.e("PackingListsDebug", "Fallback DB read also failed", e2)

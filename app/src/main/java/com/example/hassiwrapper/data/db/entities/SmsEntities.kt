@@ -96,6 +96,16 @@ data class SmsPackingListEntity(
     val row_version: String? = null
 )
 
+/** App-local, never touched by server sync (parsePackingListEntities / insertAll REPLACE would
+ *  otherwise clobber a flag column on sms_packing_list itself every 60 s auto-sync). One row per
+ *  PL that has been fully received/delivered — presence here means "historical", regardless of
+ *  which position it was delivered at. */
+@Entity(tableName = "sms_packing_list_historical")
+data class SmsPackingListHistoricalEntity(
+    @PrimaryKey val packing_list_id: Long,
+    val marked_at: String = ""
+)
+
 @Entity(tableName = "sms_packing_list_spool", indices = [Index(value = ["spool_id"], unique = true)])
 data class SmsPackingListSpoolEntity(
     @PrimaryKey val packing_list_spool_id: Long,

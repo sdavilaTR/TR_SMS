@@ -26,6 +26,7 @@ import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
+import com.example.hassiwrapper.data.db.entities.SmsPackingListHistoricalEntity
 import com.example.hassiwrapper.data.db.entities.SmsPackingListSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolLocationEntity
@@ -301,7 +302,20 @@ class SendPackingListFragment : Fragment() {
         }
     }
 
-    private fun selectVehicle(vehicle: SmsVehicleEntity) {
+    private suspend fun selectVehicle(vehicle: SmsVehicleEntity) {
+        // Same one-active-PL-per-vehicle rule the server enforces at send time (409 on conflict).
+        // Surfacing it here — before any spool is scanned — means the user finds out this vehicle
+        // is already loaded up front, instead of scanning a full load and hitting the conflict
+        // only when they try to send. Scanning the same PL's own spools afterward still works
+        // (onConfirmSend recognizes and reuses it), so this warns rather than blocks.
+        val existingPl = ServiceLocator.smsPackingListDao.getByVehicle(vehicle.vehicle_id).firstOrNull()
+        if (existingPl != null) {
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(getString(R.string.pl_vehicle_conflict_title))
+                .setMessage(getString(R.string.pl_vehicle_conflict_warning, vehicle.license_plate, existingPl.packing_list_name))
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+        }
         selectedVehicle = vehicle
         txtSelectedVehicle.text = getString(R.string.load_spools_vehicle_selected, vehicle.license_plate)
         panelVehicle.visibility = View.GONE
@@ -761,11 +775,30 @@ class SendPackingListFragment : Fragment() {
 
                     // The spools above just left their previous PL(s) — refresh those PLs'
                     // total_spools_count so their detail screen header matches the actual
-                    // remaining spool list.
+                    // remaining spool list. If that emptied a PL out completely (every spool it
+                    // had got re-scanned onto this new load), it's not "in flow" anymore —
+                    // release its vehicle (bug: PL left with a truck attached and 0 spools,
+                    // stuck looking like a perpetual transit) and fold it into Históricos
+                    // instead of leaving a ghost in Actuales.
                     vacatedPlIds.forEach { oldPlId ->
                         val newCount = ServiceLocator.smsSpoolDao.getByPackingList(oldPlId).size
                         ServiceLocator.smsPackingListDao.getById(oldPlId)?.let { oldPl ->
-                            ServiceLocator.smsPackingListDao.insertAll(listOf(oldPl.copy(total_spools_count = newCount, synced = false)))
+                            val updatedOldPl = if (newCount == 0)
+                                oldPl.copy(
+                                    total_spools_count = 0,
+                                    vehicle_id          = null,
+                                    vehicle_plate       = null,
+                                    ready_to_send       = false,
+                                    synced              = false
+                                )
+                            else
+                                oldPl.copy(total_spools_count = newCount, synced = false)
+                            ServiceLocator.smsPackingListDao.insertAll(listOf(updatedOldPl))
+                            if (newCount == 0) {
+                                ServiceLocator.smsPackingListHistoricalDao.markHistorical(
+                                    SmsPackingListHistoricalEntity(packing_list_id = oldPlId, marked_at = now.toString())
+                                )
+                            }
                         }
                     }
 
@@ -912,6 +945,19 @@ class SendPackingListFragment : Fragment() {
                 }
 
                 if (!isAdded) return@launch
+
+                // The upload above can still find out — only now, from the server — that this
+                // vehicle's PL lost the one-active-PL-per-vehicle race (another device's PL synced
+                // first). When that happens SyncService drops this PL locally instead of retrying
+                // forever, so its absence here is the only signal this send never actually landed;
+                // without this check the screen reported success and navigated away regardless.
+                val plStillExists = ServiceLocator.smsPackingListDao.getById(effectivePlId) != null
+                if (!plStillExists) {
+                    Toast.makeText(requireContext(), getString(R.string.transfer_send_conflict_dropped, vehicle.license_plate), Toast.LENGTH_LONG).show()
+                    findNavController().navigateUp()
+                    return@launch
+                }
+
                 activity?.playSuccess()
                 ServiceLocator.auditLogService.log(
                     com.example.hassiwrapper.services.AuditLogService.TRANSFERENCIA_ENVIADA,

@@ -56,6 +56,8 @@
     <string name="passport_screen_title">جواز السفر</string>
     <string name="packing_lists_empty">لا توجد Packing Lists.</string>
     <string name="packing_lists_count">%1$d Packing Lists</string>
+    <string name="packing_lists_tab_current">الحالية</string>
+    <string name="packing_lists_tab_historical">التاريخية</string>
     <string name="packing_lists_error_prefix">خطأ: %s</string>
     <string name="packing_lists_error_http">خطأ HTTP %d</string>
     <string name="packing_lists_error_project_code">projectCode فارغ/غير موجود لـ project_id=%d. هل تمت المزامنة؟</string>
@@ -800,6 +802,8 @@
     <string name="vehicle_detail_no_unassigned_pls">لا توجد Packing Lists بدون مركبة معيّنة</string>
     <string name="vehicle_detail_pl_added">تم تعيين Packing List إلى المركبة</string>
     <string name="pl_vehicle_conflict">تعذّر التعيين: %1$s</string>
+    <string name="pl_vehicle_conflict_title">المركبة محمّلة بالفعل</string>
+    <string name="pl_vehicle_conflict_warning">المركبة %1$s لديها بالفعل قائمة تعبئة لم يتم تسليمها (%2$s). إذا كنت تضيف بكرات إلى نفس الشحنة، تابع كالمعتاد؛ إذا كانت هذه حمولة مختلفة، اختر مركبة أخرى.</string>
     <string name="vehicle_detail_pl_removed">تم إلغاء تعيين Packing List من المركبة</string>
     <string name="vehicle_detail_remove_pl_title">إلغاء تعيين Packing List</string>
     <string name="vehicle_detail_remove_pl_msg">هل تريد إلغاء تعيين %1$s من هذه المركبة؟</string>
@@ -864,6 +868,7 @@
     <string name="transfer_send_success_partial">تم تسجيل الإرسال (البيانات بانتظار الرفع)</string>
     <string name="transfer_send_uploading">جارٍ رفع البيانات إلى الخادم…</string>
     <string name="transfer_send_error">خطأ: %s</string>
+    <string name="transfer_send_conflict_dropped">تعذّر الإرسال: جهاز آخر أرسل بالفعل المركبة %1$s ضمن قائمة تعبئة مختلفة. حاول مرة أخرى.</string>
     <string name="transfer_send_location_blocked">لا يمكن الإرسال من هذا الموقع.</string>
     <string name="transfer_select_destination">اختر وجهة الإرسال</string>
     <string name="transfer_destination_laydown">Laydown</string>

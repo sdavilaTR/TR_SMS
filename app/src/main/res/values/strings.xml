@@ -56,6 +56,8 @@
     <string name="passport_screen_title">Pasaporte</string>
     <string name="packing_lists_empty">No hay packing lists.</string>
     <string name="packing_lists_count">%1$d packing lists</string>
+    <string name="packing_lists_tab_current">Actuales</string>
+    <string name="packing_lists_tab_historical">Históricos</string>
     <string name="packing_lists_error_prefix">Error: %s</string>
     <string name="packing_lists_error_http">Error HTTP %d</string>
     <string name="packing_lists_error_project_code">projectCode nulo/vacío para project_id=%d. ¿Se hizo sync?</string>
@@ -800,6 +802,8 @@
     <string name="vehicle_detail_no_unassigned_pls">No hay packing lists sin vehículo asignado</string>
     <string name="vehicle_detail_pl_added">Packing List asignado al vehículo</string>
     <string name="pl_vehicle_conflict">No se pudo asignar: %1$s</string>
+    <string name="pl_vehicle_conflict_title">Vehículo ya cargado</string>
+    <string name="pl_vehicle_conflict_warning">El vehículo %1$s ya tiene un Packing List sin entregar (%2$s). Si vas a añadir spools a ese mismo envío, continúa con normalidad; si es una carga distinta, elige otro vehículo.</string>
     <string name="vehicle_detail_pl_removed">Packing List desasignado del vehículo</string>
     <string name="vehicle_detail_remove_pl_title">Desasignar Packing List</string>
     <string name="vehicle_detail_remove_pl_msg">¿Desasignar %1$s de este vehículo?</string>
@@ -864,6 +868,7 @@
     <string name="transfer_send_success_partial">Envío registrado (datos pendientes de subir)</string>
     <string name="transfer_send_uploading">Subiendo datos al servidor…</string>
     <string name="transfer_send_error">Error: %s</string>
+    <string name="transfer_send_conflict_dropped">No se pudo enviar: otro dispositivo ya envió el vehículo %1$s en otro Packing List. Vuelve a intentarlo.</string>
     <string name="transfer_send_location_blocked">No se puede enviar desde esta ubicación.</string>
     <string name="transfer_select_destination">Seleccionar destino del envío</string>
     <string name="transfer_destination_laydown">Laydown</string>

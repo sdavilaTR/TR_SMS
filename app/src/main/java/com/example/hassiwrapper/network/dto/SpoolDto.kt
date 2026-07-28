@@ -216,6 +216,38 @@ data class SpoolLocationRequest(
     @SerializedName("scannedFrom") val scannedFrom: String? = null
 )
 
+/**
+ * Row of `GET /projects/{code}/spools/locations` — the project-wide, latest-fix-per-spool payload
+ * that feeds the Map tab. Deliberately separate from [SpoolLocationResponse]: that one is the
+ * per-spool history and carries a server `locationId`, which must NOT be reused as the local
+ * primary key (`location_id` is a local-only autoincrement — see SyncService.uploadSpoolLocations).
+ * Spool metadata (code, zone, position) is ignored here; the map joins it from `sms_spool` locally,
+ * which is also what keeps the GUEST zone scoping intact.
+ */
+data class SpoolMapPointDto(
+    @SerializedName("spoolId")      val spoolId: Long = 0,
+    @SerializedName("latitude")     val latitude: Double = 0.0,
+    @SerializedName("longitude")    val longitude: Double = 0.0,
+    @SerializedName("gpsAccuracyM") val gpsAccuracyM: Float? = null,
+    @SerializedName("capturedAt")   val capturedAt: String? = null
+) {
+    /** `synced = true` is mandatory, not cosmetic: SyncService.uploadSpoolLocations uploads every
+     *  `synced = 0` row with no origin filter, so a downloaded pin left unsynced would be POSTed
+     *  straight back — duplicating server rows every cycle and, worse, overwriting the spool's
+     *  `scanned_from` with this terminal's own `device_location` (AddSpoolLocationAsync writes it),
+     *  which is the exact column the GUEST map/KPI scoping filters on. */
+    fun toEntity() = SmsSpoolLocationEntity(
+        location_id    = 0,
+        spool_id       = spoolId,
+        latitude       = latitude,
+        longitude      = longitude,
+        gps_accuracy_m = gpsAccuracyM,
+        captured_at    = com.example.hassiwrapper.services.GpsHelper.normalizeCapturedAt(capturedAt.orEmpty()),
+        captured_by    = null,
+        synced         = true
+    )
+}
+
 data class SpoolLocationResponse(
     @SerializedName("locationId")   val locationId: Long,
     @SerializedName("spoolId")      val spoolId: Long,

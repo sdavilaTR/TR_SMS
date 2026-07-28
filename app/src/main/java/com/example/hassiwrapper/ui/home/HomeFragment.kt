@@ -171,7 +171,9 @@ class HomeFragment : Fragment() {
      *  A terminal further pinned to one sub-position (device_sub_position_id — e.g. a JAFURAH
      *  "Laydown GCP 5" terminal, where GCP5/6/9 are siblings under the same LAYDOWN zone) narrows
      *  the top KPI to that sub-position alone and skips the breakdown list, which would otherwise
-     *  reveal the sibling GCP zones' counts. */
+     *  reveal the sibling GCP zones' counts. Only applies when the pin actually has siblings —
+     *  a lone/degenerate sub-position (e.g. an auto-seeded "WORKSHOP/WORKSHOP") has nothing to
+     *  hide, and narrowing there would drop spools stamped before the terminal was pinned. */
     private suspend fun loadGuestZoneStats(rawLocation: String) {
         val view = view ?: return
         val row = view.findViewById<View>(R.id.guestZoneStatsRow)
@@ -184,8 +186,19 @@ class HomeFragment : Fragment() {
         }
 
         val projectId = getSelectedProjectId()
+        val positionId = ServiceLocator.smsPositionDao.getByCode(location)?.position_id
+        val subPositions = positionId?.let { ServiceLocator.smsSubPositionDao.getByPosition(projectId, it) }.orEmpty()
         val pinnedSubPositionId = ServiceLocator.configRepo.get("device_sub_position_id")?.toLongOrNull()
-        if (pinnedSubPositionId != null) {
+
+        // Only narrow to the pinned sub-position when it actually has siblings under the same
+        // zone (e.g. JAFURAH GCP5/6/9) — that's the only case where showing the full-zone count
+        // would leak sibling GCPs' totals. A lone/degenerate sub-position (e.g. a plain WORKSHOP
+        // zone auto-seeded with a single "WORKSHOP/WORKSHOP" sub-position) has nothing to hide.
+        // Narrowing there would also under-count: PositionHelper only started stamping the
+        // terminal's pin onto scanned spools recently, so rows scanned before that (or by a
+        // terminal with no pin) still carry a null sub_position_id and would vanish from the
+        // KPI. Fall through to the full-zone counts instead.
+        if (pinnedSubPositionId != null && subPositions.size > 1) {
             val pinned = ServiceLocator.smsSpoolDao.countByProjectZoneAndSubPosition(projectId, location)
                 .firstOrNull { it.subPositionId == pinnedSubPositionId }
             view.findViewById<TextView>(R.id.txtGuestZoneConfirmedCount).text = (pinned?.confirmed ?: 0).toString()
@@ -202,9 +215,7 @@ class HomeFragment : Fragment() {
         row.visibility = View.VISIBLE
 
         breakdown.removeAllViews()
-        val positionId = ServiceLocator.smsPositionDao.getByCode(location)?.position_id
-        val subPositions = positionId?.let { ServiceLocator.smsSubPositionDao.getByPosition(projectId, it) }.orEmpty()
-        if (subPositions.isEmpty()) {
+        if (subPositions.size <= 1) {
             breakdown.visibility = View.GONE
             return
         }

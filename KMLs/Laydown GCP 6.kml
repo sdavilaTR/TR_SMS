@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document id="document">
+	<name>Laydown GCP6</name>
+	<visibility>0</visibility>
+	<gx:CascadingStyle kml:id="__managed_style_058077DEFC40DE31FA1C_highlight">
+		<styleUrl>https://earth.google.com/balloon_components/base/1.1.0.0/card_template.kml#main</styleUrl>
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>4</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_058077DEFC40DE31FA1C_normal">
+		<styleUrl>https://earth.google.com/balloon_components/base/1.1.0.0/card_template.kml#main</styleUrl>
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>2.66667</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_058077DEFC40DE31FA1C">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_058077DEFC40DE31FA1C_normal</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_058077DEFC40DE31FA1C_highlight</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Placemark id="009E180FA540DE31FA09">
+		<name>Untitled placemark</name>
+		<LookAt>
+			<longitude>50.23141581862619</longitude>
+			<latitude>25.23058702403922</latitude>
+			<altitude>107.5535664947039</altitude>
+			<heading>359.8085153433245</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>3601.402881690301</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_058077DEFC40DE31FA1C</styleUrl>
+		<Point>
+			<coordinates>50.49339999999999,24.8257,111.7574072524239</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark id="01B1EF6A4640DE32E011">
+		<name>Untitled placemark</name>
+		<LookAt>
+			<longitude>50.24398118837898</longitude>
+			<latitude>24.82172985684866</latitude>
+			<altitude>155.3052067822143</altitude>
+			<heading>359.808514111761</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>7960.450706599513</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_058077DEFC40DE31FA1C</styleUrl>
+		<Point>
+			<coordinates>50.4908,24.8257,155.4171448939511</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark id="00F7CAF13E40DE33A174">
+		<name>Untitled placemark</name>
+		<LookAt>
+			<longitude>50.49112537244383</longitude>
+			<latitude>24.8259859693451</latitude>
+			<altitude>134.1702316076972</altitude>
+			<heading>359.8085122844968</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>2470.768434227212</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_058077DEFC40DE31FA1C</styleUrl>
+		<Point>
+			<coordinates>50.49339999999999,24.827,135.1421968017563</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark id="0EA0F0FCF940DE33AA2F">
+		<name>Untitled placemark</name>
+		<LookAt>
+			<longitude>50.49112537244383</longitude>
+			<latitude>24.8259859693451</latitude>
+			<altitude>134.1702316076972</altitude>
+			<heading>359.8085122844968</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>2470.768434227212</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_058077DEFC40DE31FA1C</styleUrl>
+		<Point>
+			<coordinates>50.4908,24.827,134.9836947132453</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark id="067A1A689940DE34C81C">
+		<name>laydown GCP 6</name>
+		<LookAt>
+			<longitude>50.49444009164569</longitude>
+			<latitude>24.82687298983794</latitude>
+			<altitude>134.3127800568956</altitude>
+			<heading>359.8085104457006</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>741.4731904624206</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_058077DEFC40DE31FA1C</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						50.49079680759348,24.82701509299556,0 50.49079608727753,24.82569486279275,0 50.49339846122431,24.82570353085963,0 50.49340032678116,24.82700295080947,0 50.49079680759348,24.82701509299556,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+</Document>
+</kml>

@@ -933,6 +933,7 @@
     <string name="load_spools_qr_is_spool">This QR belongs to a spool, not a vehicle. Scan the vehicle QR.</string>
     <string name="load_spools_weight_meter">Load: %1$s / %2$s kg (%3$d%%)</string>
     <string name="load_spools_weight_no_capacity">Load: %1$s kg (vehicle capacity not defined)</string>
+    <string name="load_spools_weight_missing"> · %1$d without weight (tap to retry)</string>
 
     <!-- Transfer: Send Packing List -->
     <string name="transfer_send_title">Send Packing List</string>

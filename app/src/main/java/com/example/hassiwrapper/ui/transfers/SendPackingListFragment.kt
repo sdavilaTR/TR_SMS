@@ -56,6 +56,15 @@ private val BAKED_IN_SUFFIX_SHAPE = Regex("""(?i)^SP\d+$""")
 /** Another device already put this vehicle on a different active Packing List (409, layer-1 guard). */
 private class VehicleAlreadyLoadingException(message: String) : Exception(message)
 
+/** Outcome of resolving a spool's weight.  The distinction that matters is [NoData] (the backend
+ *  genuinely has no weight for this spool — retrying is pointless) vs [Failed] (the lookup never
+ *  reached an answer, so it's worth another attempt before the total is used). */
+private sealed class WeightResult {
+    data class Ok(val kg: Double) : WeightResult()
+    object NoData : WeightResult()
+    object Failed : WeightResult()
+}
+
 class SendPackingListFragment : Fragment() {
 
     private data class ScannedSpool(
@@ -65,7 +74,10 @@ class SendPackingListFragment : Fragment() {
         val revision: String? = null,
         val packingListId: Long?,
         val packingListName: String?,
-        val weightKg: Double? = null
+        val weightKg: Double? = null,
+        /** The weight lookup failed for a reason worth retrying (offline, timeout, gateway error).
+         *  False also covers "backend has no weight for this spool", which no retry can fix. */
+        val weightRetryable: Boolean = false
     ) {
         val displayCode: String
             get() {
@@ -218,6 +230,11 @@ class SendPackingListFragment : Fragment() {
         }
         btnAddSpool.setOnClickListener { addSpoolManually() }
 
+        // Manual recovery: tapping the meter re-asks the API for every weight that failed.
+        cardWeightMeter.setOnClickListener {
+            viewLifecycleOwner.lifecycleScope.launch { retryPendingWeights() }
+        }
+
         btnContinueToSignature.setOnClickListener { goToDestinationPanel() }
         btnConfirmSend.setOnClickListener { onConfirmSend() }
 
@@ -346,8 +363,7 @@ class SendPackingListFragment : Fragment() {
                 ServiceLocator.smsSpoolDao.findByCode(projectId, code)
             }
 
-            val weight = resolveSpoolWeight(spool)
-            addSpool(spool, weight)
+            addSpool(spool, resolveSpoolWeight(spool))
         }
     }
 
@@ -366,14 +382,13 @@ class SendPackingListFragment : Fragment() {
             } else {
                 ServiceLocator.smsSpoolDao.findByCode(projectId, code)
             }
-            val weight = resolveSpoolWeight(spool)
-            addSpool(spool, weight)
+            addSpool(spool, resolveSpoolWeight(spool))
             etSpoolCode.text?.clear()
             etSpoolSuffix.text?.clear()
         }
     }
 
-    private fun addSpool(spool: SmsSpoolEntity?, weightKg: Double? = null) {
+    private fun addSpool(spool: SmsSpoolEntity?, weight: WeightResult = WeightResult.NoData) {
         if (spool == null) {
             // Not adding it: a phantom entry (spoolId=0) used to get added anyway and then
             // silently dropped at confirm time (filtered by spoolId != 0L everywhere it's
@@ -397,7 +412,8 @@ class SendPackingListFragment : Fragment() {
             revision        = spool.revision,
             packingListId   = spool.packing_list_id,
             packingListName = spool.packing_list_name,
-            weightKg        = weightKg
+            weightKg        = (weight as? WeightResult.Ok)?.kg,
+            weightRetryable = weight is WeightResult.Failed
         )
         scannedSpools.add(item)
         adapter.notifyItemInserted(scannedSpools.size - 1)
@@ -415,26 +431,40 @@ class SendPackingListFragment : Fragment() {
         updateWeightMeter()
     }
 
-    /** Local property table is rarely synced for normal spools, so fall back
-     *  to fetching+caching from the API (same pattern as SpoolDetailBottomSheet).
-     *  Silently returns null offline — that spool just won't count toward the meter. */
-    private suspend fun resolveSpoolWeight(spool: SmsSpoolEntity?): Double? {
-        if (spool == null) return null
-        ServiceLocator.smsSpoolPropertyDao.getBySpool(spool.spool_id)?.weight_kg?.let { return it }
+    /** Local property table is rarely synced for normal spools (it's only ever written on demand),
+     *  so nearly every scan takes the network path here. Fetch+cache from the API, same pattern as
+     *  SpoolDetailBottomSheet. Everything is logged: a silent null was impossible to tell apart
+     *  from "this spool has no weight" in the field. */
+    private suspend fun resolveSpoolWeight(spool: SmsSpoolEntity?): WeightResult {
+        if (spool == null) return WeightResult.NoData
+        ServiceLocator.smsSpoolPropertyDao.getBySpool(spool.spool_id)?.let { cached ->
+            return cached.weight_kg?.let { WeightResult.Ok(it) } ?: WeightResult.NoData
+        }
 
         return try {
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-            val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code ?: return null
+            val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+                ?: return WeightResult.Failed
             val service = ServiceLocator.apiClient.getService()
             val resp = service.getSpoolProperty(projectCode, spool.spool_id.toString())
-            if (!resp.isSuccessful) return null
+            if (!resp.isSuccessful) {
+                Log.w("SendPL", "weight ${spool.displayCode} (id=${spool.spool_id}): property HTTP ${resp.code()}")
+                // 404 is the backend saying there is no property row. Anything else (403 from the
+                // gateway, 5xx, proxy error) is an environment problem that a retry can clear.
+                return if (resp.code() == 404) WeightResult.NoData else WeightResult.Failed
+            }
             val raw = resp.body()?.string().orEmpty()
             val el = com.google.gson.JsonParser.parseString(raw)
-            if (!el.isJsonObject) return null
+            if (!el.isJsonObject) {
+                Log.w("SendPL", "weight ${spool.displayCode}: property 200 but body not an object: ${raw.take(120)}")
+                return WeightResult.Failed
+            }
             val obj = el.asJsonObject.let { o ->
                 if (o.has("data") && !o.get("data").isJsonNull && o.get("data").isJsonObject) o.getAsJsonObject("data") else o
             }
-            val weight = obj.jDbl("weightKg", "weight_kg") ?: return null
+            val weight = obj.jDbl("weightKg", "weight_kg")
+            // Cache even when weightKg is null, so a spool the backend has no weight for stops
+            // re-hitting the API on every later scan.
             ServiceLocator.smsSpoolPropertyDao.insertAll(listOf(
                 SmsSpoolPropertyEntity(
                     spool_id        = spool.spool_id,
@@ -445,13 +475,44 @@ class SendPackingListFragment : Fragment() {
                     updated_at      = obj.jStr("updatedAt", "updated_at").orEmpty()
                 )
             ))
-            weight
-        } catch (_: Exception) { null }
+            Log.d("SendPL", "weight ${spool.displayCode}: ${weight ?: "null (no weight on backend)"}")
+            weight?.let { WeightResult.Ok(it) } ?: WeightResult.NoData
+        } catch (e: Exception) {
+            Log.w("SendPL", "weight ${spool.displayCode}: property fetch failed", e)
+            WeightResult.Failed
+        }
+    }
+
+    /** The weight of a spool is resolved once, when it's added. A network hiccup at that instant
+     *  used to leave it null forever — silently understating the meter and, worse, the
+     *  total_weight_kg written onto the uploaded Packing List. Give the failed ones another go.
+     *  Deliberately not called per-add: on a 30-spool load that is O(n²) requests racing the 60 s
+     *  auto-sync, which is the very contention that makes the first attempt fail. */
+    private suspend fun retryPendingWeights() {
+        val pendingIds = scannedSpools.filter { it.weightRetryable }.map { it.spoolId }
+        if (pendingIds.isEmpty()) return
+        Log.d("SendPL", "retrying weight for ${pendingIds.size} spool(s)")
+        for (spoolId in pendingIds) {
+            val spool = ServiceLocator.smsSpoolDao.getById(spoolId) ?: continue
+            val result = resolveSpoolWeight(spool)
+            // Re-find by id rather than reusing an index: the user can remove a row while the
+            // request is in flight, which would otherwise write this weight onto another spool.
+            val idx = scannedSpools.indexOfFirst { it.spoolId == spoolId }
+            if (idx < 0) continue
+            scannedSpools[idx] = scannedSpools[idx].copy(
+                weightKg        = (result as? WeightResult.Ok)?.kg,
+                weightRetryable = result is WeightResult.Failed
+            )
+        }
+        updateWeightMeter()
     }
 
     private fun updateWeightMeter() {
         val vehicle = selectedVehicle
         val totalKg = scannedSpools.sumOf { it.weightKg ?: 0.0 }
+        // Spools counting as 0 kg make the meter read low without saying so; name them.
+        val missing = scannedSpools.count { it.weightKg == null }
+        val missingSuffix = if (missing > 0) getString(R.string.load_spools_weight_missing, missing) else ""
 
         if (vehicle == null || scannedSpools.isEmpty()) {
             cardWeightMeter.visibility = View.GONE
@@ -461,7 +522,7 @@ class SendPackingListFragment : Fragment() {
         val capacityKg = vehicle.capacity_weight_kg
         if (capacityKg == null || capacityKg <= 0.0) {
             cardWeightMeter.visibility = View.VISIBLE
-            txtWeightMeter.text = getString(R.string.load_spools_weight_no_capacity, formatKg(totalKg))
+            txtWeightMeter.text = getString(R.string.load_spools_weight_no_capacity, formatKg(totalKg)) + missingSuffix
             txtWeightMeter.setTextColor(requireContext().getColor(R.color.on_surface))
             progressWeight.progress = 0
             progressWeight.progressTintList = android.content.res.ColorStateList.valueOf(requireContext().getColor(R.color.green))
@@ -478,7 +539,7 @@ class SendPackingListFragment : Fragment() {
         val color = requireContext().getColor(colorRes)
 
         cardWeightMeter.visibility = View.VISIBLE
-        txtWeightMeter.text = getString(R.string.load_spools_weight_meter, formatKg(totalKg), formatKg(capacityKg), percent)
+        txtWeightMeter.text = getString(R.string.load_spools_weight_meter, formatKg(totalKg), formatKg(capacityKg), percent) + missingSuffix
         txtWeightMeter.setTextColor(color)
         progressWeight.progress = percent.coerceIn(0, 100)
         progressWeight.progressTintList = android.content.res.ColorStateList.valueOf(color)
@@ -512,6 +573,10 @@ class SendPackingListFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val location = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: ""
             if (location != "WORKSHOP" && location != "LAYDOWN") return@launch
+
+            // Last chance to recover weights that failed at scan time — after this the total is
+            // baked into the Packing List and uploaded.
+            retryPendingWeights()
 
             panelSpools.visibility = View.GONE
             panelDestination.visibility = View.VISIBLE

@@ -849,6 +849,7 @@
     <string name="load_spools_qr_is_spool">رمز QR هذا خاص بـ Spool وليس بمركبة. امسح رمز QR الخاص بالمركبة.</string>
     <string name="load_spools_weight_meter">الحمولة: %1$s / %2$s كجم (%3$d%%)</string>
     <string name="load_spools_weight_no_capacity">الحمولة: %1$s كجم (سعة المركبة غير محددة)</string>
+    <string name="load_spools_weight_missing"> · %1$d بدون وزن (اضغط لإعادة المحاولة)</string>
 
     <!-- Transfer: Send Packing List -->
     <string name="transfer_send_title">إرسال Packing List</string>

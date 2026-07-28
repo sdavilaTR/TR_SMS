@@ -933,6 +933,7 @@
     <string name="load_spools_qr_is_spool">该二维码属于管段，而非车辆。请扫描车辆二维码。</string>
     <string name="load_spools_weight_meter">装载：%1$s / %2$s 公斤 (%3$d%%)</string>
     <string name="load_spools_weight_no_capacity">装载：%1$s 公斤（未设置车辆载重）</string>
+    <string name="load_spools_weight_missing"> · %1$d 无重量（点击重试）</string>
 
     <!-- Transfer: Send Packing List -->
     <string name="transfer_send_title">发送装箱单</string>

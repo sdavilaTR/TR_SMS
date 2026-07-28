@@ -849,6 +849,7 @@
     <string name="load_spools_qr_is_spool">यह क्यूआर एक स्पूल का है, वाहन का नहीं। वाहन का क्यूआर स्कैन करें।</string>
     <string name="load_spools_weight_meter">लोड: %1$s / %2$s kg (%3$d%%)</string>
     <string name="load_spools_weight_no_capacity">लोड: %1$s kg (वाहन की क्षमता निर्धारित नहीं है)</string>
+    <string name="load_spools_weight_missing"> · %1$d बिना वज़न (पुनः प्रयास हेतु टैप करें)</string>
 
     <!-- Transfer: Send Packing List -->
     <string name="transfer_send_title">पैकिंग लिस्ट भेजना</string>

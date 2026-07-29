@@ -918,6 +918,31 @@ interface SmsIncidentDao {
 }
 
 @Dao
+interface SmsBugReportDao {
+    @Insert
+    suspend fun insert(item: SmsBugReportEntity): Long
+
+    @Query("SELECT * FROM sms_bug_report WHERE synced = 0")
+    suspend fun getUnsyncedMetadata(): List<SmsBugReportEntity>
+
+    @Query("UPDATE sms_bug_report SET server_id = :serverId, synced = 1, logs = NULL WHERE id = :id")
+    suspend fun markMetadataSynced(id: Long, serverId: Long)
+
+    @Query("SELECT * FROM sms_bug_report WHERE server_id IS NOT NULL AND screenshot_path IS NOT NULL AND screenshot_synced = 0")
+    suspend fun getUnsyncedScreenshots(): List<SmsBugReportEntity>
+
+    @Query("UPDATE sms_bug_report SET screenshot_synced = 1 WHERE id = :id")
+    suspend fun markScreenshotSynced(id: Long)
+
+    /** Fully synced = metadata sent and (no screenshot to send, or it was sent too). Nothing left to show or retry, so the local row/file can go. */
+    @Query("SELECT * FROM sms_bug_report WHERE synced = 1 AND (screenshot_path IS NULL OR screenshot_synced = 1)")
+    suspend fun getFullySynced(): List<SmsBugReportEntity>
+
+    @Query("DELETE FROM sms_bug_report WHERE id = :id")
+    suspend fun deleteById(id: Long)
+}
+
+@Dao
 interface SmsSpoolLocationDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: SmsSpoolLocationEntity): Long

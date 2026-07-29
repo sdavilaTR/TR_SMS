@@ -15,6 +15,7 @@ import com.example.hassiwrapper.data.db.dao.SmsSpoolMapMarker
 import com.example.hassiwrapper.data.db.entities.SmsPositionEntity
 import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
 import com.example.hassiwrapper.normalizeDeviceLocation
+import com.example.hassiwrapper.services.GeofenceHelper
 import com.example.hassiwrapper.services.KmlParser
 import com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet
 import kotlinx.coroutines.launch
@@ -148,9 +149,8 @@ class SpoolMapFragment : Fragment() {
         val geofenceInfos = mutableListOf<GeofenceInfo>()
         geofences.forEach { area ->
             val stored = area.geofence_polygon ?: return@forEach
-            val polygons = KmlParser.deserializeMulti(stored)
-                .map { polygon -> polygon.map { GeoPoint(it.lat, it.lon) } }
-                .filter { it.size >= 3 }
+            val rawPolygons = KmlParser.deserializeMulti(stored).filter { it.size >= 3 }
+            val polygons = rawPolygons.map { polygon -> polygon.map { GeoPoint(it.lat, it.lon) } }
             if (polygons.isEmpty()) return@forEach
             geofencePoints += polygons.flatten()
             val positionName = positions[area.position_id]?.name?.ifBlank { null }
@@ -158,13 +158,24 @@ class SpoolMapFragment : Fragment() {
             val subPositionName = area.name.ifBlank { area.code }.ifBlank { area.full_path.substringAfterLast("/") }
             val info = GeofenceInfo(positionName, subPositionName, polygons)
             geofenceInfos += info
-            polygons.forEach { points ->
+            rawPolygons.zip(polygons).forEach { (raw, points) ->
                 mv.overlays.add(Polygon(mv).apply {
                     this.points = points
                     title = info.label
                     fillColor = 0x220D47A1
                     strokeColor = 0xFF0D47A1.toInt()
                     strokeWidth = 3f
+                    // Polygon.contains() hit-tests the last-drawn screen-space Path, which
+                    // false-positives once zoomed out enough that the shape clips to a few px
+                    // (e.g. auto-fit across JAFURAH's far-apart GCP sub-positions). Re-check the
+                    // tapped point against the real lon/lat ring before opening the bubble.
+                    setOnClickListener { polygon, _, eventPos ->
+                        if (GeofenceHelper.isInside(eventPos.latitude, eventPos.longitude, raw)) {
+                            polygon.setInfoWindowLocation(eventPos)
+                            polygon.showInfoWindow()
+                            true
+                        } else false
+                    }
                 })
             }
         }

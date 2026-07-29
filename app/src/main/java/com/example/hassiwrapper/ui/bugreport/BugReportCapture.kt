@@ -68,13 +68,16 @@ object BugReportCapture {
     }
 
     /**
-     * Tail of this app's own logcat buffer, capped at ~500KB. No permission needed: Android
-     * restricts unprivileged apps to their own process's logcat output since API 16, so `logcat -d`
-     * here returns exactly this app's existing scattered Log.d/e calls — no custom logger needed.
+     * Tail of this app's own logcat buffer, capped at ~500KB. Filtered by `--pid` (own process):
+     * unfiltered `logcat` requests access to the whole device log, which on Android 12+ triggers
+     * a one-time system consent dialog ("Allow app to access all device logs") that silently
+     * blocks/empties the read if never answered. Scoping to our own pid stays within the
+     * always-allowed own-process log access and skips that dialog entirely.
      */
     fun captureLogsTail(maxBytes: Int = MAX_LOG_BYTES): String {
         return try {
-            val process = ProcessBuilder("logcat", "-d", "-t", "3000", "-v", "time").start()
+            val pid = android.os.Process.myPid()
+            val process = ProcessBuilder("logcat", "-d", "-t", "3000", "-v", "time", "--pid=$pid").start()
             val bytes = process.inputStream.use { it.readBytes() }
             process.waitFor()
             val text = String(bytes, Charsets.UTF_8)

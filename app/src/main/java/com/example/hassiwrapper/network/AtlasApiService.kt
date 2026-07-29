@@ -292,6 +292,23 @@ interface AtlasApiService {
         @Part file: MultipartBody.Part
     ): Response<okhttp3.ResponseBody>
 
+    // ── SMS Bug Reports ─────────────────────────────────
+    // Create-only upsert on body.uuid so a retried submit never duplicates the row.
+    @POST("/api/atlas/projects/{projectCode}/bug-reports")
+    suspend fun createSmsBugReport(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @Body body: com.example.hassiwrapper.network.dto.CreateSmsBugReportRequest
+    ): Response<okhttp3.ResponseBody>
+
+    // {bugReportId} is the server-assigned id returned by createSmsBugReport, not the client uuid.
+    @Multipart
+    @POST("/api/atlas/projects/{projectCode}/bug-reports/{bugReportId}/screenshot")
+    suspend fun uploadSmsBugReportScreenshot(
+        @retrofit2.http.Path("projectCode") projectCode: String,
+        @retrofit2.http.Path("bugReportId") bugReportId: Long,
+        @Part file: MultipartBody.Part
+    ): Response<okhttp3.ResponseBody>
+
     @GET("/api/atlas/projects/{projectCode}/spools/{spoolId}/events")
     suspend fun getSpoolEvents(
         @retrofit2.http.Path("projectCode") projectCode: String,

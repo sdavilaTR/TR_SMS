@@ -55,9 +55,10 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsOutboxEntity::class,
         SmsIdMapEntity::class,
         SmsAuditLogEntity::class,
-        SmsSpoolLocationEntity::class
+        SmsSpoolLocationEntity::class,
+        SmsBugReportEntity::class
     ],
-    version = 43,
+    version = 44,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -103,6 +104,7 @@ abstract class AtlasDatabase : RoomDatabase() {
     abstract fun smsOutboxDao(): SmsOutboxDao
     abstract fun smsAuditLogDao(): SmsAuditLogDao
     abstract fun smsSpoolLocationDao(): SmsSpoolLocationDao
+    abstract fun smsBugReportDao(): SmsBugReportDao
 
     /** Clears all data from every table (used when switching to DEV profile). */
     suspend fun clearAllData() {
@@ -1011,6 +1013,34 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v43 → v44: local mirror of the server's sms.sms_bug_report (Bug Report feature). Same
+        // two-phase synced/server_id/screenshot_synced shape as sms_incident's photo upload.
+        private val MIGRATION_43_44 = object : Migration(43, 44) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 43 → 44: create sms_bug_report")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `sms_bug_report` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `uuid` TEXT NOT NULL,
+                        `project_id` INTEGER NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `description` TEXT NOT NULL,
+                        `logs` TEXT,
+                        `screenshot_path` TEXT,
+                        `reporter_name` TEXT,
+                        `terminal_code` TEXT,
+                        `app_version` TEXT,
+                        `device_model` TEXT,
+                        `screen_name` TEXT,
+                        `created_at` TEXT NOT NULL,
+                        `synced` INTEGER NOT NULL DEFAULT 0,
+                        `server_id` INTEGER,
+                        `screenshot_synced` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -1060,7 +1090,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_39_40,
                         MIGRATION_40_41,
                         MIGRATION_41_42,
-                        MIGRATION_42_43
+                        MIGRATION_42_43,
+                        MIGRATION_43_44
                     )
                     .build()
                 INSTANCE = instance

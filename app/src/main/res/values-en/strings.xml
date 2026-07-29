@@ -520,6 +520,21 @@
     <string name="incident_severity_critical">Critical</string>
     <string name="home_label_critical_incidents">Critical incidents</string>
 
+    <!-- Bug Report -->
+    <string name="bug_report_button">Report an issue</string>
+    <string name="bug_report_title">Report a problem</string>
+    <string name="bug_report_subtitle">Logs and a screenshot are attached automatically</string>
+    <string name="bug_report_label_title">Title</string>
+    <string name="bug_report_hint_title">Summarize the problem in a few words</string>
+    <string name="bug_report_label_description">Description</string>
+    <string name="bug_report_hint_description">What were you doing? What did you expect to happen?</string>
+    <string name="bug_report_label_screenshot">Screenshot</string>
+    <string name="bug_report_btn_send">Send</string>
+    <string name="bug_report_error_missing_title">Enter a title</string>
+    <string name="bug_report_error_missing_description">Describe the problem</string>
+    <string name="bug_report_sent_ok">Report sent. Thank you!</string>
+    <string name="bug_report_error_send">Error capturing report: %s</string>
+
     <!-- QR Scanner FAB -->
     <string name="qr_scan_button">Scan QR code</string>
     <string name="qr_result_title">QR code detected</string>

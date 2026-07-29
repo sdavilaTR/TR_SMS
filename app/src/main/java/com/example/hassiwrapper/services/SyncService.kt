@@ -50,7 +50,8 @@ class SyncService(
     private val outboxService: OutboxService? = null,
     private val smsSpoolLocationDao: SmsSpoolLocationDao? = null,
     private val smsPackingListSpoolDao: SmsPackingListSpoolDao? = null,
-    private val auditLogService: AuditLogService? = null
+    private val auditLogService: AuditLogService? = null,
+    private val smsBugReportDao: SmsBugReportDao? = null
 ) {
     companion object {
         private const val TAG = "SyncService"
@@ -202,6 +203,7 @@ class SyncService(
                     uploadTransfers(api)
                     uploadVehicleRouteState(api)
                     uploadSmsIncidents(api)
+                uploadSmsBugReports(api)
                     uploadSpoolLocations(api)
                     uploadPendingRelocations(api)
                     outboxService?.drain(api)?.let { r ->
@@ -308,6 +310,7 @@ class SyncService(
 
                 onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_incidents))
                 uploadSmsIncidents(api)
+                uploadSmsBugReports(api)
 
                 uploadSpoolLocations(api)
                 uploadPendingRelocations(api)
@@ -832,6 +835,106 @@ class SyncService(
             else -> null
         }
         obj?.get("incidentId")?.takeIf { !it.isJsonNull }?.asLong
+            ?: obj?.get("id")?.takeIf { !it.isJsonNull }?.asLong
+    } catch (_: Exception) { null }
+
+    // ── SMS bug report upload ─────────────────────────────────────────────────
+
+    /**
+     * Two-phase upload, mirroring uploadSmsIncidents/uploadSmsIncidentPhotos: metadata (incl.
+     * logs) first, screenshot as a separate decoupled pass keyed on server_id, so a screenshot
+     * failure never blocks the report itself from reaching the backend. Rows that are fully
+     * synced (metadata + screenshot, or no screenshot to send) are deleted locally afterward —
+     * send-and-forget, nothing left to show the user once it's landed.
+     */
+    private suspend fun uploadSmsBugReports(api: AtlasApiService) {
+        val dao = smsBugReportDao ?: return
+        val unsynced = dao.getUnsyncedMetadata()
+
+        if (unsynced.isNotEmpty()) {
+            Log.i(TAG, "Uploading ${unsynced.size} bug report(s)")
+            for (report in unsynced) {
+                val projectCode = projectDao.getById(report.project_id)?.project_code
+                if (projectCode.isNullOrBlank()) {
+                    Log.w(TAG, "No project code for bug report ${report.id}, skipping")
+                    continue
+                }
+                try {
+                    val body = CreateSmsBugReportRequest(
+                        uuid = report.uuid,
+                        title = report.title,
+                        description = report.description,
+                        logs = report.logs,
+                        reporterName = report.reporter_name,
+                        terminalCode = report.terminal_code,
+                        appVersion = report.app_version,
+                        deviceModel = report.device_model,
+                        screenName = report.screen_name
+                    )
+                    val response = api.createSmsBugReport(projectCode, body)
+                    if (response.isSuccessful) {
+                        parseBugReportServerId(response)?.let { dao.markMetadataSynced(report.id, it) }
+                        Log.i(TAG, "Bug report ${report.id} uploaded")
+                    } else {
+                        Log.e(TAG, "Bug report ${report.id} upload failed: HTTP ${response.code()}")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Bug report ${report.id} upload error: ${e.message}")
+                }
+            }
+        }
+
+        uploadSmsBugReportScreenshots(api, dao)
+
+        for (report in dao.getFullySynced()) {
+            report.screenshot_path?.let { runCatching { File(it).delete() } }
+            dao.deleteById(report.id)
+        }
+    }
+
+    private suspend fun uploadSmsBugReportScreenshots(api: AtlasApiService, dao: SmsBugReportDao) {
+        val pending = dao.getUnsyncedScreenshots()
+        if (pending.isEmpty()) return
+
+        Log.i(TAG, "Uploading ${pending.size} bug report screenshot(s)")
+        for (report in pending) {
+            val serverId = report.server_id ?: continue
+            val screenshotPath = report.screenshot_path ?: continue
+            val projectCode = projectDao.getById(report.project_id)?.project_code
+            if (projectCode.isNullOrBlank()) continue
+
+            val file = File(screenshotPath)
+            if (!file.exists()) {
+                Log.w(TAG, "Bug report ${report.id} screenshot missing on disk ($screenshotPath) — giving up on it")
+                dao.markScreenshotSynced(report.id)
+                continue
+            }
+            try {
+                val part = MultipartBody.Part.createFormData(
+                    "file", file.name, file.asRequestBody("image/jpeg".toMediaType())
+                )
+                val response = api.uploadSmsBugReportScreenshot(projectCode, serverId, part)
+                if (response.isSuccessful) {
+                    dao.markScreenshotSynced(report.id)
+                    Log.i(TAG, "Bug report ${report.id} screenshot uploaded")
+                } else {
+                    Log.e(TAG, "Bug report ${report.id} screenshot upload failed: HTTP ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Bug report ${report.id} screenshot upload error: ${e.message}")
+            }
+        }
+    }
+
+    private fun parseBugReportServerId(resp: Response<okhttp3.ResponseBody>): Long? = try {
+        val el = JsonParser.parseString(resp.body()?.string().orEmpty())
+        val obj = when {
+            el.isJsonObject && el.asJsonObject.has("data") && !el.asJsonObject.get("data").isJsonNull ->
+                el.asJsonObject.getAsJsonObject("data")
+            el.isJsonObject -> el.asJsonObject
+            else -> null
+        }
+        obj?.get("bugReportId")?.takeIf { !it.isJsonNull }?.asLong
             ?: obj?.get("id")?.takeIf { !it.isJsonNull }?.asLong
     } catch (_: Exception) { null }
 

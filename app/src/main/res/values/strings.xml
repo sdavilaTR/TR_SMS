@@ -1007,6 +1007,21 @@
     <string name="incident_severity_critical">Crítica</string>
     <string name="home_label_critical_incidents">Incidencias críticas</string>
 
+    <!-- Bug Report -->
+    <string name="bug_report_button">Reportar incidencia</string>
+    <string name="bug_report_title">Reportar un problema</string>
+    <string name="bug_report_subtitle">Se adjuntan automáticamente los logs y una captura de pantalla</string>
+    <string name="bug_report_label_title">Título</string>
+    <string name="bug_report_hint_title">Resume el problema en pocas palabras</string>
+    <string name="bug_report_label_description">Descripción</string>
+    <string name="bug_report_hint_description">¿Qué estabas haciendo? ¿Qué esperabas que pasara?</string>
+    <string name="bug_report_label_screenshot">Captura de pantalla</string>
+    <string name="bug_report_btn_send">Enviar</string>
+    <string name="bug_report_error_missing_title">Escribe un título</string>
+    <string name="bug_report_error_missing_description">Describe el problema</string>
+    <string name="bug_report_sent_ok">Reporte enviado. ¡Gracias!</string>
+    <string name="bug_report_error_send">Error al capturar el reporte: %s</string>
+
     <!-- Event History -->
     <string name="menu_event_history">Historial de Eventos</string>
     <string name="event_history_empty">No hay eventos registrados para este proyecto</string>

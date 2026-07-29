@@ -60,6 +60,8 @@ import com.google.android.material.navigation.NavigationView
 import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.example.hassiwrapper.ui.bugreport.BugReportBottomSheet
+import com.example.hassiwrapper.ui.bugreport.BugReportCapture
 import com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet
 import com.example.hassiwrapper.ui.qrscanner.QrResult
 import com.example.hassiwrapper.ui.qrscanner.parseQr
@@ -359,6 +361,23 @@ class MainActivity : AppCompatActivity() {
                 == PackageManager.PERMISSION_GRANTED
             ) launchQrScanner()
             else requestQrCameraPermission.launch(android.Manifest.permission.CAMERA)
+        }
+
+        findViewById<FloatingActionButton>(R.id.fabBugReport).setOnClickListener {
+            val screenName = navController.currentDestination?.label?.toString()
+            lifecycleScope.launch {
+                val path = try {
+                    val rootView = findViewById<android.view.View>(android.R.id.content)
+                    val screenshot = BugReportCapture.captureScreenshot(window, rootView)
+                    withContext(Dispatchers.IO) {
+                        BugReportCapture.saveScreenshot(this@MainActivity, screenshot, java.util.UUID.randomUUID().toString())
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Bug report screenshot capture failed: ${e.message}")
+                    null
+                }
+                BugReportBottomSheet.newInstance(path, screenName).show(supportFragmentManager, "bug_report")
+            }
         }
     }
 

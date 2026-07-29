@@ -111,8 +111,13 @@ class SettingsFragment : Fragment() {
 
             val locationCode = ServiceLocator.configRepo.get("device_location")
             val pinnedSubId = ServiceLocator.configRepo.get("device_sub_position_id")?.toLongOrNull()
+            // full_path already starts with the zone name (e.g. "LAYDOWN/GCP5") — drop any
+            // segment matching locationCode so it isn't prefixed twice ("LAYDOWN / LAYDOWN/GCP5"),
+            // and collapse to nothing when the whole thing was redundant ("WORKSHOP/WORKSHOP").
             val pinnedLabel = pinnedSubId?.let { ServiceLocator.smsSubPositionDao.getById(it) }
                 ?.let { sp -> sp.full_path.ifBlank { sp.name } }
+                ?.split("/")?.map { it.trim() }?.filterNot { it.equals(locationCode, ignoreCase = true) }
+                ?.joinToString("/")?.ifBlank { null }
             val location = when {
                 locationCode.isNullOrBlank() -> "—"
                 pinnedLabel != null -> "$locationCode / $pinnedLabel"

@@ -336,6 +336,29 @@ data class SmsIncidentEntity(
     val stored_revision: String? = null
 )
 
+@Entity(tableName = "sms_bug_report")
+data class SmsBugReportEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val uuid: String,
+    val project_id: Int,
+    val title: String,
+    val description: String,
+    /** App's own logcat tail, capped ~500KB at capture time. Null once uploaded (metadata upload clears it locally too, nothing left to retry). */
+    val logs: String? = null,
+    val screenshot_path: String? = null,
+    val reporter_name: String? = null,
+    val terminal_code: String? = null,
+    val app_version: String? = null,
+    val device_model: String? = null,
+    val screen_name: String? = null,
+    val created_at: String,
+    val synced: Boolean = false,
+    /** Server-assigned bug_report_id, set once [synced]; required to address the screenshot-upload endpoint. */
+    val server_id: Long? = null,
+    /** Whether [screenshot_path] has been uploaded — tracked separately from [synced], same two-phase pattern as SmsIncidentEntity.photo_synced. */
+    val screenshot_synced: Boolean = false
+)
+
 @Entity(tableName = "sms_audit_log")
 data class SmsAuditLogEntity(
     @PrimaryKey(autoGenerate = true) val log_id: Long = 0,

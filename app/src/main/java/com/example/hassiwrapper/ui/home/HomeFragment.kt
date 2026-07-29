@@ -149,7 +149,7 @@ class HomeFragment : Fragment() {
                     v.findViewById<TextView>(R.id.txtGuestUserName).text = terminalName
                     val txtLoc = v.findViewById<TextView>(R.id.txtGuestLocation)
                     if (terminalLocation.isNotBlank()) {
-                        txtLoc.text = terminalLocation
+                        txtLoc.text = terminalLocationLabel(terminalLocation)
                         txtLoc.visibility = View.VISIBLE
                     } else {
                         txtLoc.visibility = View.GONE
@@ -238,6 +238,20 @@ class HomeFragment : Fragment() {
             breakdown.addView(tv)
         }
         breakdown.visibility = View.VISIBLE
+    }
+
+    /** LAYDOWN/SITE plus pinned GCP (device_sub_position_id), e.g. "LAYDOWN / GCP 5" — same
+     *  format as SettingsFragment's device location row, shown here too since a bare zone name
+     *  doesn't tell a JAFURAH-style GCP5/6/9 terminal which sub-position it's pinned to. */
+    private suspend fun terminalLocationLabel(locationCode: String): String {
+        val pinnedSubId = ServiceLocator.configRepo.get("device_sub_position_id")?.toLongOrNull()
+        val pinnedLabel = pinnedSubId?.let { ServiceLocator.smsSubPositionDao.getById(it) }
+            ?.let { sp -> sp.full_path.ifBlank { sp.name } }
+            // full_path already starts with the zone name (e.g. "LAYDOWN/GCP5") — drop any
+            // segment matching locationCode so it isn't prefixed twice ("LAYDOWN / LAYDOWN/GCP5").
+            ?.split("/")?.map { it.trim() }?.filterNot { it.equals(locationCode, ignoreCase = true) }
+            ?.joinToString("/")?.ifBlank { null }
+        return if (pinnedLabel != null) "$locationCode / $pinnedLabel" else locationCode
     }
 
     private suspend fun getSelectedProjectId(): Int =
@@ -368,7 +382,7 @@ class HomeFragment : Fragment() {
                     v.findViewById<TextView>(R.id.txtTerminalName).text = terminalName
                     val txtLoc = v.findViewById<TextView>(R.id.txtTerminalLocation)
                     if (terminalLocation.isNotBlank()) {
-                        txtLoc.text = terminalLocation
+                        txtLoc.text = terminalLocationLabel(terminalLocation)
                         txtLoc.visibility = View.VISIBLE
                     } else {
                         txtLoc.visibility = View.GONE

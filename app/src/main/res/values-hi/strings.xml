@@ -1007,6 +1007,21 @@
     <string name="incident_severity_critical">गंभीर</string>
     <string name="home_label_critical_incidents">गंभीर घटनाएं</string>
 
+    <!-- Bug Report -->
+    <string name="bug_report_button">समस्या की रिपोर्ट करें</string>
+    <string name="bug_report_title">समस्या की रिपोर्ट करें</string>
+    <string name="bug_report_subtitle">लॉग और स्क्रीनशॉट अपने आप जुड़ जाते हैं</string>
+    <string name="bug_report_label_title">शीर्षक</string>
+    <string name="bug_report_hint_title">समस्या को कुछ शब्दों में बताएं</string>
+    <string name="bug_report_label_description">विवरण</string>
+    <string name="bug_report_hint_description">आप क्या कर रहे थे? आप क्या होने की उम्मीद कर रहे थे?</string>
+    <string name="bug_report_label_screenshot">स्क्रीनशॉट</string>
+    <string name="bug_report_btn_send">भेजें</string>
+    <string name="bug_report_error_missing_title">एक शीर्षक लिखें</string>
+    <string name="bug_report_error_missing_description">समस्या का वर्णन करें</string>
+    <string name="bug_report_sent_ok">रिपोर्ट भेज दी गई। धन्यवाद!</string>
+    <string name="bug_report_error_send">रिपोर्ट कैप्चर करने में त्रुटि: %s</string>
+
     <!-- Event History -->
     <string name="menu_event_history">घटनाओं का इतिहास</string>
     <string name="event_history_empty">इस प्रोजेक्ट के लिए कोई घटना दर्ज नहीं है</string>

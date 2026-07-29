@@ -1007,6 +1007,21 @@
     <string name="incident_severity_critical">حرجة</string>
     <string name="home_label_critical_incidents">الحوادث الحرجة</string>
 
+    <!-- Bug Report -->
+    <string name="bug_report_button">الإبلاغ عن مشكلة</string>
+    <string name="bug_report_title">الإبلاغ عن مشكلة</string>
+    <string name="bug_report_subtitle">يتم إرفاق السجلات ولقطة شاشة تلقائيًا</string>
+    <string name="bug_report_label_title">العنوان</string>
+    <string name="bug_report_hint_title">لخّص المشكلة ببضع كلمات</string>
+    <string name="bug_report_label_description">الوصف</string>
+    <string name="bug_report_hint_description">ماذا كنت تفعل؟ وماذا كنت تتوقع أن يحدث؟</string>
+    <string name="bug_report_label_screenshot">لقطة شاشة</string>
+    <string name="bug_report_btn_send">إرسال</string>
+    <string name="bug_report_error_missing_title">أدخل عنوانًا</string>
+    <string name="bug_report_error_missing_description">صف المشكلة</string>
+    <string name="bug_report_sent_ok">تم إرسال التقرير. شكرًا لك!</string>
+    <string name="bug_report_error_send">خطأ أثناء التقاط التقرير: %s</string>
+
     <!-- Event History -->
     <string name="menu_event_history">سجل الأحداث</string>
     <string name="event_history_empty">لا توجد أحداث مسجلة لهذا المشروع</string>

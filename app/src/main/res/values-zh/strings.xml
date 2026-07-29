@@ -520,6 +520,21 @@
     <string name="incident_severity_critical">严重</string>
     <string name="home_label_critical_incidents">严重事件</string>
 
+    <!-- Bug Report -->
+    <string name="bug_report_button">报告问题</string>
+    <string name="bug_report_title">报告问题</string>
+    <string name="bug_report_subtitle">日志和屏幕截图将自动附加</string>
+    <string name="bug_report_label_title">标题</string>
+    <string name="bug_report_hint_title">用几句话概括问题</string>
+    <string name="bug_report_label_description">描述</string>
+    <string name="bug_report_hint_description">您当时在做什么？您期望发生什么？</string>
+    <string name="bug_report_label_screenshot">屏幕截图</string>
+    <string name="bug_report_btn_send">发送</string>
+    <string name="bug_report_error_missing_title">请输入标题</string>
+    <string name="bug_report_error_missing_description">请描述问题</string>
+    <string name="bug_report_sent_ok">报告已发送，谢谢！</string>
+    <string name="bug_report_error_send">捕获报告时出错：%s</string>
+
     <!-- QR Scanner FAB -->
     <string name="qr_scan_button">扫描二维码</string>
     <string name="qr_result_title">检测到二维码</string>

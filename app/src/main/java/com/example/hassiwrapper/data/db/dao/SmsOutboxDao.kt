@@ -16,6 +16,10 @@ interface SmsOutboxDao {
     @Query("SELECT * FROM sms_outbox WHERE status = 'PENDING' ORDER BY op_id ASC")
     suspend fun getPending(): List<SmsOutboxEntity>
 
+    /** Everything not yet DONE — feeds the "Pendientes" screen (PENDING + gave-up FAILED ops). */
+    @Query("SELECT * FROM sms_outbox WHERE status IN ('PENDING', 'FAILED') ORDER BY op_id DESC")
+    suspend fun getPendingAndFailed(): List<SmsOutboxEntity>
+
     @Query("SELECT COUNT(*) FROM sms_outbox WHERE status = 'PENDING'")
     suspend fun pendingCount(): Int
 

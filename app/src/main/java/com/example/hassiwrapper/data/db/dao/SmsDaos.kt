@@ -166,6 +166,13 @@ interface SmsPackingListDao {
     @Query("UPDATE sms_packing_list SET vehicle_id = :vehicleId, vehicle_plate = :vehiclePlate WHERE packing_list_id = :id")
     suspend fun setVehicle(id: Long, vehicleId: Long, vehiclePlate: String)
 
+    /** Display-only refresh: the server derives the manifest from the junction table, which the
+     *  caller already pushes via addSpoolToPackingList — flipping `synced` here would make
+     *  uploadNewPackingLists() re-CREATE an already-existing server PL (that endpoint has no dedup),
+     *  which 409s and deletes the very PL this just got attached to. Never touch `synced` here. */
+    @Query("UPDATE sms_packing_list SET total_spools_count = :count WHERE packing_list_id = :id")
+    suspend fun updateSpoolsCount(id: Long, count: Int)
+
     /** Marks a PL as delivered on full receive: unassigns the vehicle (frees the truck for its
      *  next load AND drops the PL out of the Receive screen, which resolves by vehicle) and clears
      *  ready_to_send. Keeps is_active=1 and the spool links, so the PL survives as a delivery

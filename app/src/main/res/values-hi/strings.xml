@@ -804,6 +804,7 @@
     <string name="pl_vehicle_conflict">निर्दिष्ट नहीं हो सका: %1$s</string>
     <string name="pl_vehicle_conflict_title">वाहन पहले से लोड है</string>
     <string name="pl_vehicle_conflict_warning">वाहन %1$s में पहले से ही एक अनडिलीवर पैकिंग लिस्ट है (%2$s)। यदि आप उसी शिपमेंट में स्पूल जोड़ रहे हैं, तो सामान्य रूप से जारी रखें; यदि यह एक अलग लोड है, तो कोई दूसरा वाहन चुनें।</string>
+    <string name="pl_vehicle_conflict_intransit">यह वाहन पहले से ही पैकिंग लिस्ट %1$s के साथ ट्रांज़िट में है। कोई दूसरा वाहन चुनें, या उस शिपमेंट की प्राप्ति पुष्टि होने तक प्रतीक्षा करें।</string>
     <string name="vehicle_detail_pl_removed">पैकिंग लिस्ट वाहन से हटाई गई</string>
     <string name="vehicle_detail_remove_pl_title">पैकिंग लिस्ट का निर्धारण हटाएं</string>
     <string name="vehicle_detail_remove_pl_msg">क्या %1$s को इस वाहन से हटाना है?</string>
@@ -851,10 +852,6 @@
     <string name="load_spools_btn_continue">जारी रखें</string>
     <string name="load_spools_btn_save_anyway">फिर भी सहेजें</string>
     <string name="load_spools_qr_is_spool">यह क्यूआर एक स्पूल का है, वाहन का नहीं। वाहन का क्यूआर स्कैन करें।</string>
-    <string name="load_spools_weight_meter">लोड: %1$s / %2$s kg (%3$d%%)</string>
-    <string name="load_spools_weight_no_capacity">लोड: %1$s kg (वाहन की क्षमता निर्धारित नहीं है)</string>
-    <string name="load_spools_weight_missing"> · %1$d बिना वज़न (पुनः प्रयास हेतु टैप करें)</string>
-    <string name="load_spools_weight_retrying">वज़न प्राप्त किए जा रहे हैं…</string>
 
     <!-- Transfer: Send Packing List -->
     <string name="transfer_send_title">पैकिंग लिस्ट भेजना</string>
@@ -1050,5 +1047,27 @@
     <string name="home_btn_map">स्पूल का मानचित्र देखें</string>
     <string name="home_qa_map">स्पूल का मानचित्र</string>
     <string name="home_btn_inventario">अपने ज़ोन की इन्वेंटरी देखें</string>
+
+    <!-- Outbox / लंबित -->
+    <string name="menu_outbox">लंबित</string>
+    <string name="outbox_empty">सिंक के लिए कोई लंबित ऑपरेशन नहीं है</string>
+    <string name="outbox_status_pending">लंबित</string>
+    <string name="outbox_status_failed">विफल</string>
+    <string name="outbox_meta_format">%1$s · प्रयास %2$d</string>
+    <string name="outbox_discard_failed">विफल ऑपरेशन हटाएं</string>
+    <string name="outbox_op_create">बनाएं</string>
+    <string name="outbox_op_update">अपडेट करें</string>
+    <string name="outbox_op_delete">हटाएं</string>
+    <string name="outbox_op_hard_delete">स्थायी रूप से हटाएं</string>
+    <string name="outbox_op_assign">असाइन करें</string>
+    <string name="outbox_op_unassign">असाइनमेंट हटाएं</string>
+    <string name="outbox_entity_spool">स्पूल</string>
+    <string name="outbox_entity_vehicle">वाहन</string>
+    <string name="outbox_entity_packing_list">पैकिंग लिस्ट</string>
+    <string name="outbox_entity_incident">घटना</string>
+    <string name="outbox_entity_pl_assign">पैकिंग लिस्ट में स्पूल</string>
+    <string name="outbox_entity_vehicle_loading">वाहन लोडिंग</string>
+    <string name="outbox_entity_transfer">स्थानांतरण</string>
+    <string name="outbox_entity_route_state">मार्ग स्थिति</string>
 
 </resources>

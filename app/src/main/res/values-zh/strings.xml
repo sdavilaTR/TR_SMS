@@ -903,6 +903,7 @@
     <string name="pl_vehicle_conflict">无法分配：%1$s</string>
     <string name="pl_vehicle_conflict_title">车辆已装载</string>
     <string name="pl_vehicle_conflict_warning">车辆 %1$s 已有一份未送达的装箱单 (%2$s)。如果您要向同一批货添加线盘，请照常继续；如果这是另一批货，请选择其他车辆。</string>
+    <string name="pl_vehicle_conflict_intransit">该车辆已在运输装箱单 %1$s 的途中。请选择其他车辆，或等待该批货确认收货后再试。</string>
     <string name="vehicle_detail_pl_removed">装箱单已从车辆取消分配</string>
     <string name="vehicle_detail_remove_pl_title">取消分配装箱单</string>
     <string name="vehicle_detail_remove_pl_msg">是否取消该车辆与 %1$s 的分配？</string>
@@ -950,10 +951,6 @@
     <string name="load_spools_btn_continue">继续</string>
     <string name="load_spools_btn_save_anyway">仍要保存</string>
     <string name="load_spools_qr_is_spool">该二维码属于管段，而非车辆。请扫描车辆二维码。</string>
-    <string name="load_spools_weight_meter">装载：%1$s / %2$s 公斤 (%3$d%%)</string>
-    <string name="load_spools_weight_no_capacity">装载：%1$s 公斤（未设置车辆载重）</string>
-    <string name="load_spools_weight_missing"> · %1$d 无重量（点击重试）</string>
-    <string name="load_spools_weight_retrying">正在获取重量…</string>
 
     <!-- Transfer: Send Packing List -->
     <string name="transfer_send_title">发送装箱单</string>
@@ -1056,4 +1053,26 @@
     <string name="home_btn_map">查看管段地图</string>
     <string name="home_qa_map">管段地图</string>
     <string name="home_btn_inventario">查看本区域库存</string>
+
+    <!-- Outbox / 待处理 -->
+    <string name="menu_outbox">待处理</string>
+    <string name="outbox_empty">没有待同步的操作</string>
+    <string name="outbox_status_pending">待处理</string>
+    <string name="outbox_status_failed">失败</string>
+    <string name="outbox_meta_format">%1$s · 第 %2$d 次尝试</string>
+    <string name="outbox_discard_failed">丢弃失败的操作</string>
+    <string name="outbox_op_create">创建</string>
+    <string name="outbox_op_update">更新</string>
+    <string name="outbox_op_delete">删除</string>
+    <string name="outbox_op_hard_delete">彻底删除</string>
+    <string name="outbox_op_assign">分配</string>
+    <string name="outbox_op_unassign">取消分配</string>
+    <string name="outbox_entity_spool">管段</string>
+    <string name="outbox_entity_vehicle">车辆</string>
+    <string name="outbox_entity_packing_list">装箱单</string>
+    <string name="outbox_entity_incident">事件</string>
+    <string name="outbox_entity_pl_assign">装箱单中的管段</string>
+    <string name="outbox_entity_vehicle_loading">车辆装载</string>
+    <string name="outbox_entity_transfer">转运</string>
+    <string name="outbox_entity_route_state">路线状态</string>
 </resources>

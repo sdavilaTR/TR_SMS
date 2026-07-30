@@ -127,45 +127,6 @@
 
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Weight meter: load vs vehicle capacity (visual only, color-coded) -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardWeightMeter"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/card_bg"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="1dp"
-                app:strokeWidth="0dp"
-                android:layout_marginBottom="10dp"
-                android:visibility="gone">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="12dp">
-
-                    <TextView
-                        android:id="@+id/txtWeightMeter"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/on_surface"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        android:layout_marginBottom="6dp" />
-
-                    <ProgressBar
-                        android:id="@+id/progressWeight"
-                        style="?android:attr/progressBarStyleHorizontal"
-                        android:layout_width="match_parent"
-                        android:layout_height="10dp"
-                        android:max="100"
-                        android:progress="0"
-                        android:progressTint="@color/green" />
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
             <!-- Spool input card -->
             <TextView
                 android:layout_width="wrap_content"

@@ -30,15 +30,11 @@ import com.example.hassiwrapper.data.db.entities.SmsPackingListHistoricalEntity
 import com.example.hassiwrapper.data.db.entities.SmsPackingListSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsSpoolLocationEntity
-import com.example.hassiwrapper.data.db.entities.SmsSpoolPropertyEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleLoadingEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleLoadingSpoolEntity
-import com.example.hassiwrapper.jDbl
-import com.example.hassiwrapper.jInt
-import com.example.hassiwrapper.jStr
 import com.example.hassiwrapper.network.dto.AssignSpoolRequest
 import com.example.hassiwrapper.network.dto.CreatePackingListRequest
 import com.example.hassiwrapper.network.dto.parsePackingListConflictMessage
@@ -47,7 +43,6 @@ import com.example.hassiwrapper.ui.qrscanner.QrResult
 import com.example.hassiwrapper.ui.qrscanner.parseQr
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
@@ -57,15 +52,6 @@ private val BAKED_IN_SUFFIX_SHAPE = Regex("""(?i)^SP\d+$""")
 /** Another device already put this vehicle on a different active Packing List (409, layer-1 guard). */
 private class VehicleAlreadyLoadingException(message: String) : Exception(message)
 
-/** Outcome of resolving a spool's weight.  The distinction that matters is [NoData] (the backend
- *  genuinely has no weight for this spool — retrying is pointless) vs [Failed] (the lookup never
- *  reached an answer, so it's worth another attempt before the total is used). */
-private sealed class WeightResult {
-    data class Ok(val kg: Double) : WeightResult()
-    object NoData : WeightResult()
-    object Failed : WeightResult()
-}
-
 class SendPackingListFragment : Fragment() {
 
     private data class ScannedSpool(
@@ -74,11 +60,7 @@ class SendPackingListFragment : Fragment() {
         val spoolSuffix: String?,
         val revision: String? = null,
         val packingListId: Long?,
-        val packingListName: String?,
-        val weightKg: Double? = null,
-        /** The weight lookup failed for a reason worth retrying (offline, timeout, gateway error).
-         *  False also covers "backend has no weight for this spool", which no retry can fix. */
-        val weightRetryable: Boolean = false
+        val packingListName: String?
     ) {
         val displayCode: String
             get() {
@@ -92,7 +74,6 @@ class SendPackingListFragment : Fragment() {
 
     private var selectedVehicle: SmsVehicleEntity? = null
     private val scannedSpools = mutableListOf<ScannedSpool>()
-    private var weightRetryInFlight = false
     private lateinit var adapter: ScannedSpoolAdapter
     private var destination = ""
 
@@ -108,9 +89,6 @@ class SendPackingListFragment : Fragment() {
     // Step 2: spools
     private lateinit var panelSpools: View
     private lateinit var txtSelectedVehicle: TextView
-    private lateinit var cardWeightMeter: MaterialCardView
-    private lateinit var txtWeightMeter: TextView
-    private lateinit var progressWeight: android.widget.ProgressBar
     private lateinit var etSpoolCode: TextInputEditText
     private lateinit var etSpoolSuffix: TextInputEditText
     private lateinit var btnScanSpool: MaterialButton
@@ -190,9 +168,6 @@ class SendPackingListFragment : Fragment() {
 
         panelSpools           = view.findViewById(R.id.panelSpools)
         txtSelectedVehicle    = view.findViewById(R.id.txtSelectedVehicle)
-        cardWeightMeter       = view.findViewById(R.id.cardWeightMeter)
-        txtWeightMeter        = view.findViewById(R.id.txtWeightMeter)
-        progressWeight        = view.findViewById(R.id.progressWeight)
         etSpoolCode           = view.findViewById(R.id.etSpoolCode)
         etSpoolSuffix         = view.findViewById(R.id.etSpoolSuffix)
         btnScanSpool          = view.findViewById(R.id.btnScanSpool)
@@ -231,11 +206,6 @@ class SendPackingListFragment : Fragment() {
             launchScannerWithPermission { spoolScanLauncher.launch(Intent(requireContext(), CustomScannerActivity::class.java)) }
         }
         btnAddSpool.setOnClickListener { addSpoolManually() }
-
-        // Manual recovery: tapping the meter re-asks the API for every weight that failed.
-        cardWeightMeter.setOnClickListener {
-            viewLifecycleOwner.lifecycleScope.launch { retryPendingWeights() }
-        }
 
         btnContinueToSignature.setOnClickListener { goToDestinationPanel() }
         btnConfirmSend.setOnClickListener { onConfirmSend() }
@@ -320,7 +290,6 @@ class SendPackingListFragment : Fragment() {
         txtSelectedVehicle.text = getString(R.string.load_spools_vehicle_selected, vehicle.license_plate)
         panelVehicle.visibility = View.GONE
         panelSpools.visibility = View.VISIBLE
-        updateWeightMeter()
     }
 
     private fun confirmVehicle() {
@@ -378,7 +347,7 @@ class SendPackingListFragment : Fragment() {
                 ServiceLocator.smsSpoolDao.findByCode(projectId, code)
             }
 
-            addSpool(spool, resolveSpoolWeight(spool))
+            addSpool(spool)
         }
     }
 
@@ -397,13 +366,13 @@ class SendPackingListFragment : Fragment() {
             } else {
                 ServiceLocator.smsSpoolDao.findByCode(projectId, code)
             }
-            addSpool(spool, resolveSpoolWeight(spool))
+            addSpool(spool)
             etSpoolCode.text?.clear()
             etSpoolSuffix.text?.clear()
         }
     }
 
-    private fun addSpool(spool: SmsSpoolEntity?, weight: WeightResult = WeightResult.NoData) {
+    private fun addSpool(spool: SmsSpoolEntity?) {
         if (spool == null) {
             // Not adding it: a phantom entry (spoolId=0) used to get added anyway and then
             // silently dropped at confirm time (filtered by spoolId != 0L everywhere it's
@@ -426,15 +395,12 @@ class SendPackingListFragment : Fragment() {
             spoolSuffix     = spool.spool_suffix,
             revision        = spool.revision,
             packingListId   = spool.packing_list_id,
-            packingListName = spool.packing_list_name,
-            weightKg        = (weight as? WeightResult.Ok)?.kg,
-            weightRetryable = weight is WeightResult.Failed
+            packingListName = spool.packing_list_name
         )
         scannedSpools.add(item)
         adapter.notifyItemInserted(scannedSpools.size - 1)
         txtSpoolsCount.text = getString(R.string.load_spools_spools_count, scannedSpools.size)
         Toast.makeText(requireContext(), getString(R.string.load_spools_spool_added, displayCode), Toast.LENGTH_SHORT).show()
-        updateWeightMeter()
     }
 
     private fun removeSpoolAt(position: Int) {
@@ -443,131 +409,7 @@ class SendPackingListFragment : Fragment() {
         adapter.notifyItemRemoved(position)
         adapter.notifyItemRangeChanged(position, scannedSpools.size - position)
         txtSpoolsCount.text = getString(R.string.load_spools_spools_count, scannedSpools.size)
-        updateWeightMeter()
     }
-
-    /** Local property table is rarely synced for normal spools (it's only ever written on demand),
-     *  so nearly every scan takes the network path here. Fetch+cache from the API, same pattern as
-     *  SpoolDetailBottomSheet. Everything is logged: a silent null was impossible to tell apart
-     *  from "this spool has no weight" in the field. */
-    private suspend fun resolveSpoolWeight(spool: SmsSpoolEntity?): WeightResult {
-        if (spool == null) return WeightResult.NoData
-        ServiceLocator.smsSpoolPropertyDao.getBySpool(spool.spool_id)?.let { cached ->
-            return cached.weight_kg?.let { WeightResult.Ok(it) } ?: WeightResult.NoData
-        }
-
-        return try {
-            val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-            val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                ?: return WeightResult.Failed
-            val service = ServiceLocator.apiClient.getService()
-            val resp = service.getSpoolProperty(projectCode, spool.spool_id.toString())
-            if (!resp.isSuccessful) {
-                Log.w("SendPL", "weight ${spool.displayCode} (id=${spool.spool_id}): property HTTP ${resp.code()}")
-                // 404 is the backend saying there is no property row. Anything else (403 from the
-                // gateway, 5xx, proxy error) is an environment problem that a retry can clear.
-                return if (resp.code() == 404) WeightResult.NoData else WeightResult.Failed
-            }
-            val raw = resp.body()?.string().orEmpty()
-            val el = com.google.gson.JsonParser.parseString(raw)
-            if (!el.isJsonObject) {
-                Log.w("SendPL", "weight ${spool.displayCode}: property 200 but body not an object: ${raw.take(120)}")
-                return WeightResult.Failed
-            }
-            val obj = el.asJsonObject.let { o ->
-                if (o.has("data") && !o.get("data").isJsonNull && o.get("data").isJsonObject) o.getAsJsonObject("data") else o
-            }
-            val weight = obj.jDbl("weightKg", "weight_kg")
-            // Cache even when weightKg is null, so a spool the backend has no weight for stops
-            // re-hitting the API on every later scan.
-            ServiceLocator.smsSpoolPropertyDao.insertAll(listOf(
-                SmsSpoolPropertyEntity(
-                    spool_id        = spool.spool_id,
-                    diameter_inches = obj.jDbl("diameterInches", "diameter_inches"),
-                    diameter        = obj.jDbl("diameter"),
-                    bore_size_id    = obj.jInt("boreSizeId", "bore_size_id"),
-                    weight_kg       = weight,
-                    updated_at      = obj.jStr("updatedAt", "updated_at").orEmpty()
-                )
-            ))
-            Log.d("SendPL", "weight ${spool.displayCode}: ${weight ?: "null (no weight on backend)"}")
-            weight?.let { WeightResult.Ok(it) } ?: WeightResult.NoData
-        } catch (e: Exception) {
-            Log.w("SendPL", "weight ${spool.displayCode}: property fetch failed", e)
-            WeightResult.Failed
-        }
-    }
-
-    /** The weight of a spool is resolved once, when it's added. A network hiccup at that instant
-     *  used to leave it null forever — silently understating the meter and, worse, the
-     *  total_weight_kg written onto the uploaded Packing List. Give the failed ones another go.
-     *  Deliberately not called per-add: on a 30-spool load that is O(n²) requests racing the 60 s
-     *  auto-sync, which is the very contention that makes the first attempt fail. */
-    private suspend fun retryPendingWeights() {
-        if (weightRetryInFlight) return   // repeated meter taps must not stack overlapping loops
-        val pendingIds = scannedSpools.filter { it.weightRetryable }.map { it.spoolId }
-        if (pendingIds.isEmpty()) return
-        weightRetryInFlight = true
-        try {
-            Log.d("SendPL", "retrying weight for ${pendingIds.size} spool(s)")
-            for (spoolId in pendingIds) {
-                val spool = ServiceLocator.smsSpoolDao.getById(spoolId) ?: continue
-                val result = resolveSpoolWeight(spool)
-                // Re-find by id rather than reusing an index: the user can remove a row while the
-                // request is in flight, which would otherwise write this weight onto another spool.
-                val idx = scannedSpools.indexOfFirst { it.spoolId == spoolId }
-                if (idx < 0) continue
-                scannedSpools[idx] = scannedSpools[idx].copy(
-                    weightKg        = (result as? WeightResult.Ok)?.kg,
-                    weightRetryable = result is WeightResult.Failed
-                )
-            }
-        } finally {
-            weightRetryInFlight = false
-        }
-        updateWeightMeter()
-    }
-
-    private fun updateWeightMeter() {
-        val vehicle = selectedVehicle
-        val totalKg = scannedSpools.sumOf { it.weightKg ?: 0.0 }
-        // Spools counting as 0 kg make the meter read low without saying so; name them.
-        val missing = scannedSpools.count { it.weightKg == null }
-        val missingSuffix = if (missing > 0) getString(R.string.load_spools_weight_missing, missing) else ""
-
-        if (vehicle == null || scannedSpools.isEmpty()) {
-            cardWeightMeter.visibility = View.GONE
-            return
-        }
-
-        val capacityKg = vehicle.capacity_weight_kg
-        if (capacityKg == null || capacityKg <= 0.0) {
-            cardWeightMeter.visibility = View.VISIBLE
-            txtWeightMeter.text = getString(R.string.load_spools_weight_no_capacity, formatKg(totalKg)) + missingSuffix
-            txtWeightMeter.setTextColor(requireContext().getColor(R.color.on_surface))
-            progressWeight.progress = 0
-            progressWeight.progressTintList = android.content.res.ColorStateList.valueOf(requireContext().getColor(R.color.green))
-            return
-        }
-
-        val ratio = totalKg / capacityKg
-        val percent = (ratio * 100).toInt()
-        val colorRes = when {
-            ratio >= 1.0  -> R.color.error
-            ratio >= 0.8  -> R.color.warning
-            else          -> R.color.green
-        }
-        val color = requireContext().getColor(colorRes)
-
-        cardWeightMeter.visibility = View.VISIBLE
-        txtWeightMeter.text = getString(R.string.load_spools_weight_meter, formatKg(totalKg), formatKg(capacityKg), percent) + missingSuffix
-        txtWeightMeter.setTextColor(color)
-        progressWeight.progress = percent.coerceIn(0, 100)
-        progressWeight.progressTintList = android.content.res.ColorStateList.valueOf(color)
-    }
-
-    private fun formatKg(value: Double): String =
-        if (value == value.toLong().toDouble()) value.toLong().toString() else String.format(java.util.Locale.getDefault(), "%.1f", value)
 
     private fun parseCreatedPlId(raw: String): Long? {
         return try {
@@ -637,17 +479,21 @@ class SendPackingListFragment : Fragment() {
                 val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
                 val now = LocalDateTime.now()
 
-                // Last chance to recover weights that failed at scan time — below, total_weight_kg
-                // is baked into the Packing List and uploaded. Done here rather than on
-                // "Continuar" because each failed spool can burn a full 10 s connect timeout, and
-                // this screen already has a progress panel to show for it.
-                if (scannedSpools.any { it.weightRetryable }) {
-                    panelUploadProgress.visibility = View.VISIBLE
-                    txtUploadStatus.text = getString(R.string.load_spools_weight_retrying)
-                    retryPendingWeights()
+                // ───── Part 1: load spools onto vehicle → resolve/create the Packing List ─────
+
+                // This vehicle's active PL, if any, hasn't departed yet — checked up front, before
+                // deciding whether to reuse the same PL's own spools (allSameSinglePl below) or merge
+                // new ones onto it. Either path would otherwise reach Part 2 with effectivePlId
+                // pointing at an in-flight PL: destroying/rebuilding its live SEND transfer and
+                // overwriting the vehicle's in-flight destination as if this were a fresh departure.
+                run {
+                    val candidatePl = ServiceLocator.smsPackingListDao.getByVehicle(vehicle.vehicle_id).firstOrNull()
+                    val inTransitPlIds = ServiceLocator.smsPackingListDao.getWithInTransitSpoolsByVehicle(vehicle.vehicle_id).map { it.packing_list_id }.toSet()
+                    if (candidatePl != null && candidatePl.packing_list_id in inTransitPlIds) {
+                        throw VehicleAlreadyLoadingException(getString(R.string.pl_vehicle_conflict_intransit, candidatePl.packing_list_name))
+                    }
                 }
 
-                // ───── Part 1: load spools onto vehicle → resolve/create the Packing List ─────
                 val distinctPlIds = scannedSpools.mapNotNull { it.packingListId }.distinct()
                 val sameSinglePl = distinctPlIds.size == 1 && scannedSpools.all { it.packingListId != null }
                 val scannedSpoolIds = scannedSpools.mapNotNull { it.spoolId.takeIf { id -> id != 0L } }.toSet()
@@ -663,93 +509,154 @@ class SendPackingListFragment : Fragment() {
                     effectivePlId = distinctPlIds[0]
                     effectivePlName = scannedSpools.first().packingListName ?: "PL-$effectivePlId"
                 } else {
-                    val newPlId = (ServiceLocator.smsPackingListDao.getMaxId() ?: 0L) + 1L
+                    // Same one-active-PL-per-vehicle rule surfaced as a warning in selectVehicle().
+                    // If it already found one (and we know it hasn't departed, checked above), these
+                    // newly scanned spools belong on it — creating a second PL here would just hit the
+                    // server's 409 guard ("vehículo ya tiene PL activo") for a vehicle we already know
+                    // is loaded.
+                    val existingActivePl = ServiceLocator.smsPackingListDao.getByVehicle(vehicle.vehicle_id).firstOrNull()
+                    // Set true only by the 409-recovery path below — local didn't know about an
+                    // existing PL up front, but the server just proved one exists after all.
+                    var recoveredExistingPl = false
                     val project     = ServiceLocator.projectDao.getById(projectId)
-                    val proj        = project?.project_code?.uppercase()?.trim().orEmpty()
                     val projectCode = project?.project_code.orEmpty()
-                    val location    = ServiceLocator.configRepo.get("device_location")?.trim().orEmpty()
-                    val position    = location.takeIf { it.isNotBlank() }?.let { ServiceLocator.smsPositionDao.getByCode(it) }
-                    val posCode     = position?.code?.uppercase()?.trim().orEmpty()
-                    val plate       = vehicle.license_plate.replace("-", "").replace(" ", "").uppercase()
-                    val count       = if (position != null)
-                        ServiceLocator.smsPackingListDao.countByProjectPositionVehicle(projectId, position.position_id, vehicle.vehicle_id)
-                    else
-                        ServiceLocator.smsPackingListDao.countByNamePrefix(projectId, listOfNotNull("PL", proj.ifBlank { null }, plate.ifBlank { null }).joinToString("-"))
-                    val n           = "%03d".format(count + 1)
-                    val plName      = if (posCode.isNotBlank()) "PL-$proj-$posCode-$plate-$n" else "PL-$proj-$plate-$n"
-                    val totalWeight = scannedSpools.sumOf { it.weightKg ?: 0.0 }.takeIf { it > 0.0 }
-                    val pl = SmsPackingListEntity(
-                        packing_list_id    = newPlId,
-                        project_id         = projectId,
-                        packing_list_name  = plName,
-                        vehicle_id         = vehicle.vehicle_id,
-                        vehicle_plate      = vehicle.license_plate,
-                        position_id        = position?.position_id,
-                        packing_date       = now.toString(),
-                        total_spools_count = scannedSpools.size,
-                        total_weight_kg    = totalWeight,
-                        synced             = false,
-                        ready_to_send      = true
-                    )
-                    ServiceLocator.smsPackingListDao.insertAll(listOf(pl))
 
-                    // Try to create the PL on the server right away so its spools can be
-                    // linked server-side too — the background SyncService upload only
-                    // creates the empty PL and never links spools.
-                    var finalPlId = newPlId
-                    var createdOnServer = false
-                    try {
-                        if (projectCode.isNotBlank()) {
-                            val service = ServiceLocator.apiClient.getService()
-                            val body = CreatePackingListRequest(
-                                packingListName  = plName,
-                                vehicle          = vehicle.license_plate,
-                                vehicleId        = vehicle.vehicle_id,
-                                position         = position?.name,
-                                positionId       = position?.position_id,
-                                packingDate      = now.toString(),
-                                notes            = null,
-                                createdBy        = "API",
-                                projectCode      = projectCode,
-                                totalSpoolsCount = scannedSpools.size
-                            )
-                            val resp = service.createPackingList(projectCode, body)
-                            if (resp.isSuccessful) {
-                                createdOnServer = true
-                                val rawBody = resp.body()?.string().orEmpty()
-                                val parsedId = parseCreatedPlId(rawBody)
-                                if (parsedId != null && parsedId > 0L && parsedId != newPlId) {
+                    val finalPlId: Long
+                    val finalPlName: String
+                    // Gates the server assign call below. finalPlId can be a purely-local, fabricated
+                    // id (getMaxId()+1, or an existing active PL never yet uploaded) with no relation
+                    // to any real server PL id — posting an assign against it when it's NOT known to
+                    // exist server-side risks silently landing spools on an unrelated server PL that
+                    // happens to share that numeric id.
+                    val createdOnServer: Boolean
+
+                    if (existingActivePl != null) {
+                        finalPlId = existingActivePl.packing_list_id
+                        finalPlName = existingActivePl.packing_list_name
+                        createdOnServer = existingActivePl.synced
+                    } else {
+                        val newPlId = (ServiceLocator.smsPackingListDao.getMaxId() ?: 0L) + 1L
+                        val proj        = project?.project_code?.uppercase()?.trim().orEmpty()
+                        val location    = ServiceLocator.configRepo.get("device_location")?.trim().orEmpty()
+                        val position    = location.takeIf { it.isNotBlank() }?.let { ServiceLocator.smsPositionDao.getByCode(it) }
+                        val posCode     = position?.code?.uppercase()?.trim().orEmpty()
+                        val plate       = vehicle.license_plate.replace("-", "").replace(" ", "").uppercase()
+                        val count       = if (position != null)
+                            ServiceLocator.smsPackingListDao.countByProjectPositionVehicle(projectId, position.position_id, vehicle.vehicle_id)
+                        else
+                            ServiceLocator.smsPackingListDao.countByNamePrefix(projectId, listOfNotNull("PL", proj.ifBlank { null }, plate.ifBlank { null }).joinToString("-"))
+                        val n           = "%03d".format(count + 1)
+                        val plName      = if (posCode.isNotBlank()) "PL-$proj-$posCode-$plate-$n" else "PL-$proj-$plate-$n"
+                        val pl = SmsPackingListEntity(
+                            packing_list_id    = newPlId,
+                            project_id         = projectId,
+                            packing_list_name  = plName,
+                            vehicle_id         = vehicle.vehicle_id,
+                            vehicle_plate      = vehicle.license_plate,
+                            position_id        = position?.position_id,
+                            packing_date       = now.toString(),
+                            total_spools_count = scannedSpools.size,
+                            synced             = false,
+                            ready_to_send      = true
+                        )
+                        ServiceLocator.smsPackingListDao.insertAll(listOf(pl))
+
+                        // Try to create the PL on the server right away so its spools can be
+                        // linked server-side too — the background SyncService upload only
+                        // creates the empty PL and never links spools.
+                        var newFinalPlId = newPlId
+                        var newFinalPlName = plName
+                        var newCreatedOnServer = false
+                        var recoveredFromConflict = false
+                        try {
+                            if (projectCode.isNotBlank()) {
+                                val service = ServiceLocator.apiClient.getService()
+                                val body = CreatePackingListRequest(
+                                    packingListName  = plName,
+                                    vehicle          = vehicle.license_plate,
+                                    vehicleId        = vehicle.vehicle_id,
+                                    position         = position?.name,
+                                    positionId       = position?.position_id,
+                                    packingDate      = now.toString(),
+                                    notes            = null,
+                                    createdBy        = "API",
+                                    projectCode      = projectCode,
+                                    totalSpoolsCount = scannedSpools.size
+                                )
+                                val resp = service.createPackingList(projectCode, body)
+                                if (resp.isSuccessful) {
+                                    newCreatedOnServer = true
+                                    val rawBody = resp.body()?.string().orEmpty()
+                                    val parsedId = parseCreatedPlId(rawBody)
+                                    if (parsedId != null && parsedId > 0L && parsedId != newPlId) {
+                                        ServiceLocator.smsPackingListDao.deleteById(newPlId)
+                                        ServiceLocator.smsPackingListDao.insertAll(listOf(pl.copy(packing_list_id = parsedId, synced = true)))
+                                        newFinalPlId = parsedId
+                                    } else {
+                                        ServiceLocator.smsPackingListDao.markSynced(listOf(newPlId))
+                                    }
+                                } else if (resp.code() == 409) {
+                                    // Server says this vehicle already has a PL — could be another
+                                    // device's, or our own local copy of it stale/missing (e.g. the
+                                    // background ghost-cleanup released it locally after 15 minutes
+                                    // of inactivity while the server still holds it, see
+                                    // GHOST_PL_GRACE_MINUTES in MainActivity). Rather than failing
+                                    // with the raw conflict, ask the server which PL it is and, if it
+                                    // really is this vehicle's, reuse it instead of giving up — that's
+                                    // exactly what existingActivePl above would have done had local
+                                    // known about it already.
                                     ServiceLocator.smsPackingListDao.deleteById(newPlId)
-                                    ServiceLocator.smsPackingListDao.insertAll(listOf(pl.copy(packing_list_id = parsedId, synced = true)))
-                                    finalPlId = parsedId
+                                    val recovered = try {
+                                        val listResp = service.getPackingLists(projectCode)
+                                        if (listResp.isSuccessful) {
+                                            com.example.hassiwrapper.parsePackingListEntities(
+                                                listResp.body()?.string().orEmpty(), projectId
+                                            ).firstOrNull { it.vehicle_id == vehicle.vehicle_id && it.is_active }
+                                        } else null
+                                    } catch (_: Exception) { null }
+                                    if (recovered != null) {
+                                        ServiceLocator.smsPackingListDao.insertAll(listOf(recovered.copy(synced = true)))
+                                        newFinalPlId = recovered.packing_list_id
+                                        newFinalPlName = recovered.packing_list_name
+                                        newCreatedOnServer = true
+                                        recoveredFromConflict = true
+                                        Log.w("SendPL", "PL create 409'd, recovered vehicle's real PL ${recovered.packing_list_id} from server")
+                                    } else {
+                                        val msg = parsePackingListConflictMessage(409, resp.errorBody()?.string())
+                                            ?: getString(R.string.pl_vehicle_conflict, "")
+                                        throw VehicleAlreadyLoadingException(msg)
+                                    }
                                 } else {
-                                    ServiceLocator.smsPackingListDao.markSynced(listOf(newPlId))
+                                    Log.w("SendPL", "PL server create failed: HTTP ${resp.code()}")
                                 }
-                            } else if (resp.code() == 409) {
-                                // Vehicle-conflict guard: this vehicle already has an active PL open
-                                // elsewhere. This local PL can never sync — drop it now instead of
-                                // leaving a ghost that the background upload retries forever.
-                                ServiceLocator.smsPackingListDao.deleteById(newPlId)
-                                val msg = parsePackingListConflictMessage(409, resp.errorBody()?.string())
-                                    ?: getString(R.string.pl_vehicle_conflict, "")
-                                throw VehicleAlreadyLoadingException(msg)
-                            } else {
-                                Log.w("SendPL", "PL server create failed: HTTP ${resp.code()}")
                             }
+                        } catch (e: VehicleAlreadyLoadingException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.w("SendPL", "PL server create error (offline?): ${e.message}")
                         }
-                    } catch (e: VehicleAlreadyLoadingException) {
-                        throw e
-                    } catch (e: Exception) {
-                        Log.w("SendPL", "PL server create error (offline?): ${e.message}")
+                        finalPlId = newFinalPlId
+                        finalPlName = newFinalPlName
+                        createdOnServer = newCreatedOnServer
+                        recoveredExistingPl = recoveredFromConflict
                     }
 
+                    // Spools already linked to the PL we're targeting (reusing the vehicle's
+                    // existing PL, whether found locally up front or recovered from a 409 above)
+                    // don't need re-linking — just the newly scanned ones.
+                    val existingLinkedSpoolIds = if (existingActivePl != null || recoveredExistingPl)
+                        ServiceLocator.smsPackingListSpoolDao.getSpoolIdsByPackingList(finalPlId).toSet()
+                    else emptySet()
+                    val spoolsToLink = scannedSpools.filter { it.spoolId != 0L && it.spoolId !in existingLinkedSpoolIds }
+                    val sequenceBase = existingLinkedSpoolIds.size
+
                     val maxPlSpoolId = ServiceLocator.smsPackingListSpoolDao.getMaxId() ?: 0L
-                    val plSpoolEntries = scannedSpools.filter { it.spoolId != 0L }.mapIndexed { idx, s ->
+                    val plSpoolEntries = spoolsToLink.mapIndexed { idx, s ->
                         SmsPackingListSpoolEntity(
                             packing_list_spool_id = maxPlSpoolId + idx + 1,
                             packing_list_id       = finalPlId,
                             spool_id              = s.spoolId,
-                            sequence_number       = idx + 1,
+                            sequence_number       = sequenceBase + idx + 1,
                             added_at              = now.toString()
                         )
                     }
@@ -759,18 +666,36 @@ class SendPackingListFragment : Fragment() {
                         .filter { it != finalPlId }
                         .distinct()
 
-                    scannedSpools.filter { it.spoolId != 0L }.forEachIndexed { idx, s ->
+                    // Runs for every scanned spool, not just spoolsToLink: a delta-sync can clear
+                    // sms_spool.packing_list_id to an authoritative server null while the junction
+                    // row survives (backend derives the link from the junction, not this column) —
+                    // re-stamping it here keeps getByPackingList(finalPlId) below from undercounting
+                    // an already-linked spool whose column got wiped out from under it.
+                    scannedSpools.filter { it.spoolId != 0L }.forEach { s ->
                         ServiceLocator.smsSpoolDao.updatePackingList(s.spoolId, finalPlId)
+                    }
+                    spoolsToLink.forEachIndexed { idx, s ->
                         ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(s.spoolId)
                         if (createdOnServer) {
                             try {
                                 ServiceLocator.apiClient.getService()
-                                    .addSpoolToPackingList(projectCode, finalPlId, AssignSpoolRequest(s.spoolId, "API", idx + 1))
+                                    .addSpoolToPackingList(projectCode, finalPlId, AssignSpoolRequest(s.spoolId, "API", sequenceBase + idx + 1))
                             } catch (_: Exception) { /* offline – sync will retry PL upload, spools stay linked locally */ }
                         }
                     }
                     if (plSpoolEntries.isNotEmpty()) {
                         ServiceLocator.smsPackingListSpoolDao.insertAll(plSpoolEntries)
+                    }
+
+                    // Reusing the vehicle's existing PL grew its spool count — keep the header in
+                    // sync (the create-new-PL branch already seeded total_spools_count at insert).
+                    // Count-only write, deliberately NOT touching `synced`: flipping it here would
+                    // make this already-server-known PL look unsynced again, and uploadNewPackingLists
+                    // only knows how to CREATE (no dedup) — it would 409 and delete the PL this send
+                    // just attached spools/transfer to.
+                    if (existingActivePl != null || recoveredExistingPl) {
+                        val newTotal = ServiceLocator.smsSpoolDao.getByPackingList(finalPlId).size
+                        ServiceLocator.smsPackingListDao.updateSpoolsCount(finalPlId, newTotal)
                     }
 
                     // The spools above just left their previous PL(s) — refresh those PLs'
@@ -803,7 +728,7 @@ class SendPackingListFragment : Fragment() {
                     }
 
                     effectivePlId = finalPlId
-                    effectivePlName = plName
+                    effectivePlName = finalPlName
                 }
 
                 val prevLoadings = ServiceLocator.smsVehicleLoadingDao.getByVehicle(vehicle.vehicle_id, projectId)

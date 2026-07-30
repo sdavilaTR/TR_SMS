@@ -454,10 +454,13 @@ class SyncService(
 
     private suspend fun uploadNewPackingLists(api: AtlasApiService) {
         val dao = smsPackingListDao ?: return
-        // Only Send-flow PLs (positive ids). PLs from the standard CRUD screens use negative
-        // temp ids and upload via the outbox drain — skip them here to avoid a duplicate server
-        // PL (the packing-list create endpoint does not dedup).
-        val unsynced = dao.getUnsynced().filter { it.packing_list_id > 0 }
+        // Only genuinely-new Send-flow PLs: positive id (standard CRUD screens use negative temp
+        // ids and upload via the outbox drain instead) AND no row_version. row_version is only
+        // ever populated by a server response (create/update/download) — a PL that already has
+        // one has been seen by the server before, so treating it as "new" here would re-POST an
+        // existing PL under the create endpoint (which doesn't dedup) and 500 forever if some
+        // other write path flipped its synced flag back to false without going through the outbox.
+        val unsynced = dao.getUnsynced().filter { it.packing_list_id > 0 && it.row_version == null }
         if (unsynced.isEmpty()) return
 
         Log.i(TAG, "Uploading ${unsynced.size} new packing list(s)")

@@ -171,6 +171,12 @@ class MainActivity : AppCompatActivity() {
         // Minimum gap between spool downloads on auto-sync ticks (see doSyncSmsData "spools"
         // section) — spools only change via a daily server-side ETL, so this can be generous.
         private const val SPOOLS_MIN_FETCH_INTERVAL_SEC = 600L // 10 minutes
+        // Grace window for the "ghost PL" cleanup in syncSmsData's packing-lists merge: a PL with
+        // 0 spools + a vehicle attached looks identical whether it's a genuinely abandoned ghost
+        // or one that just had a vehicle assigned via VehicleDetailFragment's "Añadir Packing
+        // List" and is about to be loaded. This is how long the latter gets before being treated
+        // as the former.
+        private const val GHOST_PL_GRACE_MINUTES = 15L
     }
 
     override fun attachBaseContext(newBase: Context) {
@@ -217,6 +223,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.incidentsFragment,
                 R.id.eventHistoryFragment,
                 R.id.spoolMapFragment,
+                R.id.outboxFragment,
                 R.id.settingsFragment -> {
                     navController.navigate(item.itemId)
                 }
@@ -241,6 +248,11 @@ class MainActivity : AppCompatActivity() {
 
         navController.addOnDestinationChangedListener { _, dest, _ ->
             toolbar.title = dest.label
+            // inventarioFragment swaps tabs via child-fragment transactions, not NavController
+            // (see InventarioFragment.showTab) — it owns fabOffset via setInventarioFabConflict.
+            if (dest.id != R.id.inventarioFragment) {
+                setPersistentFabConflict(dest.id == R.id.incidentsFragment)
+            }
             // Map screen needs full-width swipe-to-pan; the wide left-edge swipe-to-open-drawer
             // zone (WideEdgeDrawerLayout, 30% of screen width) otherwise steals those gestures.
             if (ProfileManager.currentUserRole() != ProfileManager.UserRole.GUEST) {
@@ -379,6 +391,30 @@ class MainActivity : AppCompatActivity() {
                 BugReportBottomSheet.newInstance(path, screenName).show(supportFragmentManager, "bug_report")
             }
         }
+    }
+
+    /**
+     * Called for screens whose own bottom-corner FAB sits at the same gravity as the
+     * persistent fabQrScan/fabBugReport (fabNewSpool, fabNewVehicle/fabSend, fabNewIncident —
+     * fabNewPackingList is always View.GONE, PL creation is disabled, so the PL tab has none).
+     * Slides the persistent pair up so they stack instead of overlapping. Public because
+     * InventarioFragment.showTab drives this per-tab (see setInventarioFabConflict).
+     * startDelay keeps the slide visible: firing it in the same frame as the screen/tab
+     * transition made the "up" move look like an instant jump.
+     */
+    private fun setPersistentFabConflict(hasConflict: Boolean) {
+        val offsetPx = if (hasConflict) -(72 * resources.displayMetrics.density) else 0f
+        listOf(R.id.fabQrScan, R.id.fabBugReport).forEach { id ->
+            val fab = findViewById<FloatingActionButton>(id)
+            if (fab.translationY != offsetPx) {
+                fab.animate().translationY(offsetPx).setStartDelay(150).setDuration(200).start()
+            }
+        }
+    }
+
+    /** Tab position: 0=spools (fabNewSpool), 1=packing lists (no FAB), 2=vehicles (fabNewVehicle/fabSend). */
+    fun setInventarioFabConflict(tabPosition: Int) {
+        setPersistentFabConflict(tabPosition != 1)
     }
 
     private fun launchQrScanner() {
@@ -688,7 +724,7 @@ class MainActivity : AppCompatActivity() {
                 setOf(
                     R.id.homeFragment, R.id.qrScannerFragment, R.id.inventarioFragment,
                     R.id.syncFragment, R.id.transfersFragment, R.id.incidentsFragment,
-                    R.id.eventHistoryFragment, R.id.settingsFragment
+                    R.id.eventHistoryFragment, R.id.outboxFragment, R.id.settingsFragment
                 ),
                 drawerLayout
             )
@@ -705,9 +741,31 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.inventarioFragment)?.isVisible = !isGuest
         menu.findItem(R.id.transfersFragment)?.isVisible    = isFull
         menu.findItem(R.id.eventHistoryFragment)?.isVisible = isFull
+        menu.findItem(R.id.outboxFragment)?.isVisible = !isGuest
         menu.findItem(R.id.incidentsFragment)?.isVisible  = !isGuest
         // Home + QR Scanner + Sync + Settings always visible
         findViewById<FloatingActionButton>(R.id.fabQrScan)?.visibility = if (isGuest) android.view.View.GONE else android.view.View.VISIBLE
+    }
+
+    /**
+     * Minutes since [timestamp], or null if it's blank/unparseable. Accepts both a zoned/offset
+     * ISO-8601 string (server `updated_at`) and a bare `LocalDateTime.toString()` (local writes),
+     * since callers here compare a mix of both. Null means "unknown age" — callers must decide
+     * explicitly how to treat that rather than assume recent (or old).
+     */
+    private fun minutesSince(timestamp: String?): Long? {
+        val trimmed = timestamp?.trim().orEmpty()
+        if (trimmed.isEmpty()) return null
+        return try {
+            val instant = try {
+                Instant.parse(trimmed)
+            } catch (_: Exception) {
+                java.time.LocalDateTime.parse(trimmed).toInstant(java.time.ZoneOffset.UTC)
+            }
+            java.time.Duration.between(instant, Instant.now()).toMinutes()
+        } catch (_: Exception) {
+            null
+        }
     }
 
     /**
@@ -1023,7 +1081,21 @@ class MainActivity : AppCompatActivity() {
                             // carries a vehicle looks like a perpetual transit (bug: PL 5922).
                             // Release it here too — not just at send-time — so this also heals
                             // ghost PLs already sitting on the server from before that fix shipped.
-                            val isGhost = actualCount == 0 && mergedVehicleId != null
+                            //
+                            // But a PL that just had a vehicle assigned via VehicleDetailFragment's
+                            // "Añadir Packing List" looks IDENTICAL at this instant (0 spools, a
+                            // vehicle attached) for as long as it takes the user to walk over and
+                            // load it — landing a tick here mid-walk used to wipe that assignment
+                            // out from under them, and re-load attempts then hit the server's real
+                            // one-active-PL-per-vehicle 409 ("vehículo ya tiene PL activo") because
+                            // local no longer agreed the vehicle was taken. A grace window keyed off
+                            // the most recently known touch (local or server) tells the two apart —
+                            // unparseable/blank ages (legacy rows predating this field) still count
+                            // as old, so long-abandoned ghosts keep getting healed.
+                            val touchedAt = maxOf(local.updated_at.orEmpty(), pl.updated_at.orEmpty()).ifEmpty { null }
+                            val ageMinutes = minutesSince(touchedAt)
+                            val isGhost = actualCount == 0 && mergedVehicleId != null &&
+                                (ageMinutes == null || ageMinutes >= GHOST_PL_GRACE_MINUTES)
                             if (isGhost) ghostPlIds += pl.packing_list_id
                             pl.copy(
                                 ready_to_send      = if (isGhost) false else local.ready_to_send,
@@ -1032,7 +1104,13 @@ class MainActivity : AppCompatActivity() {
                                 position_id        = if (keepLocal) local.position_id else (pl.position_id ?: local.position_id),
                                 position           = if (keepLocal) local.position else (pl.position ?: local.position),
                                 total_spools_count = actualCount,
-                                synced             = if (isGhost) false else (if (keepLocal) false else pl.synced)
+                                synced             = if (isGhost) false else (if (keepLocal) false else pl.synced),
+                                // Carry the grace-window timestamp forward — pl.copy() otherwise
+                                // takes the server's updated_at unconditionally, which would erase
+                                // a fresher local stamp (or a blank/older server value) on every
+                                // single tick and make the grace window above a no-op after the
+                                // first merge.
+                                updated_at         = touchedAt
                             )
                         }
                         val newPLCount = mergedPLs.count { it.packing_list_id !in localPLs }

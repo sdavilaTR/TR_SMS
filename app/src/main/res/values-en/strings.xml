@@ -903,6 +903,7 @@
     <string name="pl_vehicle_conflict">Could not assign: %1$s</string>
     <string name="pl_vehicle_conflict_title">Vehicle already loaded</string>
     <string name="pl_vehicle_conflict_warning">Vehicle %1$s already has an undelivered Packing List (%2$s). If you\'re adding spools to that same shipment, continue as normal; if this is a different load, pick another vehicle.</string>
+    <string name="pl_vehicle_conflict_intransit">This vehicle is already in transit with Packing List %1$s. Pick another vehicle, or wait until that shipment is received.</string>
     <string name="vehicle_detail_pl_removed">Packing List unassigned from vehicle</string>
     <string name="vehicle_detail_remove_pl_title">Unassign Packing List</string>
     <string name="vehicle_detail_remove_pl_msg">Unassign %1$s from this vehicle?</string>
@@ -950,10 +951,6 @@
     <string name="load_spools_btn_continue">Continue</string>
     <string name="load_spools_btn_save_anyway">Save anyway</string>
     <string name="load_spools_qr_is_spool">This QR belongs to a spool, not a vehicle. Scan the vehicle QR.</string>
-    <string name="load_spools_weight_meter">Load: %1$s / %2$s kg (%3$d%%)</string>
-    <string name="load_spools_weight_no_capacity">Load: %1$s kg (vehicle capacity not defined)</string>
-    <string name="load_spools_weight_missing"> · %1$d without weight (tap to retry)</string>
-    <string name="load_spools_weight_retrying">Retrieving weights…</string>
 
     <!-- Transfer: Send Packing List -->
     <string name="transfer_send_title">Send Packing List</string>
@@ -1056,4 +1053,26 @@
     <string name="home_btn_map">View Spool Map</string>
     <string name="home_qa_map">Spool Map</string>
     <string name="home_btn_inventario">View my zone\'s inventory</string>
+
+    <!-- Outbox / Pending -->
+    <string name="menu_outbox">Pending</string>
+    <string name="outbox_empty">No operations pending sync</string>
+    <string name="outbox_status_pending">Pending</string>
+    <string name="outbox_status_failed">Failed</string>
+    <string name="outbox_meta_format">%1$s · attempt %2$d</string>
+    <string name="outbox_discard_failed">Discard failed operations</string>
+    <string name="outbox_op_create">Create</string>
+    <string name="outbox_op_update">Update</string>
+    <string name="outbox_op_delete">Delete</string>
+    <string name="outbox_op_hard_delete">Hard delete</string>
+    <string name="outbox_op_assign">Assign</string>
+    <string name="outbox_op_unassign">Unassign</string>
+    <string name="outbox_entity_spool">Spool</string>
+    <string name="outbox_entity_vehicle">Vehicle</string>
+    <string name="outbox_entity_packing_list">Packing List</string>
+    <string name="outbox_entity_incident">Incident</string>
+    <string name="outbox_entity_pl_assign">Spool on Packing List</string>
+    <string name="outbox_entity_vehicle_loading">Vehicle loading</string>
+    <string name="outbox_entity_transfer">Transfer</string>
+    <string name="outbox_entity_route_state">Route state</string>
 </resources>

@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ui.common.SwipeTabContainer
@@ -30,6 +31,12 @@ class InventarioFragment : Fragment() {
             tabLayout.visibility = View.GONE
             if (savedInstanceState == null) showTab(0)
             return
+        }
+
+        if (savedInstanceState != null) {
+            // Fragment recreated (e.g. rotation): tabLayout keeps its selection but won't
+            // re-fire onTabSelected, so the persistent-FAB offset would be left stale.
+            (activity as? MainActivity)?.setInventarioFabConflict(tabLayout.selectedTabPosition)
         }
 
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
@@ -58,6 +65,7 @@ class InventarioFragment : Fragment() {
     }
 
     private fun showTab(position: Int) {
+        (activity as? MainActivity)?.setInventarioFabConflict(position)
         val tag = when (position) {
             0 -> TAG_SPOOLS
             1 -> TAG_PLS

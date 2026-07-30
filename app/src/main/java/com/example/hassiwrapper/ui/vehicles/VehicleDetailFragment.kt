@@ -2,7 +2,6 @@ package com.example.hassiwrapper.ui.vehicles
 
 import android.app.AlertDialog
 import android.os.Bundle
-import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -19,7 +18,6 @@ import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
 import com.example.hassiwrapper.network.dto.UpdatePackingListRequest
-import com.example.hassiwrapper.network.dto.parsePackingListConflictMessage
 import com.example.hassiwrapper.services.OutboxService
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
@@ -27,7 +25,6 @@ import kotlinx.coroutines.launch
 class VehicleDetailFragment : Fragment() {
 
     companion object {
-        private const val TAG = "VehicleDetail"
         val locallyDeletedVehicleIds = mutableSetOf<Long>()
     }
 
@@ -192,47 +189,52 @@ class VehicleDetailFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val v = ServiceLocator.smsVehicleDao.getById(vehicleId) ?: return@launch
-                val updated = pl.copy(vehicle_id = vehicleId, vehicle_plate = v.license_plate, synced = false)
+                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code.orEmpty()
+                val position = pl.position_id?.let { ServiceLocator.smsPositionDao.getById(it) }
+
+                // updated_at stamped here (not left to the server round trip) so MainActivity's
+                // ghost-PL cleanup grace window has something to go on immediately — a sync tick
+                // landing before the outbox drain completes must still see this as "just touched".
+                // java.time.Instant, not LocalDateTime: minutesSince() treats a bare (no offset)
+                // timestamp as UTC, and a device-local LocalDateTime.now() on any non-UTC terminal
+                // (e.g. JAFURAH/Saudi, +03:00) would parse hours into the "future" and make this
+                // stamp — and everything merged forward from it — falsely ghost-immune.
+                val updated = pl.copy(
+                    vehicle_id    = vehicleId,
+                    vehicle_plate = v.license_plate,
+                    synced        = false,
+                    updated_at    = java.time.Instant.now().toString()
+                )
                 ServiceLocator.smsPackingListDao.insertAll(listOf(updated))
 
-                try {
-                    val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                    if (!projectCode.isNullOrBlank()) {
-                        val position = pl.position_id?.let { ServiceLocator.smsPositionDao.getById(it) }
-                        val resp = ServiceLocator.apiClient.getService().updatePackingList(
-                            projectCode,
-                            UpdatePackingListRequest(
-                                packingListId   = pl.packing_list_id,
-                                packingListName = pl.packing_list_name,
-                                vehicle         = v.license_plate,
-                                position        = position?.run { name.ifBlank { code } },
-                                positionId      = pl.position_id,
-                                packingDate     = pl.packing_date,
-                                notes           = pl.notes,
-                                createdBy       = pl.created_by,
-                                updatedBy       = "APP",
-                                projectCode     = projectCode
-                                // rowVersion intentionally omitted — see EditPackingListFragment.saveEdits.
-                            )
-                        )
-                        if (!resp.isSuccessful) {
-                            if (resp.code() == 409) {
-                                // Another device already put this vehicle on a different active PL —
-                                // undo the optimistic local assignment instead of leaving it diverged
-                                // from the server.
-                                ServiceLocator.smsPackingListDao.insertAll(listOf(pl))
-                                val msg = parsePackingListConflictMessage(409, resp.errorBody()?.string())
-                                Toast.makeText(requireContext(), getString(R.string.pl_vehicle_conflict, msg), Toast.LENGTH_LONG).show()
-                                loadData()
-                                return@launch
-                            }
-                            Log.w(TAG, "updatePackingList API failed: HTTP ${resp.code()}")
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "updatePackingList API failed", e)
-                }
+                // Queued instead of an inline API call: survives offline and is retried by the
+                // outbox drain, same as EditPackingListFragment.saveEdits. Its UPDATE handler
+                // (OutboxService.packingListUpdate) marks this row synced on success and reconciles
+                // it from the server on a 409 (another device already put this vehicle on a
+                // different active PL) — so unlike the old inline call, a failure here can no
+                // longer leave the row silently `synced=false` forever, which used to make it
+                // eligible for SyncService.uploadNewPackingLists()'s CREATE-only path: that re-POSTs
+                // an already-existing PL, gets 409'd against itself, and deletes it (confirmed 4/4
+                // on-device 2026-07-30). Trade-off: the vehicle-conflict toast is no longer
+                // immediate — it surfaces (if at all) on the next sync/drain, same as every other
+                // outbox-backed edit in this app.
+                ServiceLocator.outboxService.enqueue(
+                    OutboxService.Entity.PACKING_LIST, OutboxService.Op.UPDATE, pl.packing_list_id, projectId,
+                    payload = UpdatePackingListRequest(
+                        packingListId   = pl.packing_list_id,
+                        packingListName = pl.packing_list_name,
+                        vehicle         = v.license_plate,
+                        position        = position?.run { name.ifBlank { code } },
+                        positionId      = pl.position_id,
+                        packingDate     = pl.packing_date,
+                        notes           = pl.notes,
+                        createdBy       = pl.created_by,
+                        updatedBy       = "APP",
+                        projectCode     = projectCode
+                        // rowVersion intentionally omitted — see EditPackingListFragment.saveEdits.
+                    )
+                )
 
                 Toast.makeText(requireContext(), getString(R.string.vehicle_detail_pl_added), Toast.LENGTH_SHORT).show()
                 loadData()
@@ -254,34 +256,30 @@ class VehicleDetailFragment : Fragment() {
     private fun doRemovePackingList(pl: SmsPackingListEntity) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code.orEmpty()
+                val position = pl.position_id?.let { ServiceLocator.smsPositionDao.getById(it) }
+
                 val updated = pl.copy(vehicle_id = null, vehicle_plate = null, synced = false)
                 ServiceLocator.smsPackingListDao.insertAll(listOf(updated))
 
-                try {
-                    val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
-                    if (!projectCode.isNullOrBlank()) {
-                        val position = pl.position_id?.let { ServiceLocator.smsPositionDao.getById(it) }
-                        ServiceLocator.apiClient.getService().updatePackingList(
-                            projectCode,
-                            UpdatePackingListRequest(
-                                packingListId   = pl.packing_list_id,
-                                packingListName = pl.packing_list_name,
-                                vehicle         = null,
-                                position        = position?.run { name.ifBlank { code } },
-                                positionId      = pl.position_id,
-                                packingDate     = pl.packing_date,
-                                notes           = pl.notes,
-                                createdBy       = pl.created_by,
-                                updatedBy       = "APP",
-                                projectCode     = projectCode
-                                // rowVersion intentionally omitted — see EditPackingListFragment.saveEdits.
-                            )
-                        )
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "updatePackingList (remove) API failed", e)
-                }
+                // Queued instead of an inline call — same reasoning as doAddPackingList.
+                ServiceLocator.outboxService.enqueue(
+                    OutboxService.Entity.PACKING_LIST, OutboxService.Op.UPDATE, pl.packing_list_id, projectId,
+                    payload = UpdatePackingListRequest(
+                        packingListId   = pl.packing_list_id,
+                        packingListName = pl.packing_list_name,
+                        vehicle         = null,
+                        position        = position?.run { name.ifBlank { code } },
+                        positionId      = pl.position_id,
+                        packingDate     = pl.packing_date,
+                        notes           = pl.notes,
+                        createdBy       = pl.created_by,
+                        updatedBy       = "APP",
+                        projectCode     = projectCode
+                        // rowVersion intentionally omitted — see EditPackingListFragment.saveEdits.
+                    )
+                )
 
                 Toast.makeText(requireContext(), getString(R.string.vehicle_detail_pl_removed), Toast.LENGTH_SHORT).show()
                 loadData()

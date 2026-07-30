@@ -804,6 +804,7 @@
     <string name="pl_vehicle_conflict">تعذّر التعيين: %1$s</string>
     <string name="pl_vehicle_conflict_title">المركبة محمّلة بالفعل</string>
     <string name="pl_vehicle_conflict_warning">المركبة %1$s لديها بالفعل قائمة تعبئة لم يتم تسليمها (%2$s). إذا كنت تضيف بكرات إلى نفس الشحنة، تابع كالمعتاد؛ إذا كانت هذه حمولة مختلفة، اختر مركبة أخرى.</string>
+    <string name="pl_vehicle_conflict_intransit">هذه المركبة في الطريق بالفعل بقائمة التعبئة %1$s. اختر مركبة أخرى، أو انتظر حتى يتم تأكيد استلام تلك الشحنة.</string>
     <string name="vehicle_detail_pl_removed">تم إلغاء تعيين Packing List من المركبة</string>
     <string name="vehicle_detail_remove_pl_title">إلغاء تعيين Packing List</string>
     <string name="vehicle_detail_remove_pl_msg">هل تريد إلغاء تعيين %1$s من هذه المركبة؟</string>
@@ -851,10 +852,6 @@
     <string name="load_spools_btn_continue">متابعة</string>
     <string name="load_spools_btn_save_anyway">حفظ رغم ذلك</string>
     <string name="load_spools_qr_is_spool">رمز QR هذا خاص بـ Spool وليس بمركبة. امسح رمز QR الخاص بالمركبة.</string>
-    <string name="load_spools_weight_meter">الحمولة: %1$s / %2$s كجم (%3$d%%)</string>
-    <string name="load_spools_weight_no_capacity">الحمولة: %1$s كجم (سعة المركبة غير محددة)</string>
-    <string name="load_spools_weight_missing"> · %1$d بدون وزن (اضغط لإعادة المحاولة)</string>
-    <string name="load_spools_weight_retrying">جارٍ استرجاع الأوزان…</string>
 
     <!-- Transfer: Send Packing List -->
     <string name="transfer_send_title">إرسال Packing List</string>
@@ -1050,5 +1047,27 @@
     <string name="home_btn_map">عرض خريطة Spools</string>
     <string name="home_qa_map">خريطة Spools</string>
     <string name="home_btn_inventario">عرض مخزون منطقتي</string>
+
+    <!-- Outbox / قيد الانتظار -->
+    <string name="menu_outbox">قيد الانتظار</string>
+    <string name="outbox_empty">لا توجد عمليات قيد المزامنة</string>
+    <string name="outbox_status_pending">قيد الانتظار</string>
+    <string name="outbox_status_failed">فشلت</string>
+    <string name="outbox_meta_format">%1$s · المحاولة %2$d</string>
+    <string name="outbox_discard_failed">تجاهل العمليات الفاشلة</string>
+    <string name="outbox_op_create">إنشاء</string>
+    <string name="outbox_op_update">تحديث</string>
+    <string name="outbox_op_delete">حذف</string>
+    <string name="outbox_op_hard_delete">حذف نهائي</string>
+    <string name="outbox_op_assign">تعيين</string>
+    <string name="outbox_op_unassign">إلغاء التعيين</string>
+    <string name="outbox_entity_spool">بكرة</string>
+    <string name="outbox_entity_vehicle">مركبة</string>
+    <string name="outbox_entity_packing_list">قائمة التعبئة</string>
+    <string name="outbox_entity_incident">حادثة</string>
+    <string name="outbox_entity_pl_assign">بكرة في قائمة التعبئة</string>
+    <string name="outbox_entity_vehicle_loading">تحميل المركبة</string>
+    <string name="outbox_entity_transfer">نقل</string>
+    <string name="outbox_entity_route_state">حالة المسار</string>
 
 </resources>

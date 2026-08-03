@@ -61,6 +61,9 @@
     <string name="packing_lists_error_prefix">त्रुटि: %s</string>
     <string name="packing_lists_error_http">HTTP त्रुटि %d</string>
     <string name="packing_lists_error_project_code">project_id=%d के लिए projectCode खाली/शून्य है। क्या सिंक किया गया था?</string>
+    <string name="pl_badge_historical">वितरित</string>
+    <string name="pl_delivered_on">वितरित: %s</string>
+    <string name="pl_detail_historical_badge">%s को वितरित — केवल पढ़ने योग्य</string>
     <string name="home_label_packing_lists">पैकिंग लिस्ट</string>
     <string name="menu_attendance">स्पूल रिकॉर्ड</string>
     <string name="menu_sync">सिंक्रोनाइज़ेशन</string>

@@ -58,7 +58,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsSpoolLocationEntity::class,
         SmsBugReportEntity::class
     ],
-    version = 44,
+    version = 46,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -1041,6 +1041,35 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v44 → v45: one-time sweep of sms_packing_list_historical markers already orphaned (their
+        // PL row is gone). NOTE: this originally also created an AFTER DELETE trigger to cascade
+        // this cleanup going forward, but that was wrong and got reverted in v45→v46 below — the
+        // sync path routinely does DELETE-then-re-INSERT on synced PL rows that are very much still
+        // alive (MainActivity.syncSmsData's deleteSyncedByProject + insertAll runs every 60 s auto-sync
+        // for any already-synced PL, not just ones truly removed server-side), so an AFTER DELETE
+        // trigger fired on that churn and wiped the historical marker of a just-delivered PL within
+        // a minute of it being set — device-reproduced 2026-08-03 (PL 5922/6571/7873 markers all
+        // wiped on the very next sync tick).
+        private val MIGRATION_44_45 = object : Migration(44, 45) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 44 → 45: one-time sweep of orphaned sms_packing_list_historical rows")
+                db.execSQL("""
+                    DELETE FROM sms_packing_list_historical
+                    WHERE packing_list_id NOT IN (SELECT packing_list_id FROM sms_packing_list)
+                """.trimIndent())
+            }
+        }
+
+        // v45 → v46: drop the AFTER DELETE trigger from v44→v45 — see the note there. Genuine
+        // PL removal (server no longer lists it) is instead cleaned up explicitly in
+        // MainActivity.syncSmsData's removedPLIds handling, which only fires for PLs actually gone.
+        private val MIGRATION_45_46 = object : Migration(45, 46) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 45 → 46: drop trg_pl_historical_cascade_delete (unsafe with delete+reinsert sync pattern)")
+                db.execSQL("DROP TRIGGER IF EXISTS trg_pl_historical_cascade_delete")
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -1091,7 +1120,9 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_40_41,
                         MIGRATION_41_42,
                         MIGRATION_42_43,
-                        MIGRATION_43_44
+                        MIGRATION_43_44,
+                        MIGRATION_44_45,
+                        MIGRATION_45_46
                     )
                     .build()
                 INSTANCE = instance

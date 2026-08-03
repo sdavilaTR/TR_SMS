@@ -65,6 +65,22 @@ private class FakeSmsIncidentDao : SmsIncidentDao {
         rows[id] = row.copy(status = "CLOSED", closed_by = closedBy, closed_at = closedAt, synced = false)
     }
 
+    override suspend fun setStatus(id: Long, status: String) {
+        rows[id] = rows[id]!!.copy(status = status, synced = false)
+    }
+
+    override suspend fun getOpenRevisionMismatch(projectId: Int, spoolCode: String, spoolSuffix: String?): SmsIncidentEntity? =
+        rows.values.firstOrNull {
+            it.project_id == projectId && it.spool_code == spoolCode && it.spool_suffix == spoolSuffix &&
+                it.incident_type == "REVISION_MISMATCH" && it.status != "CLOSED"
+        }
+
+    override suspend fun getOpenVehicleNotRegistered(projectId: Int, plate: String): SmsIncidentEntity? =
+        rows.values.firstOrNull {
+            it.project_id == projectId && it.vehicle_plate == plate &&
+                it.incident_type == "VEHICLE_NOT_REGISTERED" && it.status != "CLOSED"
+        }
+
     override suspend fun deleteById(id: Long) {
         rows.remove(id)
     }

@@ -66,4 +66,34 @@ class SpoolDeltaGuardTest {
         assertEquals(true, decision.shouldPurge)
         assertEquals(false, decision.shouldResetCursor)
     }
+
+    // MainActivity.syncSmsData reuses this same evaluate() for the full-sync path: instead of
+    // "deactivatedCount", it passes (localSpools.size - merged.size) — how many previously-local
+    // spools the full response failed to account for. Same shape, same guard, no separate logic
+    // to test — these cases just pin down that reuse is correct for that interpretation.
+
+    @Test
+    fun `full sync returning zero rows for a populated project is caught (not just 100% deactivation)`() {
+        // 34890 local spools, full response comes back with 3 usable rows -> dropped = 34887.
+        val decision = SpoolDeltaGuard.evaluate(deactivatedCount = 34887, localCount = 34890)
+        assertEquals(false, decision.shouldPurge)
+        assertEquals(true, decision.shouldResetCursor)
+    }
+
+    @Test
+    fun `full sync legitimate shrink under the ratio floor is not caught`() {
+        // 500 of 10000 spools legitimately gone (soft-deleted/completed) between full syncs.
+        val decision = SpoolDeltaGuard.evaluate(deactivatedCount = 500, localCount = 10000)
+        assertEquals(true, decision.shouldPurge)
+        assertEquals(false, decision.shouldResetCursor)
+    }
+
+    @Test
+    fun `full sync on a project with no local spools never trips (nothing to protect)`() {
+        // droppedCount is coerced to >=0 by the caller, so a brand-new/empty project always
+        // evaluates as deactivatedCount=0 here regardless of merged.size.
+        val decision = SpoolDeltaGuard.evaluate(deactivatedCount = 0, localCount = 0)
+        assertEquals(false, decision.shouldPurge)
+        assertEquals(false, decision.shouldResetCursor)
+    }
 }

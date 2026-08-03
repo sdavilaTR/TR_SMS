@@ -171,6 +171,14 @@ class MainActivity : AppCompatActivity() {
         // Minimum gap between spool downloads on auto-sync ticks (see doSyncSmsData "spools"
         // section) — spools only change via a daily server-side ETL, so this can be generous.
         private const val SPOOLS_MIN_FETCH_INTERVAL_SEC = 600L // 10 minutes
+        // Delta sync only heals divergence its own guard understands (soft-deletes, updated_at
+        // bumps). Anything outside that model — a hard-deleted row, a backend write that forgets
+        // to stamp updated_at, any drift nobody has thought of yet — never self-corrects while
+        // delta stays on, because full sync (the only reconciliation path that re-derives local
+        // state from scratch) never runs again once a cursor exists. This floor forces one
+        // regardless, on a cadence cheap enough not to bring back the every-60s full-sync cost
+        // delta was built to kill.
+        private const val SPOOLS_FULL_SYNC_FLOOR_SEC = 24L * 60 * 60 // 24 hours
         // Grace window for the "ghost PL" cleanup in syncSmsData's packing-lists merge: a PL with
         // 0 spools + a vehicle attached looks identical whether it's a genuinely abandoned ghost
         // or one that just had a vehicle assigned via VehicleDetailFragment's "Añadir Packing
@@ -883,9 +891,21 @@ class MainActivity : AppCompatActivity() {
                     // ?updatedSince= on GET /spools. Full sync behaviour is the safe fallback.
                     val lastSyncKey  = "sms_spools_last_sync_$projectId"
                     val deltaEnabled = ServiceLocator.configRepo.get("sms_delta_sync_enabled") == "true"
-                    val updatedSince = if (deltaEnabled) ServiceLocator.configRepo.get(lastSyncKey) else null
+                    val lastFullSyncKey = "sms_spools_last_full_sync_$projectId"
+                    val lastFullSyncEpoch = ServiceLocator.configRepo.get(lastFullSyncKey)?.toLongOrNull()
+                    val fullSyncFloorDue = lastFullSyncEpoch == null ||
+                        Instant.now().epochSecond - lastFullSyncEpoch >= SPOOLS_FULL_SYNC_FLOOR_SEC
+                    val updatedSince = if (deltaEnabled && !fullSyncFloorDue) ServiceLocator.configRepo.get(lastSyncKey) else null
                     val isFullSync   = updatedSince == null
-                    val syncStarted  = Instant.now().minusSeconds(30).toString()
+                    // The cursor we write after this sync must be a timestamp the SERVER will
+                    // later compare its own s.updated_at (etc.) against — using the device clock
+                    // here silently skips rows whenever the device runs fast: a field EDA52 a few
+                    // minutes ahead of true time would advance the cursor past the server-side
+                    // window those rows actually land in, with no guard shaped to notice a clock
+                    // problem. Prefer the response's own Date header (captured below, first
+                    // successful page) as the server's clock; device time is only a fallback for
+                    // the rare case a proxy strips it.
+                    var serverDateAtFetch: Instant? = null
 
                     // Each page gets a few retries with backoff before we give up on it — large
                     // projects (MERAM, JAFURAH) need dozens of sequential page requests, and a
@@ -916,6 +936,21 @@ class MainActivity : AppCompatActivity() {
                     var deltaAnomalyDetected = false
                     while (true) {
                         val spoolResp = fetchPageWithRetry(page) ?: break
+                        // Re-parsed on every page (last successful one wins, not the first): a
+                        // multi-page full sync spans real wall-clock time (7 pages ≈ 65s on
+                        // JAFURAH) and rows can be stamped server-side anywhere in that window.
+                        // Anchoring to the first page's Date would leave that window's own rows
+                        // sitting after the cursor we write — silently skipped next cycle, the
+                        // same failure shape this fix exists to close, just moved earlier.
+                        // Anchoring to the last page means every row we actually fetched is
+                        // provably before it.
+                        spoolResp.headers()["Date"]?.let {
+                            try {
+                                serverDateAtFetch = java.time.ZonedDateTime.parse(it, java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME).toInstant()
+                            } catch (e: Exception) {
+                                Log.w(TAG, "syncSmsData: unparseable Date header '$it' on page=$page")
+                            }
+                        }
                         val spoolRaw = spoolResp.body()?.string().orEmpty()
                         if (page == 1) Log.d(TAG, "syncSmsData spools raw(500): ${spoolRaw.take(500)}")
                         val pageEntities = parseSpoolEntities(spoolRaw, projectId)
@@ -928,6 +963,14 @@ class MainActivity : AppCompatActivity() {
                         if (pageEntities.size < pageSize) { fetchOk = true; break }
                         page++
                     }
+                    // A missing Date header (stripped by some proxy — PRO's reverse proxy path is
+                    // untested for this) only matters on a delta sync: full sync already wipes and
+                    // re-derives everything this cycle regardless of what cursor gets written, so
+                    // falling back to device clock there just risks the next (delta) cycle's window
+                    // — bounded by the 24h floor either way. On a delta sync itself, don't take that
+                    // risk: skip advancing the cursor entirely below rather than trust device clock.
+                    val serverDateMissing = serverDateAtFetch == null
+                    val syncStarted = (serverDateAtFetch ?: Instant.now()).minusSeconds(30).toString()
 
                     // Persist whatever pages we did get, even on partial failure: upserting the
                     // fetched rows still advances the KPI/local data, and skipping the wipe below
@@ -1006,30 +1049,65 @@ class MainActivity : AppCompatActivity() {
 
                         val newCount = merged.count { it.spool_id !in localSpools }
                         val updatedCount = merged.count { it.spool_id in localSpools }
-                        if (isFullSync && fetchOk) {
+                        // A full sync that completes (fetchOk) but comes back with far fewer usable
+                        // rows than the project already has locally is the full-sync-path equivalent
+                        // of what SpoolDeltaGuard catches on the delta path — same failure shape
+                        // (filter regression, bad projectCode resolving to a near-empty project,
+                        // partial server-side deactivation), just surfacing as "rows missing from a
+                        // full response" instead of "rows explicitly marked inactive". Reuse the same
+                        // ratio/minCount decision rather than a bare zero check: a 100%-only guard
+                        // lets e.g. 3-of-34890 sail through, wipe the other 34887, and — now that the
+                        // floor refreshes on every "successful" full sync — pin the device at 3
+                        // spools for a full 24h instead of self-healing on the next 60s auto-sync.
+                        val droppedCount = (localSpools.size - merged.size).coerceAtLeast(0)
+                        val fullSyncDecision = SpoolDeltaGuard.evaluate(droppedCount, localSpools.size)
+                        val fullSyncAnomalyDetected = isFullSync && fetchOk && fullSyncDecision.shouldResetCursor
+                        if (fullSyncAnomalyDetected) {
+                            Log.e(TAG, "syncSmsData: full sync returned only ${merged.size}/${localSpools.size} local spools — skipping wipe, not advancing cursor/floor")
+                            // Same reasoning as the delta anomaly's lastFetchKey clear above: a
+                            // prior cycle may have left this timestamp recent, which would make the
+                            // next unforced auto-sync tick skip the spool fetch (throttle check at
+                            // the top of this section) instead of retrying immediately.
+                            ServiceLocator.configRepo.remove(lastFetchKey)
+                        }
+                        if (isFullSync && fetchOk && !fullSyncAnomalyDetected) {
                             // Full sync completed all pages: safe to wipe stale server-side rows.
                             // Never wipe on a partial fetch — we'd delete spools beyond the last
                             // page we reached, with no fresh data to replace them.
                             ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
+                            // Reset the floor from this successful reconciliation, whether it ran
+                            // because delta was off, no cursor existed yet, or the floor forced it —
+                            // any of those is a real full sync and restarts the clock.
+                            ServiceLocator.configRepo.set(lastFullSyncKey, Instant.now().epochSecond.toString())
                         }
                         if (merged.isNotEmpty()) {
                             ServiceLocator.smsSpoolDao.insertAll(merged)
                         }
                         ServiceLocator.smsSpoolDao.deleteInactive()
-                        if (fetchOk && !deltaAnomalyDetected) {
+                        if (fetchOk && !deltaAnomalyDetected && !fullSyncAnomalyDetected && !(serverDateMissing && !isFullSync)) {
                             // Only advance the delta cursor once we've actually caught up —
                             // a partial fetch must retry from page 1 next time, not skip ahead.
                             // An anomalous batch must not advance it either: the cursor was already
                             // cleared above so the next cycle falls back to a full sync — setting it
                             // again here would silently undo that within this very same call and
                             // strand the flagged-anomalous rows out of every future delta window.
+                            // Same reasoning applies to a full-sync anomaly (see above): advancing
+                            // the cursor here would make the NEXT cycle run as delta-since-now
+                            // instead of retrying the full sync that just failed to find any data.
+                            // A delta cycle with no server Date header must not advance it either —
+                            // syncStarted would be the device clock, the exact source this cursor is
+                            // meant to avoid; better to re-request the same window next cycle
+                            // (wasteful, not lossy) than risk silently skipping rows past a skewed
+                            // clock. A full sync's own correctness doesn't depend on this cursor
+                            // (it just wiped+re-derived everything), so it's fine to advance there
+                            // even without the header — bounded by the 24h floor either way.
                             ServiceLocator.configRepo.set(lastSyncKey, syncStarted)
                             // Also mark the throttle timestamp — a partial/failed fetch must NOT
                             // set this, so the next auto-sync tick retries immediately instead of
                             // waiting out the full interval on stale/missing data.
                             ServiceLocator.configRepo.set(lastFetchKey, Instant.now().epochSecond.toString())
                         }
-                        val status = if (!fetchOk) "PARTIAL" else if (isFullSync) "full" else "delta"
+                        val status = if (!fetchOk) "PARTIAL" else if (fullSyncAnomalyDetected) "ANOMALY-DROP" else if (isFullSync) "full" else "delta"
                         Log.d(TAG, "syncSmsData: $status sync — ${merged.size} spools written (page=$page)")
                         val spoolMsg = if (fetchOk) getString(R.string.sync_sms_spools_ok, newCount, updatedCount, merged.size)
                                        else getString(R.string.sync_sms_spools_partial, page, merged.size)
@@ -1130,6 +1208,11 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                             Log.d(TAG, "syncSmsData: freed spools from ${removedPLIds.size} server-deleted PLs")
+                            // Drop their historical marker too (app-local, never cleaned up by the
+                            // PL row's own delete/reinsert cycle) — otherwise it's a permanent
+                            // orphan since deleteSyncedByProject below re-deletes+reinserts every
+                            // still-alive synced PL every tick, not just these actually-removed ones.
+                            ServiceLocator.smsPackingListHistoricalDao.deleteByIds(removedPLIds)
                         }
 
                         ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)

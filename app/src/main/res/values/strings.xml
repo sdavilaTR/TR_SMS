@@ -61,6 +61,9 @@
     <string name="packing_lists_error_prefix">Error: %s</string>
     <string name="packing_lists_error_http">Error HTTP %d</string>
     <string name="packing_lists_error_project_code">projectCode nulo/vacío para project_id=%d. ¿Se hizo sync?</string>
+    <string name="pl_badge_historical">ENTREGADO</string>
+    <string name="pl_delivered_on">Entregado: %s</string>
+    <string name="pl_detail_historical_badge">Entregado el %s — solo lectura</string>
     <string name="home_label_packing_lists">Packing Lists</string>
     <string name="menu_attendance">Registros de Spools</string>
     <string name="menu_sync">Sincronización</string>

@@ -13,6 +13,9 @@
     <string name="packing_lists_error_prefix">错误：%s</string>
     <string name="packing_lists_error_http">HTTP %d</string>
     <string name="packing_lists_error_project_code">projectCode 为空，project_id=%d。是否已同步？</string>
+    <string name="pl_badge_historical">已交付</string>
+    <string name="pl_delivered_on">交付时间：%s</string>
+    <string name="pl_detail_historical_badge">交付于 %s — 只读</string>
     <string name="home_label_packing_lists">装箱单</string>
     <string name="menu_attendance">管段记录</string>
     <string name="menu_sync">同步</string>

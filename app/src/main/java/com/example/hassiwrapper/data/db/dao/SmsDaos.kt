@@ -257,8 +257,17 @@ interface SmsPackingListHistoricalDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun markHistorical(item: SmsPackingListHistoricalEntity)
 
-    @Query("DELETE FROM sms_packing_list_historical WHERE packing_list_id = :id")
-    suspend fun unmark(id: Long)
+    /** Targeted cleanup for PLs confirmed gone server-side (see MainActivity.syncSmsData's
+     *  removedPLIds) — NOT a blanket trigger on sms_packing_list deletes, which would also fire
+     *  on the routine delete-then-reinsert refresh of still-alive synced PLs every auto-sync tick. */
+    @Query("DELETE FROM sms_packing_list_historical WHERE packing_list_id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
+    @Query("SELECT marked_at FROM sms_packing_list_historical WHERE packing_list_id = :id")
+    suspend fun getMarkedAt(id: Long): String?
+
+    @Query("SELECT * FROM sms_packing_list_historical WHERE packing_list_id IN (:ids)")
+    suspend fun getByIds(ids: List<Long>): List<SmsPackingListHistoricalEntity>
 }
 
 @Dao

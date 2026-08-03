@@ -25,7 +25,22 @@
             android:textColor="@color/primary"
             android:textStyle="bold"
             android:textSize="18sp"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/txtDetailHistoricalBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_kpi_gray"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:textColor="@color/on_surface_variant"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone" />
 
         <TextView
             android:layout_width="match_parent"
@@ -179,6 +194,7 @@
             android:layout_marginBottom="4dp" />
 
         <TextView
+            android:id="@+id/txtScanHint"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/pl_scan_hint"

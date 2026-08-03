@@ -63,6 +63,13 @@ class PackingListsFragment : Fragment() {
 
         tabLayout.addTab(tabLayout.newTab().setText(getString(R.string.packing_lists_tab_current)))
         tabLayout.addTab(tabLayout.newTab().setText(getString(R.string.packing_lists_tab_historical)))
+        // This view (and TabLayout) gets destroyed+recreated on every back-stack return from
+        // PackingListDetailFragment while this Fragment instance — and showHistorical — survives.
+        // A fresh TabLayout always auto-selects tab 0 without notifying the listener, so without
+        // this the tab UI silently resets to "Actuales" while showHistorical (and the data on
+        // screen) can stay stuck on "Históricos" — device-reproduced 2026-08-03. Select before
+        // registering the listener below so this sync doesn't trigger a redundant load().
+        tabLayout.getTabAt(if (showHistorical) 1 else 0)?.select()
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 showHistorical = tab.position == 1
@@ -78,9 +85,24 @@ class PackingListsFragment : Fragment() {
         load(forceRefresh = false)
     }
 
+    /** packing_list_id → marked_at, populated only for the Históricos tab (see applyItems). */
+    private var historicalDates: Map<Long, String> = emptyMap()
+
     private suspend fun displayList(projectId: Int): List<SmsPackingListEntity> =
         if (showHistorical) ServiceLocator.smsPackingListDao.getHistoricalByProject(projectId)
         else ServiceLocator.smsPackingListDao.getCurrentByProject(projectId)
+
+    /** Single choke point for populating `items` so historicalDates always tracks what's on
+     *  screen — every load() path (cache hit, network refresh, error fallback) routes through here. */
+    private suspend fun applyItems(list: List<SmsPackingListEntity>) {
+        items.clear()
+        items += list
+        historicalDates = if (showHistorical)
+            ServiceLocator.smsPackingListHistoricalDao.getByIds(list.map { it.packing_list_id })
+                .associate { it.packing_list_id to it.marked_at }
+        else emptyMap()
+        adapter.notifyDataSetChanged()
+    }
 
     /** Self-heal ghost PLs: a vehicle still attached but zero actual spools left on it (bug:
      *  spools all got re-scanned onto another load, e.g. PL 5922, and nothing ever released the
@@ -124,9 +146,7 @@ class PackingListsFragment : Fragment() {
                 Log.d("PackingListsDebug", "DB cache: ${cached.size} packing lists for project $projectId (hasLocalCache=$hasLocalCache)")
 
                 if (hasLocalCache && !forceRefresh) {
-                    items.clear()
-                    items += cached
-                    adapter.notifyDataSetChanged()
+                    applyItems(cached)
                     showLoading(false)
                     refreshCounts()
                     return@launch
@@ -154,18 +174,13 @@ class PackingListsFragment : Fragment() {
                     val (active, inactive) = entities.partition { it.is_active }
                     inactive.forEach { ServiceLocator.smsPackingListDao.deleteById(it.packing_list_id) }
                     if (active.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(active)
-                    items.clear()
-                    items += displayList(projectId)
+                    applyItems(displayList(projectId))
                     Log.d("PackingListsDebug", "Displaying ${items.size} packing lists after insert")
-                    adapter.notifyDataSetChanged()
                 } else {
                     val errBody = resp.errorBody()?.string().orEmpty()
                     Log.e("PackingListsDebug", "HTTP error ${resp.code()}: $errBody")
                     showError(getString(R.string.packing_lists_error_http, resp.code()))
-                    if (items.isEmpty()) {
-                        items += displayList(projectId)
-                        adapter.notifyDataSetChanged()
-                    }
+                    if (items.isEmpty()) applyItems(displayList(projectId))
                 }
             } catch (e: Exception) {
                 Log.e("PackingListsDebug", "Exception in load()", e)
@@ -173,8 +188,7 @@ class PackingListsFragment : Fragment() {
                 if (items.isEmpty()) {
                     try {
                         val fallbackId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
-                        items += displayList(fallbackId)
-                        adapter.notifyDataSetChanged()
+                        applyItems(displayList(fallbackId))
                     } catch (e2: Exception) {
                         Log.e("PackingListsDebug", "Fallback DB read also failed", e2)
                     }
@@ -203,8 +217,12 @@ class PackingListsFragment : Fragment() {
 
     private inner class PLAdapter : RecyclerView.Adapter<PLAdapter.VH>() {
         inner class VH(view: View) : RecyclerView.ViewHolder(view) {
-            val name: TextView = view.findViewById(R.id.txtPLName)
-            val sub:  TextView = view.findViewById(R.id.txtPLSub)
+            val card:    View      = view.findViewById(R.id.cardPL)
+            val iconBg:  View      = view.findViewById(R.id.iconBgPL)
+            val icon:    android.widget.ImageView = view.findViewById(R.id.iconPL)
+            val name:    TextView  = view.findViewById(R.id.txtPLName)
+            val sub:     TextView  = view.findViewById(R.id.txtPLSub)
+            val badge:   TextView  = view.findViewById(R.id.txtPLBadge)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
@@ -214,14 +232,33 @@ class PackingListsFragment : Fragment() {
 
         override fun onBindViewHolder(h: VH, position: Int) {
             val pl = items[position]
+            val markedAt = historicalDates[pl.packing_list_id]
             h.name.text = pl.packing_list_name.ifBlank { "PL ${pl.packing_list_id}" }
             val sub = buildString {
                 append("ID ${pl.packing_list_id}")
                 pl.total_spools_count?.let { append(" · $it spools") }
-                if (pl.packing_date.isNotBlank()) append(" · ${pl.packing_date.take(10)}")
+                if (markedAt != null) append(" · ${getString(R.string.pl_delivered_on, markedAt.take(10))}")
+                else if (pl.packing_date.isNotBlank()) append(" · ${pl.packing_date.take(10)}")
             }
             h.sub.text = sub
             h.sub.visibility = View.VISIBLE
+
+            // Históricos get a visually distinct, subdued look — separate from Actuales at a
+            // glance even out of tab context (e.g. after a deep link or scroll).
+            if (markedAt != null) {
+                h.card.alpha = 0.72f
+                h.iconBg.setBackgroundResource(R.drawable.bg_kpi_gray)
+                h.icon.setImageResource(R.drawable.ic_history_24)
+                h.icon.imageTintList = android.content.res.ColorStateList.valueOf(requireContext().getColor(R.color.on_surface_variant))
+                h.badge.visibility = View.VISIBLE
+            } else {
+                h.card.alpha = 1f
+                h.iconBg.setBackgroundResource(R.drawable.bg_kpi_success)
+                h.icon.setImageResource(R.drawable.ic_clipboard_check)
+                h.icon.imageTintList = android.content.res.ColorStateList.valueOf(requireContext().getColor(R.color.secondary))
+                h.badge.visibility = View.GONE
+            }
+
             h.itemView.setOnClickListener {
                 val bundle = Bundle().apply { putLong("packingListId", pl.packing_list_id) }
                 findNavController().navigate(R.id.action_global_packingListDetailFragment, bundle)

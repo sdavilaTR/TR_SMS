@@ -40,12 +40,18 @@ class PackingListDetailFragment : Fragment() {
 
     private var packingListId = 0L
 
+    /** True once loadData() confirms this PL is in sms_packing_list_historical (delivered) —
+     *  gates Edit/AddSpool/Delete and the scan-to-add flow to read-only. */
+    private var isHistorical = false
+
     private lateinit var txtName: TextView
+    private lateinit var txtHistoricalBadge: TextView
     private lateinit var txtDate: TextView
     private lateinit var txtPosition: TextView
     private lateinit var txtVehicle: TextView
     private lateinit var txtNotes: TextView
     private lateinit var txtReadyToSend: TextView
+    private lateinit var txtScanHint: TextView
     private lateinit var layoutSpools: LinearLayout
     private lateinit var btnAddSpool: MaterialButton
     private lateinit var btnEdit: MaterialButton
@@ -66,12 +72,14 @@ class PackingListDetailFragment : Fragment() {
         (view as com.example.hassiwrapper.ui.common.SwipeBackScrollView).onSwipeBack = {
             findNavController().popBackStack()
         }
-        txtName         = view.findViewById(R.id.txtDetailPLName)
+        txtName            = view.findViewById(R.id.txtDetailPLName)
+        txtHistoricalBadge = view.findViewById(R.id.txtDetailHistoricalBadge)
         txtDate         = view.findViewById(R.id.txtDetailDate)
         txtPosition     = view.findViewById(R.id.txtDetailPosition)
         txtVehicle      = view.findViewById(R.id.txtDetailVehicle)
         txtNotes        = view.findViewById(R.id.txtDetailNotes)
         txtReadyToSend  = view.findViewById(R.id.txtDetailReadyToSend)
+        txtScanHint     = view.findViewById(R.id.txtScanHint)
         layoutSpools = view.findViewById(R.id.layoutSpools)
         btnAddSpool  = view.findViewById(R.id.btnAddSpool)
         btnEdit       = view.findViewById(R.id.btnEditPL)
@@ -122,6 +130,22 @@ class PackingListDetailFragment : Fragment() {
             txtPosition.text    = position?.let { it.name.ifBlank { it.code } } ?: "—"
             txtReadyToSend.text = if (pl.ready_to_send) getString(R.string.pl_detail_ready_yes) else getString(R.string.pl_detail_ready_no)
             txtReadyToSend.setTextColor(requireContext().getColor(if (pl.ready_to_send) R.color.primary else R.color.on_surface_variant))
+
+            val markedAt = ServiceLocator.smsPackingListHistoricalDao.getMarkedAt(packingListId)
+            isHistorical = markedAt != null
+            if (isHistorical) {
+                txtHistoricalBadge.visibility = View.VISIBLE
+                txtHistoricalBadge.text = getString(R.string.pl_detail_historical_badge, markedAt!!.take(10))
+            } else {
+                txtHistoricalBadge.visibility = View.GONE
+            }
+            // Delivered PL is a closed record — no further edits, spool changes, or soft-delete.
+            // Hard delete (DEV-only, above) stays available as an admin cleanup escape hatch.
+            btnEdit.visibility = if (isHistorical) View.GONE else View.VISIBLE
+            btnAddSpool.visibility = if (isHistorical) View.GONE else View.VISIBLE
+            btnDelete.visibility = if (isHistorical) View.GONE else View.VISIBLE
+            txtScanHint.visibility = if (isHistorical) View.GONE else View.VISIBLE
+
             progress.visibility = View.GONE
             loadSpools(pl)
         }
@@ -183,25 +207,28 @@ class PackingListDetailFragment : Fragment() {
             setTextColor(requireContext().getColor(R.color.on_surface))
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
-        val btn = MaterialButton(requireContext(), null, com.google.android.material.R.attr.borderlessButtonStyle).apply {
-            text = getString(R.string.pl_detail_btn_remove_spool)
-            isAllCaps = false
-            textSize = 11f
-            setTextColor(requireContext().getColor(R.color.error))
-            insetTop = 0
-            insetBottom = 0
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            setOnClickListener { confirmRemoveSpool(spool) }
-        }
         row.addView(txt)
-        row.addView(btn)
+        if (!isHistorical) {
+            val btn = MaterialButton(requireContext(), null, com.google.android.material.R.attr.borderlessButtonStyle).apply {
+                text = getString(R.string.pl_detail_btn_remove_spool)
+                isAllCaps = false
+                textSize = 11f
+                setTextColor(requireContext().getColor(R.color.error))
+                insetTop = 0
+                insetBottom = 0
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                setOnClickListener { confirmRemoveSpool(spool) }
+            }
+            row.addView(btn)
+        }
         layoutSpools.addView(row)
     }
 
     private fun handleScanForPL(raw: String) {
+        if (isHistorical) return
         val result = parseQr(raw)
         if (result !is QrResult.Spool) return
         viewLifecycleOwner.lifecycleScope.launch {

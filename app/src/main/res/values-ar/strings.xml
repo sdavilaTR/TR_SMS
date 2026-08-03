@@ -61,6 +61,9 @@
     <string name="packing_lists_error_prefix">خطأ: %s</string>
     <string name="packing_lists_error_http">خطأ HTTP %d</string>
     <string name="packing_lists_error_project_code">projectCode فارغ/غير موجود لـ project_id=%d. هل تمت المزامنة؟</string>
+    <string name="pl_badge_historical">تم التسليم</string>
+    <string name="pl_delivered_on">تم التسليم: %s</string>
+    <string name="pl_detail_historical_badge">تم التسليم في %s — للقراءة فقط</string>
     <string name="home_label_packing_lists">Packing Lists</string>
     <string name="menu_attendance">سجلات Spools</string>
     <string name="menu_sync">المزامنة</string>

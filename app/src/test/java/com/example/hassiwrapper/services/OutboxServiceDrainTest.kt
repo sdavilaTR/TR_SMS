@@ -53,6 +53,9 @@ private class FakeSmsOutboxDao : SmsOutboxDao {
     override suspend fun getPending(): List<SmsOutboxEntity> =
         rows.values.filter { it.status == "PENDING" }.sortedBy { it.op_id }
 
+    override suspend fun getPendingAndFailed(): List<SmsOutboxEntity> =
+        rows.values.filter { it.status == "PENDING" || it.status == "FAILED" }.sortedByDescending { it.op_id }
+
     override suspend fun pendingCount(): Int = rows.values.count { it.status == "PENDING" }
 
     override suspend fun failedCount(): Int = rows.values.count { it.status == "FAILED" }

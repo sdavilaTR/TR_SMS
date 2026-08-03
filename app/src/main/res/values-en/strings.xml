@@ -13,6 +13,9 @@
     <string name="packing_lists_error_prefix">Error: %s</string>
     <string name="packing_lists_error_http">HTTP %d</string>
     <string name="packing_lists_error_project_code">projectCode null/empty for project_id=%d. Did you sync?</string>
+    <string name="pl_badge_historical">DELIVERED</string>
+    <string name="pl_delivered_on">Delivered: %s</string>
+    <string name="pl_detail_historical_badge">Delivered on %s — read only</string>
     <string name="home_label_packing_lists">Packing Lists</string>
     <string name="menu_attendance">Spool Records</string>
     <string name="menu_sync">Synchronization</string>

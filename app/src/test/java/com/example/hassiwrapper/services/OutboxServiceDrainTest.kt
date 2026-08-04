@@ -260,6 +260,29 @@ class OutboxServiceDrainTest {
     }
 
     @Test
+    fun `cancellation mid-drain propagates without failing or recording an attempt`() = runTest {
+        // Regression test for the sync-resilience plan's Tier 1.3: onPause cancelling
+        // lifecycleScope mid-drain must not count as a failed attempt toward MAX_ATTEMPTS —
+        // OutboxService.call{} and drain()'s loop must rethrow CancellationException instead of
+        // converting it to TransientFailure / markFailed.
+        val api = mockk<AtlasApiService>(relaxed = true)
+        coEvery { api.createSpool(any(), any()) } throws kotlinx.coroutines.CancellationException("cancelled")
+
+        val opId = enqueueSpoolCreate(-1, "S1")
+
+        var caught = false
+        try {
+            service.drain(api)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            caught = true
+        }
+
+        assertEquals(true, caught)
+        assertEquals("PENDING", outboxDao.statusOf(opId))
+        assertEquals(0, outboxDao.attemptsOf(opId))
+    }
+
+    @Test
     fun `network error stops the drain transiently and leaves the op PENDING`() = runTest {
         val api = mockk<AtlasApiService>(relaxed = true)
         coEvery { api.createSpool(any(), any()) } throws java.io.IOException("connection reset")

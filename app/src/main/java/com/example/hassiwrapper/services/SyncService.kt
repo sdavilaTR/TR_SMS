@@ -83,6 +83,13 @@ class SyncService(
 
     data class SyncResult(
         val success: Boolean = false,
+        // True when the SMS upload phase was skipped this cycle because a concurrent
+        // syncSmsUploads() call held smsQueueUploadMutex — distinct from `success` because the
+        // three fullSync() callers need different reactions: MainActivity.runSyncCycle should
+        // log-only instead of toasting "completed", while SyncFragment's manual sync must still
+        // treat this as success (proceed to refresh SMS data, don't paint the red error card) —
+        // the concurrent holder uploads the same rows, nothing was actually lost.
+        val uploadPhaseSkipped: Boolean = false,
         val logsUploaded: Int = 0,
         val incidentsUploaded: Int = 0,
         val sessionsUploaded: Int = 0,
@@ -148,6 +155,8 @@ class SyncService(
                 waitMs = minOf(waitMs * 2, RETRY_MAX_MS)
                  // Re-resolve URL before next attempt in case connectivity changed
                 apiClient.resetResolvedBase()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 // Non-transient (auth error, bad request, etc.) — surface immediately
                 Log.e(TAG, "Sync failed (non-retryable)", e)
@@ -181,6 +190,8 @@ class SyncService(
     private suspend fun doSmsUploads(didReLogin: Boolean = false): SmsUploadResult {
         val api = try {
             apiClient.getService()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "syncSmsUploads: could not obtain API service", e)
             return SmsUploadResult(success = false, error = e.message)
@@ -212,10 +223,18 @@ class SyncService(
                 } finally {
                     smsQueueUploadMutex.unlock()
                 }
+                SmsUploadResult()
             } else {
+                // The concurrent holder (doSync) runs the identical upload block, so nothing is
+                // lost — but this call's caller (e.g. SendPackingListFragment) is waiting on a
+                // confirmed upload of THIS device's just-recorded rows, and the other holder may
+                // not even include them yet. success=false here is what lets that caller show
+                // "partial" instead of falsely telling the user the send confirmed server-side.
                 Log.i(TAG, "syncSmsUploads: upload pipeline busy (concurrent fullSync), skipping this cycle")
+                SmsUploadResult(success = false, error = "upload pipeline busy, will retry next cycle")
             }
-            SmsUploadResult()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "syncSmsUploads failed", e)
             SmsUploadResult(success = false, error = e.message)
@@ -244,6 +263,8 @@ class SyncService(
         onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_server))
         val healthResp = try {
             api.health()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             throw TransientException(AtlasApp.instance.getString(R.string.sync_error_no_connection), e)
         }
@@ -286,6 +307,8 @@ class SyncService(
             } else {
                 Log.w(TAG, "downloadSync failed: HTTP ${downloadResp.code()}")
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "downloadSync exception (non-fatal): ${e.message}")
         }
@@ -294,6 +317,7 @@ class SyncService(
         // in order (create/update/delete/assign). Guarded by smsQueueUploadMutex since
         // doSmsUploads runs this same block under a different lock — if it's mid-block, skip
         // the whole upload phase this cycle rather than double-posting the same rows/ops.
+        var uploadPhaseSkipped = false
         if (smsQueueUploadMutex.tryLock()) {
             try {
                 onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_pl))
@@ -323,7 +347,14 @@ class SyncService(
                 smsQueueUploadMutex.unlock()
             }
         } else {
+            // Concurrent syncSmsUploads() holds the block this cycle — nothing was lost (it runs
+            // the same upload set), but THIS cycle didn't confirm it, so reporting success=true
+            // here would be exactly the silent-loss shape this fix exists to close: last_sync
+            // would advance and the caller would toast "completed" for a cycle that uploaded
+            // nothing. Downgrade to a soft failure instead — the 60s auto-sync loop retries next
+            // tick regardless, this is purely about not lying to the caller about this cycle.
             Log.i(TAG, "doSync: upload pipeline busy (concurrent syncSmsUploads), skipping upload phase this cycle")
+            uploadPhaseSkipped = true
         }
 
         configRepo.set("last_sync", Instant.now().toString())
@@ -336,6 +367,7 @@ class SyncService(
 
         return SyncResult(
             success = true,
+            uploadPhaseSkipped = uploadPhaseSkipped,
             vehiclesAdded = vehicleResult.added,
             vehiclesUpdated = vehicleResult.updated
         )
@@ -349,6 +381,8 @@ class SyncService(
         val deviceName = configRepo.get("device_name") ?: "Android Terminal"
         try {
             api.registerDevice(RegisterDeviceRequest(deviceId, deviceName))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "registerDevice failed (non-fatal): ${e.message}")
         }
@@ -533,6 +567,8 @@ class SyncService(
                 } else {
                     Log.e(TAG, "PL ${pl.packing_list_id} upload failed: HTTP ${response.code()}")
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "PL ${pl.packing_list_id} upload error: ${e.message}")
             }
@@ -601,6 +637,8 @@ class SyncService(
                 } else {
                     Log.e(TAG, "VehicleLoading ${loading.loading_id} upload failed: HTTP ${response.code()}")
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "VehicleLoading ${loading.loading_id} upload error: ${e.message}")
             }
@@ -653,6 +691,8 @@ class SyncService(
                 } else {
                     Log.e(TAG, "Transfer ${transfer.transfer_id} upload failed: HTTP ${response.code()}")
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "Transfer ${transfer.transfer_id} upload error: ${e.message}")
             }
@@ -726,6 +766,8 @@ class SyncService(
                 Log.w(TAG, "status-flags PUT $spoolId HTTP ${putResp.code()}: ${putResp.errorBody()?.string()}")
                 false
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "status-flags upload $spoolId error: ${e.message}")
             false
@@ -777,6 +819,8 @@ class SyncService(
                     } else {
                         Log.e(TAG, "SMS incident ${inc.id} upload failed: HTTP ${response.code()}")
                     }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "SMS incident ${inc.id} upload error: ${e.message}")
                 }
@@ -822,6 +866,8 @@ class SyncService(
                 } else {
                     Log.e(TAG, "SMS incident ${inc.id} photo upload failed: HTTP ${response.code()}")
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "SMS incident ${inc.id} photo upload error: ${e.message}")
             }
@@ -881,6 +927,8 @@ class SyncService(
                     } else {
                         Log.e(TAG, "Bug report ${report.id} upload failed: HTTP ${response.code()}")
                     }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "Bug report ${report.id} upload error: ${e.message}")
                 }
@@ -923,6 +971,8 @@ class SyncService(
                 } else {
                     Log.e(TAG, "Bug report ${report.id} screenshot upload failed: HTTP ${response.code()}")
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "Bug report ${report.id} screenshot upload error: ${e.message}")
             }

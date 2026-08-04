@@ -178,6 +178,12 @@ class OutboxService(
                     outboxDao.pruneDone()
                     return DrainResult(done, failed, transient = true)
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // onPause cancelling lifecycleScope mid-drain must not land here: op.attempts is
+                // untouched (no recordAttempt call), so the next drain retries it clean — the
+                // whole point of this fix (see plan Tier 1.3) is that an ordinary app backgrounding
+                // must not count toward MAX_ATTEMPTS the way a real server rejection does.
+                throw e
             } catch (e: Exception) {
                 outboxDao.markFailed(op.op_id, "${e.javaClass.simpleName}: ${e.message}")
                 Log.e(TAG, "op ${op.op_id} unexpected error", e)
@@ -458,7 +464,9 @@ class OutboxService(
 
     /** Runs an API call, converting any thrown network exception into a [TransientFailure]. */
     private suspend fun call(block: suspend () -> Response<ResponseBody>): Response<ResponseBody> =
-        try { block() } catch (e: Exception) { throw TransientFailure(e.message ?: "network error") }
+        try { block() }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (e: Exception) { throw TransientFailure(e.message ?: "network error") }
 
     /**
      * Classifies a response: 2xx runs [onSuccess] and returns DONE; 5xx throws

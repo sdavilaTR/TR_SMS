@@ -10,8 +10,11 @@ import android.util.Log
 import androidx.core.app.ActivityCompat
 import com.example.hassiwrapper.BuildConfig
 import com.example.hassiwrapper.data.ConfigRepository
+import com.example.hassiwrapper.data.db.dao.SmsOutboxDao
 import com.example.hassiwrapper.network.ApiClient
 import com.example.hassiwrapper.network.dto.HeartbeatPayload
+import java.time.Duration
+import java.time.Instant
 
 /**
  * Collects device telemetry (battery, GPS, app version) and sends it to the API.
@@ -20,7 +23,8 @@ import com.example.hassiwrapper.network.dto.HeartbeatPayload
 class HeartbeatManager(
     private val context: Context,
     private val apiClient: ApiClient,
-    private val configRepo: ConfigRepository
+    private val configRepo: ConfigRepository,
+    private val outboxDao: SmsOutboxDao
 ) {
     companion object {
         private const val TAG = "HeartbeatManager"
@@ -29,6 +33,7 @@ class HeartbeatManager(
     suspend fun sendHeartbeat() {
         try {
             val location = getLastLocation()
+            val oldestPendingCreatedAt = outboxDao.oldestPendingCreatedAt()
             val payload = HeartbeatPayload(
                 batteryLevel = getBatteryLevel(),
                 latitude     = location?.latitude,
@@ -37,14 +42,27 @@ class HeartbeatManager(
                 appVersion   = BuildConfig.BUILD_TAG,
                 lastSyncUtc  = configRepo.get("last_sync") ?: "",
                 osVersion    = "Android ${Build.VERSION.RELEASE}",
-                deviceModel  = Build.MODEL
+                deviceModel  = Build.MODEL,
+                pendingOpsCount = outboxDao.pendingCount(),
+                failedOpsCount = outboxDao.failedCount(),
+                oldestPendingAgeSeconds = oldestPendingCreatedAt?.let { ageSecondsSince(it) }
             )
             apiClient.getService().sendHeartbeat(payload)
             Log.d(TAG, "Heartbeat sent (battery=${payload.batteryLevel}%, version=${payload.appVersion})")
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "Heartbeat failed (non-fatal): ${e.message}")
         }
     }
+
+    private fun ageSecondsSince(isoInstant: String): Long? =
+        try {
+            Duration.between(Instant.parse(isoInstant), Instant.now()).seconds.coerceAtLeast(0)
+        } catch (e: Exception) {
+            Log.w(TAG, "Bad oldest-pending timestamp '$isoInstant': ${e.message}")
+            null
+        }
 
     private fun getBatteryLevel(): Int {
         val bm = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager

@@ -26,6 +26,10 @@ interface SmsOutboxDao {
     @Query("SELECT COUNT(*) FROM sms_outbox WHERE status = 'FAILED'")
     suspend fun failedCount(): Int
 
+    /** `created_at` (ISO instant) of the oldest still-PENDING op, for heartbeat staleness alerts. */
+    @Query("SELECT MIN(created_at) FROM sms_outbox WHERE status = 'PENDING'")
+    suspend fun oldestPendingCreatedAt(): String?
+
     /** Most recent gave-up ops, for surfacing to the user instead of failing silently. */
     @Query("SELECT * FROM sms_outbox WHERE status = 'FAILED' ORDER BY op_id DESC LIMIT 20")
     suspend fun getFailed(): List<SmsOutboxEntity>

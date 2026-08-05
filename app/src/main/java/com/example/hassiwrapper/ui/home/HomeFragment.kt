@@ -112,6 +112,11 @@ class HomeFragment : Fragment() {
         if (isGuest) loadGuestHeader() else loadStats()
     }
 
+    private fun showPendingSpoolsSheet(projectId: Int, location: String, subPositionId: Long?) {
+        GuestPendingSpoolsBottomSheet.newInstance(projectId, location, subPositionId)
+            .show(childFragmentManager, "guest_pending_spools")
+    }
+
     private fun setupGuestView(view: View) {
         view.findViewById<View>(R.id.cardGuestSend).setOnClickListener {
             findNavController().navigate(R.id.action_global_sendPackingListFragment)
@@ -205,6 +210,9 @@ class HomeFragment : Fragment() {
             view.findViewById<TextView>(R.id.txtGuestZonePendingCount).text = (pinned?.pending ?: 0).toString()
             row.visibility = View.VISIBLE
             breakdown.visibility = View.GONE
+            view.findViewById<View>(R.id.cardGuestZonePending).setOnClickListener {
+                showPendingSpoolsSheet(projectId, location, pinnedSubPositionId)
+            }
             return
         }
 
@@ -212,6 +220,9 @@ class HomeFragment : Fragment() {
         val pending = ServiceLocator.smsSpoolDao.countPendingByProjectAndZone(projectId, location)
         view.findViewById<TextView>(R.id.txtGuestZoneConfirmedCount).text = confirmed.toString()
         view.findViewById<TextView>(R.id.txtGuestZonePendingCount).text = pending.toString()
+        view.findViewById<View>(R.id.cardGuestZonePending).setOnClickListener {
+            showPendingSpoolsSheet(projectId, location, null)
+        }
         row.visibility = View.VISIBLE
 
         breakdown.removeAllViews()

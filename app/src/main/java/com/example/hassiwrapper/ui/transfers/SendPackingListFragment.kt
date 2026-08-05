@@ -37,8 +37,10 @@ import com.example.hassiwrapper.data.db.entities.SmsVehicleLoadingEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleLoadingSpoolEntity
 import com.example.hassiwrapper.network.dto.AssignSpoolRequest
 import com.example.hassiwrapper.network.dto.CreatePackingListRequest
+import com.example.hassiwrapper.network.dto.RouteStateUpdatePayload
 import com.example.hassiwrapper.network.dto.parsePackingListConflictMessage
 import com.example.hassiwrapper.services.GpsHelper
+import com.example.hassiwrapper.services.OutboxService
 import com.example.hassiwrapper.ui.qrscanner.QrResult
 import com.example.hassiwrapper.ui.qrscanner.parseQr
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
@@ -822,6 +824,13 @@ class SendPackingListFragment : Fragment() {
                 }
 
                 ServiceLocator.smsVehicleDao.setOnRoute(vehicle.vehicle_id, destPosition?.position_id)
+                ServiceLocator.outboxService.enqueue(
+                    entityType = OutboxService.Entity.ROUTE_STATE,
+                    opType = OutboxService.Op.UPDATE,
+                    localEntityId = vehicle.vehicle_id,
+                    projectId = projectId,
+                    payload = RouteStateUpdatePayload(onRoute = true, destinationId = destPosition?.position_id)
+                )
 
                 // One GPS fix for the whole send batch — captured at the moment of confirm.
                 val gps = GpsHelper.getCurrentLocation(requireContext())

@@ -24,7 +24,7 @@ object ServiceLocator {
     }
 
     val bugReportService: BugReportService by lazy {
-        BugReportService(db.smsBugReportDao(), configRepo)
+        BugReportService(db.smsBugReportDao(), configRepo, outboxService)
     }
 
     val outboxService: OutboxService by lazy {
@@ -33,7 +33,8 @@ object ServiceLocator {
             db.smsSpoolDao(), db.smsSpoolStatusFlagsDao(),
             db.smsPackingListDao(), db.smsVehicleDao(), db.smsIncidentDao(),
             db.smsSpoolPropertyDao(), db.smsSpoolEventDao(), db.smsSpoolLocationDao(),
-            db.smsPackingListSpoolDao(), db.smsVehicleLoadingDao(), db.smsTransferDao()
+            db.smsPackingListSpoolDao(), db.smsVehicleLoadingDao(), db.smsTransferDao(),
+            db.smsBugReportDao()
         )
     }
 

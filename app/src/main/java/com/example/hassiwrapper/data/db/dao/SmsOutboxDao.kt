@@ -30,6 +30,15 @@ interface SmsOutboxDao {
     @Query("SELECT MIN(created_at) FROM sms_outbox WHERE status = 'PENDING'")
     suspend fun oldestPendingCreatedAt(): String?
 
+    /**
+     * Used by one-shot legacy→outbox migration backfills to avoid re-enqueuing a row every cycle.
+     * Must include FAILED, not just PENDING: a FAILED op (rejected, or gave up after MAX_ATTEMPTS)
+     * still has synced=0 on the legacy row, so a PENDING-only check would spawn a fresh op for it
+     * every cycle forever — undoing the FAILED/give-up semantics the migration exists to add.
+     */
+    @Query("SELECT EXISTS(SELECT 1 FROM sms_outbox WHERE entity_type = :entityType AND op_type = :opType AND local_entity_id = :localEntityId AND status IN ('PENDING', 'FAILED'))")
+    suspend fun hasUnfinishedOp(entityType: String, opType: String, localEntityId: Long): Boolean
+
     /** Most recent gave-up ops, for surfacing to the user instead of failing silently. */
     @Query("SELECT * FROM sms_outbox WHERE status = 'FAILED' ORDER BY op_id DESC LIMIT 20")
     suspend fun getFailed(): List<SmsOutboxEntity>

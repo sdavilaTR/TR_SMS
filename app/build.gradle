@@ -122,6 +122,8 @@ dependencies {
 
     // GPS location (FusedLocationProviderClient)
     implementation 'com.google.android.gms:play-services-location:21.0.1'
+    // Background one-shot outbox drain safety net (crash/OEM-kill survival)
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
     // Free OSM-tile map view (no API key/billing) — replaces Google Maps SDK
     implementation 'org.osmdroid:osmdroid-android:6.1.20'
 

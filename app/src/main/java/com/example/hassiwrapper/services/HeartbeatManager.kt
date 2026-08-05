@@ -45,7 +45,8 @@ class HeartbeatManager(
                 deviceModel  = Build.MODEL,
                 pendingOpsCount = outboxDao.pendingCount(),
                 failedOpsCount = outboxDao.failedCount(),
-                oldestPendingAgeSeconds = oldestPendingCreatedAt?.let { ageSecondsSince(it) }
+                oldestPendingAgeSeconds = oldestPendingCreatedAt?.let { ageSecondsSince(it) },
+                dbIntegrityOk = configRepo.get(DbIntegrityChecker.CONFIG_KEY_OK)?.toBooleanStrictOrNull()
             )
             apiClient.getService().sendHeartbeat(payload)
             Log.d(TAG, "Heartbeat sent (battery=${payload.batteryLevel}%, version=${payload.appVersion})")

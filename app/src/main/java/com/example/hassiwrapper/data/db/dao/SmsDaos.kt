@@ -494,6 +494,19 @@ interface SmsSpoolDao {
     """)
     suspend fun countPendingByProjectAndZone(projectId: Int, location: String): Int
 
+    // Row-level twin of countPendingByProjectAndZone, for the Guest "pending" KPI drill-down list.
+    // Same WHERE, same zone-resolution reasoning. subPositionId narrows to a single GCP when the
+    // terminal is pinned (mirrors the pinned branch in HomeFragment.loadGuestZoneStats); null shows
+    // the whole zone. Ordered by updated_at DESC so the most recently scanned/moved spool is first.
+    @Query("""
+        SELECT s.* FROM sms_spool s
+        WHERE s.project_id = :projectId AND s.is_active = 1 AND s.synced = 0
+        AND $SPOOL_RESOLVED_POSITION = UPPER(:location)
+        AND (:subPositionId IS NULL OR s.sub_position_id = :subPositionId)
+        ORDER BY s.updated_at DESC
+    """)
+    suspend fun getPendingByProjectAndZone(projectId: Int, location: String, subPositionId: Long?): List<SmsSpoolEntity>
+
     // Per-sub-position (GCP) breakdown within this zone, for projects that use them. Confirmed and
     // pending intentionally resolve zone differently (see the two queries above): confirmed via
     // scanned_from (server-authoritative once synced+scanned), pending via SPOOL_RESOLVED_POSITION
@@ -833,6 +846,9 @@ interface SmsVehicleLoadingDao {
 
     @Query("SELECT * FROM sms_vehicle_loading WHERE vehicle_id = :vehicleId AND project_id = :projectId")
     suspend fun getByVehicle(vehicleId: Long, projectId: Int): List<SmsVehicleLoadingEntity>
+
+    @Query("SELECT * FROM sms_vehicle_loading WHERE loading_id = :id")
+    suspend fun getById(id: Long): SmsVehicleLoadingEntity?
 
     @Query("SELECT * FROM sms_vehicle_loading WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsVehicleLoadingEntity>

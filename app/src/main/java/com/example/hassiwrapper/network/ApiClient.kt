@@ -20,16 +20,17 @@ import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
 /**
- * API client with primary/fallback URL resolution, JWT auth interceptor,
- * and device-id header — mirrors api.js behaviour.
+ * API client, JWT auth interceptor, and device-id header — mirrors api.js behaviour.
+ *
+ * Base URL is resolved per-profile via [ProfileManager.getApiUrl] (PRO/PRE/DEV each point
+ * at one fixed URL) — there is no primary/fallback failover between two hosts.
  */
 class ApiClient(
     private val configRepo: ConfigRepository,
     private val authRepo: AuthRepository
 ) {
     companion object {
-        const val DEFAULT_PRIMARY = "https://web-atlas-api-pre.azurewebsites.net"
-        const val DEFAULT_FALLBACK = "https://web-atlas-api-pre.azurewebsites.net"
+        const val DEFAULT_API_URL = "https://web-atlas-api-pre.azurewebsites.net"
         private const val TIMEOUT_MS = 10_000L
         private const val PING_TIMEOUT_MS = 3_000L
         private const val LARGE_SYNC_TIMEOUT_MS = 60_000L

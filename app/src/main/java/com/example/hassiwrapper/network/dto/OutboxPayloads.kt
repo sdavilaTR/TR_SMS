@@ -11,3 +11,13 @@ data class SpoolCreatePayload(
     val property: CreateSpoolPropertyRequest? = null,
     val flags: CreateSpoolStatusFlagsRequest? = null
 )
+
+/**
+ * ROUTE_STATE UPDATE payload — setVehicleOnRoute/setVehicleOffRoute take plain path/query
+ * params, not a request body, so this only exists to carry the two values through
+ * enqueue → drain.
+ */
+data class RouteStateUpdatePayload(
+    val onRoute: Boolean,
+    val destinationId: Int? = null
+)

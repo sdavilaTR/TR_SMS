@@ -395,7 +395,7 @@ class PackingListDetailFragment : Fragment() {
                 locallyDeletedPLIds.add(packingListId)
                 com.example.hassiwrapper.services.releaseDanglingSendForPackingList(
                     packingListId, pl?.vehicle_id, ServiceLocator.smsSpoolDao, ServiceLocator.smsPackingListSpoolDao,
-                    ServiceLocator.smsTransferDao, ServiceLocator.smsVehicleDao
+                    ServiceLocator.smsTransferDao, ServiceLocator.smsVehicleDao, ServiceLocator.outboxService, projectId
                 )
                 ServiceLocator.smsPackingListDao.deleteById(packingListId)
 
@@ -441,7 +441,7 @@ class PackingListDetailFragment : Fragment() {
                 locallyDeletedPLIds.add(packingListId)
                 com.example.hassiwrapper.services.releaseDanglingSendForPackingList(
                     packingListId, pl?.vehicle_id, ServiceLocator.smsSpoolDao, ServiceLocator.smsPackingListSpoolDao,
-                    ServiceLocator.smsTransferDao, ServiceLocator.smsVehicleDao
+                    ServiceLocator.smsTransferDao, ServiceLocator.smsVehicleDao, ServiceLocator.outboxService, projectId
                 )
                 ServiceLocator.smsPackingListDao.deleteById(packingListId)
 

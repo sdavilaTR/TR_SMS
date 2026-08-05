@@ -262,7 +262,8 @@ data class HeartbeatPayload(
     @SerializedName("deviceModel") val deviceModel: String,
     @SerializedName("pendingOpsCount") val pendingOpsCount: Int = 0,
     @SerializedName("failedOpsCount") val failedOpsCount: Int = 0,
-    @SerializedName("oldestPendingAgeSeconds") val oldestPendingAgeSeconds: Long? = null
+    @SerializedName("oldestPendingAgeSeconds") val oldestPendingAgeSeconds: Long? = null,
+    @SerializedName("dbIntegrityOk") val dbIntegrityOk: Boolean? = null
 )
 
 // ── Training Compliance ─────────────────────────────────────────────────────

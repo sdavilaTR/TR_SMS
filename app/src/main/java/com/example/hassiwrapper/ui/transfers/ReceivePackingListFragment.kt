@@ -32,7 +32,9 @@ import com.example.hassiwrapper.data.db.entities.SmsSpoolLocationEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferEntity
 import com.example.hassiwrapper.data.db.entities.SmsTransferSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsVehicleEntity
+import com.example.hassiwrapper.network.dto.RouteStateUpdatePayload
 import com.example.hassiwrapper.services.GpsHelper
+import com.example.hassiwrapper.services.OutboxService
 import com.example.hassiwrapper.ui.qrscanner.QrResult
 import com.example.hassiwrapper.ui.qrscanner.parseQr
 import com.example.hassiwrapper.ui.scanner.CustomScannerActivity
@@ -579,12 +581,13 @@ class ReceivePackingListFragment : Fragment() {
             val remainingInVehicle = ServiceLocator.smsSpoolDao.countInTransitByVehicle(vehicle.vehicle_id)
             if (remainingInVehicle == 0) {
                 ServiceLocator.smsVehicleDao.setOffRoute(vehicle.vehicle_id)
-                try {
-                    if (!projectCode.isNullOrBlank()) {
-                        ServiceLocator.apiClient.getService()
-                            .setVehicleOffRoute(projectCode, vehicle.vehicle_id)
-                    }
-                } catch (_: Exception) { }
+                ServiceLocator.outboxService.enqueue(
+                    entityType = OutboxService.Entity.ROUTE_STATE,
+                    opType = OutboxService.Op.UPDATE,
+                    localEntityId = vehicle.vehicle_id,
+                    projectId = projectId,
+                    payload = RouteStateUpdatePayload(onRoute = false, destinationId = null)
+                )
             }
 
             activity?.lifecycleScope?.launch { ServiceLocator.syncService.syncSmsUploads() }

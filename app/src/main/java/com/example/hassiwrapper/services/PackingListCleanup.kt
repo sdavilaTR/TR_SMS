@@ -4,6 +4,7 @@ import com.example.hassiwrapper.data.db.dao.SmsPackingListSpoolDao
 import com.example.hassiwrapper.data.db.dao.SmsSpoolDao
 import com.example.hassiwrapper.data.db.dao.SmsTransferDao
 import com.example.hassiwrapper.data.db.dao.SmsVehicleDao
+import com.example.hassiwrapper.network.dto.RouteStateUpdatePayload
 
 /** A Packing List that was sent (spools in_transit, vehicle on_route, SEND transfer recorded)
  *  is being removed before it was ever received/confirmed — either a manual hard-delete or a
@@ -20,7 +21,9 @@ suspend fun releaseDanglingSendForPackingList(
     smsSpoolDao: SmsSpoolDao,
     smsPackingListSpoolDao: SmsPackingListSpoolDao,
     smsTransferDao: SmsTransferDao,
-    smsVehicleDao: SmsVehicleDao
+    smsVehicleDao: SmsVehicleDao,
+    outboxService: OutboxService? = null,
+    projectId: Int? = null
 ) {
     val spools = smsSpoolDao.getByPackingList(packingListId)
     spools.forEach {
@@ -40,5 +43,14 @@ suspend fun releaseDanglingSendForPackingList(
     val stillInTransit = smsSpoolDao.countInTransitByVehicle(vehicleId)
     if (stillInTransit == 0) {
         smsVehicleDao.setOffRoute(vehicleId)
+        if (outboxService != null && projectId != null) {
+            outboxService.enqueue(
+                entityType = OutboxService.Entity.ROUTE_STATE,
+                opType = OutboxService.Op.UPDATE,
+                localEntityId = vehicleId,
+                projectId = projectId,
+                payload = RouteStateUpdatePayload(onRoute = false, destinationId = null)
+            )
+        }
     }
 }

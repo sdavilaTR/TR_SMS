@@ -620,6 +620,10 @@
     <string name="settings_kiosk_desc">将应用锁定为全屏模式（屏幕固定）。在关闭此选项前，设备将无法退出该应用。</string>
     <string name="settings_kiosk_enabled">单一应用模式已启用</string>
     <string name="settings_kiosk_disabled">单一应用模式已关闭</string>
+    <string name="settings_delta_sync_title">增量同步（金丝雀）</string>
+    <string name="settings_delta_sync_desc">功能说明：每次同步时，只向服务器请求自上次同步以来发生变化的管件，而不是下载整个项目的完整列表。用途：在管件数量庞大（数千个）的项目中，这能大幅缩短同步时间——目前每个周期都会重新下载全部数据。请仅在数据量较小的项目上启用以先行验证，再扩大范围——启用后请关注心跳中的待处理/失败计数。</string>
+    <string name="settings_delta_sync_enabled_toast">增量同步已启用</string>
+    <string name="settings_delta_sync_disabled_toast">增量同步已关闭</string>
     <string name="settings_close_app">关闭应用</string>
     <string name="settings_close_app_confirm">是否要关闭应用？</string>
     <string name="settings_geofence_title">区域地理围栏（KML）</string>
@@ -701,6 +705,9 @@
     <string name="home_guest_zone_confirmed">区域内已确认</string>
     <string name="home_guest_zone_pending">待同步</string>
     <string name="home_guest_subpos_row">%1$s — 已确认 %2$d / 待同步 %3$d</string>
+    <string name="home_guest_pending_list_title">已扫描待同步的卷材</string>
+    <string name="home_guest_pending_list_empty">没有待同步的卷材</string>
+    <string name="home_guest_pending_list_updated_at">更新时间：%1$s</string>
 
     <!-- Debug: Project Switcher -->
     <string name="home_btn_change_project">[调试] 切换项目</string>

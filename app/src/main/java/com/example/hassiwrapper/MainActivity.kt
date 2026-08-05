@@ -43,6 +43,7 @@ import com.example.hassiwrapper.scanner.DataWedgeManager
 import com.example.hassiwrapper.services.GeofenceSeeder
 import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.services.PositionHelper
+import com.example.hassiwrapper.workers.OutboxDrainWorker
 import com.example.hassiwrapper.services.SpoolDeltaGuard
 import com.example.hassiwrapper.ui.login.LoginActivity
 import com.example.hassiwrapper.update.UpdateChecker
@@ -603,6 +604,9 @@ class MainActivity : AppCompatActivity() {
         if (BuildConfig.DEBUG) {
             try { unregisterReceiver(debugConfigReceiver) } catch (_: Exception) {}
         }
+        // Safety net: catch any outbox op left PENDING by the foreground loop stopping here
+        // (crash/OEM-kill/update-install before the app is reopened) — see plan Tier 4.
+        OutboxDrainWorker.enqueue(applicationContext)
     }
 
     override fun onDestroy() {

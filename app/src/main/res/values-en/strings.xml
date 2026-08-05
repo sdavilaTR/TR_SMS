@@ -620,6 +620,10 @@
     <string name="settings_kiosk_desc">Locks the app in full screen (Screen Pinning). The device won\'t be able to leave the app without disabling this option.</string>
     <string name="settings_kiosk_enabled">Kiosk Mode enabled</string>
     <string name="settings_kiosk_disabled">Kiosk Mode disabled</string>
+    <string name="settings_delta_sync_title">Delta Sync (canary)</string>
+    <string name="settings_delta_sync_desc">What it does: each sync, asks the server for only the spools changed since the last one, instead of downloading the project\'s full list. What it\'s for: on large projects (thousands of spools) this cuts sync time a lot — today every cycle re-downloads everything. Enable only on a low-volume project to validate before rolling out further — watch the heartbeat\'s Pending/Failed counts after enabling.</string>
+    <string name="settings_delta_sync_enabled_toast">Delta sync enabled</string>
+    <string name="settings_delta_sync_disabled_toast">Delta sync disabled</string>
     <string name="settings_close_app">Close application</string>
     <string name="settings_close_app_confirm">Do you want to close the application?</string>
     <string name="settings_geofence_title">Area geofence (KML)</string>
@@ -701,6 +705,9 @@
     <string name="home_guest_zone_confirmed">Confirmed in zone</string>
     <string name="home_guest_zone_pending">Not synced yet</string>
     <string name="home_guest_subpos_row">%1$s — %2$d confirmed / %3$d not synced</string>
+    <string name="home_guest_pending_list_title">Scanned spools not synced</string>
+    <string name="home_guest_pending_list_empty">No spools pending sync</string>
+    <string name="home_guest_pending_list_updated_at">Updated: %1$s</string>
 
     <!-- Debug: Project Switcher -->
     <string name="home_btn_change_project">[DEBUG] Change Project</string>

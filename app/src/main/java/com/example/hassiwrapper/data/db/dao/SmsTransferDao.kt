@@ -16,6 +16,9 @@ interface SmsTransferDao {
     @Query("SELECT * FROM sms_transfer WHERE project_id = :projectId ORDER BY created_at DESC")
     suspend fun getByProject(projectId: Int): List<SmsTransferEntity>
 
+    @Query("SELECT * FROM sms_transfer WHERE transfer_id = :id")
+    suspend fun getById(id: Long): SmsTransferEntity?
+
     @Query("SELECT * FROM sms_transfer WHERE vehicle_id = :vehicleId AND project_id = :projectId AND transfer_type = 'SEND'")
     suspend fun getSendByVehicle(vehicleId: Long, projectId: Int): List<SmsTransferEntity>
 

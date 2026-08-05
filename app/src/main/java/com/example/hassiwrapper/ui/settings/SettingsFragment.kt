@@ -71,6 +71,7 @@ class SettingsFragment : Fragment() {
         setupAssignedOperator(view)
         setupDebugLocationButton(view)
         setupKioskMode(view)
+        setupDeltaSync(view)
         setupGeofenceImport(view)
 
         requireActivity().onBackPressedDispatcher.addCallback(
@@ -699,6 +700,32 @@ class SettingsFragment : Fragment() {
         btnClose.setOnClickListener {
             requireActivity().finishAffinity()
             System.exit(0)
+        }
+    }
+
+    // ── Delta sync (canary rollout) ───────────────────────────────────────
+    //
+    // sms_delta_sync_enabled is a single device-local config flag (no per-project scoping in
+    // code) — but since a terminal only ever works one project, flipping it on here for one
+    // terminal *is* the canary: every guardrail (SpoolDeltaGuard, the 24h full-sync floor, the
+    // server-Date cursor) already exists and only needed a safe way to turn on without touching
+    // the DB directly (project rule: no direct SQL). Gated behind the same Dev-tab unlock code
+    // as every other advanced toggle on this screen.
+
+    private fun setupDeltaSync(view: View) {
+        val switch = view.findViewById<SwitchCompat>(R.id.switchDeltaSync)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val enabled = ServiceLocator.configRepo.get("sms_delta_sync_enabled") == "true"
+            switch.isChecked = enabled
+
+            switch.setOnCheckedChangeListener { _, isChecked ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    ServiceLocator.configRepo.set("sms_delta_sync_enabled", isChecked.toString())
+                    val msg = if (isChecked) R.string.settings_delta_sync_enabled_toast else R.string.settings_delta_sync_disabled_toast
+                    Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 

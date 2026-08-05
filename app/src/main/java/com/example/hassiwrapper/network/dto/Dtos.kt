@@ -259,7 +259,11 @@ data class HeartbeatPayload(
     @SerializedName("appVersion") val appVersion: String,
     @SerializedName("lastSyncUtc") val lastSyncUtc: String,
     @SerializedName("osVersion") val osVersion: String,
-    @SerializedName("deviceModel") val deviceModel: String
+    @SerializedName("deviceModel") val deviceModel: String,
+    @SerializedName("pendingOpsCount") val pendingOpsCount: Int = 0,
+    @SerializedName("failedOpsCount") val failedOpsCount: Int = 0,
+    @SerializedName("oldestPendingAgeSeconds") val oldestPendingAgeSeconds: Long? = null,
+    @SerializedName("dbIntegrityOk") val dbIntegrityOk: Boolean? = null
 )
 
 // ── Training Compliance ─────────────────────────────────────────────────────

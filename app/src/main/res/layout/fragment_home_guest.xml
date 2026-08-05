@@ -138,8 +138,11 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardGuestZonePending"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true"
                     app:cardBackgroundColor="@color/surface_variant"
                     app:cardCornerRadius="14dp"
                     app:cardElevation="2dp"

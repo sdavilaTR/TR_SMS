@@ -43,6 +43,7 @@ import com.example.hassiwrapper.scanner.DataWedgeManager
 import com.example.hassiwrapper.services.GeofenceSeeder
 import com.example.hassiwrapper.services.GpsHelper
 import com.example.hassiwrapper.services.PositionHelper
+import com.example.hassiwrapper.workers.OutboxDrainWorker
 import com.example.hassiwrapper.services.SpoolDeltaGuard
 import com.example.hassiwrapper.ui.login.LoginActivity
 import com.example.hassiwrapper.update.UpdateChecker
@@ -468,10 +469,23 @@ class MainActivity : AppCompatActivity() {
             val connectivity = ServiceLocator.apiClient.checkConnectivity()
             if (!connectivity.apiReachable) return
             Log.d(TAG, "Sync ($reason): starting")
-            ServiceLocator.syncService.fullSync()
+            val result = ServiceLocator.syncService.fullSync()
             syncSmsData()
-            Log.d(TAG, "Sync ($reason): completed")
-            Toast.makeText(this@MainActivity, R.string.auto_sync_completed, Toast.LENGTH_SHORT).show()
+            if (result.success && !result.uploadPhaseSkipped) {
+                Log.d(TAG, "Sync ($reason): completed")
+                Toast.makeText(this@MainActivity, R.string.auto_sync_completed, Toast.LENGTH_SHORT).show()
+            } else if (result.success) {
+                // Health check + master data succeeded, but the SMS upload phase was skipped this
+                // cycle (concurrent syncSmsUploads held the mutex) — the other call is uploading
+                // the same rows, so don't toast "completed" for a cycle that didn't confirm it,
+                // but this isn't a failure either: log-only, next tick retries.
+                Log.d(TAG, "Sync ($reason): completed, upload phase skipped (concurrent sync in progress)")
+            } else {
+                // Don't toast "completed" for a cycle that actually failed (e.g. retry budget
+                // exhausted, non-retryable auth/4xx) — the auto-sync loop already retries next
+                // tick, so this stays log-only rather than alarming the user on every transient blip.
+                Log.w(TAG, "Sync ($reason): fullSync failed: ${result.error}")
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Sync ($reason): failed silently", e)
         }
@@ -590,6 +604,9 @@ class MainActivity : AppCompatActivity() {
         if (BuildConfig.DEBUG) {
             try { unregisterReceiver(debugConfigReceiver) } catch (_: Exception) {}
         }
+        // Safety net: catch any outbox op left PENDING by the foreground loop stopping here
+        // (crash/OEM-kill/update-install before the app is reopened) — see plan Tier 4.
+        OutboxDrainWorker.enqueue(applicationContext)
     }
 
     override fun onDestroy() {

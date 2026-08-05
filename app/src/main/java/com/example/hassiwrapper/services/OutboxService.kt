@@ -2,6 +2,7 @@ package com.example.hassiwrapper.services
 
 import android.util.Log
 import com.example.hassiwrapper.data.db.dao.ProjectDao
+import com.example.hassiwrapper.data.db.dao.SmsBugReportDao
 import com.example.hassiwrapper.data.db.dao.SmsIncidentDao
 import com.example.hassiwrapper.data.db.dao.SmsOutboxDao
 import com.example.hassiwrapper.data.db.dao.SmsPackingListDao
@@ -20,6 +21,7 @@ import com.example.hassiwrapper.network.AtlasApiService
 import com.example.hassiwrapper.network.dto.*
 import com.google.gson.Gson
 import com.google.gson.JsonParser
+import kotlinx.coroutines.launch
 import okhttp3.ResponseBody
 import retrofit2.Response
 import java.time.Instant
@@ -51,7 +53,8 @@ class OutboxService(
     private val smsSpoolLocationDao: SmsSpoolLocationDao? = null,
     private val smsPackingListSpoolDao: SmsPackingListSpoolDao? = null,
     private val smsVehicleLoadingDao: SmsVehicleLoadingDao? = null,
-    private val smsTransferDao: SmsTransferDao? = null
+    private val smsTransferDao: SmsTransferDao? = null,
+    private val smsBugReportDao: SmsBugReportDao? = null
 ) {
     companion object {
         private const val TAG = "OutboxService"
@@ -68,6 +71,7 @@ class OutboxService(
         const val VEHICLE_LOADING = "VEHICLE_LOADING"
         const val TRANSFER = "TRANSFER"
         const val ROUTE_STATE = "ROUTE_STATE"
+        const val BUG_REPORT = "BUG_REPORT"
     }
 
     object Op {
@@ -111,12 +115,60 @@ class OutboxService(
             project_id = projectId,
             created_at = Instant.now().toString()
         )
-        return outboxDao.insert(op)
+        val id = outboxDao.insert(op)
+        scheduleBackup()
+        return id
+    }
+
+    // ── Disk backup (last-resort recovery) ───────────────────────────────────────
+    //
+    // Last-resort recovery net for DB corruption / disk-full on a field terminal (a sideload
+    // is the only recovery path there, per project history — see plan Tier 1.8): mirrors every
+    // still-PENDING op to a JSON file outside Room. Fire-and-forget on its own IO scope so it
+    // never adds latency to enqueue()'s caller, and debounced so a tight backfill/bulk-scan loop
+    // (hundreds of enqueue calls in a burst) collapses into one write instead of re-serializing
+    // the whole pending list per call — O(n) per write, would be O(n^2) total otherwise. This is
+    // read-by-hand recovery data, not wired into any automatic restore path.
+    private val backupScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    @Volatile private var lastBackupWriteAtMs = 0L
+    private val BACKUP_DEBOUNCE_MS = 3_000L
+
+    private fun scheduleBackup() {
+        val now = System.currentTimeMillis()
+        if (now - lastBackupWriteAtMs < BACKUP_DEBOUNCE_MS) return
+        lastBackupWriteAtMs = now
+        backupScope.launch { backupPendingOpsToDisk() }
+    }
+
+    private suspend fun backupPendingOpsToDisk() {
+        try {
+            // Both PENDING and FAILED: a FAILED op is exactly the kind of unlanded mutation a
+            // human will need to reconcile by hand if the DB is gone — the most valuable thing
+            // to have on disk, not the least.
+            val pending = outboxDao.getPendingAndFailed()
+            val dir = com.example.hassiwrapper.AtlasApp.instance.getExternalFilesDir(null) ?: return
+            val file = java.io.File(dir, "outbox_backup.json")
+            file.writeText(gson.toJson(pending))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "backupPendingOpsToDisk failed (non-fatal): ${e.message}")
+        }
     }
 
     /** Local ids the user deleted offline (PENDING DELETE/HARD_DELETE) — to hide them on download-merge. */
     suspend fun pendingDeleteIds(entityType: String): List<Long> =
         outboxDao.pendingDeleteIds(entityType)
+
+    /**
+     * Whether a matching op is already queued (PENDING) or gave up (FAILED) — lets a
+     * legacy→outbox migration backfill (e.g. bug reports predating the outbox) re-check each
+     * cycle without stacking a duplicate op for a row that's still draining *or* already failed.
+     * Only a DONE op (which the legacy row's own synced flag would then reflect) allows a
+     * re-enqueue — see [SyncService.backfillBugReportOutboxOps].
+     */
+    suspend fun hasUnfinishedOp(entityType: String, opType: String, localEntityId: Long): Boolean =
+        outboxDao.hasUnfinishedOp(entityType, opType, localEntityId)
 
     // ── Negative temp ids for offline-created rows ──────────────────────────────
     // Negatives never collide with server ids (always positive) and signal to the
@@ -176,8 +228,15 @@ class OutboxService(
                     outboxDao.recordAttempt(op.op_id, e.message)
                     Log.w(TAG, "op ${op.op_id} transient (${e.message}) — stopping drain for retry")
                     outboxDao.pruneDone()
+                    scheduleBackup()
                     return DrainResult(done, failed, transient = true)
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // onPause cancelling lifecycleScope mid-drain must not land here: op.attempts is
+                // untouched (no recordAttempt call), so the next drain retries it clean — the
+                // whole point of this fix (see plan Tier 1.3) is that an ordinary app backgrounding
+                // must not count toward MAX_ATTEMPTS the way a real server rejection does.
+                throw e
             } catch (e: Exception) {
                 outboxDao.markFailed(op.op_id, "${e.javaClass.simpleName}: ${e.message}")
                 Log.e(TAG, "op ${op.op_id} unexpected error", e)
@@ -186,6 +245,7 @@ class OutboxService(
         }
 
         outboxDao.pruneDone()
+        scheduleBackup()
         return DrainResult(done, failed, transient = false)
     }
 
@@ -203,6 +263,17 @@ class OutboxService(
                 Entity.VEHICLE -> smsVehicleDao.getById(op.local_entity_id) != null
                 Entity.PACKING_LIST -> smsPackingListDao.getById(op.local_entity_id) != null
                 Entity.INCIDENT -> smsIncidentDao.getById(op.local_entity_id) != null
+                Entity.ROUTE_STATE -> smsVehicleDao.getById(op.local_entity_id) != null
+                // `?: true` when the dao wasn't wired in: "can't verify" must not be treated as
+                // "confirmed gone" (a null-safe != null on a null receiver is false, which would
+                // purge on every unconfigured build — the opposite of the intent).
+                Entity.VEHICLE_LOADING -> smsVehicleLoadingDao?.let { it.getById(op.local_entity_id) != null } ?: true
+                Entity.TRANSFER -> smsTransferDao?.let { it.getById(op.local_entity_id) != null } ?: true
+                // BUG_REPORT deliberately stays unhandled here (falls to `true`, never purged):
+                // a purged FAILED bug-report op would make hasUnfinishedOp() blind to it again,
+                // and the migration backfill would immediately re-enqueue — the exact loop that
+                // guard exists to prevent. Don't add a bugReportDao existence check without also
+                // reworking the backfill's give-up story.
                 else -> true // unrecognized/relationship entity types: leave for the user to see
             }
             if (!stillExists) {
@@ -241,6 +312,22 @@ class OutboxService(
             }
             Entity.INCIDENT -> when (op.op_type) {
                 Op.CREATE -> incidentCreate(api, op, projectCode)
+                else -> unknownOp(op)
+            }
+            Entity.BUG_REPORT -> when (op.op_type) {
+                Op.CREATE -> bugReportCreate(api, op, projectCode)
+                else -> unknownOp(op)
+            }
+            Entity.ROUTE_STATE -> when (op.op_type) {
+                Op.UPDATE -> routeStateUpdate(api, op, projectCode)
+                else -> unknownOp(op)
+            }
+            Entity.VEHICLE_LOADING -> when (op.op_type) {
+                Op.CREATE -> vehicleLoadingCreate(api, op, projectCode)
+                else -> unknownOp(op)
+            }
+            Entity.TRANSFER -> when (op.op_type) {
+                Op.CREATE -> transferCreate(api, op, projectCode)
                 else -> unknownOp(op)
             }
             else -> unknownOp(op)
@@ -421,6 +508,98 @@ class OutboxService(
         return onResponse(op, resp) { smsIncidentDao.markSynced(listOf(op.local_entity_id)) }
     }
 
+    // ── Bug report ────────────────────────────────────────────────────────────────
+    //
+    // Metadata only — the screenshot stays a separate best-effort pass in
+    // SyncService.uploadSmsBugReportScreenshots, keyed on the server_id this sets. A missing
+    // screenshot is not worth retrying with attempts/FAILED semantics; a lost report is.
+
+    private suspend fun bugReportCreate(api: AtlasApiService, op: SmsOutboxEntity, projectCode: String): Outcome {
+        val dao = smsBugReportDao ?: return unknownOp(op)
+        val payload = gson.fromJson(op.payload_json, CreateSmsBugReportRequest::class.java)
+        val resp = call { api.createSmsBugReport(projectCode, payload) }
+        return onResponse(op, resp) {
+            val serverId = parseServerId(resp, "bugReportId")
+            if (serverId != null) dao.markMetadataSynced(op.local_entity_id, serverId)
+        }
+    }
+
+    // ── Vehicle route state ──────────────────────────────────────────────────────
+    //
+    // Payload is a snapshot of on_route/destination captured at enqueue time (the call site,
+    // right after the local write) rather than re-read from the DB at drain time — same
+    // pattern as vehicleUpdate/spoolUpdate. A rapid on-route→off-route flip before the first op
+    // drains just queues two ops that apply in order, ending at the correct final state; it
+    // does NOT reproduce the SQL-lock-contention incident this replaces (that came from a
+    // per-cycle *poll* re-sending identical on_route state every ~60s forever because nothing
+    // ever marked it synced — this is push-once-per-transition, each op marked DONE after it lands).
+
+    private suspend fun routeStateUpdate(api: AtlasApiService, op: SmsOutboxEntity, projectCode: String): Outcome {
+        val serverId = resolve(Entity.VEHICLE, op.local_entity_id) ?: return Outcome.SKIP
+        val payload = gson.fromJson(op.payload_json, RouteStateUpdatePayload::class.java)
+        val resp = call {
+            if (payload.onRoute) api.setVehicleOnRoute(projectCode, serverId, payload.destinationId)
+            else api.setVehicleOffRoute(projectCode, serverId)
+        }
+        return onResponse(op, resp) { smsVehicleDao.markRouteStateSynced(listOf(op.local_entity_id)) }
+    }
+
+    // ── Vehicle loading / transfer ────────────────────────────────────────────────
+    //
+    // Pointer ops: payload carries nothing, local_entity_id is the loading/transfer id — the row
+    // and its spool lines are re-read fresh from the DAO at drain time instead of snapshotted at
+    // enqueue time. Send-flow (SendPackingListFragment) still fabricates a *positive* local
+    // packing-list id and does its own synchronous online-first/409-recovery create, entirely
+    // outside the outbox — see plan Tier 1.5 progress notes on why that stays as-is. A payload
+    // snapshot of packing_list_id taken at enqueue time would go stale the moment
+    // uploadNewPackingLists (legacy) or packingListCreate (outbox) remaps that PL to its real
+    // server id — smsVehicleLoadingDao.remapPackingListId / smsTransferDao.remapPackingListId
+    // both write directly to these rows' own packing_list_id column, so reading it fresh here
+    // picks up that remap for free without ever going through resolve()'s negative-id convention.
+
+    private suspend fun vehicleLoadingCreate(api: AtlasApiService, op: SmsOutboxEntity, projectCode: String): Outcome {
+        val dao = smsVehicleLoadingDao ?: return unknownOp(op)
+        val loading = dao.getById(op.local_entity_id) ?: return Outcome.DONE // deleted locally before it drained — nothing to upload
+        val spools = dao.getSpoolsByLoading(loading.loading_id)
+        val body = VehicleLoadingUploadDto(
+            vehicleLoadingId = loading.loading_id,
+            vehicleId        = loading.vehicle_id,
+            vehiclePlate     = loading.vehicle_plate,
+            projectId        = loading.project_id,
+            createdAt        = loading.created_at,
+            createdBy        = null,
+            spools           = spools.map { s -> VehicleLoadingSpoolUploadDto(spoolId = s.spool_id, packingListId = s.packing_list_id) }
+        )
+        val resp = call { api.uploadVehicleLoading(projectCode, body) }
+        return onResponse(op, resp) {
+            dao.markSynced(listOf(loading.loading_id))
+            // Best-effort, same as the eager call SendPackingListFragment already makes right
+            // after send — this is the fallback path for when that one couldn't reach the
+            // server (offline), so a failure here has no local trace to leave: the flag is a
+            // pure server-side convenience, not a source of truth this device holds.
+            spools.mapNotNull { it.packing_list_id }.distinct().forEach { plId ->
+                runCatching { api.setPackingListReadyToSend(projectCode, plId, true) }
+            }
+        }
+    }
+
+    private suspend fun transferCreate(api: AtlasApiService, op: SmsOutboxEntity, projectCode: String): Outcome {
+        val dao = smsTransferDao ?: return unknownOp(op)
+        val transfer = dao.getById(op.local_entity_id) ?: return Outcome.DONE
+        val spools = dao.getSpoolsByTransfer(transfer.transfer_id)
+        val body = TransferUploadDto(
+            transferId      = transfer.transfer_id,
+            type            = transfer.transfer_type,
+            projectId       = transfer.project_id,
+            signatureBase64 = transfer.signature_data,
+            createdAt       = transfer.created_at,
+            createdBy       = null,
+            spools          = spools.map { s -> TransferSpoolUploadDto(spoolId = s.spool_id, packingListId = null) }
+        )
+        val resp = call { api.uploadTransfer(projectCode, body) }
+        return onResponse(op, resp) { dao.markSynced(listOf(transfer.transfer_id)) }
+    }
+
     // ── Cross-table id remap ─────────────────────────────────────────────────────
     //
     // A row's own PK is fixed up by its own DAO's remapAndSync (spool/vehicle/PL). These
@@ -458,7 +637,9 @@ class OutboxService(
 
     /** Runs an API call, converting any thrown network exception into a [TransientFailure]. */
     private suspend fun call(block: suspend () -> Response<ResponseBody>): Response<ResponseBody> =
-        try { block() } catch (e: Exception) { throw TransientFailure(e.message ?: "network error") }
+        try { block() }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (e: Exception) { throw TransientFailure(e.message ?: "network error") }
 
     /**
      * Classifies a response: 2xx runs [onSuccess] and returns DONE; 5xx throws

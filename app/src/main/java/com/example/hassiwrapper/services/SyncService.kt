@@ -83,6 +83,13 @@ class SyncService(
 
     data class SyncResult(
         val success: Boolean = false,
+        // True when the SMS upload phase was skipped this cycle because a concurrent
+        // syncSmsUploads() call held smsQueueUploadMutex — distinct from `success` because the
+        // three fullSync() callers need different reactions: MainActivity.runSyncCycle should
+        // log-only instead of toasting "completed", while SyncFragment's manual sync must still
+        // treat this as success (proceed to refresh SMS data, don't paint the red error card) —
+        // the concurrent holder uploads the same rows, nothing was actually lost.
+        val uploadPhaseSkipped: Boolean = false,
         val logsUploaded: Int = 0,
         val incidentsUploaded: Int = 0,
         val sessionsUploaded: Int = 0,
@@ -148,6 +155,8 @@ class SyncService(
                 waitMs = minOf(waitMs * 2, RETRY_MAX_MS)
                  // Re-resolve URL before next attempt in case connectivity changed
                 apiClient.resetResolvedBase()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 // Non-transient (auth error, bad request, etc.) — surface immediately
                 Log.e(TAG, "Sync failed (non-retryable)", e)
@@ -157,6 +166,44 @@ class SyncService(
     }
 
     data class SmsUploadResult(val success: Boolean = true, val error: String? = null)
+
+    /**
+     * Background safety-net entry point for [com.example.hassiwrapper.workers.OutboxDrainWorker]:
+     * drains only the CRUD outbox — no legacy upload routes, no master data download, no health
+     * check — so a crash/OEM-kill/update-install between foreground sync cycles doesn't strand an
+     * op that's sitting PENDING when the process dies. Guarded by the same [smsQueueUploadMutex]
+     * as the foreground upload paths so it can never race a live sync; skips (returns null) rather
+     * than blocking if one is already in flight, since the foreground cycle covers the same ground.
+     */
+    suspend fun drainOutboxOnly(): OutboxService.DrainResult? {
+        val svc = outboxService ?: return null
+        val api = try {
+            apiClient.getService()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "drainOutboxOnly: could not obtain API service: ${e.message}")
+            return null
+        }
+        // A background drain must never let an expired token masquerade as the server
+        // permanently rejecting an op (4xx → FAILED) — re-login first, same as the
+        // foreground paths, and bail out (not drain) if that fails.
+        if (authRepo != null && !authRepo.isAuthenticated()) {
+            if (!authRepo.reLoginWithStoredCode(api)) {
+                Log.w(TAG, "drainOutboxOnly: token expired and re-login failed, skipping")
+                return null
+            }
+        }
+        if (!smsQueueUploadMutex.tryLock()) {
+            Log.i(TAG, "drainOutboxOnly: upload pipeline busy, skipping")
+            return null
+        }
+        return try {
+            svc.drain(api)
+        } finally {
+            smsQueueUploadMutex.unlock()
+        }
+    }
 
     /**
      * Uploads everything the SMS module owns: send-flow packing lists, vehicle loadings,
@@ -181,6 +228,8 @@ class SyncService(
     private suspend fun doSmsUploads(didReLogin: Boolean = false): SmsUploadResult {
         val api = try {
             apiClient.getService()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "syncSmsUploads: could not obtain API service", e)
             return SmsUploadResult(success = false, error = e.message)
@@ -212,10 +261,18 @@ class SyncService(
                 } finally {
                     smsQueueUploadMutex.unlock()
                 }
+                SmsUploadResult()
             } else {
+                // The concurrent holder (doSync) runs the identical upload block, so nothing is
+                // lost — but this call's caller (e.g. SendPackingListFragment) is waiting on a
+                // confirmed upload of THIS device's just-recorded rows, and the other holder may
+                // not even include them yet. success=false here is what lets that caller show
+                // "partial" instead of falsely telling the user the send confirmed server-side.
                 Log.i(TAG, "syncSmsUploads: upload pipeline busy (concurrent fullSync), skipping this cycle")
+                SmsUploadResult(success = false, error = "upload pipeline busy, will retry next cycle")
             }
-            SmsUploadResult()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "syncSmsUploads failed", e)
             SmsUploadResult(success = false, error = e.message)
@@ -244,6 +301,8 @@ class SyncService(
         onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_server))
         val healthResp = try {
             api.health()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             throw TransientException(AtlasApp.instance.getString(R.string.sync_error_no_connection), e)
         }
@@ -286,6 +345,8 @@ class SyncService(
             } else {
                 Log.w(TAG, "downloadSync failed: HTTP ${downloadResp.code()}")
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "downloadSync exception (non-fatal): ${e.message}")
         }
@@ -294,6 +355,7 @@ class SyncService(
         // in order (create/update/delete/assign). Guarded by smsQueueUploadMutex since
         // doSmsUploads runs this same block under a different lock — if it's mid-block, skip
         // the whole upload phase this cycle rather than double-posting the same rows/ops.
+        var uploadPhaseSkipped = false
         if (smsQueueUploadMutex.tryLock()) {
             try {
                 onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_pl))
@@ -323,7 +385,14 @@ class SyncService(
                 smsQueueUploadMutex.unlock()
             }
         } else {
+            // Concurrent syncSmsUploads() holds the block this cycle — nothing was lost (it runs
+            // the same upload set), but THIS cycle didn't confirm it, so reporting success=true
+            // here would be exactly the silent-loss shape this fix exists to close: last_sync
+            // would advance and the caller would toast "completed" for a cycle that uploaded
+            // nothing. Downgrade to a soft failure instead — the 60s auto-sync loop retries next
+            // tick regardless, this is purely about not lying to the caller about this cycle.
             Log.i(TAG, "doSync: upload pipeline busy (concurrent syncSmsUploads), skipping upload phase this cycle")
+            uploadPhaseSkipped = true
         }
 
         configRepo.set("last_sync", Instant.now().toString())
@@ -336,6 +405,7 @@ class SyncService(
 
         return SyncResult(
             success = true,
+            uploadPhaseSkipped = uploadPhaseSkipped,
             vehiclesAdded = vehicleResult.added,
             vehiclesUpdated = vehicleResult.updated
         )
@@ -349,6 +419,8 @@ class SyncService(
         val deviceName = configRepo.get("device_name") ?: "Android Terminal"
         try {
             api.registerDevice(RegisterDeviceRequest(deviceId, deviceName))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "registerDevice failed (non-fatal): ${e.message}")
         }
@@ -516,7 +588,7 @@ class SyncService(
                     val msg = com.example.hassiwrapper.network.dto.parsePackingListConflictMessage(409, response.errorBody()?.string())
                     Log.e(TAG, "PL ${pl.packing_list_id} vehicle conflict, dropping local copy: $msg")
                     if (smsSpoolDao != null && smsPackingListSpoolDao != null && smsTransferDao != null && smsVehicleDao != null) {
-                        releaseDanglingSendForPackingList(pl.packing_list_id, pl.vehicle_id, smsSpoolDao, smsPackingListSpoolDao, smsTransferDao, smsVehicleDao)
+                        releaseDanglingSendForPackingList(pl.packing_list_id, pl.vehicle_id, smsSpoolDao, smsPackingListSpoolDao, smsTransferDao, smsVehicleDao, outboxService, pl.project_id)
                     } else {
                         smsSpoolDao?.getByPackingList(pl.packing_list_id)?.forEach {
                             smsSpoolDao.updatePackingList(it.spool_id, null)
@@ -533,6 +605,8 @@ class SyncService(
                 } else {
                     Log.e(TAG, "PL ${pl.packing_list_id} upload failed: HTTP ${response.code()}")
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "PL ${pl.packing_list_id} upload error: ${e.message}")
             }
@@ -557,108 +631,48 @@ class SyncService(
     }
 
     // ── Vehicle loading upload ────────────────────────────────────────────────
+    //
+    // Normal path is now the outbox (OutboxService.vehicleLoadingCreate), enqueued right after
+    // the local insert in SendPackingListFragment... except it isn't: Send-flow still writes
+    // these rows the same way it always has (synced=false, no enqueue call — see plan Tier 1.5
+    // progress notes on why that fragment is deliberately untouched). So this is the *only*
+    // producer of VEHICLE_LOADING outbox ops today, not a backfill for a separate eager path —
+    // same shape as bug-report/route-state's backfill, just permanently load-bearing here rather
+    // than transitional. hasUnfinishedOp guards against re-enqueuing a row whose op is already
+    // draining or gave up.
 
     private suspend fun uploadVehicleLoadings(api: AtlasApiService) {
         val dao = smsVehicleLoadingDao ?: return
-        val unsynced = dao.getUnsynced()
-        if (unsynced.isEmpty()) return
-
-        Log.i(TAG, "Uploading ${unsynced.size} vehicle loading(s)")
-        val synced = mutableListOf<Long>()
-        val plIdsToMarkReady = mutableSetOf<Long>()
-
-        val project = projectDao.getById(
-            unsynced.first().project_id
-        )
-        val projectCode = project?.project_code
-        if (projectCode.isNullOrBlank()) {
-            Log.w(TAG, "uploadVehicleLoadings: no project code, skipping")
-            return
-        }
-
-        for (loading in unsynced) {
-            try {
-                val loadingSpools = dao.getSpoolsByLoading(loading.loading_id)
-                val body = VehicleLoadingUploadDto(
-                    vehicleLoadingId = loading.loading_id,
-                    vehicleId        = loading.vehicle_id,
-                    vehiclePlate     = loading.vehicle_plate,
-                    projectId        = loading.project_id,
-                    createdAt        = loading.created_at,
-                    createdBy        = null,
-                    spools           = loadingSpools.map { s ->
-                        VehicleLoadingSpoolUploadDto(
-                            spoolId       = s.spool_id,
-                            packingListId = s.packing_list_id
-                        )
-                    }
-                )
-                val response = api.uploadVehicleLoading(projectCode, body)
-                if (response.isSuccessful) {
-                    synced.add(loading.loading_id)
-                    loadingSpools.mapNotNull { it.packing_list_id }.forEach { plIdsToMarkReady += it }
-                    Log.i(TAG, "VehicleLoading ${loading.loading_id} uploaded")
-                } else {
-                    Log.e(TAG, "VehicleLoading ${loading.loading_id} upload failed: HTTP ${response.code()}")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "VehicleLoading ${loading.loading_id} upload error: ${e.message}")
-            }
-        }
-
-        if (synced.isNotEmpty()) dao.markSynced(synced)
-        plIdsToMarkReady.forEach { plId ->
-            try { api.setPackingListReadyToSend(projectCode, plId, true) } catch (_: Exception) { }
+        val outbox = outboxService ?: return
+        for (loading in dao.getUnsynced()) {
+            if (outbox.hasUnfinishedOp(OutboxService.Entity.VEHICLE_LOADING, OutboxService.Op.CREATE, loading.loading_id)) continue
+            outbox.enqueue(
+                entityType = OutboxService.Entity.VEHICLE_LOADING,
+                opType = OutboxService.Op.CREATE,
+                localEntityId = loading.loading_id,
+                projectId = loading.project_id
+            )
+            Log.i(TAG, "Enqueued outbox CREATE op for vehicle loading ${loading.loading_id}")
         }
     }
 
     // ── Transfer upload ───────────────────────────────────────────────────────
+    //
+    // Same shape as uploadVehicleLoadings above — see its comment.
 
     private suspend fun uploadTransfers(api: AtlasApiService) {
         val dao = smsTransferDao ?: return
-        val unsynced = dao.getUnsynced()
-        if (unsynced.isEmpty()) return
-
-        Log.i(TAG, "Uploading ${unsynced.size} transfer(s)")
-        val synced = mutableListOf<Long>()
-
-        val project = projectDao.getById(unsynced.first().project_id)
-        val projectCode = project?.project_code
-        if (projectCode.isNullOrBlank()) {
-            Log.w(TAG, "uploadTransfers: no project code, skipping")
-            return
+        val outbox = outboxService ?: return
+        for (transfer in dao.getUnsynced()) {
+            if (outbox.hasUnfinishedOp(OutboxService.Entity.TRANSFER, OutboxService.Op.CREATE, transfer.transfer_id)) continue
+            outbox.enqueue(
+                entityType = OutboxService.Entity.TRANSFER,
+                opType = OutboxService.Op.CREATE,
+                localEntityId = transfer.transfer_id,
+                projectId = transfer.project_id
+            )
+            Log.i(TAG, "Enqueued outbox CREATE op for transfer ${transfer.transfer_id}")
         }
-
-        for (transfer in unsynced) {
-            try {
-                val transferSpools = dao.getSpoolsByTransfer(transfer.transfer_id)
-                val body = TransferUploadDto(
-                    transferId      = transfer.transfer_id,
-                    type            = transfer.transfer_type,
-                    projectId       = transfer.project_id,
-                    signatureBase64 = transfer.signature_data,
-                    createdAt       = transfer.created_at,
-                    createdBy       = null,
-                    spools          = transferSpools.map { s ->
-                        TransferSpoolUploadDto(
-                            spoolId       = s.spool_id,
-                            packingListId = null
-                        )
-                    }
-                )
-                val response = api.uploadTransfer(projectCode, body)
-                if (response.isSuccessful) {
-                    synced.add(transfer.transfer_id)
-                    Log.i(TAG, "Transfer ${transfer.transfer_id} uploaded")
-                } else {
-                    Log.e(TAG, "Transfer ${transfer.transfer_id} upload failed: HTTP ${response.code()}")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Transfer ${transfer.transfer_id} upload error: ${e.message}")
-            }
-        }
-
-        if (synced.isNotEmpty()) dao.markSynced(synced)
     }
 
     // ── Per-spool position / sub-position upload ──────────────────────────────
@@ -726,6 +740,8 @@ class SyncService(
                 Log.w(TAG, "status-flags PUT $spoolId HTTP ${putResp.code()}: ${putResp.errorBody()?.string()}")
                 false
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "status-flags upload $spoolId error: ${e.message}")
             false
@@ -777,6 +793,8 @@ class SyncService(
                     } else {
                         Log.e(TAG, "SMS incident ${inc.id} upload failed: HTTP ${response.code()}")
                     }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "SMS incident ${inc.id} upload error: ${e.message}")
                 }
@@ -822,6 +840,8 @@ class SyncService(
                 } else {
                     Log.e(TAG, "SMS incident ${inc.id} photo upload failed: HTTP ${response.code()}")
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "SMS incident ${inc.id} photo upload error: ${e.message}")
             }
@@ -844,54 +864,54 @@ class SyncService(
     // ── SMS bug report upload ─────────────────────────────────────────────────
 
     /**
-     * Two-phase upload, mirroring uploadSmsIncidents/uploadSmsIncidentPhotos: metadata (incl.
-     * logs) first, screenshot as a separate decoupled pass keyed on server_id, so a screenshot
+     * Metadata create now goes through [OutboxService] (enqueued by BugReportService) — this is
+     * just the screenshot pass, a separate decoupled step keyed on server_id so a screenshot
      * failure never blocks the report itself from reaching the backend. Rows that are fully
      * synced (metadata + screenshot, or no screenshot to send) are deleted locally afterward —
      * send-and-forget, nothing left to show the user once it's landed.
      */
     private suspend fun uploadSmsBugReports(api: AtlasApiService) {
         val dao = smsBugReportDao ?: return
-        val unsynced = dao.getUnsyncedMetadata()
 
-        if (unsynced.isNotEmpty()) {
-            Log.i(TAG, "Uploading ${unsynced.size} bug report(s)")
-            for (report in unsynced) {
-                val projectCode = projectDao.getById(report.project_id)?.project_code
-                if (projectCode.isNullOrBlank()) {
-                    Log.w(TAG, "No project code for bug report ${report.id}, skipping")
-                    continue
-                }
-                try {
-                    val body = CreateSmsBugReportRequest(
-                        uuid = report.uuid,
-                        title = report.title,
-                        description = report.description,
-                        logs = report.logs,
-                        reporterName = report.reporter_name,
-                        terminalCode = report.terminal_code,
-                        appVersion = report.app_version,
-                        deviceModel = report.device_model,
-                        screenName = report.screen_name
-                    )
-                    val response = api.createSmsBugReport(projectCode, body)
-                    if (response.isSuccessful) {
-                        parseBugReportServerId(response)?.let { dao.markMetadataSynced(report.id, it) }
-                        Log.i(TAG, "Bug report ${report.id} uploaded")
-                    } else {
-                        Log.e(TAG, "Bug report ${report.id} upload failed: HTTP ${response.code()}")
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Bug report ${report.id} upload error: ${e.message}")
-                }
-            }
-        }
-
+        backfillBugReportOutboxOps(dao)
         uploadSmsBugReportScreenshots(api, dao)
 
         for (report in dao.getFullySynced()) {
             report.screenshot_path?.let { runCatching { File(it).delete() } }
             dao.deleteById(report.id)
+        }
+    }
+
+    /**
+     * One-shot migration backfill: rows left over from before bug-report metadata create moved
+     * into the outbox (this app version's predecessor inserted straight into sms_bug_report with
+     * no outbox op at all) would otherwise sit forever — nothing reads getUnsyncedMetadata()
+     * anymore. hasUnfinishedOp guards against re-enqueuing the same row while its op is still
+     * queued or already gave up FAILED; server create-only-upserts on uuid, so even a duplicate
+     * enqueue in the rare gap (op DONE but response body unparseable) is harmless.
+     */
+    private suspend fun backfillBugReportOutboxOps(dao: SmsBugReportDao) {
+        val outbox = outboxService ?: return
+        for (report in dao.getUnsyncedMetadata()) {
+            if (outbox.hasUnfinishedOp(OutboxService.Entity.BUG_REPORT, OutboxService.Op.CREATE, report.id)) continue
+            outbox.enqueue(
+                entityType = OutboxService.Entity.BUG_REPORT,
+                opType = OutboxService.Op.CREATE,
+                localEntityId = report.id,
+                projectId = report.project_id,
+                payload = CreateSmsBugReportRequest(
+                    uuid = report.uuid,
+                    title = report.title,
+                    description = report.description,
+                    logs = report.logs,
+                    reporterName = report.reporter_name,
+                    terminalCode = report.terminal_code,
+                    appVersion = report.app_version,
+                    deviceModel = report.device_model,
+                    screenName = report.screen_name
+                )
+            )
+            Log.i(TAG, "Backfilled outbox CREATE op for pre-migration bug report ${report.id}")
         }
     }
 
@@ -923,66 +943,41 @@ class SyncService(
                 } else {
                     Log.e(TAG, "Bug report ${report.id} screenshot upload failed: HTTP ${response.code()}")
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "Bug report ${report.id} screenshot upload error: ${e.message}")
             }
         }
     }
 
-    private fun parseBugReportServerId(resp: Response<okhttp3.ResponseBody>): Long? = try {
-        val el = JsonParser.parseString(resp.body()?.string().orEmpty())
-        val obj = when {
-            el.isJsonObject && el.asJsonObject.has("data") && !el.asJsonObject.get("data").isJsonNull ->
-                el.asJsonObject.getAsJsonObject("data")
-            el.isJsonObject -> el.asJsonObject
-            else -> null
-        }
-        obj?.get("bugReportId")?.takeIf { !it.isJsonNull }?.asLong
-            ?: obj?.get("id")?.takeIf { !it.isJsonNull }?.asLong
-    } catch (_: Exception) { null }
-
     // ── Vehicle route state upload ────────────────────────────────────────────
+    //
+    // The push (setOnRoute/setOffRoute call sites enqueue their own ROUTE_STATE op — see
+    // SendPackingListFragment, ReceivePackingListFragment, PackingListCleanup) now does the
+    // normal-path upload via OutboxService.drain(). This is just the one-shot backfill for rows
+    // left `route_synced = 0` from before that migration (this app version's predecessor set
+    // the flag with no outbox op behind it) — without it those rows would never sync again,
+    // since nothing still polls getUnsyncedRouteState() on its own. Mirrors
+    // backfillBugReportOutboxOps.
 
     private suspend fun uploadVehicleRouteState(api: AtlasApiService) {
         val dao = smsVehicleDao ?: return
+        val outbox = outboxService ?: return
         val unsynced = dao.getUnsyncedRouteState()
         if (unsynced.isEmpty()) return
 
-        Log.i(TAG, "Syncing ${unsynced.size} vehicle route state(s)")
-        val synced = mutableListOf<Long>()
-
-        val project = projectDao.getById(unsynced.first().project_id)
-        val projectCode = project?.project_code
-        if (projectCode.isNullOrBlank()) {
-            Log.w(TAG, "uploadVehicleRouteState: no project code, skipping")
-            return
-        }
-
         for (vehicle in unsynced) {
-            try {
-                val response = if (vehicle.on_route) {
-                    api.setVehicleOnRoute(projectCode, vehicle.vehicle_id, vehicle.destination)
-                } else {
-                    api.setVehicleOffRoute(projectCode, vehicle.vehicle_id)
-                }
-                if (response.isSuccessful) {
-                    // Mark route_synced=1 on either direction: GetVehiclesByProjectAsync reads on_route
-                    // straight from vw_asset_vehicle (the EAV view), so GET /vehicles correctly echoes
-                    // on_route=true post-upload — safe to stop re-sending it every cycle. Previously this
-                    // only synced on off-route, so a vehicle left on-route re-sent the identical
-                    // SetVehicleOnRoute MERGE every ~60s auto-sync cycle indefinitely, which is suspected
-                    // of causing SQL Server lock contention on that vehicle's EAV rows (see incident memory).
-                    synced.add(vehicle.vehicle_id)
-                    Log.i(TAG, "Vehicle ${vehicle.vehicle_id} route state synced (on_route=${vehicle.on_route})")
-                } else {
-                    Log.e(TAG, "Vehicle ${vehicle.vehicle_id} route state failed: HTTP ${response.code()}")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Vehicle ${vehicle.vehicle_id} route state error: ${e.message}")
-            }
+            if (outbox.hasUnfinishedOp(OutboxService.Entity.ROUTE_STATE, OutboxService.Op.UPDATE, vehicle.vehicle_id)) continue
+            outbox.enqueue(
+                entityType = OutboxService.Entity.ROUTE_STATE,
+                opType = OutboxService.Op.UPDATE,
+                localEntityId = vehicle.vehicle_id,
+                projectId = vehicle.project_id,
+                payload = RouteStateUpdatePayload(onRoute = vehicle.on_route, destinationId = vehicle.destination)
+            )
+            Log.i(TAG, "Backfilled outbox ROUTE_STATE op for pre-migration vehicle ${vehicle.vehicle_id}")
         }
-
-        if (synced.isNotEmpty()) dao.markRouteStateSynced(synced)
     }
 
     // ── Pending offline relocation retry ─────────────────────────────────────

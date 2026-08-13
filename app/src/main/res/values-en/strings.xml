@@ -970,6 +970,12 @@
     <string name="transfer_send_dest_laydown">Laydown</string>
     <string name="transfer_send_dest_site">Site (urgent)</string>
     <string name="transfer_send_btn_confirm">Confirm Shipment</string>
+    <!-- Cancelling a half-finished send/receive operation -->
+    <string name="transfer_cancel_title">Cancel the operation?</string>
+    <string name="transfer_cancel_message">Everything you have done so far will be discarded and nothing will be saved. You will have to start again.</string>
+    <string name="transfer_cancel_confirm">Cancel operation</string>
+    <string name="transfer_cancel_dismiss">Stay here</string>
+    <string name="transfer_busy_wait">Operation in progress. Please wait until it finishes.</string>
     <string name="transfer_send_success">Shipment recorded and uploaded successfully</string>
     <string name="transfer_send_success_partial">Shipment recorded (data pending upload)</string>
     <string name="transfer_send_uploading">Uploading data to server…</string>

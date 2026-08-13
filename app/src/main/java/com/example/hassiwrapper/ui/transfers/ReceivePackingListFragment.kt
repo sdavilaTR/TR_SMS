@@ -13,6 +13,7 @@ import android.widget.ImageView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -87,6 +88,17 @@ class ReceivePackingListFragment : Fragment() {
      *  this scan session goes there (one stop = one destination), not per-spool anymore. */
     private var selectedBatchOption: AssignOption? = null
 
+    /** True from the moment Confirm is pressed until the whole receive has finished writing.
+     *
+     *  Nothing is persisted until then: the vehicle, the packing list and the scanned spools live
+     *  only in memory, so leaving before Confirm loses the progress but writes nothing. Once Confirm
+     *  starts it is a long sequence of DB writes plus network calls that is NOT a transaction, and it
+     *  runs on viewLifecycleOwner.lifecycleScope — leaving mid-way CANCELS it at the next suspension
+     *  point, committing whatever it had already written and skipping the rest. That is exactly the
+     *  half-saved receive that gets stuck in the database, so while this is true the screen refuses
+     *  to be left. */
+    private var submitting = false
+
     private val vehicleScanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val raw = result.data?.getStringExtra(CustomScannerActivity.EXTRA_RESULT)?.trim() ?: return@registerForActivityResult
@@ -128,7 +140,16 @@ class ReceivePackingListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        (view as com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView).onSwipeBack = { findNavController().navigateUp() }
+        // Salir por gesto y salir por el boton Atras pasan por el MISMO guardia: si no, cancelar la
+        // operacion dependeria de con cual de los dos te fueras.
+        (view as com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView).onSwipeBack = { attemptLeave() }
+
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() = attemptLeave()
+            }
+        )
 
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
@@ -440,8 +461,14 @@ class ReceivePackingListFragment : Fragment() {
     private fun onConfirmReceive() {
         val pl      = selectedPl ?: return
         val vehicle = selectedVehicle ?: return
+        // Un segundo toque mientras la primera confirmacion sigue en vuelo duplicaba la
+        // transferencia entera, con sus filas de spools y sus subidas.
+        if (submitting) return
+        submitting = true
+        btnConfirmReceive.isEnabled = false
 
         viewLifecycleOwner.lifecycleScope.launch {
+            try {
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
             val location  = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: "UNKNOWN"
             val now       = LocalDateTime.now().toString()
@@ -605,7 +632,54 @@ class ReceivePackingListFragment : Fragment() {
                       else getString(R.string.transfer_receive_success_partial, confirmedSpools.size, label ?: location)
             Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
             resetToScanVehicle()
+            } finally {
+                // En finally y no al final del cuerpo: si la corrutina se cancela o algo revienta a
+                // mitad, el flag tiene que bajar igual o la pantalla se queda bloqueada sin salida.
+                submitting = false
+                if (isAdded) btnConfirmReceive.isEnabled = true
+            }
         }
+    }
+
+    /** ¿Hay algo que perder? La operacion ha empezado en cuanto se ha resuelto un vehiculo: a partir
+     *  de ahi hay una lista elegida y/o spools escaneados que solo viven en memoria. En el panel
+     *  inicial, con la matricula aun sin resolver, no hay progreso y salir no cuesta nada. */
+    private fun hasProgress(): Boolean =
+        selectedVehicle != null || selectedPl != null || spoolReceives.any { it.confirmed }
+
+    /** Unico punto de salida de la pantalla, para el boton Atras y para el gesto.
+     *
+     *  Con la operacion a medias pide confirmacion en vez de irse sin mas: un toque accidental en
+     *  Atras tiraba todo el progreso sin avisar y obligaba a rehacer el escaneo entero. */
+    private fun attemptLeave() {
+        if (submitting) {
+            Toast.makeText(requireContext(), getString(R.string.transfer_busy_wait), Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!hasProgress()) {
+            findNavController().navigateUp()
+            return
+        }
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.transfer_cancel_title)
+            .setMessage(R.string.transfer_cancel_message)
+            // El boton negativo es el de quedarse: es el que cae bajo el pulgar por defecto y el que
+            // no destruye nada, asi que un segundo toque accidental no confirma la cancelacion.
+            .setNegativeButton(R.string.transfer_cancel_dismiss, null)
+            .setPositiveButton(R.string.transfer_cancel_confirm) { _, _ ->
+                discardOperation()
+                findNavController().navigateUp()
+            }
+            .show()
+    }
+
+    /** Tira el estado en memoria de la operacion. No hay nada que deshacer en la base de datos:
+     *  hasta Confirmar no se ha escrito ni una fila. */
+    private fun discardOperation() {
+        selectedVehicle = null
+        selectedPl = null
+        selectedBatchOption = null
+        spoolReceives.clear()
     }
 
     /** Back to Panel A so the operator can scan the vehicle again at the next sub-position

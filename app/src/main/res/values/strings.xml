@@ -871,6 +871,12 @@
     <string name="transfer_send_dest_laydown">Laydown</string>
     <string name="transfer_send_dest_site">Site (urgente)</string>
     <string name="transfer_send_btn_confirm">Confirmar Envío</string>
+    <!-- Cancelar una operación de envío/recepción a medias -->
+    <string name="transfer_cancel_title">¿Cancelar la operación?</string>
+    <string name="transfer_cancel_message">Se descartará todo lo que llevas hecho y no se guardará nada. Tendrás que empezar de nuevo.</string>
+    <string name="transfer_cancel_confirm">Cancelar operación</string>
+    <string name="transfer_cancel_dismiss">Seguir aquí</string>
+    <string name="transfer_busy_wait">Operación en curso. Espera a que termine.</string>
     <string name="transfer_send_success">Envío registrado y subido correctamente</string>
     <string name="transfer_send_success_partial">Envío registrado (datos pendientes de subir)</string>
     <string name="transfer_send_uploading">Subiendo datos al servidor…</string>

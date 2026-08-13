@@ -871,6 +871,12 @@
     <string name="transfer_send_dest_laydown">Laydown</string>
     <string name="transfer_send_dest_site">Site (तत्काल)</string>
     <string name="transfer_send_btn_confirm">भेजने की पुष्टि करें</string>
+    <!-- अधूरी भेजने/प्राप्त करने की प्रक्रिया रद्द करना -->
+    <string name="transfer_cancel_title">क्या ऑपरेशन रद्द करें?</string>
+    <string name="transfer_cancel_message">अब तक किया गया सब कुछ हटा दिया जाएगा और कुछ भी सहेजा नहीं जाएगा। आपको फिर से शुरू करना होगा।</string>
+    <string name="transfer_cancel_confirm">ऑपरेशन रद्द करें</string>
+    <string name="transfer_cancel_dismiss">यहीं रहें</string>
+    <string name="transfer_busy_wait">ऑपरेशन जारी है। कृपया समाप्त होने तक प्रतीक्षा करें।</string>
     <string name="transfer_send_success">भेजना दर्ज हुआ और सफलतापूर्वक अपलोड हुआ</string>
     <string name="transfer_send_success_partial">भेजना दर्ज हुआ (डेटा अपलोड होना लंबित है)</string>
     <string name="transfer_send_uploading">सर्वर पर डेटा अपलोड हो रहा है…</string>

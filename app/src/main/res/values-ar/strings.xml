@@ -871,6 +871,12 @@
     <string name="transfer_send_dest_laydown">Laydown</string>
     <string name="transfer_send_dest_site">Site (عاجل)</string>
     <string name="transfer_send_btn_confirm">تأكيد الإرسال</string>
+    <!-- إلغاء عملية إرسال/استلام غير مكتملة -->
+    <string name="transfer_cancel_title">هل تريد إلغاء العملية؟</string>
+    <string name="transfer_cancel_message">سيتم تجاهل كل ما قمت به ولن يتم حفظ أي شيء. سيتعين عليك البدء من جديد.</string>
+    <string name="transfer_cancel_confirm">إلغاء العملية</string>
+    <string name="transfer_cancel_dismiss">البقاء هنا</string>
+    <string name="transfer_busy_wait">العملية قيد التنفيذ. يرجى الانتظار حتى تنتهي.</string>
     <string name="transfer_send_success">تم تسجيل الإرسال ورفعه بنجاح</string>
     <string name="transfer_send_success_partial">تم تسجيل الإرسال (البيانات بانتظار الرفع)</string>
     <string name="transfer_send_uploading">جارٍ رفع البيانات إلى الخادم…</string>

@@ -13,6 +13,7 @@ import android.widget.ImageButton
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -78,6 +79,18 @@ class SendPackingListFragment : Fragment() {
     private val scannedSpools = mutableListOf<ScannedSpool>()
     private lateinit var adapter: ScannedSpoolAdapter
     private var destination = ""
+
+    /** True from the moment Confirm is pressed until the whole send has finished.
+     *
+     *  Nothing is persisted until then: the vehicle, the scanned spools and the destination live only
+     *  in memory, so leaving before Confirm loses the progress but writes nothing. Once Confirm starts
+     *  it is a long sequence of DB writes plus network calls that is NOT a transaction (it creates or
+     *  resolves the packing list, moves spools onto it, records the vehicle loading, the transfer and
+     *  the GPS fix, and uploads), and it runs on viewLifecycleOwner.lifecycleScope — leaving mid-way
+     *  CANCELS it at the next suspension point, committing whatever it had already written and
+     *  skipping the rest. That is exactly the half-saved send that gets stuck in the database, so
+     *  while this is true the screen refuses to be left. */
+    private var submitting = false
 
     // Location-blocked message
     private lateinit var txtLocationBlocked: TextView
@@ -153,7 +166,16 @@ class SendPackingListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        (view as com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView).onSwipeBack = { findNavController().navigateUp() }
+        // Salir por gesto y salir por el boton Atras pasan por el MISMO guardia: si no, cancelar la
+        // operacion dependeria de con cual de los dos te fueras.
+        (view as com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView).onSwipeBack = { attemptLeave() }
+
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() = attemptLeave()
+            }
+        )
 
         if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED &&
             androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_COARSE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -428,6 +450,48 @@ class SendPackingListFragment : Fragment() {
         } catch (_: Exception) { null }
     }
 
+    // ───────────────────────── Salir de la pantalla ─────────────────────────
+
+    /** ¿Hay algo que perder? La operacion ha empezado en cuanto se ha resuelto un vehiculo o se ha
+     *  escaneado el primer spool. En el panel inicial, con la matricula aun sin resolver, no hay
+     *  progreso y salir no cuesta nada. */
+    private fun hasProgress(): Boolean =
+        selectedVehicle != null || scannedSpools.isNotEmpty()
+
+    /** Unico punto de salida de la pantalla, para el boton Atras y para el gesto.
+     *
+     *  Con la operacion a medias pide confirmacion en vez de irse sin mas: un toque accidental en
+     *  Atras tiraba todo el progreso sin avisar y obligaba a rehacer el escaneo entero. */
+    private fun attemptLeave() {
+        if (submitting) {
+            Toast.makeText(requireContext(), getString(R.string.transfer_busy_wait), Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!hasProgress()) {
+            findNavController().navigateUp()
+            return
+        }
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.transfer_cancel_title)
+            .setMessage(R.string.transfer_cancel_message)
+            // El boton negativo es el de quedarse: es el que cae bajo el pulgar por defecto y el que
+            // no destruye nada, asi que un segundo toque accidental no confirma la cancelacion.
+            .setNegativeButton(R.string.transfer_cancel_dismiss, null)
+            .setPositiveButton(R.string.transfer_cancel_confirm) { _, _ ->
+                discardOperation()
+                findNavController().navigateUp()
+            }
+            .show()
+    }
+
+    /** Tira el estado en memoria de la operacion. No hay nada que deshacer en la base de datos:
+     *  hasta Confirmar no se ha escrito ni una fila. */
+    private fun discardOperation() {
+        selectedVehicle = null
+        scannedSpools.clear()
+        destination = ""
+    }
+
     // ───────────────────────── Step 3: Destination ─────────────────────────
 
     private fun goToDestinationPanel() {
@@ -474,6 +538,8 @@ class SendPackingListFragment : Fragment() {
         }
         val vehicle = selectedVehicle ?: return
         if (!btnConfirmSend.isEnabled) return
+        if (submitting) return
+        submitting = true
         btnConfirmSend.isEnabled = false
         Log.d("SendPL", "onConfirmSend start: vehicle=${vehicle.license_plate} spools=${scannedSpools.size} destination=$destination")
         viewLifecycleOwner.lifecycleScope.launch {
@@ -911,6 +977,10 @@ class SendPackingListFragment : Fragment() {
                     panelUploadProgress.visibility = android.view.View.GONE
                     Toast.makeText(requireContext(), getString(R.string.transfer_send_error, e.message), Toast.LENGTH_LONG).show()
                 }
+            } finally {
+                // En finally y no dentro del catch: si la corrutina se cancela, el catch de Exception
+                // no llega a entrar y el flag se quedaria arriba, dejando la pantalla sin salida.
+                submitting = false
             }
         }
     }

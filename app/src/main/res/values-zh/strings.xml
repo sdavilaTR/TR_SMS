@@ -970,6 +970,12 @@
     <string name="transfer_send_dest_laydown">堆场</string>
     <string name="transfer_send_dest_site">工地（紧急）</string>
     <string name="transfer_send_btn_confirm">确认发货</string>
+    <!-- 取消未完成的发货/收货操作 -->
+    <string name="transfer_cancel_title">要取消此操作吗？</string>
+    <string name="transfer_cancel_message">您已完成的所有内容都将被丢弃，不会保存任何数据。您需要重新开始。</string>
+    <string name="transfer_cancel_confirm">取消操作</string>
+    <string name="transfer_cancel_dismiss">留在此页</string>
+    <string name="transfer_busy_wait">操作正在进行中，请等待完成。</string>
     <string name="transfer_send_success">发货已记录并上传成功</string>
     <string name="transfer_send_success_partial">发货已记录（数据待上传）</string>
     <string name="transfer_send_uploading">正在上传数据到服务器…</string>

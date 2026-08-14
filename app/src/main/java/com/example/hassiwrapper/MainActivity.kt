@@ -635,21 +635,43 @@ class MainActivity : AppCompatActivity() {
         dataWedgeManager.emitScan(data)
     }
 
-    override fun onSupportNavigateUp(): Boolean =
-        navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
+    /** El fragmento que se esta viendo dentro del NavHost, si hay alguno. */
+    private fun currentNavFragment() =
+        supportFragmentManager.findFragmentById(R.id.navHostFragment)
+            ?.childFragmentManager?.fragments?.firstOrNull()
+
+    /**
+     *  Da a la pantalla visible la oportunidad de interceptar la salida. Devuelve true si se ha
+     *  hecho cargo y por tanto no hay que navegar.
+     *
+     *  Hay que preguntar desde los dos sitios: onBackPressed() de abajo no delega en
+     *  super.onBackPressed(), asi que en esta Activity el OnBackPressedDispatcher no llega a
+     *  despacharse nunca, y la flecha Atras de la barra superior sale por onSupportNavigateUp(),
+     *  que tampoco pasa por el dispatcher. Un fragmento que se apoyase solo en
+     *  OnBackPressedCallback no se enteraria por ninguno de los dos caminos.
+     */
+    private fun leaveIntercepted(): Boolean =
+        (currentNavFragment() as? com.example.hassiwrapper.ui.common.LeaveGuard)
+            ?.onLeaveRequested() == true
+
+    override fun onSupportNavigateUp(): Boolean {
+        if (leaveIntercepted()) return true
+        return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
+    }
 
     override fun onBackPressed() {
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayout)
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
             drawerLayout.closeDrawer(GravityCompat.START)
-        } else {
-            if (navController.currentDestination?.id != R.id.homeFragment) {
-                navController.popBackStack(R.id.homeFragment, false)
-            } else if (!kioskModeEnabled) {
-                moveTaskToBack(true)
-            }
-            // Home with kiosk mode on: back does nothing (no exit)
+            return
         }
+        if (leaveIntercepted()) return
+        if (navController.currentDestination?.id != R.id.homeFragment) {
+            navController.popBackStack(R.id.homeFragment, false)
+        } else if (!kioskModeEnabled) {
+            moveTaskToBack(true)
+        }
+        // Home with kiosk mode on: back does nothing (no exit)
     }
 
     private fun showUpdateDialog(update: UpdateInfo) {

@@ -13,7 +13,6 @@ import android.widget.ImageView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -43,7 +42,7 @@ import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
-class ReceivePackingListFragment : Fragment() {
+class ReceivePackingListFragment : Fragment(), com.example.hassiwrapper.ui.common.LeaveGuard {
 
     private data class SpoolReceive(
         val spool: SmsSpoolEntity,
@@ -143,13 +142,6 @@ class ReceivePackingListFragment : Fragment() {
         // Salir por gesto y salir por el boton Atras pasan por el MISMO guardia: si no, cancelar la
         // operacion dependeria de con cual de los dos te fueras.
         (view as com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView).onSwipeBack = { attemptLeave() }
-
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner,
-            object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() = attemptLeave()
-            }
-        )
 
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
@@ -646,6 +638,15 @@ class ReceivePackingListFragment : Fragment() {
      *  inicial, con la matricula aun sin resolver, no hay progreso y salir no cuesta nada. */
     private fun hasProgress(): Boolean =
         selectedVehicle != null || selectedPl != null || spoolReceives.any { it.confirmed }
+
+    /** Salida por el boton Atras del sistema o por la flecha de la barra superior; MainActivity
+     *  pregunta por aqui. Si no hay nada que perder devuelve false y la navegacion sigue como
+     *  siempre, sin molestar con un dialogo. */
+    override fun onLeaveRequested(): Boolean {
+        if (!submitting && !hasProgress()) return false
+        attemptLeave()
+        return true
+    }
 
     /** Unico punto de salida de la pantalla, para el boton Atras y para el gesto.
      *

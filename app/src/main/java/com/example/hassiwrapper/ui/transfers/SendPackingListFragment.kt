@@ -13,7 +13,6 @@ import android.widget.ImageButton
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -55,7 +54,7 @@ private val BAKED_IN_SUFFIX_SHAPE = Regex("""(?i)^SP\d+$""")
 /** Another device already put this vehicle on a different active Packing List (409, layer-1 guard). */
 private class VehicleAlreadyLoadingException(message: String) : Exception(message)
 
-class SendPackingListFragment : Fragment() {
+class SendPackingListFragment : Fragment(), com.example.hassiwrapper.ui.common.LeaveGuard {
 
     private data class ScannedSpool(
         val spoolId: Long,
@@ -169,13 +168,6 @@ class SendPackingListFragment : Fragment() {
         // Salir por gesto y salir por el boton Atras pasan por el MISMO guardia: si no, cancelar la
         // operacion dependeria de con cual de los dos te fueras.
         (view as com.example.hassiwrapper.ui.common.SwipeBackNestedScrollView).onSwipeBack = { attemptLeave() }
-
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner,
-            object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() = attemptLeave()
-            }
-        )
 
         if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED &&
             androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_COARSE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -457,6 +449,15 @@ class SendPackingListFragment : Fragment() {
      *  progreso y salir no cuesta nada. */
     private fun hasProgress(): Boolean =
         selectedVehicle != null || scannedSpools.isNotEmpty()
+
+    /** Salida por el boton Atras del sistema o por la flecha de la barra superior; MainActivity
+     *  pregunta por aqui. Si no hay nada que perder devuelve false y la navegacion sigue como
+     *  siempre, sin molestar con un dialogo. */
+    override fun onLeaveRequested(): Boolean {
+        if (!submitting && !hasProgress()) return false
+        attemptLeave()
+        return true
+    }
 
     /** Unico punto de salida de la pantalla, para el boton Atras y para el gesto.
      *

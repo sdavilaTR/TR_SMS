@@ -184,31 +184,47 @@
 
                     </com.google.android.material.textfield.TextInputLayout>
 
+                    <!-- Los dos botones comparten alto fijo y insets a cero: en vertical el texto
+                         se cortaba porque los 48dp menos los 6dp de inset por lado dejaban sitio
+                         para una sola linea justa. Con iconGravity=start el icono queda anclado al
+                         borde izquierdo y centrado en vertical, y el texto usa todo el resto. -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:baselineAligned="false"
                         android:orientation="horizontal">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnScanSpool"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="60dp"
                             android:layout_weight="1"
                             android:text="@string/load_spools_scan_spool"
                             android:textAllCaps="false"
+                            android:maxLines="2"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             app:icon="@drawable/ic_qr_scan"
-                            app:iconGravity="textStart"
+                            app:iconGravity="start"
+                            app:iconPadding="8dp"
                             app:cornerRadius="12dp"
                             android:layout_marginEnd="8dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnAddSpool"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="60dp"
                             android:layout_weight="1"
                             android:text="@string/load_spools_add_spool"
                             android:textAllCaps="false"
+                            android:maxLines="2"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
                             app:cornerRadius="12dp" />
 
                     </LinearLayout>

@@ -355,6 +355,9 @@ class ReceivePackingListFragment : Fragment(), com.example.hassiwrapper.ui.commo
     private fun showSpoolPanel(pl: SmsPackingListEntity) {
         panelSelectPl.visibility = View.GONE
         panelConfirmSpools.visibility = View.VISIBLE
+        // El campo de la matricula del paso anterior se ha quedado con el foco; devolverselo al
+        // lector fisico para poder confirmar spools con el boton lateral sin abrir la camara.
+        (activity as? MainActivity)?.focusHardwareScanner()
 
         selectedBatchOption = null
         if (assignOptions.isNotEmpty()) {

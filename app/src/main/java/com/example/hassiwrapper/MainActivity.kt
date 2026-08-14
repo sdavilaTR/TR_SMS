@@ -92,6 +92,28 @@ class MainActivity : AppCompatActivity() {
     private lateinit var syncProgressIndicator: android.widget.ProgressBar
     private var kioskModeEnabled = false
 
+    /**
+     *  Devuelve el foco al capturador oculto del lector fisico (el boton lateral del terminal).
+     *
+     *  El lector entrega la lectura como pulsaciones de teclado, asi que etGlobalWedge tiene que
+     *  tener el foco para recogerlas. Cualquier campo de texto de la pantalla se lo quita en cuanto
+     *  el usuario escribe, y como avanzar de paso dentro de una pantalla NO es un cambio de destino
+     *  de navegacion, el listener de onCreate no se dispara y el paso siguiente se quedaba sin
+     *  lector. De ahi el sintoma que se reportaba: habia que abrir y cerrar la camara, porque el
+     *  onResume de la vuelta era lo unico que volvia a pedir el foco.
+     *
+     *  Las pantallas con varios pasos deben llamar a esto al entrar en un paso que admita escaneo,
+     *  y despues de cualquier accion que devuelva el control al usuario tras usar un campo.
+     */
+    fun focusHardwareScanner() {
+        if (!::etGlobalWedge.isInitialized) return
+        etGlobalWedge.post {
+            etGlobalWedge.requestFocus()
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                .hideSoftInputFromWindow(etGlobalWedge.windowToken, 0)
+        }
+    }
+
     private val globalWedgeHandler = Handler(Looper.getMainLooper())
     private val globalWedgeTrigger = Runnable {
         val text = etGlobalWedge.text?.toString()?.trimEnd('\n', '\r', ' ').orEmpty()
@@ -272,11 +294,7 @@ class MainActivity : AppCompatActivity() {
             }
             // newPackingListFragment manages its own wedge focus internally
             if (dest.id != R.id.qrScannerFragment && dest.id != R.id.newPackingListFragment) {
-                etGlobalWedge.post {
-                    etGlobalWedge.requestFocus()
-                    (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-                        .hideSoftInputFromWindow(etGlobalWedge.windowToken, 0)
-                }
+                focusHardwareScanner()
             }
         }
 
@@ -577,9 +595,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         if (navController.currentDestination?.id != R.id.qrScannerFragment) {
-            etGlobalWedge.requestFocus()
-            (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-                .hideSoftInputFromWindow(etGlobalWedge.windowToken, 0)
+            focusHardwareScanner()
         }
 
         // If the user just came back from granting the install-unknown-apps permission, proceed

@@ -306,6 +306,9 @@ class SendPackingListFragment : Fragment(), com.example.hassiwrapper.ui.common.L
         txtSelectedVehicle.text = getString(R.string.load_spools_vehicle_selected, vehicle.license_plate)
         panelVehicle.visibility = View.GONE
         panelSpools.visibility = View.VISIBLE
+        // El campo de la matricula se ha quedado con el foco; devolverselo al lector fisico para
+        // poder escanear spools nada mas entrar en el paso 2, sin pasar por la camara.
+        (activity as? MainActivity)?.focusHardwareScanner()
     }
 
     private fun confirmVehicle() {
@@ -385,6 +388,9 @@ class SendPackingListFragment : Fragment(), com.example.hassiwrapper.ui.common.L
             addSpool(spool)
             etSpoolCode.text?.clear()
             etSpoolSuffix.text?.clear()
+            // Tras teclear a mano el foco se queda en el campo; devolverlo al lector para que el
+            // siguiente spool se pueda meter con el boton lateral.
+            (activity as? MainActivity)?.focusHardwareScanner()
         }
     }
 

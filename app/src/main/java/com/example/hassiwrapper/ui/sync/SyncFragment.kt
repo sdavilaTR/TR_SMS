@@ -91,6 +91,9 @@ class SyncFragment : Fragment() {
         view.findViewById<View>(R.id.cardOutboxFailed).setOnClickListener {
             showFailedOutboxDialog()
         }
+        view.findViewById<View>(R.id.cardKpiPending).setOnClickListener {
+            showPendingDialog()
+        }
 
         loadKpis()
         loadLastSync()
@@ -182,6 +185,68 @@ class SyncFragment : Fragment() {
         val network = cm.activeNetwork ?: return false
         val caps = cm.getNetworkCapabilities(network) ?: return false
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    /**
+     * Desglose de "Pendientes Sync". Ese número suma filas con `synced = 0` de tres tablas
+     * (spools, packing lists y cargas), que NO es lo mismo que la cola de envío: son "esta fila la
+     * tocó este terminal", no "esto está esperando a subir". Por eso puede quedarse parado en un
+     * número durante horas y ser distinto en cada aparato, sin que pase nada malo.
+     *
+     * Sin poder abrirlo, ese número era un misterio que sólo servía para preocupar. Aquí se ve qué
+     * hay exactamente, y se contrasta con la cola de envío, que es la que de verdad tiene trabajo
+     * por entregar: si hay filas marcadas y la cola está vacía, es un resto, no un problema.
+     */
+    private fun showPendingDialog() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val spools = ServiceLocator.smsSpoolDao.getUnsynced()
+            val pls = ServiceLocator.smsPackingListDao.getUnsynced()
+            val loadings = ServiceLocator.smsVehicleLoadingDao.getUnsynced()
+            val queuePending = ServiceLocator.smsOutboxDao.pendingCount()
+            val queueFailed = ServiceLocator.smsOutboxDao.failedCount()
+
+            val total = spools.size + pls.size + loadings.size
+            val sb = StringBuilder()
+
+            fun grupo(titulo: String, nombres: List<String>) {
+                if (nombres.isEmpty()) return
+                if (sb.isNotEmpty()) sb.append("\n")
+                sb.append(titulo).append("\n")
+                // Un tope: una lista de 500 spools en un diálogo no la lee nadie y encima lo hace
+                // inmanejable. Con los primeros se identifica el patrón, que es para lo que sirve.
+                nombres.take(8).forEach { sb.append("  • ").append(it).append("\n") }
+                if (nombres.size > 8) {
+                    sb.append("  ").append(getString(R.string.sync_pending_more, nombres.size - 8)).append("\n")
+                }
+            }
+
+            grupo(getString(R.string.sync_pending_group_spools, spools.size),
+                  spools.map { it.spool_code.ifBlank { "#${it.spool_id}" } })
+            grupo(getString(R.string.sync_pending_group_pls, pls.size),
+                  pls.map { it.packing_list_name.ifBlank { "#${it.packing_list_id}" } })
+            grupo(getString(R.string.sync_pending_group_loadings, loadings.size),
+                  loadings.map { it.vehicle_plate?.takeIf { p -> p.isNotBlank() } ?: "#${it.loading_id}" })
+
+            if (total == 0 && queuePending == 0 && queueFailed == 0) {
+                sb.append(getString(R.string.sync_pending_dialog_empty))
+            } else {
+                sb.append("\n").append(getString(R.string.sync_pending_queue, queuePending, queueFailed)).append("\n")
+                // La distinción que hace útil este diálogo: filas marcadas + cola vacía = resto
+                // inofensivo. Filas marcadas + cola con trabajo = se está subiendo, hay que esperar.
+                sb.append("\n").append(
+                    if (queuePending == 0 && queueFailed == 0 && total > 0)
+                        getString(R.string.sync_pending_stuck_note)
+                    else
+                        getString(R.string.sync_pending_queue_note)
+                )
+            }
+
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.sync_pending_dialog_title)
+                .setMessage(sb.toString().trim())
+                .setPositiveButton(R.string.sync_pending_dialog_close, null)
+                .show()
+        }
     }
 
     private fun loadKpis() {

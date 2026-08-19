@@ -464,6 +464,21 @@ class ReceivePackingListFragment : Fragment(), com.example.hassiwrapper.ui.commo
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+            // Relee el estado JUSTO antes de escribir nada. Entre que se abrió esta pantalla y este
+            // toque, el otro terminal puede haber recibido esta misma lista — y es lo normal, no lo
+            // raro: un proceso no lo termina el mismo terminal que lo empieza, así que dos aparatos
+            // pueden tener la misma lista delante. Sin esta comprobación, el segundo escribía una
+            // recepción duplicada en silencio y el operario se quedaba sin saber por qué después
+            // "no aparecía nada". Ahora se le dice, y se sale a la lista ya actualizada.
+            val plNow = ServiceLocator.smsPackingListDao.getById(pl.packing_list_id)
+            if (plNow?.delivered_at != null) {
+                Toast.makeText(requireContext(), R.string.transfer_pl_already_received, Toast.LENGTH_LONG).show()
+                submitting = false
+                btnConfirmReceive.isEnabled = true
+                findNavController().popBackStack()
+                return@launch
+            }
+
             val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
             val location  = ServiceLocator.configRepo.get("device_location")?.uppercase() ?: "UNKNOWN"
             val now       = LocalDateTime.now().toString()
@@ -551,13 +566,18 @@ class ReceivePackingListFragment : Fragment(), com.example.hassiwrapper.ui.commo
             val remainingInPl = ServiceLocator.smsSpoolDao.getInTransitByPackingList(pl.packing_list_id)
             val plDelivered = remainingInPl.isEmpty()
 
+            // Un único instante para toda la entrega: el mismo que se guarda en local, se manda al
+            // servidor y se usa en el histórico. En UTC porque delivered_at es datetime2 UTC en la
+            // base y lo van a leer terminales en husos distintos.
+            val deliveredAtUtc = java.time.Instant.now().toString()
+
             if (plDelivered) {
                 // Keep the PL as a delivery record. Its spools STAY linked as the manifest — they're
                 // already positioned at destination + in_transit cleared above, so nothing is
                 // stranded (the PL is active and at destination, so its spools show there). Clearing
                 // the vehicle frees the truck for its next load AND drops the PL out of the Receive
                 // screen (resolved by vehicle), with no dependency on the fragile ready_to_send flag.
-                ServiceLocator.smsPackingListDao.clearVehicleAndDeliver(pl.packing_list_id)
+                ServiceLocator.smsPackingListDao.clearVehicleAndDeliver(pl.packing_list_id, deliveredAtUtc)
                 // App-local only — never touched by server sync, so it survives the 60 s auto-sync
                 // REPLACE of sms_packing_list. Drives the Actuales/Históricos split in
                 // PackingListsFragment: without this the delivered PL kept showing as "current".
@@ -589,7 +609,11 @@ class ReceivePackingListFragment : Fragment(), com.example.hassiwrapper.ui.commo
                             createdBy        = pl.created_by,
                             updatedBy        = null,
                             projectCode      = projectCode,
-                            totalSpoolsCount = actualCount
+                            totalSpoolsCount = actualCount,
+                            // La entrega deja de ser un dato privado de este terminal. Con esto el
+                            // otro terminal y ATLAS Web ven la lista como entregada en cuanto
+                            // drene el outbox, en vez de seguir mostrándola pendiente para siempre.
+                            deliveredAt      = deliveredAtUtc
                         )
                     )
                 }

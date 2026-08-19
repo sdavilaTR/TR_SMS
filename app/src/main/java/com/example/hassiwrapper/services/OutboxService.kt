@@ -60,6 +60,9 @@ class OutboxService(
         private const val TAG = "OutboxService"
         /** Give up on an op after this many failed attempts to avoid an infinite retry. */
         private const val MAX_ATTEMPTS = 6
+        /** Transient failures in a row before the drain concludes the problem is the network (or
+         *  the whole backend) rather than one bad op, and hands the cycle back for a clean retry. */
+        private const val MAX_CONSECUTIVE_TRANSIENT = 3
     }
 
     object Entity {
@@ -160,6 +163,10 @@ class OutboxService(
     suspend fun pendingDeleteIds(entityType: String): List<Long> =
         outboxDao.pendingDeleteIds(entityType)
 
+    /** See [SmsOutboxDao.pendingPlAssignSpoolIds]. */
+    suspend fun pendingPlAssignSpoolIds(): List<Long> =
+        outboxDao.pendingPlAssignSpoolIds()
+
     /**
      * Whether a matching op is already queued (PENDING) or gave up (FAILED) — lets a
      * legacy→outbox migration backfill (e.g. bug reports predating the outbox) re-check each
@@ -181,9 +188,11 @@ class OutboxService(
     // ── Drain ────────────────────────────────────────────────────────────────
 
     /**
-     * Sends every PENDING op in op_id order. Stops and returns `transient = true` on
-     * the first network/5xx error (leaving that op PENDING) so [SyncService]'s retry
-     * budget re-runs the cycle. 4xx marks the op FAILED and continues. Once an op's
+     * Sends every PENDING op in op_id order. A network/5xx error leaves that op PENDING and
+     * moves on to the next one; only [MAX_CONSECUTIVE_TRANSIENT] failures in a row — the
+     * signature of a dead network rather than one bad op — end the cycle early. Either way the
+     * result carries `transient = true` so [SyncService]'s retry budget re-runs the cycle.
+     * 4xx marks the op FAILED and continues. Once an op's
      * `attempts` reaches [MAX_ATTEMPTS] — whether stuck transient or perpetually
      * SKIP'd waiting on a prerequisite that itself gave up — it is marked FAILED and
      * drain moves past it instead of blocking every later queued op forever.
@@ -192,11 +201,26 @@ class OutboxService(
         purgeStaleFailedOps()
 
         val pending = outboxDao.getPending()
-        if (pending.isEmpty()) return DrainResult()
+        if (pending.isEmpty()) {
+            // Still refresh the disk mirror before leaving: a queue whose last PENDING op just
+            // drained (or that holds only FAILED ops) would otherwise keep a stale backup file
+            // listing work that is already done.
+            scheduleBackup()
+            return DrainResult()
+        }
 
         Log.i(TAG, "Draining ${pending.size} outbox op(s)")
         var done = 0
         var failed = 0
+        // A transient failure used to abort the whole drain on the spot, so one op the server
+        // was rejecting with a 5xx held up every op queued behind it — for six cycles, until it
+        // finally exhausted MAX_ATTEMPTS. That is how a single broken endpoint (POST /transfers
+        // 500-ing on the missing client_transfer_id column) stalled unrelated packing-list and
+        // spool writes and kept them from ever reaching the other terminals.
+        // A genuinely-down network still stops the cycle quickly: it fails every op it touches,
+        // so the consecutive counter trips almost immediately. An isolated poisoned op does not.
+        var consecutiveTransient = 0
+        var sawTransient = false
 
         for (op in pending) {
             val projectCode = projectDao.getById(op.project_id)?.project_code
@@ -207,7 +231,7 @@ class OutboxService(
             val exhausted = op.attempts + 1 >= MAX_ATTEMPTS
             try {
                 when (dispatch(api, op, projectCode)) {
-                    Outcome.DONE -> { outboxDao.markDone(op.op_id); done++ }
+                    Outcome.DONE -> { outboxDao.markDone(op.op_id); done++; consecutiveTransient = 0 }
                     Outcome.SKIP -> {
                         if (exhausted) {
                             outboxDao.markFailed(op.op_id, "gave up after $MAX_ATTEMPTS attempts: prerequisite never resolved")
@@ -217,19 +241,25 @@ class OutboxService(
                             outboxDao.recordAttempt(op.op_id, "waiting for prerequisite create")
                         }
                     }
-                    Outcome.FAILED -> failed++   // dispatch already called markFailed
+                    Outcome.FAILED -> { failed++; consecutiveTransient = 0 }   // dispatch already called markFailed
                 }
             } catch (e: TransientFailure) {
                 if (exhausted) {
                     outboxDao.markFailed(op.op_id, "gave up after $MAX_ATTEMPTS attempts: ${e.message}")
                     Log.e(TAG, "op ${op.op_id} giving up after $MAX_ATTEMPTS attempts (${e.message}) — skipping, drain continues")
                     failed++
+                    consecutiveTransient = 0
                 } else {
                     outboxDao.recordAttempt(op.op_id, e.message)
-                    Log.w(TAG, "op ${op.op_id} transient (${e.message}) — stopping drain for retry")
-                    outboxDao.pruneDone()
-                    scheduleBackup()
-                    return DrainResult(done, failed, transient = true)
+                    consecutiveTransient++
+                    sawTransient = true
+                    if (consecutiveTransient >= MAX_CONSECUTIVE_TRANSIENT) {
+                        Log.w(TAG, "op ${op.op_id} transient (${e.message}) — $consecutiveTransient in a row, stopping drain for retry")
+                        outboxDao.pruneDone()
+                        scheduleBackup()
+                        return DrainResult(done, failed, transient = true)
+                    }
+                    Log.w(TAG, "op ${op.op_id} transient (${e.message}) — continuing with the rest of the queue")
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 // onPause cancelling lifecycleScope mid-drain must not land here: op.attempts is
@@ -246,7 +276,10 @@ class OutboxService(
 
         outboxDao.pruneDone()
         scheduleBackup()
-        return DrainResult(done, failed, transient = false)
+        // transient=true whenever at least one op is still PENDING with a recorded transient
+        // attempt: the drain got through the queue, but not everything landed, so the caller
+        // should keep its retry cadence rather than treat the cycle as fully settled.
+        return DrainResult(done, failed, transient = sawTransient)
     }
 
     /**

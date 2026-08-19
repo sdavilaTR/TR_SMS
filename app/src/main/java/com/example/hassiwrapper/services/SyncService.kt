@@ -248,6 +248,7 @@ class SyncService(
             if (smsQueueUploadMutex.tryLock()) {
                 try {
                     uploadNewPackingLists(api)
+                    uploadPackingListSpoolLinks(api)
                     uploadVehicleLoadings(api)
                     uploadTransfers(api)
                     uploadVehicleRouteState(api)
@@ -360,6 +361,7 @@ class SyncService(
             try {
                 onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_pl))
                 uploadNewPackingLists(api)
+                uploadPackingListSpoolLinks(api)
 
                 onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_upload_loadings))
                 uploadVehicleLoadings(api)
@@ -613,6 +615,56 @@ class SyncService(
         }
 
         if (synced.isNotEmpty()) dao.markSynced(synced)
+    }
+
+    // ── Packing-list manifest upload (spool ↔ PL links) ───────────────────────
+    //
+    // uploadNewPackingLists above creates the PL *header* only — it never tells the server which
+    // spools it carries. Before this pass existed the only producer of that link was a bare
+    // fire-and-forget `addSpoolToPackingList` inside SendPackingListFragment, gated on the PL
+    // having been created during that very send and swallowing every exception, so the manifest
+    // was effectively terminal-local: no other terminal and no ATLAS Web screen ever saw a load.
+    //
+    // Retries are free: the endpoint is idempotent server-side (IF NOT EXISTS … ELSE UPDATE
+    // sequence_number), so re-posting a link the server already holds is a no-op. That is also
+    // what makes the v46→v47 backfill (every pre-existing row defaults to synced=0) safe.
+    private suspend fun uploadPackingListSpoolLinks(api: AtlasApiService) {
+        val dao = smsPackingListSpoolDao ?: return
+        val plDao = smsPackingListDao ?: return
+        val pending = dao.getUnsynced()
+        if (pending.isEmpty()) return
+
+        Log.i(TAG, "Uploading ${pending.size} packing-list spool link(s)")
+        val done = mutableListOf<Long>()
+        for (link in pending) {
+            val pl = plDao.getById(link.packing_list_id) ?: continue
+            val projectCode = projectDao.getById(pl.project_id)?.project_code
+            if (projectCode.isNullOrBlank()) continue
+            try {
+                val resp = api.addSpoolToPackingList(
+                    projectCode,
+                    link.packing_list_id,
+                    AssignSpoolRequest(link.spool_id, link.added_by ?: "API", link.sequence_number)
+                )
+                when {
+                    resp.isSuccessful -> done.add(link.packing_list_spool_id)
+                    // 404 = the PL is gone or inactive server-side. The link can never land; keep
+                    // retrying it every cycle forever and it would drown out the real work. The PL
+                    // row itself is cleaned up by syncSmsData's removedPLIds handling.
+                    resp.code() == 404 -> {
+                        Log.w(TAG, "PL link ${link.packing_list_id}/${link.spool_id}: PL not found server-side, dropping")
+                        done.add(link.packing_list_spool_id)
+                    }
+                    else -> Log.e(TAG, "PL link ${link.packing_list_id}/${link.spool_id} failed: HTTP ${resp.code()}")
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Offline / 5xx: leave synced=0 so the next cycle retries.
+                Log.w(TAG, "PL link ${link.packing_list_id}/${link.spool_id} error: ${e.message}")
+            }
+        }
+        if (done.isNotEmpty()) dao.markSynced(done)
     }
 
     private fun parseCreatedPlId(raw: String): Long? {

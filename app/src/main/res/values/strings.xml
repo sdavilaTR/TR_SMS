@@ -919,6 +919,7 @@
     <string name="transfer_vehicle_not_found">Vehículo no encontrado en base de datos local.</string>
     <string name="transfer_vehicle_not_on_route">El vehículo no está en ruta.</string>
     <string name="transfer_vehicle_wrong_destination">El vehículo no está dirigido a esta ubicación.</string>
+    <string name="transfer_pl_already_received">Esta packing list ya fue recibida en otro terminal. Los datos se han actualizado.</string>
     <string name="transfer_vehicle_wrong_project">El vehículo no pertenece al proyecto actual.</string>
     <string name="transfer_unregistered_vehicle_title">Vehículo no registrado</string>
     <string name="transfer_unregistered_vehicle_message">El vehículo con matrícula %1$s no está registrado en el sistema. ¿Desea crear una incidencia de \"Vehículo no registrado\"? El vehículo se puede registrar desde el módulo de Vehículos (disponible solo para perfiles ADMIN y DEV).</string>

@@ -120,8 +120,11 @@ class PackingListsFragment : Fragment() {
         if (ghosts.isEmpty()) return
         Log.d("PackingListsDebug", "reconcileGhostPls: releasing ${ghosts.size} vehicle-attached 0-spool PL(s): ${ghosts.map { it.packing_list_id }}")
         val markedAt = java.time.LocalDateTime.now().toString()
+        // delivered_at en UTC, igual que en una recepción normal: es la misma columna y la leen
+        // terminales en husos distintos. markedAt es local porque su tabla es local y sólo ordena.
+        val deliveredAtUtc = java.time.Instant.now().toString()
         ghosts.forEach { pl ->
-            ServiceLocator.smsPackingListDao.clearVehicleAndDeliver(pl.packing_list_id)
+            ServiceLocator.smsPackingListDao.clearVehicleAndDeliver(pl.packing_list_id, deliveredAtUtc)
             ServiceLocator.smsPackingListHistoricalDao.markHistorical(
                 SmsPackingListHistoricalEntity(packing_list_id = pl.packing_list_id, marked_at = markedAt)
             )

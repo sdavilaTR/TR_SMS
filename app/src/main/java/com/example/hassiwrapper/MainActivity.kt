@@ -17,6 +17,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.text.Editable
 import android.text.InputType
@@ -136,6 +137,9 @@ class MainActivity : AppCompatActivity() {
 
     private var pendingUpdate: UpdateInfo? = null
     private var autoSyncJob: Job? = null
+
+    /** Reloj monotono del ultimo ciclo de sync, para el freno de IMMEDIATE_SYNC_MIN_GAP_MS. */
+    private var lastSyncCycleAt = 0L
     private val smsSyncMutex = Mutex()
     private val _isSmsSyncInProgress = MutableStateFlow(false)
 
@@ -191,9 +195,18 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "MainActivity"
         private const val AUTO_SYNC_INTERVAL_MS = 60_000L // 1 minute
+        // Al abrir la app se sincroniza de entrada, pero no si ya se hizo hace nada: onResume salta
+        // tambien al volver del escaner QR, y ahi encadenar sincronizaciones completas no ayuda.
+        private const val IMMEDIATE_SYNC_MIN_GAP_MS = 30_000L
         // Minimum gap between spool downloads on auto-sync ticks (see doSyncSmsData "spools"
         // section) — spools only change via a daily server-side ETL, so this can be generous.
         private const val SPOOLS_MIN_FETCH_INTERVAL_SEC = 600L // 10 minutes
+        // …but that reasoning only holds for a FULL download. A delta call returns just the rows
+        // changed since the cursor — on a quiet minute that is an empty page, and after a real
+        // change on another terminal it is a handful of rows. Throttling that to 10 minutes is
+        // what makes one terminal's send take up to ten minutes to appear on the next terminal,
+        // which is the whole complaint. With delta on, poll at the auto-sync cadence instead.
+        private const val SPOOLS_DELTA_MIN_FETCH_INTERVAL_SEC = 45L
         // Delta sync only heals divergence its own guard understands (soft-deletes, updated_at
         // bumps). Anything outside that model — a hard-deleted row, a backend write that forgets
         // to stamp updated_at, any drift nobody has thought of yet — never self-corrects while
@@ -208,6 +221,10 @@ class MainActivity : AppCompatActivity() {
         // List" and is about to be loaded. This is how long the latter gets before being treated
         // as the former.
         private const val GHOST_PL_GRACE_MINUTES = 15L
+        /** Zones a spool can be *leaving* from, for the derived in-transit state. Mirrors the
+         *  backend's `scanned_zone IN ('workshop','laydown')`; SITE is excluded there on purpose
+         *  because it is the end of the route. Keep the two in step. */
+        private val TRANSIT_ORIGIN_ZONES = setOf("WORKSHOP", "LAYDOWN")
     }
 
     override fun attachBaseContext(newBase: Context) {
@@ -450,9 +467,28 @@ class MainActivity : AppCompatActivity() {
         qrScanLauncher.launch(intent)
     }
 
+    /**
+     * Arranca el ciclo automático, y a diferencia de antes **sincroniza de entrada**.
+     *
+     * El bucle hacía `delay()` primero y sincronizaba después, así que al abrir la app te pasabas
+     * el primer minuto viendo lo que hubiera quedado en la base local del día anterior — justo el
+     * momento en que más falta hace estar al día, porque es cuando el operario mira qué tiene
+     * pendiente. Ahora el ciclo va delante y el `delay` detrás.
+     *
+     * El freno de [IMMEDIATE_SYNC_MIN_GAP_MS] no es cosmético: esto se llama desde onCreate Y desde
+     * onResume, y onResume salta cada vez que se vuelve de otra Activity — señaladamente del
+     * escáner QR, que se usa decenas de veces seguidas. Sin el freno, cada escaneo dispararía una
+     * sincronización completa.
+     *
+     * No hace falta indicador nuevo: el spinner de la barra ya está enganchado a isSyncing y se
+     * enciende solo con este ciclo, igual que con el botón de Sincronizar.
+     */
     private fun startAutoSync() {
         if (autoSyncJob?.isActive == true) return
+        val sinceLast = SystemClock.elapsedRealtime() - lastSyncCycleAt
+        val syncNow = lastSyncCycleAt == 0L || sinceLast >= IMMEDIATE_SYNC_MIN_GAP_MS
         autoSyncJob = lifecycleScope.launch {
+            if (syncNow) runSyncCycle("apertura")
             while (true) {
                 delay(AUTO_SYNC_INTERVAL_MS)
                 runSyncCycle("auto")
@@ -472,6 +508,7 @@ class MainActivity : AppCompatActivity() {
      * [SyncService.fullSync] holds a mutex, so overlapping calls are de-duplicated.
      */
     private suspend fun runSyncCycle(reason: String) {
+        lastSyncCycleAt = SystemClock.elapsedRealtime()
         try {
             if (!ServiceLocator.authRepo.isAuthenticated()) {
                 Log.d(TAG, "Sync ($reason): session expired, attempting auto-re-login")
@@ -930,15 +967,6 @@ class MainActivity : AppCompatActivity() {
                     // so skipping this section on most auto-sync ticks costs nothing in
                     // freshness. `force=true` (manual "Sincronizar" button, first sync after
                     // app open, pull-to-refresh) always bypasses the gate.
-                    val lastFetchKey = "sms_spools_last_fetch_$projectId"
-                    if (!force) {
-                        val lastFetchEpoch = ServiceLocator.configRepo.get(lastFetchKey)?.toLongOrNull()
-                        if (lastFetchEpoch != null && Instant.now().epochSecond - lastFetchEpoch < SPOOLS_MIN_FETCH_INTERVAL_SEC) {
-                            Log.d(TAG, "syncSmsData: skipping spool fetch, last one ${Instant.now().epochSecond - lastFetchEpoch}s ago")
-                            return@syncSection
-                        }
-                    }
-
                     val pageSize = 5000
                     // Delta sync: send the timestamp of the last successful spool sync so the
                     // server can return only rows changed since then. Gated on a per-project
@@ -952,6 +980,21 @@ class MainActivity : AppCompatActivity() {
                         Instant.now().epochSecond - lastFullSyncEpoch >= SPOOLS_FULL_SYNC_FLOOR_SEC
                     val updatedSince = if (deltaEnabled && !fullSyncFloorDue) ServiceLocator.configRepo.get(lastSyncKey) else null
                     val isFullSync   = updatedSince == null
+
+                    // Throttle AFTER deciding full vs delta: the 10-minute gap only pays for
+                    // itself against a multi-minute full download. A delta call is cheap enough
+                    // to run on almost every tick, and that is what turns "another terminal sent
+                    // this load" into news this device hears in under a minute.
+                    val lastFetchKey = "sms_spools_last_fetch_$projectId"
+                    val minFetchInterval = if (isFullSync) SPOOLS_MIN_FETCH_INTERVAL_SEC
+                                           else SPOOLS_DELTA_MIN_FETCH_INTERVAL_SEC
+                    if (!force) {
+                        val lastFetchEpoch = ServiceLocator.configRepo.get(lastFetchKey)?.toLongOrNull()
+                        if (lastFetchEpoch != null && Instant.now().epochSecond - lastFetchEpoch < minFetchInterval) {
+                            Log.d(TAG, "syncSmsData: skipping spool fetch, last one ${Instant.now().epochSecond - lastFetchEpoch}s ago (limit ${minFetchInterval}s, ${if (isFullSync) "full" else "delta"})")
+                            return@syncSection
+                        }
+                    }
                     // The cursor we write after this sync must be a timestamp the SERVER will
                     // later compare its own s.updated_at (etc.) against — using the device clock
                     // here silently skips rows whenever the device runs fast: a field EDA52 a few
@@ -1071,16 +1114,75 @@ class MainActivity : AppCompatActivity() {
                         // Preserve locally-set fields that the /spools endpoint doesn't return
                         val localSpools = ServiceLocator.smsSpoolDao.getByProjectIgnoreActive(projectId)
                             .associateBy { it.spool_id }
-                        // in_transit is purely local (set by Send, cleared by Receive) — the
-                        // backend never returns it, so it's never taken from the server response.
-                        // Spools that are SENT but not yet RECEIVED locally stay in_transit=true
-                        // regardless of upload status, until a local RECEIVE transfer confirms arrival.
-                        val sentNotReceivedIds = ServiceLocator.smsTransferDao.getSpoolIdsInSentNotReceived().toSet()
+                        // in_transit used to be purely local: set by this terminal's Send, cleared by
+                        // its Receive, never derived from anything shared. That is why a load sent on
+                        // one EDA52 stayed invisible on every other one — the flag had no way to
+                        // travel. It is now DERIVED, exactly the way the backend derives it (an
+                        // active packing list with a vehicle under it — see
+                        // SmsRepository.GetSpoolSummaryByProjectAsync), so every terminal and ATLAS
+                        // Web reach the same answer from the same shared facts instead of each
+                        // keeping a private opinion.
+                        //
+                        // Local SEND transfers not yet confirmed received still force true: they are
+                        // the one signal that is legitimately ahead of the server (the truck left
+                        // this yard seconds ago and the upload may not have landed yet).
+                        // Los dos registros locales van atados al VIAJE (spool + packing list), no
+                        // al spool suelto. Un proceso no lo termina el mismo terminal que lo
+                        // empieza: el de taller envía, el de laydown recibe. Cualquier registro
+                        // local es por tanto media película, y sólo puede mandar sobre el dato
+                        // compartido dentro del viaje que ese terminal presenció. En cuanto el
+                        // spool entra en otra lista, el par deja de casar y manda el servidor.
+                        val receivedHere = ServiceLocator.smsTransferDao.getReceivedHere()
+                            .map { it.spool_id to it.packing_list_id }.toSet()
+                        val plIdsWithVehicle = ServiceLocator.smsPackingListDao.getIdsWithVehicle(projectId).toSet()
+                        // Which packing list a spool belongs to is now decided by its own
+                        // confirmation state, not by the spool row's blanket `synced` flag. That
+                        // flag is cleared by any local write and never set back until the server
+                        // happens to return the row as clean — so a terminal that had ever touched
+                        // a spool would prefer its own packing_list_id forever and could never
+                        // learn that another terminal had moved it. These two sets are the precise
+                        // version of "my copy is ahead of the server's": a link row still waiting
+                        // to upload, or a PL_ASSIGN/UNASSIGN op still queued.
+                        val plDirtySpoolIds = (
+                            ServiceLocator.smsPackingListSpoolDao.getUnsyncedSpoolIds() +
+                            ServiceLocator.outboxService.pendingPlAssignSpoolIds()
+                        ).toSet()
                         val merged = toInsert.map { s ->
                             val local = localSpools[s.spool_id] ?: return@map s
                             val keepLocal = !local.synced
+                            val mergedPlId = if (s.spool_id in plDirtySpoolIds) local.packing_list_id
+                                             else s.packing_list_id
                             s.copy(
-                                in_transit = if (s.spool_id in sentNotReceivedIds) true else local.in_transit,
+                                in_transit = when {
+                                    // ÚNICA excepción local, y sólo puede QUITAR tránsito, nunca
+                                    // ponerlo: recibido aquí, en este mismo viaje. Es el caso del
+                                    // camión que descarga por tramos — parte del material ya ha
+                                    // llegado mientras su packing list conserva el vehículo por el
+                                    // resto de la carga, y eso el servidor todavía no lo sabe.
+                                    //
+                                    // Que sólo pueda restar es deliberado. Cualquier excepción que
+                                    // pudiera AÑADIR tránsito volvería a abrir la puerta a que el
+                                    // terminal diga una cosa y la web otra, que es justo lo que
+                                    // estamos cerrando. El envío no necesita excepción: tras enviar,
+                                    // la lista local ya tiene camión y el spool está escaneado en su
+                                    // zona de salida, así que la regla compartida ya da true sola,
+                                    // también sin cobertura.
+                                    mergedPlId != null &&
+                                        (s.spool_id to mergedPlId) in receivedHere -> false
+                                    // Never touched on this terminal: derive it from what everyone
+                                    // can see, and derive it with the SERVER'S OWN rule, copied
+                                    // literally from SmsRepository.GetSpoolSummaryByProjectAsync:
+                                    //     vehicle_id IS NOT NULL AND scanned_zone IN ('workshop','laydown')
+                                    // where scanned_zone is scanned=1 AND scanned_from ∈ those zones.
+                                    // The 'site' exclusion is deliberate on the backend (Site is the
+                                    // end of the route, no next leg). Deriving this any other way here
+                                    // would just replace one disagreement between terminal and web
+                                    // with a subtler one — and on JAFURAH four of every five scanned
+                                    // spools sit in SITE, so the difference is not a corner case.
+                                    else -> mergedPlId != null && mergedPlId in plIdsWithVehicle &&
+                                            s.scanned &&
+                                            s.scanned_from?.trim()?.uppercase() in TRANSIT_ORIGIN_ZONES
+                                },
                                 zone            = if (keepLocal) local.zone else (s.zone ?: local.zone),
                                 // QR-scan is still the only source on projects where the backend
                                 // hasn't backfilled ISO_rev_number yet — never let a null/blank
@@ -1090,9 +1192,9 @@ class MainActivity : AppCompatActivity() {
                                 // latest_pl CTE guards on pl.is_active=1, so null means "this spool has no
                                 // active packing list" (e.g. its PL was deleted on another terminal). The old
                                 // `?: local.packing_list_id` treated that null as "no info" and kept a stale
-                                // local link, leaving spools pointing at a destroyed PL (orphan FK). Take the
-                                // server value straight when the row isn't locally dirty.
-                                packing_list_id = if (keepLocal) local.packing_list_id else s.packing_list_id,
+                                // local link, leaving spools pointing at a destroyed PL (orphan FK).
+                                // See plDirtySpoolIds above for when the local value still wins.
+                                packing_list_id = mergedPlId,
                                 position_id     = if (keepLocal) local.position_id else (s.position_id ?: local.position_id),
                                 sub_position_id = if (keepLocal) local.sub_position_id else (s.sub_position_id ?: local.sub_position_id),
                                 // Carry synced=false so the local override persists across multiple sync
@@ -1232,6 +1334,12 @@ class MainActivity : AppCompatActivity() {
                             if (isGhost) ghostPlIds += pl.packing_list_id
                             pl.copy(
                                 ready_to_send      = if (isGhost) false else local.ready_to_send,
+                                // delivered_at manda el SERVIDOR salvo que este terminal tenga una
+                                // entrega recién hecha aún sin subir. Es lo que hace que la entrega
+                                // deje de ser un dato privado: el terminal que NO recibió la lista
+                                // se entera igual, en el siguiente ciclo, sin haber tocado nada.
+                                // Una vez puesta no se borra: ninguna de las dos partes la anula.
+                                delivered_at       = pl.delivered_at ?: local.delivered_at,
                                 vehicle_id         = if (isGhost) null else mergedVehicleId,
                                 vehicle_plate      = if (isGhost) null else (pl.vehicle_plate ?: local.vehicle_plate),
                                 position_id        = if (keepLocal) local.position_id else (pl.position_id ?: local.position_id),
@@ -1272,6 +1380,29 @@ class MainActivity : AppCompatActivity() {
 
                         ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
                         if (mergedPLs.isNotEmpty()) ServiceLocator.smsPackingListDao.insertAll(mergedPLs)
+
+                        // Una lista entregada pasa a Históricos EN TODOS LOS TERMINALES, no sólo en
+                        // el que la recibió. sms_packing_list_historical es una tabla local, así que
+                        // hasta ahora el otro terminal seguía enseñándola en Actuales para siempre:
+                        // misma lista, dos pantallas distintas según en qué aparato mirases.
+                        // markHistorical es un upsert, así que repetirlo cada ciclo no cuesta nada.
+                        val deliveredIds = mergedPLs.filter { !it.delivered_at.isNullOrBlank() }
+                            .map { it.packing_list_id }
+                        if (deliveredIds.isNotEmpty()) {
+                            val alreadyHistorical = ServiceLocator.smsPackingListHistoricalDao.getIds().toSet()
+                            val nuevas = deliveredIds.filter { it !in alreadyHistorical }
+                            if (nuevas.isNotEmpty()) {
+                                Log.d(TAG, "syncSmsData: ${nuevas.size} PL(s) entregadas en otro terminal → Históricos: $nuevas")
+                                val markedAt = java.time.LocalDateTime.now().toString()
+                                nuevas.forEach { id ->
+                                    ServiceLocator.smsPackingListHistoricalDao.markHistorical(
+                                        com.example.hassiwrapper.data.db.entities.SmsPackingListHistoricalEntity(
+                                            packing_list_id = id, marked_at = markedAt
+                                        )
+                                    )
+                                }
+                            }
+                        }
                         if (ghostPlIds.isNotEmpty()) {
                             Log.d(TAG, "syncSmsData: releasing ${ghostPlIds.size} vehicle-attached 0-spool PL(s): $ghostPlIds")
                             val markedAt = java.time.LocalDateTime.now().toString()

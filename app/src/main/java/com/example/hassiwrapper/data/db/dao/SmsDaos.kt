@@ -166,6 +166,13 @@ interface SmsPackingListDao {
     @Query("UPDATE sms_packing_list SET vehicle_id = :vehicleId, vehicle_plate = :vehiclePlate WHERE packing_list_id = :id")
     suspend fun setVehicle(id: Long, vehicleId: Long, vehiclePlate: String)
 
+    /** Active PLs that have a truck under them — the same condition the backend uses to derive
+     *  "en tránsito" (see SmsRepository.GetSpoolSummaryByProjectAsync). Used by syncSmsData to
+     *  re-derive sms_spool.in_transit on every terminal instead of each one keeping its own
+     *  private, unshareable flag. */
+    @Query("SELECT packing_list_id FROM sms_packing_list WHERE project_id = :projectId AND vehicle_id IS NOT NULL AND is_active = 1")
+    suspend fun getIdsWithVehicle(projectId: Int): List<Long>
+
     /** Display-only refresh: the server derives the manifest from the junction table, which the
      *  caller already pushes via addSpoolToPackingList — flipping `synced` here would make
      *  uploadNewPackingLists() re-CREATE an already-existing server PL (that endpoint has no dedup),
@@ -178,8 +185,8 @@ interface SmsPackingListDao {
      *  ready_to_send. Keeps is_active=1 and the spool links, so the PL survives as a delivery
      *  record instead of being deleted (the reported "PL desaparece" bug). synced=0 so the
      *  delivery state uploads. */
-    @Query("UPDATE sms_packing_list SET vehicle_id = NULL, vehicle_plate = NULL, ready_to_send = 0, synced = 0 WHERE packing_list_id = :id")
-    suspend fun clearVehicleAndDeliver(id: Long)
+    @Query("UPDATE sms_packing_list SET vehicle_id = NULL, vehicle_plate = NULL, ready_to_send = 0, delivered_at = :deliveredAt, synced = 0 WHERE packing_list_id = :id")
+    suspend fun clearVehicleAndDeliver(id: Long, deliveredAt: String)
 
     @Query("SELECT * FROM sms_packing_list WHERE synced = 0")
     suspend fun getUnsynced(): List<SmsPackingListEntity>
@@ -248,6 +255,37 @@ interface SmsPackingListSpoolDao {
     @Query("UPDATE sms_packing_list_spool SET packing_list_id = :serverId WHERE packing_list_id = :localId")
     suspend fun remapPackingListId(localId: Long, serverId: Long)
 
+    /**
+     * Links this terminal wrote but never pushed.
+     *
+     * Two guards, both load-bearing:
+     *  - the PL must already exist server-side (positive id AND sms_packing_list.synced) — posting
+     *    against a fabricated local id would land the spool on an unrelated server PL that happens
+     *    to share that number;
+     *  - the link must still agree with sms_spool.packing_list_id, which the /spools download
+     *    keeps server-authoritative. Without this the v46→v47 backfill would replay stale links:
+     *    the add-spool endpoint MOVES a spool out of every other active PL, so re-posting "spool X
+     *    belongs to PL 100" after another terminal moved X to PL 200 would silently undo that move.
+     */
+    @Query("""
+        SELECT pls.* FROM sms_packing_list_spool pls
+        INNER JOIN sms_packing_list pl ON pl.packing_list_id = pls.packing_list_id
+        INNER JOIN sms_spool s ON s.spool_id = pls.spool_id
+        WHERE pls.synced = 0 AND pls.packing_list_id > 0 AND pls.spool_id > 0
+          AND pl.synced = 1 AND pl.is_active = 1
+          AND s.packing_list_id = pls.packing_list_id
+        ORDER BY pls.packing_list_id, pls.sequence_number
+    """)
+    suspend fun getUnsynced(): List<SmsPackingListSpoolEntity>
+
+    @Query("UPDATE sms_packing_list_spool SET synced = 1 WHERE packing_list_spool_id IN (:ids)")
+    suspend fun markSynced(ids: List<Long>)
+
+    /** Spools whose packing-list link this terminal has written but not yet confirmed with the
+     *  server — the download must keep the local value for these and only these. */
+    @Query("SELECT spool_id FROM sms_packing_list_spool WHERE synced = 0")
+    suspend fun getUnsyncedSpoolIds(): List<Long>
+
     @Query("DELETE FROM sms_packing_list_spool")
     suspend fun deleteAll()
 }
@@ -268,6 +306,10 @@ interface SmsPackingListHistoricalDao {
 
     @Query("SELECT * FROM sms_packing_list_historical WHERE packing_list_id IN (:ids)")
     suspend fun getByIds(ids: List<Long>): List<SmsPackingListHistoricalEntity>
+
+    /** Ids ya marcados, para no reescribir en cada ciclo de sync los que no han cambiado. */
+    @Query("SELECT packing_list_id FROM sms_packing_list_historical")
+    suspend fun getIds(): List<Long>
 }
 
 @Dao

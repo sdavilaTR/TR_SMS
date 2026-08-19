@@ -749,14 +749,16 @@ class SendPackingListFragment : Fragment(), com.example.hassiwrapper.ui.common.L
                     scannedSpools.filter { it.spoolId != 0L }.forEach { s ->
                         ServiceLocator.smsSpoolDao.updatePackingList(s.spoolId, finalPlId)
                     }
-                    spoolsToLink.forEachIndexed { idx, s ->
+                    // The link rows go in unsynced (SmsPackingListSpoolEntity.synced defaults to
+                    // false) and SyncService.uploadPackingListSpoolLinks pushes them — including
+                    // from the syncSmsUploads() call this send already blocks on further down, so
+                    // an online send still lands the manifest before the screen closes.
+                    // This used to be a bare addSpoolToPackingList call with an empty catch, gated
+                    // on createdOnServer: offline sends and PLs created by any other path never got
+                    // their manifest to the server at all, which is why no other terminal (and no
+                    // ATLAS Web screen) ever saw what a truck was carrying.
+                    spoolsToLink.forEach { s ->
                         ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(s.spoolId)
-                        if (createdOnServer) {
-                            try {
-                                ServiceLocator.apiClient.getService()
-                                    .addSpoolToPackingList(projectCode, finalPlId, AssignSpoolRequest(s.spoolId, "API", sequenceBase + idx + 1))
-                            } catch (_: Exception) { /* offline – sync will retry PL upload, spools stay linked locally */ }
-                        }
                     }
                     if (plSpoolEntries.isNotEmpty()) {
                         ServiceLocator.smsPackingListSpoolDao.insertAll(plSpoolEntries)
@@ -836,6 +838,44 @@ class SendPackingListFragment : Fragment(), com.example.hassiwrapper.ui.common.L
 
                 ServiceLocator.smsPackingListDao.setReadyToSend(effectivePlId, true)
                 ServiceLocator.smsPackingListDao.setVehicle(effectivePlId, vehicle.vehicle_id, vehicle.license_plate)
+
+                // setVehicle is a purely local write. When this send reuses a packing list that
+                // already exists server-side without a truck on it — the allSameSinglePl branch
+                // above, or any PL created earlier by another screen — nothing else in this flow
+                // ever tells the server which vehicle is carrying it. That single omission is what
+                // kept ATLAS Web and every other terminal from seeing the load: the backend derives
+                // "en tránsito" from sms_packing_list.vehicle_id, so a PL with a null vehicle reads
+                // as still sitting in the yard no matter how many spools this terminal scanned onto
+                // it. The create branch already sends vehicleId in CreatePackingListRequest, so this
+                // only needs to cover the PL-already-on-the-server case.
+                run {
+                    val plNow = ServiceLocator.smsPackingListDao.getById(effectivePlId)
+                    val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code
+                    if (plNow != null && plNow.synced && effectivePlId > 0 && !projectCode.isNullOrBlank()) {
+                        val positionName = plNow.position_id?.let { pid ->
+                            ServiceLocator.smsPositionDao.getAll().find { it.position_id == pid }?.name
+                        }
+                        ServiceLocator.outboxService.enqueue(
+                            entityType = OutboxService.Entity.PACKING_LIST,
+                            opType = OutboxService.Op.UPDATE,
+                            localEntityId = effectivePlId,
+                            projectId = projectId,
+                            payload = com.example.hassiwrapper.network.dto.UpdatePackingListRequest(
+                                packingListId    = effectivePlId,
+                                packingListName  = plNow.packing_list_name,
+                                vehicle          = vehicle.license_plate,
+                                position         = positionName,
+                                positionId       = plNow.position_id,
+                                packingDate      = plNow.packing_date.takeIf { it.isNotBlank() },
+                                notes            = plNow.notes,
+                                createdBy        = plNow.created_by,
+                                updatedBy        = null,
+                                projectCode      = projectCode,
+                                totalSpoolsCount = ServiceLocator.smsSpoolDao.getByPackingList(effectivePlId).size
+                            )
+                        )
+                    }
+                }
 
                 try {
                     val projectCode = ServiceLocator.projectDao.getById(projectId)?.project_code

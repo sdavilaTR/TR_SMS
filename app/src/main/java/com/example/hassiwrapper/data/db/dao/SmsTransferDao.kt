@@ -56,17 +56,27 @@ interface SmsTransferDao {
     @Query("SELECT DISTINCT s.spool_id FROM sms_transfer_spool s INNER JOIN sms_transfer t ON t.transfer_id = s.transfer_id WHERE t.synced = 0")
     suspend fun getSpoolIdsInUnsyncedTransfers(): List<Long>
 
+    /**
+     * Un movimiento registrado en ESTE terminal, atado al viaje concreto (la packing list) en el
+     * que ocurrió.
+     *
+     * El par (spool, packing list) no es un detalle: es lo que hace que el registro local **caduque
+     * solo**. Un proceso NO lo termina el mismo terminal que lo empieza — el de taller envía y el
+     * de laydown recibe, porque están en zonas distintas —, así que el registro local de cualquiera
+     * de los dos es siempre una verdad a medias. Atado al viaje, deja de estorbar en cuanto empieza
+     * el siguiente: si el spool entra en otra lista, este par ya no casa y manda el dato compartido.
+     *
+     * Antes esto era "todo spool que este terminal haya tocado alguna vez", sin más. Con eso, el
+     * terminal que hubiera recibido un spool en laydown seguía dando ese spool por parado para
+     * siempre, y no se enteraba nunca de que otro terminal lo había vuelto a mandar a site.
+     */
     @Query("""
-        SELECT DISTINCT ts.spool_id FROM sms_transfer_spool ts
+        SELECT DISTINCT ts.spool_id AS spool_id, t.packing_list_id AS packing_list_id
+        FROM sms_transfer_spool ts
         INNER JOIN sms_transfer t ON t.transfer_id = ts.transfer_id
-        WHERE t.transfer_type = 'SEND'
-        AND ts.spool_id NOT IN (
-            SELECT ts2.spool_id FROM sms_transfer_spool ts2
-            INNER JOIN sms_transfer t2 ON t2.transfer_id = ts2.transfer_id
-            WHERE t2.transfer_type = 'RECEIVE'
-        )
+        WHERE t.transfer_type = 'RECEIVE'
     """)
-    suspend fun getSpoolIdsInSentNotReceived(): List<Long>
+    suspend fun getReceivedHere(): List<SpoolPlPair>
 
     @Query("DELETE FROM sms_transfer")
     suspend fun deleteAll()
@@ -74,3 +84,6 @@ interface SmsTransferDao {
     @Query("DELETE FROM sms_transfer_spool")
     suspend fun deleteAllSpools()
 }
+
+/** Un spool dentro de un viaje concreto. Ver [SmsTransferDao.getReceivedHere]. */
+data class SpoolPlPair(val spool_id: Long, val packing_list_id: Long)

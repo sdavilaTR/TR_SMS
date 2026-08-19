@@ -36,6 +36,9 @@ data class SmsPackingListDto(
     val updatedAt: String? = null,
     @SerializedName(value = "ready_to_send", alternate = ["readyToSend"])
     val readyToSend: Boolean? = null,
+    /** Marca de entrega compartida. Null = aún no entregada. */
+    @SerializedName(value = "delivered_at", alternate = ["deliveredAt"])
+    val deliveredAt: String? = null,
     @SerializedName(value = "row_version", alternate = ["rowVersion", "rv"])
     val rowVersion: String? = null
 ) {
@@ -65,6 +68,7 @@ data class SmsPackingListDto(
         created_by = createdBy,
         updated_at = updatedAt,
         ready_to_send = readyToSend ?: false,
+        delivered_at = deliveredAt,
         synced = true,
         row_version = rowVersion
     )

@@ -90,6 +90,10 @@ data class SmsPackingListEntity(
     val updated_at: String? = null,
     val synced: Boolean = false,
     val ready_to_send: Boolean = false,
+    /** Cuándo se recibió el último spool que le quedaba en tránsito (UTC ISO), null = sin entregar.
+     *  Viene del servidor (sms_packing_list.delivered_at) y por eso SÍ lo ven los demás terminales
+     *  y ATLAS Web — a diferencia de sms_packing_list_historical, que es sólo de este dispositivo. */
+    val delivered_at: String? = null,
     // Server rowversion (sms_packing_list.rv), base64 as sent/expected on the wire. Populated
     // on download/create/update responses; sent back on the next UPDATE so the server can reject
     // a lost update against another device's concurrent edit. Null = not yet known / skip check.
@@ -113,7 +117,10 @@ data class SmsPackingListSpoolEntity(
     val spool_id: Long,
     val sequence_number: Int? = null,
     val added_at: String = "",
-    val added_by: String? = null
+    val added_by: String? = null,
+    /** False until SyncService.uploadPackingListSpoolLinks has pushed this link to the server.
+     *  Rows downloaded from the server are inserted with true. */
+    val synced: Boolean = false
 )
 
 @Entity(tableName = "sms_position")

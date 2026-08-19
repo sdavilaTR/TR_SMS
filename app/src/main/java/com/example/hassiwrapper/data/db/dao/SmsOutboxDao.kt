@@ -73,6 +73,12 @@ interface SmsOutboxDao {
     @Query("SELECT local_entity_id FROM sms_outbox WHERE status = 'PENDING' AND op_type = 'DELETE' AND entity_type = :entityType")
     suspend fun pendingDeleteIds(entityType: String): List<Long>
 
+    /** Spool ids with a packing-list assignment still queued (PL_ASSIGN carries the spool id in
+     *  local_entity_id). While one of these is in flight the device's own view of which PL the
+     *  spool belongs to is ahead of the server's, so the download must not overwrite it. */
+    @Query("SELECT local_entity_id FROM sms_outbox WHERE status = 'PENDING' AND entity_type = 'PL_ASSIGN'")
+    suspend fun pendingPlAssignSpoolIds(): List<Long>
+
     @Query("DELETE FROM sms_outbox WHERE status = 'DONE'")
     suspend fun pruneDone()
 

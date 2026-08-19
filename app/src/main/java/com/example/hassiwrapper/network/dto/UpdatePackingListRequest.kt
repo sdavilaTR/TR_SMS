@@ -14,6 +14,9 @@ data class UpdatePackingListRequest(
     @SerializedName("updatedBy")       val updatedBy: String?,
     @SerializedName("projectCode")        val projectCode: String,
     @SerializedName("totalSpoolsCount")   val totalSpoolsCount: Int = 0,
+    /** Marca de entrega (UTC ISO). El servidor la aplica con ISNULL, así que mandar null NO borra
+     *  una entrega ya registrada: sólo la escribe quien realmente acaba de recibir la lista. */
+    @SerializedName("deliveredAt")        val deliveredAt: String? = null,
     @SerializedName("spools")             val spools: List<AssignSpoolRequest> = emptyList(),
     // Base64 rv; null skips the server's optimistic-concurrency check. NOT YET SENT by any call
     // site: local row_version doesn't advance after a successful update (the update endpoint

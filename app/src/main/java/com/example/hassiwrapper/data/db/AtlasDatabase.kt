@@ -58,7 +58,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsSpoolLocationEntity::class,
         SmsBugReportEntity::class
     ],
-    version = 46,
+    version = 48,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -1070,6 +1070,32 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        // v46 → v47: sms_packing_list_spool becomes a syncable table. Until now the spool↔PL link
+        // was pushed by a bare fire-and-forget API call inside SendPackingListFragment, gated on the
+        // PL having been created server-side during that very send and swallowing every failure —
+        // so a link written offline (or by any other path) never reached the server, and no other
+        // terminal or ATLAS Web ever learned which spools a packing list carries.
+        // Defaulting existing rows to 0 is deliberate: SyncService.uploadPackingListSpoolLinks
+        // backfills them on the next cycle, and the server's add-spool endpoint is idempotent
+        // (IF NOT EXISTS ... ELSE UPDATE), so re-pushing a link the server already has is a no-op.
+        private val MIGRATION_46_47 = object : Migration(46, 47) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 46 → 47: add synced to sms_packing_list_spool")
+                db.execSQL("ALTER TABLE sms_packing_list_spool ADD COLUMN synced INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** delivered_at: la entrega deja de ser un dato privado de este terminal.
+         *  Hasta ahora "esta packing list ya llegó" sólo existía en sms_packing_list_historical, que
+         *  es local y el servidor no conoce, así que el segundo terminal y ATLAS Web seguían viéndola
+         *  como pendiente. Ahora viene del servidor y lo ven todos. */
+        private val MIGRATION_47_48 = object : Migration(47, 48) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 47 → 48: add delivered_at to sms_packing_list")
+                db.execSQL("ALTER TABLE sms_packing_list ADD COLUMN delivered_at TEXT DEFAULT NULL")
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -1122,7 +1148,9 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_42_43,
                         MIGRATION_43_44,
                         MIGRATION_44_45,
-                        MIGRATION_45_46
+                        MIGRATION_45_46,
+                        MIGRATION_46_47,
+                        MIGRATION_47_48
                     )
                     .build()
                 INSTANCE = instance

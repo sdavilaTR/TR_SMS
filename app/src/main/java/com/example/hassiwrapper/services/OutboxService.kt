@@ -167,6 +167,11 @@ class OutboxService(
     suspend fun pendingPlAssignSpoolIds(): List<Long> =
         outboxDao.pendingPlAssignSpoolIds()
 
+    /** See [SmsOutboxDao.unfinishedIdsFor]. Es la condición para poder borrar una fila local que
+     *  el servidor ya no devuelve: si no queda nada pendiente para ella, es un dato muerto. */
+    suspend fun unfinishedIdsFor(entityType: String): List<Long> =
+        outboxDao.unfinishedIdsFor(entityType)
+
     /**
      * Whether a matching op is already queued (PENDING) or gave up (FAILED) — lets a
      * legacy→outbox migration backfill (e.g. bug reports predating the outbox) re-check each

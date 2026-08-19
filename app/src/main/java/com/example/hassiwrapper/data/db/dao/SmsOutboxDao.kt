@@ -39,6 +39,20 @@ interface SmsOutboxDao {
     @Query("SELECT EXISTS(SELECT 1 FROM sms_outbox WHERE entity_type = :entityType AND op_type = :opType AND local_entity_id = :localEntityId AND status IN ('PENDING', 'FAILED'))")
     suspend fun hasUnfinishedOp(entityType: String, opType: String, localEntityId: Long): Boolean
 
+    /**
+     * Filas de este tipo que aún tienen algo que decirle al servidor, sea cual sea la operación.
+     *
+     * Es la respuesta precisa a "¿puedo borrar esta fila local?". La pregunta que se hacía antes
+     * —"¿está marcada como subida?"— no vale: el flag `synced` lo pone a 0 cualquier escritura
+     * local y nadie lo vuelve a levantar, así que una fila que el servidor ya no tiene se quedaba
+     * en el terminal para siempre y sólo la veía ese aparato.
+     *
+     * FAILED cuenta igual que PENDING: una operación fallida sigue siendo trabajo sin entregar, y
+     * borrar su fila la dejaría sin sujeto.
+     */
+    @Query("SELECT DISTINCT local_entity_id FROM sms_outbox WHERE entity_type = :entityType AND status IN ('PENDING', 'FAILED')")
+    suspend fun unfinishedIdsFor(entityType: String): List<Long>
+
     /** Most recent gave-up ops, for surfacing to the user instead of failing silently. */
     @Query("SELECT * FROM sms_outbox WHERE status = 'FAILED' ORDER BY op_id DESC LIMIT 20")
     suspend fun getFailed(): List<SmsOutboxEntity>

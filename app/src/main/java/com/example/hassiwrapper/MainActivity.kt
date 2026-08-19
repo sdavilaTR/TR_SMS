@@ -1239,6 +1239,22 @@ class MainActivity : AppCompatActivity() {
                             // Never wipe on a partial fetch — we'd delete spools beyond the last
                             // page we reached, with no fresh data to replace them.
                             ServiceLocator.smsSpoolDao.deleteSyncedByProject(projectId)
+                            // Mismo agujero que en las packing lists, aqui mas discreto porque una
+                            // reubicacion si levanta el flag al subir: un spool con synced = 0 que
+                            // el servidor ya no devuelve sobrevive a la linea de arriba. Si ademas
+                            // no le queda nada en la cola, no puede llegar a ninguna parte.
+                            // Los spools creados sin cobertura llevan id negativo y su CREATE en la
+                            // cola, asi que este filtro los respeta.
+                            val spoolsWithPendingOps = ServiceLocator.outboxService
+                                .unfinishedIdsFor(com.example.hassiwrapper.services.OutboxService.Entity.SPOOL).toSet()
+                            val serverSpoolIds = merged.map { it.spool_id }.toSet()
+                            val deadSpoolIds = localSpools.keys.filter {
+                                it !in serverSpoolIds && it !in deleted && it !in spoolsWithPendingOps
+                            }
+                            if (deadSpoolIds.isNotEmpty()) {
+                                Log.d(TAG, "syncSmsData: purgando ${deadSpoolIds.size} spool(s) que el servidor ya no tiene y sin nada pendiente")
+                                deadSpoolIds.chunked(800).forEach { ServiceLocator.smsSpoolDao.deleteByIds(it) }
+                            }
                             // Reset the floor from this successful reconciliation, whether it ran
                             // because delta was off, no cursor existed yet, or the floor forced it —
                             // any of those is a real full sync and restarts the clock.
@@ -1366,9 +1382,26 @@ class MainActivity : AppCompatActivity() {
 
                         // PL removed server-side (deleted by someone else): free its spools
                         // so they can be picked up by another PL, same as a local hard-delete does.
+                        //
+                        // La condicion NO es `it.synced`, y ese era el agujero. `synced` se pone a 0
+                        // con cualquier escritura local (asignar camion, marcar lista, recibir) y
+                        // nadie lo vuelve a levantar, asi que una lista borrada del servidor se
+                        // quedaba pegada para siempre en el terminal que la habia tocado — y solo en
+                        // ese. De ahi salian los dos "historicos" fantasma de JAFURAH: PL 6497 y
+                        // 7105, borradas hace semanas, visibles en un terminal y en ninguno mas.
+                        //
+                        // La pregunta correcta es si queda algo por subir de esa fila. Si no queda,
+                        // y el servidor no la tiene, esa fila no puede llegar a ningun sitio: es un
+                        // dato muerto que solo sirve para que un operario vea algo que ya no existe.
+                        // Las listas creadas sin cobertura estan a salvo porque llevan su CREATE en
+                        // la cola, que es justo lo que este filtro protege.
                         val activeIds = activePLs.map { it.packing_list_id }.toSet()
+                        val plWithPendingOps = ServiceLocator.outboxService
+                            .unfinishedIdsFor(com.example.hassiwrapper.services.OutboxService.Entity.PACKING_LIST).toSet()
                         val removedPLIds = localPLs.values.filter {
-                            it.synced && it.packing_list_id !in activeIds && it.packing_list_id !in deletedPLs
+                            it.packing_list_id !in activeIds &&
+                            it.packing_list_id !in deletedPLs &&
+                            it.packing_list_id !in plWithPendingOps
                         }.map { it.packing_list_id }
                         if (removedPLIds.isNotEmpty()) {
                             removedPLIds.forEach { removedId ->
@@ -1383,6 +1416,14 @@ class MainActivity : AppCompatActivity() {
                             // orphan since deleteSyncedByProject below re-deletes+reinserts every
                             // still-alive synced PL every tick, not just these actually-removed ones.
                             ServiceLocator.smsPackingListHistoricalDao.deleteByIds(removedPLIds)
+                            // Y la fila en si. deleteSyncedByProject de abajo NO se la lleva si
+                            // synced quedo a 0, que es el caso que produce el fantasma.
+                            ServiceLocator.smsPackingListDao.deleteByIds(removedPLIds)
+                            // Su manifiesto tambien: sin esto quedan vinculos spool-lista apuntando
+                            // a una lista que ya no existe en ninguna parte.
+                            removedPLIds.forEach {
+                                ServiceLocator.smsPackingListSpoolDao.deleteByPackingList(it)
+                            }
                         }
 
                         ServiceLocator.smsPackingListDao.deleteSyncedByProject(projectId)
@@ -1487,6 +1528,21 @@ class MainActivity : AppCompatActivity() {
                             Log.d(TAG, "syncSmsData: inserted ${mergedVehicles.size} vehicles")
                             val vehMsg = getString(R.string.sync_sms_vehicles_ok, mergedVehicles.size)
                             withContext(Dispatchers.Main) { onProgress?.invoke(vehMsg) }
+                        } else {
+                            // El servidor ha respondido bien y dice que el proyecto no tiene ningun
+                            // vehiculo. El `if` de arriba se salta el borrado cuando la lista viene
+                            // vacia, asi que borrar el ultimo camion desde la web dejaba a los
+                            // terminales ensenandolo para siempre. Se respeta lo que tenga cola
+                            // pendiente, igual que en las packing lists.
+                            val vehWithPendingOps = ServiceLocator.outboxService
+                                .unfinishedIdsFor(com.example.hassiwrapper.services.OutboxService.Entity.VEHICLE).toSet()
+                            val dead = ServiceLocator.smsVehicleDao.getByProject(projectId)
+                                .filter { it.vehicle_id !in vehWithPendingOps }
+                                .map { it.vehicle_id }
+                            if (dead.isNotEmpty()) {
+                                Log.d(TAG, "syncSmsData: el proyecto se ha quedado sin vehiculos, purgando ${dead.size} local(es)")
+                                dead.forEach { ServiceLocator.smsVehicleDao.deleteById(it) }
+                            }
                         }
                     }
                 }

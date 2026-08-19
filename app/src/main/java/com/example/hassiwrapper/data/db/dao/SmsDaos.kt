@@ -216,6 +216,11 @@ interface SmsPackingListDao {
     @Query("DELETE FROM sms_packing_list WHERE project_id = :projectId AND synced = 1")
     suspend fun deleteSyncedByProject(projectId: Int)
 
+    /** Borra listas concretas que el servidor ya no tiene y que no dejan nada pendiente de subir.
+     *  Independiente de `synced`: ese flag no distingue "pendiente" de "sucio hace tres semanas". */
+    @Query("DELETE FROM sms_packing_list WHERE packing_list_id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
     @Query("DELETE FROM sms_packing_list WHERE is_active = 0")
     suspend fun deleteInactive()
 

@@ -12,7 +12,10 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.example.hassiwrapper.MainActivity
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.google.android.material.button.MaterialButton
@@ -22,6 +25,44 @@ class SyncFragment : Fragment() {
 
     private var apiReachable = false
 
+    /** Rotación del icono del botón Sincronizar mientras hay una sincronización en curso.
+     *
+     *  Se anima el LEVEL de un RotateDrawable en vez de rotar la vista: el icono de un
+     *  MaterialButton lo pinta el propio botón, no es una vista aparte, así que no se le puede
+     *  aplicar una animación de vista. El invalidate() explícito en cada paso es necesario porque
+     *  el botón no se repinta solo al cambiar el nivel del drawable. */
+    private var syncIconAnimator: android.animation.ObjectAnimator? = null
+
+    private fun setSyncIconSpinning(button: MaterialButton, spinning: Boolean) {
+        if (spinning) {
+            if (syncIconAnimator?.isRunning == true) return
+            val base = ContextCompat.getDrawable(requireContext(), R.drawable.ic_sync) ?: return
+            val rotate = android.graphics.drawable.RotateDrawable().apply {
+                drawable = base
+                fromDegrees = 0f
+                toDegrees = 360f
+                isPivotXRelative = true
+                isPivotYRelative = true
+                pivotX = 0.5f
+                pivotY = 0.5f
+            }
+            button.icon = rotate
+            syncIconAnimator = android.animation.ObjectAnimator.ofInt(rotate, "level", 0, 10000).apply {
+                duration = 900L
+                repeatCount = android.animation.ValueAnimator.INFINITE
+                interpolator = android.view.animation.LinearInterpolator()
+                addUpdateListener { button.invalidate() }
+                start()
+            }
+        } else {
+            syncIconAnimator?.cancel()
+            syncIconAnimator = null
+            // Se devuelve el icono original: el RotateDrawable se queda congelado en el ángulo que
+            // tuviera al parar, y un icono torcido parece un fallo de pintado.
+            button.icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_sync)
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return inflater.inflate(R.layout.fragment_sync, container, false)
     }
@@ -29,8 +70,23 @@ class SyncFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        view.findViewById<MaterialButton>(R.id.btnFullSync).setOnClickListener {
+        val btnSync = view.findViewById<MaterialButton>(R.id.btnFullSync)
+        btnSync.setOnClickListener {
             performSync()
+        }
+
+        // El icono gira mientras haya CUALQUIER sincronización en curso, no sólo si se ha pulsado
+        // el botón: al abrir la app, en el ciclo automático o al volver la cobertura también.
+        // repeatOnLifecycle(STARTED) lo desengancha al salir de la pantalla, para no dejar una
+        // animación corriendo contra una vista que ya no se ve.
+        (activity as? MainActivity)?.let { main ->
+            viewLifecycleOwner.lifecycleScope.launch {
+                viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    main.anySyncInProgressFlow.collect { syncing ->
+                        setSyncIconSpinning(btnSync, syncing)
+                    }
+                }
+            }
         }
         view.findViewById<View>(R.id.cardOutboxFailed).setOnClickListener {
             showFailedOutboxDialog()

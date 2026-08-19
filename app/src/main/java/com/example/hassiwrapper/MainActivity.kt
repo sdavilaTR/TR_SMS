@@ -147,6 +147,13 @@ class MainActivity : AppCompatActivity() {
      *  resolving to "not registered" during this window may just not be downloaded yet. */
     internal val isSmsSyncInProgress: Boolean get() = _isSmsSyncInProgress.value
 
+    /** Lo mismo que [isAnySyncInProgress] pero observable, para que una pantalla pueda reflejar
+     *  la sincronización mientras dura (el icono giratorio del botón Sincronizar). Cubre los dos
+     *  candados, así que se enciende venga de donde venga: apertura de la app, ciclo automático,
+     *  vuelta de la cobertura o el propio botón. */
+    internal val anySyncInProgressFlow: kotlinx.coroutines.flow.Flow<Boolean> get() =
+        combine(ServiceLocator.syncService.isSyncing, _isSmsSyncInProgress) { full, sms -> full || sms }
+
     /** True while either SyncService.fullSync() or the SMS-specific sync is in flight — the
      *  two run sequentially, not under a shared lock, so both must be checked: a spool scan
      *  during fullSync() alone (before syncSmsData() starts) is still mid-sync. Single source

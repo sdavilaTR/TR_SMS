@@ -19,6 +19,7 @@ import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.normalizeDeviceLocation
 import com.example.hassiwrapper.parsePackingListEntities
+import com.example.hassiwrapper.services.GuestScope
 import com.example.hassiwrapper.parseSpoolEntities
 import com.example.hassiwrapper.parseVehicleEntities
 import kotlinx.coroutines.Job
@@ -200,21 +201,25 @@ class HomeFragment : Fragment() {
         val projectId = getSelectedProjectId()
         val positionId = ServiceLocator.smsPositionDao.getByCode(location)?.position_id
         val subPositions = positionId?.let { ServiceLocator.smsSubPositionDao.getByPosition(projectId, it) }.orEmpty()
-        val pinnedSubPositionId = ServiceLocator.configRepo.get("device_sub_position_id")?.toLongOrNull()
+        val pinnedSubPositionId = GuestScope.current(projectId).subPositionId
 
-        // Only narrow to the pinned sub-position when it actually has siblings under the same
-        // zone (e.g. JAFURAH GCP5/6/9) — that's the only case where showing the full-zone count
-        // would leak sibling GCPs' totals. A lone/degenerate sub-position (e.g. a plain WORKSHOP
-        // zone auto-seeded with a single "WORKSHOP/WORKSHOP" sub-position) has nothing to hide.
-        // Narrowing there would also under-count: PositionHelper only started stamping the
-        // terminal's pin onto scanned spools recently, so rows scanned before that (or by a
-        // terminal with no pin) still carry a null sub_position_id and would vanish from the
-        // KPI. Fall through to the full-zone counts instead.
-        if (pinnedSubPositionId != null && subPositions.size > 1) {
-            val pinned = ServiceLocator.smsSpoolDao.countByProjectZoneAndSubPosition(projectId, location)
-                .firstOrNull { it.subPositionId == pinnedSubPositionId }
-            view.findViewById<TextView>(R.id.txtGuestZoneConfirmedCount).text = (pinned?.confirmed ?: 0).toString()
-            view.findViewById<TextView>(R.id.txtGuestZonePendingCount).text = (pinned?.pending ?: 0).toString()
+        // Fijado a un GCP = ese GCP, sin importar cuántos hermanos tenga la zona.
+        //
+        // Antes esto exigía además `subPositions.size > 1`, para no estrechar sobre una
+        // sub-posición degenerada. El efecto real en JAFURAH era el contrario del buscado: WORKSHOP
+        // tiene una única sub-posición, así que un terminal de taller no se estrechaba nunca; y
+        // como el Inventario no aplicaba ese matiz y el mapa sí, las tres pantallas de GUEST podían
+        // enseñar poblaciones distintas del mismo terminal. La regla vive ahora en GuestScope y es
+        // una sola para las tres.
+        //
+        // Lo que preocupaba de estrechar —que un spool sin sub-posición se volviera invisible— se
+        // resuelve dentro de la consulta, que cuenta también los de la zona sin GCP asignado, en
+        // vez de dejando entrar a los GCP hermanos.
+        if (pinnedSubPositionId != null) {
+            view.findViewById<TextView>(R.id.txtGuestZoneConfirmedCount).text = ServiceLocator.smsSpoolDao
+                .countConfirmedByProjectZoneAndSub(projectId, location, pinnedSubPositionId).toString()
+            view.findViewById<TextView>(R.id.txtGuestZonePendingCount).text = ServiceLocator.smsSpoolDao
+                .countPendingByProjectZoneAndSub(projectId, location, pinnedSubPositionId).toString()
             row.visibility = View.VISIBLE
             breakdown.visibility = View.GONE
             view.findViewById<View>(R.id.cardGuestZonePending).setOnClickListener {

@@ -56,5 +56,7 @@
     <color name="chart_zone_workshop">#FF818CF8</color>
     <color name="chart_zone_laydown">#FF0D9488</color>
     <color name="chart_zone_site">#FFF59E0B</color>
+    <!-- En tránsito: ámbar oscuro, distinto de los tres cubos de zona y del gris de "sin zona" -->
+    <color name="chart_zone_transit">#FFB45309</color>
     <color name="chart_zone_unassigned">#FF94A3B8</color>
 </resources>

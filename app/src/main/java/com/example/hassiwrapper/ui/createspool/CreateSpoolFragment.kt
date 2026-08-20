@@ -25,7 +25,7 @@ import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.DEFAULT_DEVICE_LOCATION
-import com.example.hassiwrapper.normalizeDeviceLocation
+import com.example.hassiwrapper.services.GuestScope
 import com.example.hassiwrapper.data.db.entities.SmsSpoolEntity
 import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
 import androidx.navigation.fragment.findNavController
@@ -59,6 +59,9 @@ class CreateSpoolFragment : Fragment() {
     private var comboCounts: List<com.example.hassiwrapper.data.db.dao.SpoolComboCount> = emptyList()
     private var chartCounts: Map<String?, Int> = emptyMap()
     private var chartTotal = 0
+    /** Los que van en camión hacia otra zona. Fuera de [chartCounts] (no están en ninguna zona),
+     *  dentro de [chartTotal] (siguen siendo del proyecto): su propia fila en el gráfico. */
+    private var transitCount = 0
     private var subCountsRaw: Map<String, Map<Long?, Int>> = emptyMap()
     private var listJob: Job? = null
     private var loadMoreJob: Job? = null
@@ -74,6 +77,10 @@ class CreateSpoolFragment : Fragment() {
     private lateinit var adapter: SpoolAdapter
     private lateinit var spinnerSubPos: Spinner
     private var selectedSubPositionId: Long? = null
+    /** Sólo GUEST con GCP fijado. Ver SPOOL_LIST_FILTER: suma los spools de la zona que todavía
+     *  no tienen sub-posición, sin dejar entrar a los GCP hermanos. El selector de ADMIN lo deja
+     *  en false — ahí "GCP5" significa GCP5 y nada más. */
+    private var includeUnassignedSub: Boolean = false
     private var subPositionItems: List<SmsSubPositionEntity> = emptyList()
     private var listTotal = 0
     private var loadingMore = false
@@ -170,12 +177,18 @@ class CreateSpoolFragment : Fragment() {
         swipe.setOnRefreshListener { loadSpools(forceSync = true) }
         if (isGuest) {
             viewLifecycleOwner.lifecycleScope.launch {
-                val zone = normalizeDeviceLocation(ServiceLocator.configRepo.get("device_location")) ?: DEFAULT_DEVICE_LOCATION
+                // Mismo alcance que el home y el mapa, resuelto en GuestScope (una sola regla para
+                // las tres pantallas). El filtro de zona se BLOQUEA, no se propone: un GUEST no
+                // navega fuera de su zona, y con GCP fijado tampoco a los hermanos. spinnerSubPos
+                // se queda oculto siempre (ver updateSubPositionSpinner).
+                val projectId = ServiceLocator.configRepo.getInt("selected_project_id") ?: 6
+                val scope = GuestScope.current(projectId)
+                val zone = scope.zone ?: DEFAULT_DEVICE_LOCATION
                 filter = Filter.values().first { it.positionCode == zone }
-                // A terminal pinned to one sub-position (device_sub_position_id — e.g. JAFURAH
-                // "Laydown GCP 5") must never browse sibling GCP zones: lock the filter, don't
-                // just default it, and never surface spinnerSubPos (stays hidden, see below).
-                selectedSubPositionId = ServiceLocator.configRepo.get("device_sub_position_id")?.toLongOrNull()
+                selectedSubPositionId = scope.subPositionId
+                // Con GCP fijado entran también los spools de la zona sin GCP asignado: son de
+                // esta zona y si no, no los ve nadie. Los hermanos siguen fuera.
+                includeUnassignedSub = scope.subPositionId != null
                 loadSpools()
             }
         } else {
@@ -206,13 +219,17 @@ class CreateSpoolFragment : Fragment() {
             // the SQL count (full scan with LIKEs) is only paid while searching.
             val total = if (searchQuery.isEmpty()) {
                 comboCounts.asSequence()
-                    .filter { code == null || it.scannedFrom == code }
-                    .filter { subId == null || it.subId == subId }
+                    // Mismo criterio que SPOOL_LIST_FILTER, hasta el último detalle, o el contador
+                    // de arriba diría una cosa y la lista de abajo enseñaría otra. Incluido que el
+                    // tránsito sólo se excluye cuando se pregunta por una zona concreta: con
+                    // "Todos" (code nulo) los que viajan siguen contando y siguen listándose.
+                    .filter { code == null || (it.scannedFrom == code && !it.inTransit) }
+                    .filter { subId == null || it.subId == subId || (includeUnassignedSub && it.subId == null) }
                     .sumOf { it.cnt }
             } else {
-                ServiceLocator.smsSpoolDao.countFiltered(projectId, code, subId, searchQuery)
+                ServiceLocator.smsSpoolDao.countFiltered(projectId, code, subId, includeUnassignedSub, searchQuery)
             }
-            val page = ServiceLocator.smsSpoolDao.getFilteredPage(projectId, code, subId, searchQuery, PAGE_SIZE)
+            val page = ServiceLocator.smsSpoolDao.getFilteredPage(projectId, code, subId, includeUnassignedSub, searchQuery, PAGE_SIZE)
             items.clear()
             items += page
             listTotal = total
@@ -234,7 +251,7 @@ class CreateSpoolFragment : Fragment() {
             val code = filter.positionCode
             val subId = selectedSubPositionId
             val more = ServiceLocator.smsSpoolDao.getFilteredPage(
-                projectId, code, subId, searchQuery, PAGE_SIZE, offset = items.size
+                projectId, code, subId, includeUnassignedSub, searchQuery, PAGE_SIZE, offset = items.size
             )
             items += more
             loadingMore = false
@@ -319,13 +336,16 @@ class CreateSpoolFragment : Fragment() {
         val workshop = countFor("WORKSHOP")
         val laydown = countFor("LAYDOWN")
         val site = countFor("SITE")
-        val unassigned = chartTotal - workshop - laydown - site
+        // transitCount ya no está en ninguno de los tres cubos de arriba, así que restarlo aquí es
+        // lo que evita que los que viajan se cuelen en "Sin zona" al calcularlo por diferencia.
+        val unassigned = chartTotal - workshop - laydown - site - transitCount
         val total = chartTotal
 
         val zones = listOf(
             ZoneStat(getString(R.string.spools_filter_workshop), workshop, R.color.chart_zone_workshop),
             ZoneStat(getString(R.string.spools_filter_laydown), laydown, R.color.chart_zone_laydown, "LAYDOWN"),
             ZoneStat(getString(R.string.spools_filter_site), site, R.color.chart_zone_site, "SITE"),
+            ZoneStat(getString(R.string.spools_chart_zone_transit), transitCount, R.color.chart_zone_transit),
             ZoneStat(getString(R.string.spools_chart_zone_unassigned), unassigned, R.color.chart_zone_unassigned)
         ).sortedByDescending { it.count }
         val max = zones.maxOf { it.count }.coerceAtLeast(1)
@@ -430,7 +450,16 @@ class CreateSpoolFragment : Fragment() {
         chartTotal = comboCounts.sumOf { it.cnt }
         val byCode = mutableMapOf<String?, Int>()
         val bySub = mutableMapOf<String, MutableMap<Long?, Int>>()
+        var transit = 0
         comboCounts.forEach { combo ->
+            // Los que viajan no entran en el cubo de su zona de salida: ya no están allí. Van a su
+            // propio cubo, y como chartTotal sigue siendo la población entera, la identidad que la
+            // pantalla invita a comprobar —zonas + tránsito + sin zona = total— se mantiene. Es la
+            // misma que sostiene ATLAS Web (Scanned = columnas + InTransit).
+            if (combo.inTransit) {
+                transit += combo.cnt
+                return@forEach
+            }
             val code = combo.scannedFrom
             byCode.merge(code, combo.cnt, Int::plus)
             if (code == "LAYDOWN" || code == "SITE") {
@@ -439,6 +468,7 @@ class CreateSpoolFragment : Fragment() {
         }
         chartCounts = byCode
         subCountsRaw = bySub
+        transitCount = transit
     }
 
     /** Resolves the display label for every sub-position of the project (small table). */

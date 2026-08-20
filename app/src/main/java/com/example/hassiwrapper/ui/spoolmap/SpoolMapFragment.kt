@@ -11,10 +11,10 @@ import androidx.lifecycle.lifecycleScope
 import com.example.hassiwrapper.ProfileManager
 import com.example.hassiwrapper.R
 import com.example.hassiwrapper.ServiceLocator
+import com.example.hassiwrapper.services.GuestScope
 import com.example.hassiwrapper.data.db.dao.SmsSpoolMapMarker
 import com.example.hassiwrapper.data.db.entities.SmsPositionEntity
 import com.example.hassiwrapper.data.db.entities.SmsSubPositionEntity
-import com.example.hassiwrapper.normalizeDeviceLocation
 import com.example.hassiwrapper.services.GeofenceHelper
 import com.example.hassiwrapper.services.KmlParser
 import com.example.hassiwrapper.ui.createspool.SpoolDetailBottomSheet
@@ -95,7 +95,10 @@ class SpoolMapFragment : Fragment() {
             // terminal's own zone (device_location), same scoping as CreateSpoolFragment/HomeFragment.
             // A terminal further pinned to one sub-position (e.g. JAFURAH "Laydown GCP 5") is
             // narrowed one level more — never shows sibling GCP zones either.
-            val zone = if (isGuest) normalizeDeviceLocation(ServiceLocator.configRepo.get("device_location")) else null
+            // Mismo alcance que el home y el Inventario, resuelto en el mismo sitio (GuestScope):
+            // las tres pantallas tenían su propia copia de la regla y habían dejado de coincidir.
+            val guestScope = if (isGuest) GuestScope.current(projectId) else null
+            val zone = guestScope?.zone
             if (isGuest && zone == null) {
                 renderMarkers(emptyList(), emptyList(), emptyMap())
                 return@launch
@@ -104,14 +107,10 @@ class SpoolMapFragment : Fragment() {
                 ServiceLocator.smsPositionDao.getByCode(z)?.position_id
                     ?.let { ServiceLocator.smsSubPositionDao.getByPosition(projectId, it) }
             }.orEmpty()
-            // Same rule as HomeFragment.loadGuestZoneStats: narrow to the pinned sub-position only
-            // when it actually has siblings under the zone (JAFURAH GCP5/6/9), which is the only
-            // case where showing the whole zone would leak another sub-position's spools. A lone
-            // sub-position (an auto-seeded "WORKSHOP/WORKSHOP") has nothing to hide, and narrowing
-            // there dropped every pin whose spool predates PositionHelper's sub-position stamping
-            // (or was scanned by an unpinned terminal) — those rows still carry a null.
-            val subPositionId = if (isGuest && zoneSubPositions.size > 1)
-                ServiceLocator.configRepo.get("device_sub_position_id")?.toLongOrNull() else null
+            // Sin el gate `zoneSubPositions.size > 1` de antes: fijado a un GCP es fijado a un GCP.
+            // Los spools de la zona que aún no tienen sub-posición siguen apareciendo — eso lo
+            // resuelve la consulta, no una excepción aquí (ver getLatestByProjectZoneAndSubPosition).
+            val subPositionId = guestScope?.subPositionId
 
             val markers = when {
                 subPositionId != null && zone != null -> ServiceLocator.smsSpoolLocationDao.getLatestByProjectZoneAndSubPosition(projectId, zone, subPositionId)

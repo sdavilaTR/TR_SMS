@@ -638,6 +638,7 @@
     <string name="spools_filter_site">Site</string>
     <string name="spools_subpos_all">Todas las sub-posiciones</string>
     <string name="spools_chart_title">Spools por zona (%1$d)</string>
+    <string name="spools_chart_zone_transit">En tránsito</string>
     <string name="spools_chart_zone_unassigned">Sin zona</string>
     <string name="spools_chart_subpos_none">(sin sub)</string>
     <string name="spools_view_action_list">Ver lista</string>

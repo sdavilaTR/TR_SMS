@@ -386,7 +386,7 @@ interface SmsSpecDao {
 
 /** Spool count per (scanned_from, sub_position) combo — the real scan location, not the
  *  registered zone/position_id (see SPOOL_LIST_FILTER). */
-data class SpoolComboCount(val scannedFrom: String?, val subId: Long?, val cnt: Int)
+data class SpoolComboCount(val scannedFrom: String?, val subId: Long?, val inTransit: Boolean, val cnt: Int)
 
 /** Per-sub-position synced/pending split, for the Guest home zone KPI breakdown. */
 data class SubPositionSyncCount(val subPositionId: Long?, val confirmed: Int, val pending: Int)
@@ -420,10 +420,23 @@ private const val SPOOL_RESOLVED_POSITION = """
 // by PCA reconciliation imports with no real scan behind it, which disagreed with ATLAS's own
 // scan-based zone counts. scanned=1 guarantees scanned_from is populated (written atomically), so
 // no fallback is needed or wanted here.
+//
+// El filtro de zona excluye a los que van EN TRÁNSITO: un spool cargado en un camión rumbo a otra
+// zona ya no está en la que salió, y la pestaña de esa zona no debe listarlo. Va dentro del
+// paréntesis de :positionCode a propósito — con el filtro "Todos" (positionCode nulo) siguen
+// saliendo, porque ahí no se está preguntando por ninguna zona y si no, no habría forma de verlos.
+//
+// :includeUnassignedSub sólo lo activa el alcance de GUEST (ver GuestScope). Un terminal fijado a
+// LAYDOWN/GCP5 tiene que ver también lo que está en LAYDOWN sin GCP asignado: son suyos, sólo que
+// nadie les puso sub-posición todavía (un escaneo de un terminal sin fijar, una importación de
+// PCA). Sin esto ese material no aparece en ninguna pantalla de ningún terminal, y no hay forma de
+// saber que existe. Lo que sí queda fuera son los GCP hermanos, que es de lo que se trata.
+// El selector de sub-posición de ADMIN lo pasa a false: ahí "GCP5" significa GCP5 y nada más.
 private const val SPOOL_LIST_FILTER = """
     s.project_id = :projectId AND s.is_active = 1 AND s.scanned = 1
-    AND (:positionCode IS NULL OR UPPER(s.scanned_from) = UPPER(:positionCode))
-    AND (:subPositionId IS NULL OR s.sub_position_id = :subPositionId)
+    AND (:positionCode IS NULL OR (UPPER(s.scanned_from) = UPPER(:positionCode) AND s.in_transit = 0))
+    AND (:subPositionId IS NULL OR s.sub_position_id = :subPositionId
+         OR (:includeUnassignedSub AND s.sub_position_id IS NULL))
     AND (:query = '' OR s.spool_code LIKE '%' || :query || '%'
          OR s.spool_suffix LIKE '%' || :query || '%'
          OR (s.spool_code || IFNULL(s.spool_suffix, '')) LIKE '%' || :query || '%'
@@ -440,11 +453,17 @@ interface SmsSpoolDao {
     suspend fun insertAll(spools: List<SmsSpoolEntity>)
 
     // Feeds CreateSpoolFragment's Inventario zone chart — scanned-only, same reasoning as SPOOL_LIST_FILTER.
+    //
+    // in_transit sale en el GROUP BY en vez de filtrarse aquí: el gráfico necesita las dos caras a
+    // la vez —lo que hay parado en cada zona y lo que va de camino— y así salen de un solo escaneo
+    // y de la misma población, que es lo que garantiza que zonas + tránsito = total. Filtrarlo
+    // habría hecho desaparecer a los que viajan sin dejar rastro de dónde han ido.
     @Query("""
-        SELECT UPPER(s.scanned_from) AS scannedFrom, s.sub_position_id AS subId, COUNT(*) AS cnt
+        SELECT UPPER(s.scanned_from) AS scannedFrom, s.sub_position_id AS subId,
+               s.in_transit AS inTransit, COUNT(*) AS cnt
         FROM sms_spool s
         WHERE s.project_id = :projectId AND s.is_active = 1 AND s.scanned = 1
-        GROUP BY scannedFrom, subId
+        GROUP BY scannedFrom, subId, inTransit
     """)
     suspend fun countByLocationCombo(projectId: Int): List<SpoolComboCount>
 
@@ -454,10 +473,10 @@ interface SmsSpoolDao {
         ORDER BY s.spool_code ASC, s.spool_suffix ASC
         LIMIT :limit OFFSET :offset
     """)
-    suspend fun getFilteredPage(projectId: Int, positionCode: String?, subPositionId: Long?, query: String, limit: Int, offset: Int = 0): List<SmsSpoolEntity>
+    suspend fun getFilteredPage(projectId: Int, positionCode: String?, subPositionId: Long?, includeUnassignedSub: Boolean, query: String, limit: Int, offset: Int = 0): List<SmsSpoolEntity>
 
     @Query("SELECT COUNT(*) FROM sms_spool s WHERE $SPOOL_LIST_FILTER")
-    suspend fun countFiltered(projectId: Int, positionCode: String?, subPositionId: Long?, query: String): Int
+    suspend fun countFiltered(projectId: Int, positionCode: String?, subPositionId: Long?, includeUnassignedSub: Boolean, query: String): Int
 
     @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND is_active = 1 ORDER BY spool_code ASC, spool_suffix ASC")
     suspend fun getByProject(projectId: Int): List<SmsSpoolEntity>
@@ -522,9 +541,17 @@ interface SmsSpoolDao {
 
     // scanned=1 guarantees scanned_from was written atomically by the same server round-trip
     // (see SPOOL_LIST_FILTER) — no packing-list fallback needed, unlike the registered-position path.
+    //
+    // in_transit = 0: un spool que ya va en un camión hacia otra zona NO está en la zona de la que
+    // salió. Contarlo allí es lo que hacía que el KPI del terminal no cuadrase con la columna de
+    // Material Tracking de ATLAS Web, que lleva esta misma exclusión desde su propio agregado
+    // (SmsRepository.GetSpoolSummaryByProjectAsync, "(2c) Confirmados por zona de escaneo").
+    // countScannedByProject de arriba NO la lleva, y es correcto: ese es el total del proyecto
+    // —el ScannedTotal de la web— y ahí los que viajan siguen contando, sólo que no en una zona.
     @Query("""
         SELECT COUNT(*) FROM sms_spool
         WHERE project_id = :projectId AND is_active = 1 AND scanned = 1
+        AND in_transit = 0
         AND UPPER(scanned_from) = UPPER(:location)
     """)
     suspend fun countScannedByProjectAndZone(projectId: Int, location: String): Int
@@ -539,6 +566,7 @@ interface SmsSpoolDao {
     @Query("""
         SELECT COUNT(*) FROM sms_spool s
         WHERE s.project_id = :projectId AND s.is_active = 1 AND s.synced = 1 AND s.scanned = 1
+        AND s.in_transit = 0
         AND UPPER(s.scanned_from) = UPPER(:location)
     """)
     suspend fun countConfirmedByProjectAndZone(projectId: Int, location: String): Int
@@ -550,9 +578,33 @@ interface SmsSpoolDao {
     @Query("""
         SELECT COUNT(*) FROM sms_spool s
         WHERE s.project_id = :projectId AND s.is_active = 1 AND s.synced = 0
+        AND s.in_transit = 0
         AND $SPOOL_RESOLVED_POSITION = UPPER(:location)
     """)
     suspend fun countPendingByProjectAndZone(projectId: Int, location: String): Int
+
+    // Gemelas de las dos de arriba, estrechadas al GCP del terminal. Sustituyen al apaño de
+    // sumar filas de countByProjectZoneAndSubPosition, que sólo sabía devolver el bucket exacto
+    // de una sub-posición y por tanto no podía incluir los spools de la zona que aún no tienen
+    // ninguna (ver SPOOL_LIST_FILTER). Misma resolución de zona que sus gemelas: confirmados por
+    // scanned_from, pendientes por SPOOL_RESOLVED_POSITION.
+    @Query("""
+        SELECT COUNT(*) FROM sms_spool s
+        WHERE s.project_id = :projectId AND s.is_active = 1 AND s.synced = 1 AND s.scanned = 1
+        AND s.in_transit = 0
+        AND UPPER(s.scanned_from) = UPPER(:location)
+        AND (s.sub_position_id = :subPositionId OR s.sub_position_id IS NULL)
+    """)
+    suspend fun countConfirmedByProjectZoneAndSub(projectId: Int, location: String, subPositionId: Long): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM sms_spool s
+        WHERE s.project_id = :projectId AND s.is_active = 1 AND s.synced = 0
+        AND s.in_transit = 0
+        AND $SPOOL_RESOLVED_POSITION = UPPER(:location)
+        AND (s.sub_position_id = :subPositionId OR s.sub_position_id IS NULL)
+    """)
+    suspend fun countPendingByProjectZoneAndSub(projectId: Int, location: String, subPositionId: Long): Int
 
     // Row-level twin of countPendingByProjectAndZone, for the Guest "pending" KPI drill-down list.
     // Same WHERE, same zone-resolution reasoning. subPositionId narrows to a single GCP when the
@@ -561,8 +613,10 @@ interface SmsSpoolDao {
     @Query("""
         SELECT s.* FROM sms_spool s
         WHERE s.project_id = :projectId AND s.is_active = 1 AND s.synced = 0
+        AND s.in_transit = 0
         AND $SPOOL_RESOLVED_POSITION = UPPER(:location)
-        AND (:subPositionId IS NULL OR s.sub_position_id = :subPositionId)
+        AND (:subPositionId IS NULL OR s.sub_position_id = :subPositionId
+             OR s.sub_position_id IS NULL)
         ORDER BY s.updated_at DESC
     """)
     suspend fun getPendingByProjectAndZone(projectId: Int, location: String, subPositionId: Long?): List<SmsSpoolEntity>
@@ -577,6 +631,7 @@ interface SmsSpoolDao {
                SUM(CASE WHEN s.synced = 0 AND $SPOOL_RESOLVED_POSITION = UPPER(:location) THEN 1 ELSE 0 END) AS pending
         FROM sms_spool s
         WHERE s.project_id = :projectId AND s.is_active = 1
+        AND s.in_transit = 0
         AND (
             (s.synced = 1 AND s.scanned = 1 AND UPPER(s.scanned_from) = UPPER(:location))
             OR (s.synced = 0 AND $SPOOL_RESOLVED_POSITION = UPPER(:location))
@@ -1090,7 +1145,9 @@ interface SmsSpoolLocationDao {
 
     /** Same as [getLatestByProjectAndZone] but further pinned to one sub-position (e.g. a JAFURAH
      *  "Laydown GCP 5" terminal) — a guest terminal pinned to a sub-position must never see
-     *  another sub-position's spools even within the same zone. */
+     *  another sub-position's spools even within the same zone.
+     *
+     *  Los que están en la zona SIN sub-posición sí entran: ver el porqué en SPOOL_LIST_FILTER. */
     @Query("""
         SELECT l.spool_id AS spool_id, l.latitude AS latitude, l.longitude AS longitude,
                l.captured_at AS captured_at, s.spool_code AS spool_code,
@@ -1098,7 +1155,7 @@ interface SmsSpoolLocationDao {
         FROM sms_spool_location l
         INNER JOIN sms_spool s ON s.spool_id = l.spool_id
         WHERE s.project_id = :projectId AND UPPER(s.scanned_from) = UPPER(:location)
-        AND s.sub_position_id = :subPositionId
+        AND (s.sub_position_id = :subPositionId OR s.sub_position_id IS NULL)
         AND l.location_id = (
             SELECT l2.location_id FROM sms_spool_location l2
             WHERE l2.spool_id = l.spool_id

@@ -174,13 +174,16 @@
     <string name="sync_pending_dialog_title">Qué hay pendiente de subir</string>
     <string name="sync_pending_dialog_empty">No hay nada pendiente. Todo lo de este terminal está en el servidor.</string>
     <string name="sync_pending_dialog_close">Cerrar</string>
-    <string name="sync_pending_group_spools">Spools modificados aquí (%1$d)</string>
-    <string name="sync_pending_group_pls">Packing lists modificadas aquí (%1$d)</string>
-    <string name="sync_pending_group_loadings">Cargas de camión sin registrar (%1$d)</string>
-    <string name="sync_pending_queue">Cola de envío: %1$d en espera, %2$d fallidas</string>
+    <string name="sync_pending_group_spools">Reubicaciones de spool sin subir (%1$d)</string>
+    <string name="sync_pending_group_pls">Packing lists sin subir (%1$d)</string>
+    <string name="sync_pending_group_loadings">Cargas de camión sin subir (%1$d)</string>
+    <string name="sync_pending_group_transfers">Envíos y recepciones sin subir (%1$d)</string>
+    <string name="sync_pending_group_links">Spools asignados a lista, sin subir (%1$d)</string>
+    <string name="sync_pending_group_queue">En cola de envío (%1$d)</string>
     <string name="sync_pending_more">…y %1$d más</string>
-    <string name="sync_pending_stuck_note">Estas filas están marcadas como pendientes pero la cola de envío está vacía, así que nadie las va a subir: son un resto de una operación antigua, no trabajo perdido. El dato bueno está en el servidor. Se puede ignorar.</string>
-    <string name="sync_pending_queue_note">La cola tiene trabajo por entregar. Se sube solo en cuanto haya cobertura.</string>
+    <string name="sync_pending_see_all">Ver todo</string>
+    <string name="sync_pending_queue_note">Todo esto se sube solo en cuanto haya cobertura. No hay que hacer nada.</string>
+    <string name="sync_pending_only_failed">Además hay %1$d operación(es) fallida(s). Esas sí necesitan que alguien las revise: mira la tarjeta de abajo.</string>
     <string name="sync_kpi_in_transit_active">activos</string>
 
     <!-- Outbox failed ops banner -->

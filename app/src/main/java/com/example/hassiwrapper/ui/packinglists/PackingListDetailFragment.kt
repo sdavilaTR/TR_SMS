@@ -87,7 +87,15 @@ class PackingListDetailFragment : Fragment() {
         btnHardDelete = view.findViewById(R.id.btnHardDeletePL)
         progress      = view.findViewById(R.id.progressDetail)
 
-        if (ProfileManager.currentUserRole() == ProfileManager.UserRole.DEV) {
+        // ADMIN además de DEV: es el rol con el que trabaja obra, y el borrado definitivo es la
+        // única vía para quitar de en medio una lista que ya no se puede tocar por ninguna otra
+        // (una archivada en Históricos esconde Editar/Borrar/Añadir spool, ver load()). Dejarlo
+        // sólo en DEV significaba que quien se encuentra el problema no puede resolverlo.
+        // GUEST no: sigue fuera, igual que el resto de acciones destructivas.
+        val isDevOrAdmin = ProfileManager.currentUserRole().let {
+            it == ProfileManager.UserRole.ADMIN || it == ProfileManager.UserRole.DEV
+        }
+        if (isDevOrAdmin) {
             btnHardDelete.visibility = View.VISIBLE
             btnHardDelete.setOnClickListener { confirmHardDelete() }
         }
@@ -140,7 +148,8 @@ class PackingListDetailFragment : Fragment() {
                 txtHistoricalBadge.visibility = View.GONE
             }
             // Delivered PL is a closed record — no further edits, spool changes, or soft-delete.
-            // Hard delete (DEV-only, above) stays available as an admin cleanup escape hatch.
+            // Hard delete (DEV/ADMIN, above) stays available as an admin cleanup escape hatch:
+            // no se toca aquí a propósito, es la única salida para una lista archivada por error.
             btnEdit.visibility = if (isHistorical) View.GONE else View.VISIBLE
             btnAddSpool.visibility = if (isHistorical) View.GONE else View.VISIBLE
             btnDelete.visibility = if (isHistorical) View.GONE else View.VISIBLE
@@ -389,7 +398,14 @@ class PackingListDetailFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val pl = ServiceLocator.smsPackingListDao.getById(packingListId)
-                val isSynced = pl?.synced == true
+                // Un id POSITIVO es un id del servidor: la lista existe allí, punto. `synced` no
+                // dice eso — dice "alguien escribió en esta fila alguna vez", y lo pone a 0
+                // cualquier apunte local, incluido el propio barrido de fantasmas. Con la condición
+                // vieja, una lista archivada como fantasma se borraba SÓLO en el terminal y volvía
+                // a bajar en el siguiente sync: imposible de limpiar desde la app. Las listas
+                // creadas sin cobertura llevan id negativo y siguen sin avisar al servidor, que es
+                // lo correcto: allí todavía no existen.
+                val existsOnServer = packingListId > 0
                 val projectId = pl?.project_id ?: (ServiceLocator.configRepo.getInt("selected_project_id") ?: 6)
 
                 locallyDeletedPLIds.add(packingListId)
@@ -399,8 +415,8 @@ class PackingListDetailFragment : Fragment() {
                 )
                 ServiceLocator.smsPackingListDao.deleteById(packingListId)
 
-                // Queue the server hard-delete for synced PLs so it survives offline + restart.
-                if (isSynced) {
+                // Queue the server hard-delete so it survives offline + restart.
+                if (existsOnServer) {
                     ServiceLocator.outboxService.enqueue(
                         OutboxService.Entity.PACKING_LIST, OutboxService.Op.HARD_DELETE, packingListId, projectId
                     )
@@ -435,7 +451,8 @@ class PackingListDetailFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val pl = ServiceLocator.smsPackingListDao.getById(packingListId)
-                val isSynced = pl?.synced == true
+                // Mismo razonamiento que en hardDeletePL: id positivo = existe en el servidor.
+                val existsOnServer = packingListId > 0
                 val projectId = pl?.project_id ?: (ServiceLocator.configRepo.getInt("selected_project_id") ?: 6)
 
                 locallyDeletedPLIds.add(packingListId)
@@ -445,8 +462,8 @@ class PackingListDetailFragment : Fragment() {
                 )
                 ServiceLocator.smsPackingListDao.deleteById(packingListId)
 
-                // Queue the server delete for synced PLs so it survives offline + restart.
-                if (isSynced) {
+                // Queue the server delete so it survives offline + restart.
+                if (existsOnServer) {
                     ServiceLocator.outboxService.enqueue(
                         OutboxService.Entity.PACKING_LIST, OutboxService.Op.DELETE, packingListId, projectId
                     )

@@ -441,7 +441,20 @@ class OutboxService(
 
     private suspend fun packingListCreate(api: AtlasApiService, op: SmsOutboxEntity, projectCode: String): Outcome {
         val payload = gson.fromJson(op.payload_json, CreatePackingListRequest::class.java)
-        val resp = call { api.createPackingList(projectCode, payload) }
+        var resp = call { api.createPackingList(projectCode, payload) }
+
+        // El create lleva ahora el manifiesto dentro (ver NewPackingListFragment), y el backend
+        // hace rollback de TODA la lista si un solo spool no resuelve — un id que este terminal
+        // tenía cacheado y que en el servidor ya está de baja bastaría para perder las otras 16
+        // piezas y la lista entera. Eso cambia un fallo parcial por uno total, que no es lo que
+        // buscábamos: si el lote se cae por los spools, se crea la cabecera sola y la carga se va
+        // por su camino de siempre (los PL_ASSIGN ya encolados, que sí fallan spool a spool).
+        // Sólo para 400: un 409 de camión o un 5xx no son esto y siguen su rama.
+        if (resp.code() == 400 && payload.spools.isNotEmpty()) {
+            Log.w(TAG, "op ${op.op_id}: create con manifiesto rechazado (400), reintentando sin spools — los PL_ASSIGN encolados los subirán uno a uno")
+            resp = call { api.createPackingList(projectCode, payload.copy(spools = emptyList())) }
+        }
+
         markPackingListConflict(api, op, projectCode, resp)?.let { return it }
         return onResponse(op, resp) {
             val serverId = parseServerId(resp, "packingListId", "packing_list_id")

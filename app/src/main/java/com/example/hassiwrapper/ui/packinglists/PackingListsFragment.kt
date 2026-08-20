@@ -18,6 +18,7 @@ import com.example.hassiwrapper.ServiceLocator
 import com.example.hassiwrapper.data.db.entities.SmsPackingListEntity
 import com.example.hassiwrapper.data.db.entities.SmsPackingListHistoricalEntity
 import com.example.hassiwrapper.parsePackingListEntities
+import com.example.hassiwrapper.services.PackingListGhostRules
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.launch
@@ -111,11 +112,27 @@ class PackingListsFragment : Fragment() {
      *  runs on every load() so it also catches ones written before that fix shipped. Reuses
      *  clearVehicleAndDeliver (sets synced=false, so the release uploads) + markHistorical so the
      *  PL survives as a record instead of vanishing, same treatment as a normal delivery.
+     *
+     *  El criterio es ahora el MISMO que el del merge de syncSmsData (PackingListGhostRules), y
+     *  eso es el arreglo: este barrido no miraba la edad de la lista ni si le quedaba carga por
+     *  subir, así que archivaba una lista recién creada en el propio navigateUp() que devuelve a
+     *  esta pantalla desde "Nueva Packing List" — antes incluso de que su manifiesto hubiera
+     *  tenido ocasión de salir del terminal.
      */
     private suspend fun reconcileGhostPls(projectId: Int) {
         val current = ServiceLocator.smsPackingListDao.getCurrentByProject(projectId)
         val ghosts = current.filter { pl ->
-            pl.vehicle_id != null && ServiceLocator.smsSpoolDao.countByPackingList(pl.packing_list_id) == 0
+            PackingListGhostRules.isGhost(
+                packingListId   = pl.packing_list_id,
+                vehicleId       = pl.vehicle_id,
+                localSpoolCount = ServiceLocator.smsSpoolDao.countByPackingList(pl.packing_list_id),
+                ageMinutes      = PackingListGhostRules.ageMinutes(
+                    localUpdatedAt  = pl.updated_at,
+                    serverUpdatedAt = null,
+                    localCreatedAt  = pl.created_at,
+                    serverCreatedAt = null
+                )
+            )
         }
         if (ghosts.isEmpty()) return
         Log.d("PackingListsDebug", "reconcileGhostPls: releasing ${ghosts.size} vehicle-attached 0-spool PL(s): ${ghosts.map { it.packing_list_id }}")

@@ -368,6 +368,13 @@ class CreateSpoolFragment : Fragment() {
         chartCountViews += Triple(txtCount, zone.count, pct)
         val barFill = row.findViewById<View>(R.id.barFill)
         val barSpacer = row.findViewById<View>(R.id.barSpacer)
+        // El carril recorta a sus hijos con su propia forma redondeada. Sin esto, el relleno de
+        // una zona pequeña (WORKSHOP, 73 de 4457) es un rectángulo estrecho y de altura completa
+        // pintado justo donde el carril ya se está curvando: asomaba por arriba y por abajo del
+        // extremo izquierdo y se leía como una línea de color suelta fuera de la barra. Ahora el
+        // relleno es un rectángulo recto (bg_chart_fill) y el redondeo lo pone el recorte, así que
+        // la barra queda redonda por la izquierda y recta donde termina, como debe.
+        row.findViewById<View>(R.id.barTrack).clipToOutline = true
         barFill.backgroundTintList = ColorStateList.valueOf(color)
         (barFill.layoutParams as LinearLayout.LayoutParams).weight = zone.count.toFloat()
         (barSpacer.layoutParams as LinearLayout.LayoutParams).weight = (max - zone.count).toFloat()

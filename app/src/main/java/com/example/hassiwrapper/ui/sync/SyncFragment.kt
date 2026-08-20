@@ -187,64 +187,104 @@ class SyncFragment : Fragment() {
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
+    /** Un grupo de trabajo sin entregar: qué es y qué filas concretas lo forman. */
+    private data class PendingGroup(val titulo: String, val items: List<String>)
+
     /**
-     * Desglose de "Pendientes Sync". Ese número suma filas con `synced = 0` de tres tablas
-     * (spools, packing lists y cargas), que NO es lo mismo que la cola de envío: son "esta fila la
-     * tocó este terminal", no "esto está esperando a subir". Por eso puede quedarse parado en un
-     * número durante horas y ser distinto en cada aparato, sin que pase nada malo.
+     * Lo que este terminal todavía NO ha conseguido enviar al servidor.
      *
-     * Sin poder abrirlo, ese número era un misterio que sólo servía para preocupar. Aquí se ve qué
-     * hay exactamente, y se contrasta con la cola de envío, que es la que de verdad tiene trabajo
-     * por entregar: si hay filas marcadas y la cola está vacía, es un resto, no un problema.
+     * Antes esto sumaba filas con `synced = 0` de tres tablas, que es otra cosa: "esta fila la tocó
+     * este terminal alguna vez", no "esto está sin entregar". Ese flag lo pone a 0 cualquier apunte
+     * local —incluida la limpieza que hace el propio sync— y sólo vuelve a 1 cuando el servidor
+     * devuelve esa fila, cosa que con sincronización delta puede no pasar nunca. Resultado: un
+     * número clavado durante días, distinto en cada aparato, que no significaba nada.
+     *
+     * Ahora se cuentan las COLAS DE SUBIDA de verdad, las mismas que recorre SyncService. Si aquí
+     * pone 3, es que hay tres cosas que el servidor aún no tiene. Si pone 0, no hay nada.
      */
-    private fun showPendingDialog() {
+    private suspend fun collectPending(): List<PendingGroup> {
+        val grupos = mutableListOf<PendingGroup>()
+
+        // Reubicaciones: posición/sub-posición escritas aquí y aún sin confirmar por el servidor.
+        // Es la misma consulta que alimenta SyncService.uploadPendingRelocations, no una parecida.
+        ServiceLocator.smsSpoolDao.getUnsyncedRelocated().let { list ->
+            if (list.isNotEmpty()) grupos += PendingGroup(
+                getString(R.string.sync_pending_group_spools, list.size),
+                list.map { it.spool_code.ifBlank { "#${it.spool_id}" } })
+        }
+        ServiceLocator.smsPackingListDao.getUnsynced().let { list ->
+            if (list.isNotEmpty()) grupos += PendingGroup(
+                getString(R.string.sync_pending_group_pls, list.size),
+                list.map { it.packing_list_name.ifBlank { "#${it.packing_list_id}" } })
+        }
+        ServiceLocator.smsVehicleLoadingDao.getUnsynced().let { list ->
+            if (list.isNotEmpty()) grupos += PendingGroup(
+                getString(R.string.sync_pending_group_loadings, list.size),
+                list.map { it.vehicle_plate?.takeIf { p -> p.isNotBlank() } ?: "#${it.loading_id}" })
+        }
+        ServiceLocator.smsTransferDao.getUnsynced().let { list ->
+            if (list.isNotEmpty()) grupos += PendingGroup(
+                getString(R.string.sync_pending_group_transfers, list.size),
+                list.map { "${it.transfer_type} · ${it.packing_list_name.ifBlank { "#${it.packing_list_id}" }}" })
+        }
+        ServiceLocator.smsPackingListSpoolDao.getUnsynced().let { list ->
+            if (list.isNotEmpty()) grupos += PendingGroup(
+                getString(R.string.sync_pending_group_links, list.size),
+                list.map { "spool #${it.spool_id} → lista #${it.packing_list_id}" })
+        }
+
+        // La cola del outbox: envíos, ediciones y borrados que esperan turno. FAILED va aparte,
+        // en su propia tarjeta, porque ahí sí hace falta que alguien decida.
+        ServiceLocator.smsOutboxDao.getPending().let { list ->
+            if (list.isNotEmpty()) grupos += PendingGroup(
+                getString(R.string.sync_pending_group_queue, list.size),
+                list.map { "${it.entity_type} · ${it.op_type} · #${it.local_entity_id}" })
+        }
+        return grupos
+    }
+
+    private suspend fun countRealPending(): Int = collectPending().sumOf { it.items.size }
+
+    /**
+     * Desglose de "Pendientes Sync": qué es exactamente cada cosa que falta por subir.
+     * Con "Ver todo" se despliega la lista completa, sin el tope de 8 por grupo.
+     */
+    private fun showPendingDialog(verTodo: Boolean = false) {
         viewLifecycleOwner.lifecycleScope.launch {
-            val spools = ServiceLocator.smsSpoolDao.getUnsynced()
-            val pls = ServiceLocator.smsPackingListDao.getUnsynced()
-            val loadings = ServiceLocator.smsVehicleLoadingDao.getUnsynced()
-            val queuePending = ServiceLocator.smsOutboxDao.pendingCount()
+            val grupos = collectPending()
             val queueFailed = ServiceLocator.smsOutboxDao.failedCount()
+            val total = grupos.sumOf { it.items.size }
+            val tope = if (verTodo) Int.MAX_VALUE else 8
 
-            val total = spools.size + pls.size + loadings.size
             val sb = StringBuilder()
-
-            fun grupo(titulo: String, nombres: List<String>) {
-                if (nombres.isEmpty()) return
-                if (sb.isNotEmpty()) sb.append("\n")
-                sb.append(titulo).append("\n")
-                // Un tope: una lista de 500 spools en un diálogo no la lee nadie y encima lo hace
-                // inmanejable. Con los primeros se identifica el patrón, que es para lo que sirve.
-                nombres.take(8).forEach { sb.append("  • ").append(it).append("\n") }
-                if (nombres.size > 8) {
-                    sb.append("  ").append(getString(R.string.sync_pending_more, nombres.size - 8)).append("\n")
+            if (total == 0) {
+                sb.append(getString(R.string.sync_pending_dialog_empty))
+                if (queueFailed > 0) {
+                    sb.append("\n\n").append(getString(R.string.sync_pending_only_failed, queueFailed))
+                }
+            } else {
+                grupos.forEach { g ->
+                    if (sb.isNotEmpty()) sb.append("\n")
+                    sb.append(g.titulo).append("\n")
+                    g.items.take(tope).forEach { sb.append("  • ").append(it).append("\n") }
+                    if (g.items.size > tope) {
+                        sb.append("  ").append(getString(R.string.sync_pending_more, g.items.size - tope)).append("\n")
+                    }
+                }
+                sb.append("\n").append(getString(R.string.sync_pending_queue_note))
+                if (queueFailed > 0) {
+                    sb.append("\n\n").append(getString(R.string.sync_pending_only_failed, queueFailed))
                 }
             }
 
-            grupo(getString(R.string.sync_pending_group_spools, spools.size),
-                  spools.map { it.spool_code.ifBlank { "#${it.spool_id}" } })
-            grupo(getString(R.string.sync_pending_group_pls, pls.size),
-                  pls.map { it.packing_list_name.ifBlank { "#${it.packing_list_id}" } })
-            grupo(getString(R.string.sync_pending_group_loadings, loadings.size),
-                  loadings.map { it.vehicle_plate?.takeIf { p -> p.isNotBlank() } ?: "#${it.loading_id}" })
-
-            if (total == 0 && queuePending == 0 && queueFailed == 0) {
-                sb.append(getString(R.string.sync_pending_dialog_empty))
-            } else {
-                sb.append("\n").append(getString(R.string.sync_pending_queue, queuePending, queueFailed)).append("\n")
-                // La distinción que hace útil este diálogo: filas marcadas + cola vacía = resto
-                // inofensivo. Filas marcadas + cola con trabajo = se está subiendo, hay que esperar.
-                sb.append("\n").append(
-                    if (queuePending == 0 && queueFailed == 0 && total > 0)
-                        getString(R.string.sync_pending_stuck_note)
-                    else
-                        getString(R.string.sync_pending_queue_note)
-                )
-            }
-
+            val hayMas = !verTodo && grupos.any { it.items.size > 8 }
             com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.sync_pending_dialog_title)
                 .setMessage(sb.toString().trim())
                 .setPositiveButton(R.string.sync_pending_dialog_close, null)
+                .apply {
+                    if (hayMas) setNeutralButton(R.string.sync_pending_see_all) { _, _ -> showPendingDialog(verTodo = true) }
+                }
                 .show()
         }
     }
@@ -263,9 +303,7 @@ class SyncFragment : Fragment() {
             val inTransitCount = ServiceLocator.smsSpoolDao.countInTransitByProject(projectId)
             // Device-wide, not project-scoped — SyncService uploads unsynced rows across every
             // locally-cached project, not just the one selected here, so the KPI must match.
-            val pendingTotal = ServiceLocator.smsSpoolDao.countUnsynced() +
-                    ServiceLocator.smsPackingListDao.countUnsynced() +
-                    ServiceLocator.smsVehicleLoadingDao.countUnsynced()
+            val pendingTotal = countRealPending()
 
             val synced = if (apiReachable) getString(R.string.sync_kpi_workers_synced) else ""
 

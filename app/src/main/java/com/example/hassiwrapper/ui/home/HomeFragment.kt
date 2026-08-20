@@ -142,6 +142,13 @@ class HomeFragment : Fragment() {
         view.findViewById<View>(R.id.btnGuestQr).setOnClickListener {
             findNavController().navigate(R.id.qrScannerFragment)
         }
+        // Delega en el FAB rojo global en vez de duplicar su handler: la captura de pantalla y el
+        // formulario de incidencia viven en MainActivity y siguen siendo los mismos. Ese FAB está
+        // oculto mientras se ve este home (ver el listener de destino en MainActivity), pero un
+        // View invisible sigue aceptando performClick().
+        view.findViewById<View>(R.id.btnGuestBugReport).setOnClickListener {
+            activity?.findViewById<View>(R.id.fabBugReport)?.performClick()
+        }
     }
 
     private fun loadGuestHeader() {

@@ -88,6 +88,25 @@
                     android:paddingTop="4dp"
                     android:visibility="gone" />
 
+                <!-- Escáner QR. Estaba al final de la barra inferior, en la esquina de abajo a
+                     la derecha, donde se juntaba con el FAB rojo de incidencias. Aquí ocupa el
+                     hueco que deja el banner (más corto que la columna de KPIs de al lado) y
+                     queda centrado en el ancho de la columna, a la izquierda de la card "Sin
+                     sincronizar". center_horizontal y no un gravity de la columna: así sigue
+                     centrado tanto si el desglose por GCP de arriba se muestra como si no. -->
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/btnGuestQr"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="10dp"
+                    android:src="@drawable/ic_qr_scan"
+                    app:backgroundTint="@color/green"
+                    app:fabCustomSize="52dp"
+                    app:maxImageSize="26dp"
+                    app:elevation="4dp"
+                    android:contentDescription="@string/qr_scan_button" />
+
             </LinearLayout>
 
             <!-- Zone KPI stack: confirmed (synced) on top, pending (scanned, not yet synced)
@@ -436,17 +455,22 @@
                 app:cornerRadius="16dp"
                 android:contentDescription="@string/menu_settings" />
 
+            <!-- Reportar incidencia, en el sitio que dejó el escáner QR. Es el mismo botón que el
+                 FAB rojo flotante del resto de pantallas: aquí ocupa un hueco de la barra en vez
+                 de flotar sobre el contenido, y MainActivity esconde el flotante mientras se ve
+                 este home para no tener dos. El click delega en el FAB global (ver HomeFragment),
+                 así que la captura de pantalla y el formulario son exactamente los de siempre. -->
             <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/btnGuestQr"
+                android:id="@+id/btnGuestBugReport"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
-                android:src="@drawable/ic_qr_scan"
-                app:backgroundTint="@color/green"
+                android:src="@drawable/ic_bug_report"
+                app:backgroundTint="@color/error"
                 app:fabCustomSize="52dp"
                 app:maxImageSize="26dp"
                 app:elevation="4dp"
-                android:contentDescription="@string/qr_scan_button" />
+                android:contentDescription="@string/bug_report_button" />
 
         </LinearLayout>
 

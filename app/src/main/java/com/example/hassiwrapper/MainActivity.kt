@@ -43,6 +43,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.example.hassiwrapper.scanner.DataWedgeManager
 import com.example.hassiwrapper.services.GeofenceSeeder
 import com.example.hassiwrapper.services.GpsHelper
+import com.example.hassiwrapper.services.PackingListGhostRules
 import com.example.hassiwrapper.services.PositionHelper
 import com.example.hassiwrapper.workers.OutboxDrainWorker
 import com.example.hassiwrapper.services.SpoolDeltaGuard
@@ -222,12 +223,9 @@ class MainActivity : AppCompatActivity() {
         // regardless, on a cadence cheap enough not to bring back the every-60s full-sync cost
         // delta was built to kill.
         private const val SPOOLS_FULL_SYNC_FLOOR_SEC = 24L * 60 * 60 // 24 hours
-        // Grace window for the "ghost PL" cleanup in syncSmsData's packing-lists merge: a PL with
-        // 0 spools + a vehicle attached looks identical whether it's a genuinely abandoned ghost
-        // or one that just had a vehicle assigned via VehicleDetailFragment's "Añadir Packing
-        // List" and is about to be loaded. This is how long the latter gets before being treated
-        // as the former.
-        private const val GHOST_PL_GRACE_MINUTES = 15L
+        // La ventana de gracia del barrido de PLs fantasma (0 spools + camión puesto) vive ahora
+        // en PackingListGhostRules.GRACE_MINUTES, compartida con el barrido gemelo de
+        // PackingListsFragment: eran dos criterios distintos para exactamente el mismo estado.
         /** Zones a spool can be *leaving* from, for the derived in-transit state. Mirrors the
          *  backend's `scanned_zone IN ('workshop','laydown')`; SITE is excluded there on purpose
          *  because it is the end of the route. Keep the two in step. */
@@ -308,6 +306,15 @@ class MainActivity : AppCompatActivity() {
             if (dest.id != R.id.inventarioFragment) {
                 setPersistentFabConflict(dest.id == R.id.incidentsFragment)
             }
+            // El home de GUEST lleva su propio botón rojo de incidencia dentro de la barra
+            // inferior (btnGuestBugReport, en el sitio que dejó el escáner QR), así que aquí se
+            // esconde el flotante para no tener dos. Sigue existiendo: el botón de la barra
+            // delega en él (ver HomeFragment.setupGuestView), y en cualquier otra pantalla —o
+            // con cualquier otro rol— vuelve a aparecer donde siempre.
+            val isGuestHome = dest.id == R.id.homeFragment &&
+                ProfileManager.currentUserRole() == ProfileManager.UserRole.GUEST
+            findViewById<FloatingActionButton>(R.id.fabBugReport).visibility =
+                if (isGuestHome) android.view.View.GONE else android.view.View.VISIBLE
             // Map screen needs full-width swipe-to-pan; the wide left-edge swipe-to-open-drawer
             // zone (WideEdgeDrawerLayout, 30% of screen width) otherwise steals those gestures.
             if (ProfileManager.currentUserRole() != ProfileManager.UserRole.GUEST) {
@@ -463,9 +470,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Tab position: 0=spools (fabNewSpool), 1=packing lists (no FAB), 2=vehicles (fabNewVehicle/fabSend). */
+    /**
+     * Tab position: 0=spools, 1=packing lists, 2=vehicles (fabNewVehicle/fabSend).
+     *
+     * Sólo Vehículos tiene FAB propio en las esquinas de abajo. Spools tenía uno (fabNewSpool) y
+     * por eso subía también, pero está oculto (ver fragment_create_spool.xml): subir el par
+     * permanente en esa pestaña dejaba el escáner y el bug justo encima de la última fila del
+     * gráfico de zonas, tapando "Sin zona" y su valor. Packing Lists nunca tuvo FAB.
+     */
     fun setInventarioFabConflict(tabPosition: Int) {
-        setPersistentFabConflict(tabPosition != 1)
+        setPersistentFabConflict(tabPosition == 2)
     }
 
     private fun launchQrScanner() {
@@ -854,26 +868,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<FloatingActionButton>(R.id.fabQrScan)?.visibility = if (isGuest) android.view.View.GONE else android.view.View.VISIBLE
     }
 
-    /**
-     * Minutes since [timestamp], or null if it's blank/unparseable. Accepts both a zoned/offset
-     * ISO-8601 string (server `updated_at`) and a bare `LocalDateTime.toString()` (local writes),
-     * since callers here compare a mix of both. Null means "unknown age" — callers must decide
-     * explicitly how to treat that rather than assume recent (or old).
-     */
-    private fun minutesSince(timestamp: String?): Long? {
-        val trimmed = timestamp?.trim().orEmpty()
-        if (trimmed.isEmpty()) return null
-        return try {
-            val instant = try {
-                Instant.parse(trimmed)
-            } catch (_: Exception) {
-                java.time.LocalDateTime.parse(trimmed).toInstant(java.time.ZoneOffset.UTC)
-            }
-            java.time.Duration.between(instant, Instant.now()).toMinutes()
-        } catch (_: Exception) {
-            null
-        }
-    }
+    // minutesSince() se ha movido a PackingListGhostRules: era mitad de la regla de "PL fantasma"
+    // y estaba en un sitio donde el otro barrido (PackingListsFragment) no podía usarla, que es
+    // justo por lo que ese otro acabó sin ninguna comprobación de edad.
 
     /**
      * Runs [block] in isolation: a failure (network, parsing, DB) is logged and
@@ -1180,6 +1177,11 @@ class MainActivity : AppCompatActivity() {
                         val merged = toInsert.map { s ->
                             val local = localSpools[s.spool_id] ?: return@map s
                             val keepLocal = !local.synced && s.spool_id in dirtySpoolIds
+                            // La reubicacion pendiente ya esta en el servidor: lo que trae coincide
+                            // con lo que tenemos. Queda flag, no trabajo.
+                            val relocationLanded = s.position_id != null &&
+                                local.position_id == s.position_id &&
+                                local.sub_position_id == s.sub_position_id
                             val mergedPlId = if (s.spool_id in plDirtySpoolIds) local.packing_list_id
                                              else s.packing_list_id
                             s.copy(
@@ -1230,7 +1232,13 @@ class MainActivity : AppCompatActivity() {
                                 // Carry synced=false so the local override persista entre ciclos mientras
                                 // siga habiendo algo que subir. Al soltarlo (ya no esta en dirtySpoolIds)
                                 // esta linea coge el synced del servidor y el spool vuelve a la norma.
-                                synced          = if (keepLocal) false else s.synced
+                                //
+                                // relocationLanded es la salida del pestillo: si el servidor ya trae
+                                // la MISMA posicion y sub-posicion que tenemos, la reubicacion llego
+                                // — lo que sigue a 0 es el flag, no el trabajo. Sin esto, un fallo
+                                // puntual del PUT dejaba la fila marcada para siempre, porque
+                                // getUnsyncedRelocated se alimenta del propio flag y se realimenta.
+                                synced          = if (keepLocal && !relocationLanded) false else true
                             )
                         }
 
@@ -1373,10 +1381,28 @@ class MainActivity : AppCompatActivity() {
                             // the most recently known touch (local or server) tells the two apart —
                             // unparseable/blank ages (legacy rows predating this field) still count
                             // as old, so long-abandoned ghosts keep getting healed.
+                            //
+                            // Esa ventana, keyed SÓLO en updated_at, no existía para el caso que más
+                            // la necesita: una lista RECIÉN CREADA no tiene updated_at (el backend
+                            // sólo lo estampa en los UPDATE), así que minutesSince devolvía null y la
+                            // rama de abajo la leía como "antiquísima" y la archivaba en el primer
+                            // ciclo de sync. Y una lista recién creada es exactamente la que todavía
+                            // no tiene sus spools en el servidor, porque el POST de creación sube la
+                            // cabecera y el manifiesto viaja aparte. Resultado en obra: un PL de 17
+                            // spools que nace y se va derecho a Históricos sin haber estado nunca en
+                            // tránsito. La regla completa (ancla en created_at + carga local sin
+                            // subir) vive en PackingListGhostRules, compartida con el barrido de
+                            // PackingListsFragment, que antes no comprobaba la edad en absoluto.
                             val touchedAt = maxOf(local.updated_at.orEmpty(), pl.updated_at.orEmpty()).ifEmpty { null }
-                            val ageMinutes = minutesSince(touchedAt)
-                            val isGhost = actualCount == 0 && mergedVehicleId != null &&
-                                (ageMinutes == null || ageMinutes >= GHOST_PL_GRACE_MINUTES)
+                            val ageMinutes = PackingListGhostRules.ageMinutes(
+                                local.updated_at, pl.updated_at, local.created_at, pl.created_at
+                            )
+                            val isGhost = PackingListGhostRules.isGhost(
+                                packingListId   = pl.packing_list_id,
+                                vehicleId       = mergedVehicleId,
+                                localSpoolCount = actualCount,
+                                ageMinutes      = ageMinutes
+                            )
                             if (isGhost) ghostPlIds += pl.packing_list_id
                             pl.copy(
                                 ready_to_send      = if (isGhost) false else local.ready_to_send,

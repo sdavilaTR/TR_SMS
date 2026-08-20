@@ -217,12 +217,21 @@
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 </LinearLayout>
 
+<!--
+    Oculto a propósito, NO borrado. Ocupaba la esquina inferior derecha y obligaba a subir una
+    fila los dos FAB permanentes (escáner verde y bug rojo, ver MainActivity.setPersistentFabConflict),
+    que acababan tapando la última fila del gráfico de zonas — justo la de "Sin zona".
+
+    La vista y su listener siguen aquí y siguen apuntando a action_global_newSpoolFragment: la
+    pantalla de crear spool no se toca y basta con quitar este `visibility` para recuperar el botón.
+-->
 <com.google.android.material.floatingactionbutton.FloatingActionButton
     android:id="@+id/fabNewSpool"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:layout_gravity="bottom|end"
     android:layout_margin="16dp"
+    android:visibility="gone"
     android:contentDescription="@string/new_spool_btn_create"
     app:srcCompat="@drawable/ic_add" />
 

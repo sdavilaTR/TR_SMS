@@ -675,7 +675,7 @@ class SendPackingListFragment : Fragment(), com.example.hassiwrapper.ui.common.L
                                     // device's, or our own local copy of it stale/missing (e.g. the
                                     // background ghost-cleanup released it locally after 15 minutes
                                     // of inactivity while the server still holds it, see
-                                    // GHOST_PL_GRACE_MINUTES in MainActivity). Rather than failing
+                                    // PackingListGhostRules.GRACE_MINUTES). Rather than failing
                                     // with the raw conflict, ask the server which PL it is and, if it
                                     // really is this vehicle's, reuse it instead of giving up — that's
                                     // exactly what existingActivePl above would have done had local

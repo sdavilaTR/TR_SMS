@@ -485,6 +485,32 @@ class NewPackingListFragment : Fragment() {
                 )
                 ServiceLocator.smsPackingListDao.insertAll(listOf(pl))
 
+                // El manifiesto viaja DENTRO del POST de creación, no sólo detrás de él.
+                //
+                // Hasta ahora este `spools` se quedaba en su emptyList() por defecto: el servidor
+                // creaba la cabecera con 0 spools y la carga llegaba después, en 17 llamadas
+                // PL_ASSIGN sueltas. Esa ventana entre "lista creada" y "lista con carga" es lo que
+                // veían el resto de terminales y ATLAS Web — una lista con camión y 0 spools, que es
+                // exactamente la firma de un PL fantasma — y bastaba con que el manifiesto no
+                // llegase para que la lista se quedase vacía para siempre en el servidor (el caso
+                // reportado: histórico guardado en la web diciendo 0 spools). El backend ya sabe
+                // enlazarlos en la MISMA transacción que la fila y deriva total_spools_count de lo
+                // que realmente se enlazó (CreatePackingListAsync), así que la lista nace completa
+                // o no nace.
+                //
+                // Sólo van los ids que el servidor puede resolver. Un spool creado sin cobertura
+                // lleva id negativo y aún no existe allí: el backend hace rollback de TODA la
+                // creación si algún spool no resuelve, así que esos se quedan fuera y siguen su
+                // camino normal por la cola (PL_ASSIGN sí sabe traducir ids temporales).
+                // Los PL_ASSIGN se encolan igual para todos: el endpoint de asignación es
+                // idempotente (IF NOT EXISTS ... ELSE UPDATE), así que repetir lo que ya llegó
+                // en el create no cuesta nada y cubre lo que el create no pudo llevar.
+                val orderedSpoolIds = selectedSpoolIds.toList()
+                val createManifest = orderedSpoolIds
+                    .mapIndexed { index, spoolId -> spoolId to (index + 1) }
+                    .filter { (spoolId, _) -> spoolId > 0 }
+                    .map { (spoolId, seq) -> AssignSpoolRequest(spoolId, "API", seq) }
+
                 ServiceLocator.outboxService.enqueue(
                     OutboxService.Entity.PACKING_LIST, OutboxService.Op.CREATE, plId, projectId,
                     payload = CreatePackingListRequest(
@@ -497,11 +523,12 @@ class NewPackingListFragment : Fragment() {
                         notes            = notes,
                         createdBy        = "API",
                         projectCode      = projectCode,
-                        totalSpoolsCount = selectedSpoolIds.size
+                        totalSpoolsCount = selectedSpoolIds.size,
+                        spools           = createManifest
                     )
                 )
 
-                selectedSpoolIds.forEachIndexed { index, spoolId ->
+                orderedSpoolIds.forEachIndexed { index, spoolId ->
                     ServiceLocator.smsSpoolDao.updatePackingList(spoolId, plId)
                     ServiceLocator.smsPackingListSpoolDao.deleteBySpoolId(spoolId)
                     ServiceLocator.smsPackingListSpoolDao.insert(

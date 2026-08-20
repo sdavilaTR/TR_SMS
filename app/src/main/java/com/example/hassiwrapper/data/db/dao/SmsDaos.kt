@@ -291,6 +291,13 @@ interface SmsPackingListSpoolDao {
     @Query("SELECT spool_id FROM sms_packing_list_spool WHERE synced = 0")
     suspend fun getUnsyncedSpoolIds(): List<Long>
 
+    /** Carga escrita aquí y todavía sin confirmar en el servidor, para UNA lista. Es lo que
+     *  distingue "esta lista aún no ha subido sus spools" de "esta lista no lleva nada", que es
+     *  justo lo que el barrido de fantasmas (ver [com.example.hassiwrapper.services.PackingListGhostRules])
+     *  no sabía distinguir y le costaba el archivado a toda lista recién creada. */
+    @Query("SELECT COUNT(*) FROM sms_packing_list_spool WHERE packing_list_id = :packingListId AND synced = 0")
+    suspend fun countUnsyncedByPackingList(packingListId: Long): Int
+
     @Query("DELETE FROM sms_packing_list_spool")
     suspend fun deleteAll()
 }
@@ -385,14 +392,20 @@ data class SpoolComboCount(val scannedFrom: String?, val subId: Long?, val cnt: 
 data class SubPositionSyncCount(val subPositionId: Long?, val confirmed: Int, val pending: Int)
 
 /**
- * SQL twin of CreateSpoolFragment.spoolPositionCode() — resolves a spool's position code
- * (WORKSHOP/LAYDOWN/SITE) with the same 3-level fallback, uppercased:
- * 1. its packing list's position string, 2. zone exact/prefix match against sms_position
- * codes, 3. the spool's own position_id. Keep both in sync.
+ * Resuelve el código de posición de un spool (WORKSHOP/LAYDOWN/SITE), en mayúsculas, con dos
+ * niveles: 1. `zone`, por coincidencia exacta o de prefijo contra los códigos de sms_position;
+ * 2. el `position_id` del propio spool.
+ *
+ * Había un tercer nivel POR DELANTE de estos dos —la posición de su packing list— y estaba mal:
+ * meter un spool en una lista no lo mueve de sitio. Un spool escaneado en LAYDOWN al que se le
+ * crea una lista con posición WORKSHOP aparecía inmediatamente en WORKSHOP sin que nadie lo
+ * hubiese tocado ni cargado en ningún camión, que es literalmente lo que reportó obra ("se han
+ * movido de laydown a shop"). Un spool sólo cambia de zona cuando se escanea en otra (ver
+ * PositionHelper.applyTerminalPosition) o cuando se recibe en destino (ReceivePackingListFragment),
+ * y ninguno de esos dos pasa por aquí: los dos escriben zone/position_id del propio spool.
  */
 private const val SPOOL_RESOLVED_POSITION = """
     COALESCE(
-        NULLIF(UPPER((SELECT pl.position FROM sms_packing_list pl WHERE pl.packing_list_id = s.packing_list_id)), ''),
         (SELECT UPPER(p.code) FROM sms_position p
            WHERE UPPER(s.zone) = UPPER(p.code) OR UPPER(s.zone) LIKE UPPER(p.code) || '/%'
            LIMIT 1),
@@ -637,7 +650,12 @@ interface SmsSpoolDao {
     @Query("DELETE FROM sms_spool WHERE project_id = :projectId AND synced = 1")
     suspend fun deleteSyncedByProject(projectId: Int)
 
-    @Query("UPDATE sms_spool SET packing_list_id = :packingListId, synced = 0 WHERE spool_id = :spoolId")
+    /** NO toca `synced`, y es deliberado. La pertenencia a una packing list se sube por la tabla de
+     *  union (sms_packing_list_spool.synced) y por la cola, no por este flag; ademas esta consulta
+     *  la llama el propio sync para SOLTAR spools de una lista borrada en el servidor — marcar
+     *  entonces la fila como "pendiente de subir" era mentira, y de las que no se deshacen: nadie
+     *  volvia a levantar el flag y el contador de Pendientes se quedaba clavado. */
+    @Query("UPDATE sms_spool SET packing_list_id = :packingListId WHERE spool_id = :spoolId")
     suspend fun updatePackingList(spoolId: Long, packingListId: Long?)
 
     // See getByCode() above re: the baked-in-suffix fallback (second OR clause).
@@ -657,7 +675,10 @@ interface SmsSpoolDao {
     @Query("SELECT * FROM sms_spool WHERE project_id = :projectId AND UPPER(spool_code) = UPPER(:code) LIMIT 1")
     suspend fun findByCode(projectId: Int, code: String): SmsSpoolEntity?
 
-    @Query("UPDATE sms_spool SET in_transit = :inTransit, synced = 0 WHERE spool_id = :spoolId")
+    /** Tampoco toca `synced`: in_transit es un valor DERIVADO que se recalcula en cada sync a
+     *  partir de la packing list y su camion. No hay nada que subir de este campo, asi que
+     *  marcarlo como pendiente solo servia para inflar el contador y no bajarlo jamas. */
+    @Query("UPDATE sms_spool SET in_transit = :inTransit WHERE spool_id = :spoolId")
     suspend fun updateInTransit(spoolId: Long, inTransit: Boolean)
 
     @Query("UPDATE sms_spool SET zone = :zone, assigned_unit = :assignedUnit, in_transit = 0, synced = 0 WHERE spool_id = :spoolId")

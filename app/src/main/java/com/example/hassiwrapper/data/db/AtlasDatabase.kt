@@ -58,7 +58,7 @@ import com.example.hassiwrapper.data.db.entities.*
         SmsSpoolLocationEntity::class,
         SmsBugReportEntity::class
     ],
-    version = 48,
+    version = 49,
     exportSchema = false
 )
 abstract class AtlasDatabase : RoomDatabase() {
@@ -1096,6 +1096,28 @@ abstract class AtlasDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Fuerza UNA sincronizacion completa de spools al actualizar, borrando el cursor delta.
+         *
+         * Es lo que despega los "Pendientes" clavados. El flag `synced` de un spool solo se
+         * recupera cuando el servidor devuelve esa fila, y con delta activo una fila que no cambia
+         * no vuelve nunca: quedaban marcadas indefinidamente aunque su reubicacion se hubiera
+         * subido hace semanas. Una pasada completa las trae todas y el merge las reconcilia.
+         *
+         * NO se toca `synced` a mano aqui a proposito. Un UPDATE en masa a 1 tambien borraria las
+         * reubicaciones que de verdad estan sin subir, y eso si seria perder trabajo del operario.
+         * Dejar que el merge decida —comparando posicion local contra la del servidor— distingue
+         * las dos cosas: limpia lo que ya llego y respeta lo que no.
+         */
+        private val MIGRATION_48_49 = object : Migration(48, 49) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                Log.i(TAG, "Migration 48 → 49: forzando una sincronizacion completa de spools")
+                db.execSQL("DELETE FROM config WHERE key LIKE 'sms_spools_last_sync_%'")
+                db.execSQL("DELETE FROM config WHERE key LIKE 'sms_spools_last_full_sync_%'")
+                db.execSQL("DELETE FROM config WHERE key LIKE 'sms_spools_last_fetch_%'")
+            }
+        }
+
         fun getInstance(context: Context): AtlasDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -1150,7 +1172,8 @@ abstract class AtlasDatabase : RoomDatabase() {
                         MIGRATION_44_45,
                         MIGRATION_45_46,
                         MIGRATION_46_47,
-                        MIGRATION_47_48
+                        MIGRATION_47_48,
+                        MIGRATION_48_49
                     )
                     .build()
                 INSTANCE = instance

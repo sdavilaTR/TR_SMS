@@ -1154,9 +1154,32 @@ class MainActivity : AppCompatActivity() {
                             ServiceLocator.smsPackingListSpoolDao.getUnsyncedSpoolIds() +
                             ServiceLocator.outboxService.pendingPlAssignSpoolIds()
                         ).toSet()
+                        // Y lo mismo, por la misma razon, para el resto de campos de abajo. `synced`
+                        // no dice "voy por delante del servidor", dice "alguien escribio aqui alguna
+                        // vez": lo pone a 0 cualquier apunte local, incluida la limpieza que hace el
+                        // propio sync (updatePackingList(null) / updateInTransit(false) cuando una
+                        // lista se cierra o se borra), que no encola NADA que subir. Y una vez a 0 no
+                        // vuelve a 1 solo: markSynced solo lo levantan el outbox y
+                        // uploadPendingRelocations — y esta ultima exige position_id no nulo, asi que
+                        // un spool sin posicion registrada se queda a 0 para siempre. El keepLocal de
+                        // antes lo convertia en un pestillo: ese terminal ya nunca aceptaba el
+                        // sub_position_id del servidor para ese spool, ni con un full sync (que borra
+                        // solo las filas synced = 1 y reinserta esta otra vez con synced = false).
+                        // Sintoma: el mismo spool sale en su GCP en un terminal y sin patio en el de
+                        // al lado, indefinidamente.
+                        //
+                        // Estos tres conjuntos son la version precisa de "mi copia va por delante":
+                        // una reubicacion pendiente de subir (la que lee uploadPendingRelocations),
+                        // una operacion del spool aun viva en la cola, o un fix GPS sin subir — que
+                        // es lo que arrastra el patio en el POST de location.
+                        val dirtySpoolIds = (
+                            ServiceLocator.smsSpoolDao.getUnsyncedRelocated().map { it.spool_id } +
+                            ServiceLocator.outboxService.unfinishedIdsFor(com.example.hassiwrapper.services.OutboxService.Entity.SPOOL) +
+                            ServiceLocator.smsSpoolLocationDao.getUnsyncedByProject(projectId).map { it.spool_id }
+                        ).toSet()
                         val merged = toInsert.map { s ->
                             val local = localSpools[s.spool_id] ?: return@map s
-                            val keepLocal = !local.synced
+                            val keepLocal = !local.synced && s.spool_id in dirtySpoolIds
                             val mergedPlId = if (s.spool_id in plDirtySpoolIds) local.packing_list_id
                                              else s.packing_list_id
                             s.copy(
@@ -1204,9 +1227,9 @@ class MainActivity : AppCompatActivity() {
                                 packing_list_id = mergedPlId,
                                 position_id     = if (keepLocal) local.position_id else (s.position_id ?: local.position_id),
                                 sub_position_id = if (keepLocal) local.sub_position_id else (s.sub_position_id ?: local.sub_position_id),
-                                // Carry synced=false so the local override persists across multiple sync
-                                // cycles until the server returns the updated value (e.g. after status-flags
-                                // upload is processed server-side and reflected in GET /spools).
+                                // Carry synced=false so the local override persista entre ciclos mientras
+                                // siga habiendo algo que subir. Al soltarlo (ya no esta en dirtySpoolIds)
+                                // esta linea coge el synced del servidor y el spool vuelve a la norma.
                                 synced          = if (keepLocal) false else s.synced
                             )
                         }

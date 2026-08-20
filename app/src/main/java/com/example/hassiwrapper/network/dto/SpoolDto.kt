@@ -213,7 +213,12 @@ data class SpoolLocationRequest(
     @SerializedName("capturedBy")   val capturedBy: String?,
     // Marks this as a real scan on the backend: sms_spool.scanned/scanned_by/scanned_at/scanned_from.
     @SerializedName("scannedBy")   val scannedBy: String? = null,
-    @SerializedName("scannedFrom") val scannedFrom: String? = null
+    @SerializedName("scannedFrom") val scannedFrom: String? = null,
+    // The yard within scannedFrom, sent alongside the zone rather than left to the separate PUT
+    // status-flags: scannedFrom is what puts the spool in a Material Tracking column, so a zone that
+    // arrives without its yard shows the spool there as "Unassigned" until the PUT catches up minutes
+    // later. Both halves in one POST means the spool appears already labelled. See SyncService.
+    @SerializedName("subPositionId") val subPositionId: Long? = null
 )
 
 /**

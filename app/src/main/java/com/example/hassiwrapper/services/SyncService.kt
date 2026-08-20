@@ -254,8 +254,10 @@ class SyncService(
                     uploadVehicleRouteState(api)
                     uploadSmsIncidents(api)
                 uploadSmsBugReports(api)
-                    uploadSpoolLocations(api)
+                    // Relocations BEFORE locations, and the order is load-bearing — see the same pair
+                    // in doSync below.
                     uploadPendingRelocations(api)
+                    uploadSpoolLocations(api)
                     outboxService?.drain(api)?.let { r ->
                         if (r.transient) Log.w(TAG, "syncSmsUploads: outbox drain stopped (transient), will retry next sync")
                     }
@@ -376,8 +378,17 @@ class SyncService(
                 uploadSmsIncidents(api)
                 uploadSmsBugReports(api)
 
-                uploadSpoolLocations(api)
+                // Relocations BEFORE locations. The location POST is what stamps scanned_from, and
+                // scanned_from is what makes a spool appear in a Material Tracking column — so it has
+                // to be the LAST thing a scan publishes, once the yard behind it is already on the
+                // server. The other way round (how this ran until 2026-08-20) published every zone in
+                // one fast burst and then dripped the yards in over the next couple of minutes via
+                // GET+PUT per spool: 20 spools scanned at Site GCP 9 all appeared under Site as
+                // "Unassigned", and the chip counted down as the PUTs landed. Belt and braces now that
+                // the yard also rides on the location POST itself: this is what keeps the ordering
+                // sane for spools whose yard changed through a path the POST does not carry.
                 uploadPendingRelocations(api)
+                uploadSpoolLocations(api)
 
                 onProgress?.invoke(AtlasApp.instance.getString(R.string.sync_step_outbox))
                 outboxService?.drain(api)?.let { r ->
@@ -1089,14 +1100,21 @@ class SyncService(
             val synced = mutableListOf<Long>()
             for (loc in unsynced) {
                 try {
+                    // The yard travels with the fix. This POST is what stamps scanned_from, i.e. the
+                    // Material Tracking column, and sending the zone on its own is what made a whole
+                    // scanned batch land in that column as "Unassigned" and only earn its GCP chip as
+                    // the per-spool status-flags PUTs trickled in afterwards. The local spool row is
+                    // the source of truth here — same value uploadPendingRelocations would push, and
+                    // it honours a RECEIVE that unloaded into a yard other than the terminal's pin.
                     val body = SpoolLocationRequest(
-                        latitude     = loc.latitude,
-                        longitude    = loc.longitude,
-                        gpsAccuracyM = loc.gps_accuracy_m,
-                        capturedAt   = loc.captured_at,
-                        capturedBy   = loc.captured_by,
-                        scannedBy    = configRepo.get("device_code")?.takeIf { it.isNotBlank() },
-                        scannedFrom  = configRepo.get("device_location")?.takeIf { it.isNotBlank() }
+                        latitude      = loc.latitude,
+                        longitude     = loc.longitude,
+                        gpsAccuracyM  = loc.gps_accuracy_m,
+                        capturedAt    = loc.captured_at,
+                        capturedBy    = loc.captured_by,
+                        scannedBy     = configRepo.get("device_code")?.takeIf { it.isNotBlank() },
+                        scannedFrom   = configRepo.get("device_location")?.takeIf { it.isNotBlank() },
+                        subPositionId = smsSpoolDao?.getById(loc.spool_id)?.sub_position_id
                     )
                     val response = api.postSpoolLocation(projectCode, loc.spool_id, body)
                     when {
